@@ -1,9 +1,9 @@
 'use client';
 
-import { useAuth } from '@/contexts/AuthContext';
+import { useAuthStore } from '@/stores/authStore';
 
 export default function AdminDashboard() {
-  const { user } = useAuth();
+  const user = useAuthStore((state) => state.user);
 
   const stats = [
     { name: 'Total Users', value: '1,234', change: '+12%', changeType: 'positive' },

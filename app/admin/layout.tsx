@@ -1,8 +1,8 @@
 'use client';
 
-import { useAuth } from '@/contexts/AuthContext';
+import { useAuthStore } from '@/stores/authStore';
 import { useState, useEffect } from 'react';
-import { usePathname } from 'next/navigation';
+import { usePathname, useRouter } from 'next/navigation';
 import Sidebar from './components/Sidebar';
 import Header from './components/Header';
 
@@ -11,18 +11,30 @@ export default function AdminLayout({
 }: {
   children: React.ReactNode;
 }) {
-  const { user, logout } = useAuth();
+  const user = useAuthStore((state) => state.user);
+  const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
+  const isLoading = useAuthStore((state) => state.isLoading);
+  const logout = useAuthStore((state) => state.logout);
+  
   const pathname = usePathname();
+  const router = useRouter();
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
-  const [isLoading, setIsLoading] = useState(false);
+  const [isRouteLoading, setIsRouteLoading] = useState(false);
+
+  // Check authentication and redirect if needed
+  useEffect(() => {
+    if (!isLoading && !isAuthenticated) {
+      router.push('/login');
+    }
+  }, [isLoading, isAuthenticated, router]);
 
   // Handle route changes
   useEffect(() => {
-    setIsLoading(true);
+    setIsRouteLoading(true);
     const timer = setTimeout(() => {
-      setIsLoading(false);
+      setIsRouteLoading(false);
     }, 500);
     return () => clearTimeout(timer);
   }, [pathname]);
@@ -30,13 +42,29 @@ export default function AdminLayout({
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
     console.log('Searching for:', searchQuery);
-    // Add your search logic here
   };
+
+  const handleLogout = async () => {
+    await logout();
+    router.push('/login');
+  };
+
+  // Show loading while checking authentication
+  if (isLoading || (!isAuthenticated && !isLoading)) {
+    return (
+      <div className="min-h-screen bg-gray-100 dark:bg-gray-900 flex items-center justify-center">
+        <div className="relative">
+          <div className="w-20 h-20 border-4 border-gray-200 dark:border-gray-700 rounded-full"></div>
+          <div className="w-20 h-20 border-4 border-indigo-600 dark:border-indigo-500 border-t-transparent rounded-full animate-spin absolute top-0 left-0"></div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-gray-100 dark:bg-gray-900 flex h-screen overflow-hidden relative">
       {/* Full Page Loading Spinner */}
-      {isLoading && (
+      {isRouteLoading && (
         <div className="fixed inset-0 bg-white/80 dark:bg-gray-900/80 backdrop-blur-sm flex items-center justify-center z-[100]">
           <div className="relative">
             <div className="w-20 h-20 border-4 border-gray-200 dark:border-gray-700 rounded-full"></div>
@@ -55,7 +83,7 @@ export default function AdminLayout({
       <div className="flex-1 flex flex-col overflow-hidden">
         <Header
           user={user}
-          logout={logout}
+          logout={handleLogout}
           sidebarOpen={sidebarOpen}
           setSidebarOpen={setSidebarOpen}
           setMobileMenuOpen={setMobileMenuOpen}

@@ -25,6 +25,7 @@ export default function LoginPage() {
       const success = await login(email, password);
 
       if (success) {
+        // Redirect is handled in AuthContext
         router.push('/admin');
       } else {
         setError('Invalid email or password');

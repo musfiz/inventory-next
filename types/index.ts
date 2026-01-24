@@ -1,8 +1,29 @@
+export interface Tenant {
+  id: number;
+  business_name: string;
+  slug: string;
+  email: string;
+  business_type?: string;
+  phone?: string;
+  address?: string;
+  city?: string;
+  country?: string;
+}
+
 export interface User {
-  id: string;
+  id: number;
   email: string;
   name: string;
-  role: 'admin' | 'user';
+  role: string;
+  user_type: string;
+  tenant_id?: number;
+  phone?: string;
+  is_active: boolean;
+  tenant?: Tenant;
+  permissions?: string[];
+  created_at?: string;
+  updated_at?: string;
+  last_login_at?: string;
 }
 
 export interface AuthContextType {
