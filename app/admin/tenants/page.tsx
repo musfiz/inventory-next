@@ -23,11 +23,11 @@ export default function TenantsPage() {
 
   const getStatusBadge = (isActive: boolean) => {
     return isActive ? (
-      <span className="px-2 py-1 text-xs font-semibold rounded-full bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400">
+      <span className="px-1.5 py-0.5 text-xs font-medium rounded bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400">
         Active
       </span>
     ) : (
-      <span className="px-2 py-1 text-xs font-semibold rounded-full bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400">
+      <span className="px-1.5 py-0.5 text-xs font-medium rounded bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400">
         Inactive
       </span>
     );
@@ -47,10 +47,10 @@ export default function TenantsPage() {
       header: 'Business Name',
       cell: ({ row }) => (
         <div className="flex items-center">
-          <div className="w-8 h-8 bg-indigo-100 dark:bg-indigo-900/30 rounded-lg flex items-center justify-center text-indigo-600 dark:text-indigo-400 font-semibold text-sm mr-3">
+          <div className="w-6 h-6 bg-indigo-100 dark:bg-indigo-900/30 rounded flex items-center justify-center text-indigo-600 dark:text-indigo-400 font-semibold text-xs mr-2">
             {row.original.business_name.charAt(0).toUpperCase()}
           </div>
-          <div className="text-sm font-medium text-gray-900 dark:text-gray-100">
+          <div className="text-xs font-medium text-gray-900 dark:text-gray-100">
             {row.original.business_name}
           </div>
         </div>
@@ -60,7 +60,7 @@ export default function TenantsPage() {
       accessorKey: 'business_type',
       header: 'Type',
       cell: ({ row }) => (
-        <span className="text-sm text-gray-600 dark:text-gray-400 capitalize">
+        <span className="text-xs text-gray-600 dark:text-gray-400 capitalize">
           {row.original.business_type}
         </span>
       ),
@@ -70,8 +70,8 @@ export default function TenantsPage() {
       header: 'Contact',
       cell: ({ row }) => (
         <div>
-          <div className="text-sm text-gray-900 dark:text-gray-100">{row.original.email}</div>
-          <div className="text-sm text-gray-500 dark:text-gray-400">{row.original.phone}</div>
+          <div className="text-xs text-gray-900 dark:text-gray-100">{row.original.email}</div>
+          <div className="text-xs text-gray-500 dark:text-gray-400">{row.original.phone}</div>
         </div>
       ),
     },
@@ -88,7 +88,7 @@ export default function TenantsPage() {
       accessorKey: 'users_count',
       header: 'Users',
       cell: ({ row }) => (
-        <span className="text-sm text-gray-600 dark:text-gray-400">
+        <span className="text-xs text-gray-600 dark:text-gray-400">
           {row.original.users_count}
         </span>
       ),
@@ -102,7 +102,7 @@ export default function TenantsPage() {
       accessorKey: 'created_at',
       header: 'Created',
       cell: ({ row }) => (
-        <span className="text-sm text-gray-600 dark:text-gray-400">
+        <span className="text-xs text-gray-600 dark:text-gray-400">
           {formatDate(row.original.created_at)}
         </span>
       ),
@@ -111,27 +111,27 @@ export default function TenantsPage() {
       id: 'actions',
       header: 'Actions',
       cell: ({ row }) => (
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-1">
           <button
-            className="text-indigo-600 hover:text-indigo-900 dark:text-indigo-400 dark:hover:text-indigo-300"
+            className="p-1 text-indigo-600 hover:text-indigo-900 dark:text-indigo-400 dark:hover:text-indigo-300 hover:bg-indigo-50 dark:hover:bg-indigo-900/20 rounded"
             title="View Details"
             onClick={() => console.log('View', row.original.id)}
           >
-            <Eye className="w-4 h-4" />
+            <Eye className="w-3.5 h-3.5" />
           </button>
           <button
-            className="text-blue-600 hover:text-blue-900 dark:text-blue-400 dark:hover:text-blue-300"
+            className="p-1 text-blue-600 hover:text-blue-900 dark:text-blue-400 dark:hover:text-blue-300 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded"
             title="Edit"
             onClick={() => console.log('Edit', row.original.id)}
           >
-            <Edit className="w-4 h-4" />
+            <Edit className="w-3.5 h-3.5" />
           </button>
           <button
-            className="text-red-600 hover:text-red-900 dark:text-red-400 dark:hover:text-red-300"
+            className="p-1 text-red-600 hover:text-red-900 dark:text-red-400 dark:hover:text-red-300 hover:bg-red-50 dark:hover:bg-red-900/20 rounded"
             title="Delete"
             onClick={() => console.log('Delete', row.original.id)}
           >
-            <Trash2 className="w-4 h-4" />
+            <Trash2 className="w-3.5 h-3.5" />
           </button>
         </div>
       ),
@@ -149,28 +149,28 @@ export default function TenantsPage() {
   };
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-3">
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100 flex items-center gap-2">
-            <Building2 className="w-7 h-7 text-indigo-600 dark:text-indigo-400" />
+          <h1 className="text-xl font-bold text-gray-900 dark:text-gray-100 flex items-center gap-2">
+            <Building2 className="w-5 h-5 text-indigo-600 dark:text-indigo-400" />
             Tenant Management
           </h1>
-          <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
+          <p className="text-xs text-gray-600 dark:text-gray-400 mt-0.5">
             Manage all tenants and their information
           </p>
         </div>
       </div>
 
       {/* Filters */}
-      <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-4">
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+      <div className="bg-white dark:bg-gray-800 rounded-md shadow-sm border border-gray-200 dark:border-gray-700 p-2">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
           {/* Status Filter */}
           <select
             value={statusFilter}
             onChange={(e) => setStatusFilter(e.target.value)}
-            className="px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-indigo-500 dark:bg-gray-700 dark:text-gray-100"
+            className="px-2 py-1 text-sm border border-gray-300 dark:border-gray-600 rounded focus:ring-1 focus:ring-indigo-500 dark:bg-gray-700 dark:text-gray-100"
           >
             <option value="all">All Status</option>
             <option value="active">Active</option>
@@ -181,7 +181,7 @@ export default function TenantsPage() {
           <select
             value={businessTypeFilter}
             onChange={(e) => setBusinessTypeFilter(e.target.value)}
-            className="px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-indigo-500 dark:bg-gray-700 dark:text-gray-100"
+            className="px-2 py-1 text-sm border border-gray-300 dark:border-gray-600 rounded focus:ring-1 focus:ring-indigo-500 dark:bg-gray-700 dark:text-gray-100"
           >
             <option value="all">All Types</option>
             <option value="retail">Retail</option>
