@@ -1,3 +1,8 @@
+// Re-export all API types
+export * from './api';
+
+// Legacy interface kept for backward compatibility
+// Use types from api.ts for new code
 export interface Tenant {
   id: number;
   business_name: string;

@@ -91,8 +91,12 @@ export const useAuthStore = create<AuthState>()(
             user: userData,
             isAuthenticated: true,
           });
-        } catch (error) {
-          console.error('Auth check failed:', error);
+        } catch (error: any) {
+          // Silently handle unauthenticated state
+          // Only log actual errors (not 401 Unauthorized)
+          if (error.response?.status !== 401) {
+            console.error('Auth check failed:', error);
+          }
           set({
             user: null,
             isAuthenticated: false,
