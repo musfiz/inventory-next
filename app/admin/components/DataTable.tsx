@@ -60,20 +60,28 @@ export default function DataTable<T extends Record<string, any>>({
     try {
       const params = new URLSearchParams({
         page: pagination.page.toString(),
-        pageSize: pagination.pageSize.toString(),
-        search: searchQuery,
+        per_page: pagination.pageSize.toString(),
       });
+
+      if (searchQuery) {
+        params.append('search', searchQuery);
+      }
 
       if (sorting.length > 0) {
         params.append('sortBy', sorting[0].id);
         params.append('sortOrder', sorting[0].desc ? 'desc' : 'asc');
       }
 
-      const response = await fetch(`${apiEndpoint}?${params.toString()}`);
+      const response = await fetch(`${apiEndpoint}${apiEndpoint.includes('?') ? '&' : '?'}${params.toString()}`, {
+        credentials: 'include',
+      });
       const result = await response.json();
 
+      // Handle custom pagination format
       setData(result.data || []);
-      setPagination(result.pagination);
+      if (result.pagination) {
+        setPagination(result.pagination);
+      }
     } catch (error) {
       console.error('Failed to fetch data:', error);
     } finally {
@@ -84,7 +92,7 @@ export default function DataTable<T extends Record<string, any>>({
   // Fetch data when page or sorting changes
   useEffect(() => {
     fetchData();
-  }, [pagination.page, sorting]);
+  }, [pagination.page, sorting, apiEndpoint]);
 
   // Fetch data with debounce when search changes
   useEffect(() => {

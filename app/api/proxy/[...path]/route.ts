@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import axios from 'axios';
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000/api/v1';
+const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
 
 /**
  * API Proxy Route Handler
@@ -58,10 +58,13 @@ async function proxyRequest(request: NextRequest, method: string) {
       }
     }
 
+    const targetUrl = `${API_URL}${apiPath}${queryString}`;
+    console.log(`[Proxy] ${method} ${targetUrl}`);
+
     // Make request to Laravel backend
     const response = await axios({
       method,
-      url: `${API_URL}${apiPath}${queryString}`,
+      url: targetUrl,
       headers,
       data: body,
       validateStatus: () => true, // Don't throw on any status
@@ -70,12 +73,13 @@ async function proxyRequest(request: NextRequest, method: string) {
     // Return response
     return NextResponse.json(response.data, { status: response.status });
   } catch (error: any) {
-    console.error('Proxy error:', error.message);
+    console.error('[Proxy] Error:', error.message);
     
     return NextResponse.json(
       {
         success: false,
         message: error.message || 'Proxy request failed',
+        error: error.response?.data || error.message,
       },
       { status: 500 }
     );

@@ -21,6 +21,7 @@ import {
   Video,
   Music,
   Table,
+  Building2,
   type LucideIcon
 } from 'lucide-react';
 
@@ -39,7 +40,14 @@ interface NavigationItem {
 
 const navigation: NavigationItem[] = [
   { name: 'Dashboard', href: '/admin', icon: LayoutDashboard },
-  { name: 'Data Table', href: '/admin/datatable', icon: Table },
+  {
+    name: 'Tenant Management',
+    icon: Building2,
+    children: [
+      { name: 'Tenant List', href: '/admin/tenants', icon: List },
+      { name: 'Tenant Registration', href: '/admin/tenants/register', icon: UserPlus },
+    ]
+  },
   {
     name: 'Users',
     icon: Users,

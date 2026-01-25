@@ -52,19 +52,19 @@ class AuthService {
 
   /**
    * Get current authenticated user
-   * GET /user
+   * GET /api/v1/user
    */
   async getCurrentUser(): Promise<User> {
-    const response = await apiClient.get<ApiResponse<User>>('/user');
+    const response = await apiClient.get<ApiResponse<User>>('/api/v1/user');
     return response.data.data;
   }
 
   /**
    * Get user profile with detailed information
-   * GET /profile
+   * GET /api/v1/profile
    */
   async getProfile(): Promise<UserProfileResponse> {
-    const response = await apiClient.get<ApiResponse<UserProfileResponse>>('/profile');
+    const response = await apiClient.get<ApiResponse<UserProfileResponse>>('/api/v1/profile');
     return response.data.data;
   }
   
@@ -86,21 +86,21 @@ class AuthService {
 
   /**
    * Refresh user session/token
-   * POST /refresh
+   * POST /api/v1/refresh
    * Server updates the HTTP-only cookie
    */
   async refreshToken(): Promise<void> {
-    await apiClient.post('/refresh');
+    await apiClient.post('/api/v1/refresh');
     // Server automatically updates the cookie
   }
 
   /**
    * Verify if current token is valid
-   * GET /verify-token
+   * GET /api/v1/verify-token
    */
   async verifyToken(): Promise<boolean> {
     try {
-      await apiClient.get('/verify-token');
+      await apiClient.get('/api/v1/verify-token');
       return true;
     } catch (error) {
       return false;
@@ -109,15 +109,15 @@ class AuthService {
 
   /**
    * Request password reset
-   * POST /forgot-password
+   * POST /api/v1/forgot-password
    */
   async forgotPassword(email: string): Promise<void> {
-    await apiClient.post('/forgot-password', { email });
+    await apiClient.post('/api/v1/forgot-password', { email });
   }
 
   /**
    * Reset password with token
-   * POST /reset-password
+   * POST /api/v1/reset-password
    */
   async resetPassword(
     token: string,
@@ -125,7 +125,7 @@ class AuthService {
     password: string,
     passwordConfirmation: string
   ): Promise<void> {
-    await apiClient.post('/reset-password', {
+    await apiClient.post('/api/v1/reset-password', {
       token,
       email,
       password,
@@ -135,14 +135,14 @@ class AuthService {
 
   /**
    * Update current user's password
-   * POST /change-password
+   * POST /api/v1/change-password
    */
   async changePassword(
     currentPassword: string,
     newPassword: string,
     passwordConfirmation: string
   ): Promise<void> {
-    await apiClient.post('/change-password', {
+    await apiClient.post('/api/v1/change-password', {
       current_password: currentPassword,
       password: newPassword,
       password_confirmation: passwordConfirmation,
@@ -151,14 +151,14 @@ class AuthService {
 
   /**
    * Update current user's profile
-   * PUT /profile
+   * PUT /api/v1/profile
    */
   async updateProfile(data: {
     name?: string;
     email?: string;
     phone?: string;
   }): Promise<User> {
-    const response = await apiClient.put<ApiResponse<{ user: User }>>('/profile', data);
+    const response = await apiClient.put<ApiResponse<{ user: User }>>('/api/v1/profile', data);
     return response.data.data.user;
   }
 }
