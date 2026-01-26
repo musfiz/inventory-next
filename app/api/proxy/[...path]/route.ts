@@ -1,87 +1,26 @@
-import { NextRequest, NextResponse } from 'next/server';
-import axios from 'axios';
-
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
+import { NextRequest } from 'next/server';
+import { handleProxyRequest } from '@/lib/apiHandler';
 
 /**
  * API Proxy Route Handler
  * Proxies all API requests and adds auth token from HTTP-only cookie
  */
 export async function GET(request: NextRequest) {
-  return proxyRequest(request, 'GET');
+  return handleProxyRequest(request, 'GET');
 }
 
 export async function POST(request: NextRequest) {
-  return proxyRequest(request, 'POST');
+  return handleProxyRequest(request, 'POST');
 }
 
 export async function PUT(request: NextRequest) {
-  return proxyRequest(request, 'PUT');
+  return handleProxyRequest(request, 'PUT');
 }
 
 export async function PATCH(request: NextRequest) {
-  return proxyRequest(request, 'PATCH');
+  return handleProxyRequest(request, 'PATCH');
 }
 
 export async function DELETE(request: NextRequest) {
-  return proxyRequest(request, 'DELETE');
-}
-
-async function proxyRequest(request: NextRequest, method: string) {
-  try {
-    // Get the API path from the URL
-    const url = new URL(request.url);
-    const apiPath = url.pathname.replace('/api/proxy', '');
-    const queryString = url.search;
-
-    // Get auth token from cookie
-    const token = request.cookies.get('auth_token')?.value;
-
-    // Prepare headers
-    const headers: Record<string, string> = {
-      'Content-Type': 'application/json',
-      'Accept': 'application/json',
-    };
-
-    // Add authorization header if token exists
-    if (token) {
-      headers['Authorization'] = `Bearer ${token}`;
-    }
-
-    // Get request body for POST/PUT/PATCH
-    let body = null;
-    if (['POST', 'PUT', 'PATCH'].includes(method)) {
-      try {
-        body = await request.json();
-      } catch {
-        // No body or invalid JSON
-      }
-    }
-
-    const targetUrl = `${API_URL}${apiPath}${queryString}`;
-    console.log(`[Proxy] ${method} ${targetUrl}`);
-
-    // Make request to Laravel backend
-    const response = await axios({
-      method,
-      url: targetUrl,
-      headers,
-      data: body,
-      validateStatus: () => true, // Don't throw on any status
-    });
-
-    // Return response
-    return NextResponse.json(response.data, { status: response.status });
-  } catch (error: any) {
-    console.error('[Proxy] Error:', error.message);
-    
-    return NextResponse.json(
-      {
-        success: false,
-        message: error.message || 'Proxy request failed',
-        error: error.response?.data || error.message,
-      },
-      { status: 500 }
-    );
-  }
+  return handleProxyRequest(request, 'DELETE');
 }
