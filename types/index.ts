@@ -19,13 +19,11 @@ export interface User {
   id: number;
   email: string;
   name: string;
-  role: string;
   user_type: string;
   tenant_id?: number;
   phone?: string;
   is_active: boolean;
   tenant?: Tenant;
-  permissions?: string[];
   created_at?: string;
   updated_at?: string;
   last_login_at?: string;

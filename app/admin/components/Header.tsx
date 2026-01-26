@@ -203,8 +203,7 @@ export default function Header({
                 {user?.name?.charAt(0).toUpperCase() || 'A'}
               </div>
               <div className="hidden sm:block text-left">
-                <p className="text-sm font-medium text-gray-900 dark:text-gray-100">{user?.name}</p>
-                <p className="text-xs text-gray-500 dark:text-gray-400">Admin</p>
+                <p className="text-sm font-medium text-gray-900 dark:text-gray-100">{user?.name || 'No User'}</p>
               </div>
               <ChevronDown className="hidden sm:block h-4 w-4 text-gray-500 dark:text-gray-400" />
             </button>
@@ -218,8 +217,8 @@ export default function Header({
                 />
                 <div className="absolute right-0 mt-2 w-56 bg-white dark:bg-gray-800 rounded-lg shadow-lg border border-gray-200 dark:border-gray-700 py-1 z-20">
                   <div className="px-4 py-3 border-b border-gray-200 dark:border-gray-700">
-                    <p className="text-sm font-medium text-gray-900 dark:text-gray-100">{user?.name}</p>
-                    <p className="text-xs text-gray-500 dark:text-gray-400">{user?.email}</p>
+                    <p className="text-sm font-medium text-gray-900 dark:text-gray-100">{user?.name || 'No Name'}</p>
+                    <p className="text-xs text-gray-500 dark:text-gray-400">{user?.email || 'No Email'}</p>
                   </div>
                   <Link
                     href="/admin/settings"

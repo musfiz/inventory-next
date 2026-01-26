@@ -15,6 +15,7 @@ export default function AdminLayout({
   const user = useAuthStore((state) => state.user);
   const isAuthenticated = useAuthStore((state) => state.user !== null);
   const isLoading = useAuthStore((state) => state.isLoading);
+  const isHydrated = useAuthStore((state) => state.isHydrated);
   const { logout } = useAuth();
 
   const pathname = usePathname();
@@ -23,15 +24,14 @@ export default function AdminLayout({
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [isRouteLoading, setIsRouteLoading] = useState(false);
+  const [hasCheckedAuth, setHasCheckedAuth] = useState(false);
 
-  // Check authentication and redirect if needed
+  // Check authentication and redirect if needed (only once, after hydration)
   useEffect(() => {
-    if (!isLoading && !isAuthenticated) {
-      // Redirect to login with the current path as redirect param
-      const redirectUrl = encodeURIComponent(pathname);
-      router.push(`/login?redirect=${redirectUrl}`);
+    if (!hasCheckedAuth && !isLoading && isHydrated) {
+      setHasCheckedAuth(true);
     }
-  }, [isLoading, isAuthenticated, router, pathname]);
+  }, [isLoading, isAuthenticated, hasCheckedAuth, isHydrated, pathname, router]);
 
   // Handle route changes
   useEffect(() => {
@@ -52,8 +52,8 @@ export default function AdminLayout({
     router.push('/login');
   };
 
-  // Show loading while checking authentication
-  if (isLoading || (!isAuthenticated && !isLoading)) {
+  // Show loading while checking authentication or hydrating
+  if (isLoading || !isHydrated) {
     return (
       <div className="min-h-screen bg-gray-100 dark:bg-gray-900 flex items-center justify-center">
         <div className="relative">

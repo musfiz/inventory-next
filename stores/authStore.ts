@@ -9,7 +9,7 @@ interface User {
   tenant_id?: string;
   phone?: string;
   is_active: boolean;
-  avate_url: string;
+  avatar_url?: string;
   last_login_at: string;
   tenant?: {
     id: number;
@@ -23,11 +23,13 @@ interface AuthState {
   user: User | null;
   token: string | null;
   isLoading: boolean;
+  isHydrated: boolean;
 
   // State Actions (no API calls)
   setUser: (user: User | null) => void;
   setToken: (token: string | null) => void;
   setLoading: (loading: boolean) => void;
+  setHydrated: (hydrated: boolean) => void;
   clearAuth: () => void;
 }
 
@@ -37,12 +39,15 @@ export const useAuthStore = create<AuthState>()(
       user: null,
       token: null,
       isLoading: false,
+      isHydrated: false,
 
       setUser: (user) => set({ user }),
 
       setToken: (token) => set({ token }),
 
       setLoading: (loading) => set({ isLoading: loading }),
+
+      setHydrated: (hydrated) => set({ isHydrated: hydrated }),
 
       clearAuth: () => set({
         user: null,
@@ -56,6 +61,9 @@ export const useAuthStore = create<AuthState>()(
         user: state.user,
         token: state.token,
       }),
+      onRehydrateStorage: () => (state) => {
+        state?.setHydrated(true);
+      },
     }
   )
 );
