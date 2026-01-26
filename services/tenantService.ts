@@ -22,18 +22,18 @@ class TenantService {
       '/api/auth/register-tenant',
       data
     );
-    
+
     // Token is set as HTTP-only cookie by the Next.js API route
     return response.data.data;
   }
 
   /**
    * Get all tenants (Super Admin only)
-   * GET /tenants
+   * GET /api/v1/tenants
    */
   async getTenants(page: number = 1, perPage: number = 10): Promise<TenantListResponse> {
     const response = await apiClient.get<ApiResponse<TenantListResponse>>(
-      '/tenants',
+      '/api/v1/tenants',
       {
         params: { page, per_page: perPage },
       }
@@ -43,36 +43,36 @@ class TenantService {
 
   /**
    * Get tenant details by ID
-   * GET /tenants/:id
+   * GET /api/v1/tenants/:id
    */
   async getTenantById(tenantId: string): Promise<TenantDetailsResponse> {
     const response = await apiClient.get<ApiResponse<TenantDetailsResponse>>(
-      `/tenants/${tenantId}`
+      `/api/v1/tenants/${tenantId}`
     );
     return response.data.data;
   }
 
   /**
    * Get current tenant details (for logged-in tenant users)
-   * GET /tenant/current
+   * GET /api/v1/tenant/current
    */
   async getCurrentTenant(): Promise<Tenant> {
     const response = await apiClient.get<ApiResponse<{ tenant: Tenant }>>(
-      '/tenant/current'
+      '/api/v1/tenant/current'
     );
     return response.data.data.tenant;
   }
 
   /**
    * Update tenant details
-   * PUT /tenants/:id
+   * PUT /api/v1/tenants/:id
    */
   async updateTenant(
     tenantId: string,
     data: Partial<Omit<Tenant, 'id' | 'slug'>>
   ): Promise<Tenant> {
     const response = await apiClient.put<ApiResponse<{ tenant: Tenant }>>(
-      `/tenants/${tenantId}`,
+      `/api/v1/tenants/${tenantId}`,
       data
     );
     return response.data.data.tenant;
@@ -80,11 +80,11 @@ class TenantService {
 
   /**
    * Activate/Deactivate tenant
-   * PATCH /tenants/:id/status
+   * PATCH /api/v1/tenants/:id/status
    */
   async toggleTenantStatus(tenantId: string, isActive: boolean): Promise<Tenant> {
     const response = await apiClient.patch<ApiResponse<{ tenant: Tenant }>>(
-      `/tenants/${tenantId}/status`,
+      `/api/v1/tenants/${tenantId}/status`,
       { is_active: isActive }
     );
     return response.data.data.tenant;
@@ -92,19 +92,19 @@ class TenantService {
 
   /**
    * Delete tenant (Super Admin only)
-   * DELETE /tenants/:id
+   * DELETE /api/v1/tenants/:id
    */
   async deleteTenant(tenantId: string): Promise<void> {
-    await apiClient.delete(`/tenants/${tenantId}`);
+    await apiClient.delete(`/api/v1/tenants/${tenantId}`);
   }
 
   /**
    * Get tenant statistics
-   * GET /tenants/:id/stats
+   * GET /api/v1/tenants/:id/stats
    */
   async getTenantStats(tenantId: string): Promise<any> {
     const response = await apiClient.get<ApiResponse<any>>(
-      `/tenants/${tenantId}/stats`
+      `/api/v1/tenants/${tenantId}/stats`
     );
     return response.data.data;
   }

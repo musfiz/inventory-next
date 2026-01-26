@@ -49,7 +49,7 @@ const navigation: NavigationItem[] = [
     ]
   },
   {
-    name: 'Users',
+    name: 'User Management',
     icon: Users,
     children: [
       { name: 'All Users', href: '/admin/users', icon: List },

@@ -8,7 +8,7 @@ import { useAuthStore } from '@/stores/authStore';
  */
 export const useAuth = () => {
   const user = useAuthStore((state) => state.user);
-  const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
+  const isAuthenticated = useAuthStore((state) => state.user !== null);
   const isLoading = useAuthStore((state) => state.isLoading);
   const login = useAuthStore((state) => state.login);
   const logout = useAuthStore((state) => state.logout);

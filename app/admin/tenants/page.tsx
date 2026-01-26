@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { Building2, Eye, Edit, Trash2 } from 'lucide-react';
+import { Building2, Eye, Edit, Trash2, List, ListX, ListCheck, View, Rows4 } from 'lucide-react';
 import { ColumnDef } from '@tanstack/react-table';
 import DataTable from '../components/DataTable';
 
@@ -43,13 +43,23 @@ export default function TenantsPage() {
 
   const columns: ColumnDef<Tenant>[] = [
     {
+      id: 'serial',
+      header: '#',
+      cell: ({ row, table }) => {
+        const page = table.getState().pagination?.pageIndex ?? 0;
+        const pageSize = table.getState().pagination?.pageSize ?? 15;
+        return (
+          <span className="text-xs text-gray-600 dark:text-gray-400">
+            {page * pageSize + row.index + 1}
+          </span>
+        );
+      },
+    },
+    {
       accessorKey: 'business_name',
       header: 'Business Name',
       cell: ({ row }) => (
         <div className="flex items-center">
-          <div className="w-6 h-6 bg-indigo-100 dark:bg-indigo-900/30 rounded flex items-center justify-center text-indigo-600 dark:text-indigo-400 font-semibold text-xs mr-2">
-            {row.original.business_name.charAt(0).toUpperCase()}
-          </div>
           <div className="text-xs font-medium text-gray-900 dark:text-gray-100">
             {row.original.business_name}
           </div>
@@ -67,10 +77,18 @@ export default function TenantsPage() {
     },
     {
       accessorKey: 'email',
-      header: 'Contact',
+      header: 'Email',
       cell: ({ row }) => (
         <div>
           <div className="text-xs text-gray-900 dark:text-gray-100">{row.original.email}</div>
+        </div>
+      ),
+    },
+    {
+      accessorKey: 'phone',
+      header: 'Mobile No',
+      cell: ({ row }) => (
+        <div>
           <div className="text-xs text-gray-500 dark:text-gray-400">{row.original.phone}</div>
         </div>
       ),
@@ -86,26 +104,19 @@ export default function TenantsPage() {
     },
     {
       accessorKey: 'users_count',
-      header: 'Users',
+      header: () => <div className="text-center">Users(Total)</div>,
       cell: ({ row }) => (
-        <span className="text-xs text-gray-600 dark:text-gray-400">
-          {row.original.users_count}
-        </span>
+        <div className="text-center">
+          <span className="text-xs text-gray-600 dark:text-gray-400">
+            {row.original.users_count}
+          </span>
+        </div>
       ),
     },
     {
       accessorKey: 'is_active',
       header: 'Status',
       cell: ({ row }) => getStatusBadge(row.original.is_active),
-    },
-    {
-      accessorKey: 'created_at',
-      header: 'Created',
-      cell: ({ row }) => (
-        <span className="text-xs text-gray-600 dark:text-gray-400">
-          {formatDate(row.original.created_at)}
-        </span>
-      ),
     },
     {
       id: 'actions',
@@ -143,7 +154,7 @@ export default function TenantsPage() {
     const params = new URLSearchParams();
     if (statusFilter !== 'all') params.append('status', statusFilter);
     if (businessTypeFilter !== 'all') params.append('business_type', businessTypeFilter);
-    
+
     const queryString = params.toString();
     return `/api/proxy/api/v1/tenants${queryString ? `?${queryString}` : ''}`;
   };
@@ -154,8 +165,8 @@ export default function TenantsPage() {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-xl font-bold text-gray-900 dark:text-gray-100 flex items-center gap-2">
-            <Building2 className="w-5 h-5 text-indigo-600 dark:text-indigo-400" />
-            Tenant Management
+            <Rows4 className="w-5 h-5 text-indigo-600 dark:text-indigo-400" />
+            Tenant List
           </h1>
           <p className="text-xs text-gray-600 dark:text-gray-400 mt-0.5">
             Manage all tenants and their information
@@ -198,7 +209,6 @@ export default function TenantsPage() {
 
       {/* DataTable */}
       <DataTable
-        key={`${statusFilter}-${businessTypeFilter}`}
         columns={columns}
         apiEndpoint={buildApiEndpoint()}
         pageSize={15}

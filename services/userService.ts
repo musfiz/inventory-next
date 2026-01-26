@@ -25,18 +25,18 @@ class UserService {
       '/api/auth/register',
       data
     );
-    
+
     // Token is set as HTTP-only cookie by the Next.js API route
     return response.data.data;
   }
 
   /**
    * Get list of users in tenant
-   * GET /users
+   * GET /api/v1/users
    */
   async getUsers(params?: UserListParams): Promise<UserListResponse> {
     const response = await apiClient.get<ApiResponse<UserListResponse>>(
-      '/users',
+      '/api/v1/users',
       { params }
     );
     return response.data.data;
@@ -44,22 +44,22 @@ class UserService {
 
   /**
    * Get user by ID
-   * GET /users/:id
+   * GET /api/v1/users/:id
    */
   async getUserById(userId: string): Promise<User> {
     const response = await apiClient.get<ApiResponse<{ user: User }>>(
-      `/users/${userId}`
+      `/api/v1/users/${userId}`
     );
     return response.data.data.user;
   }
 
   /**
    * Create a new user (Admin only)
-   * POST /users
+   * POST /api/v1/users
    */
   async createUser(data: CreateUserRequest): Promise<User> {
     const response = await apiClient.post<ApiResponse<{ user: User }>>(
-      '/users',
+      '/api/v1/users',
       data
     );
     return response.data.data.user;
@@ -67,11 +67,11 @@ class UserService {
 
   /**
    * Update user details
-   * PUT /users/:id
+   * PUT /api/v1/users/:id
    */
   async updateUser(userId: string, data: UpdateUserRequest): Promise<User> {
     const response = await apiClient.put<ApiResponse<{ user: User }>>(
-      `/users/${userId}`,
+      `/api/v1/users/${userId}`,
       data
     );
     return response.data.data.user;
@@ -79,19 +79,19 @@ class UserService {
 
   /**
    * Delete user
-   * DELETE /users/:id
+   * DELETE /api/v1/users/:id
    */
   async deleteUser(userId: string): Promise<void> {
-    await apiClient.delete(`/users/${userId}`);
+    await apiClient.delete(`/api/v1/users/${userId}`);
   }
 
   /**
    * Activate/Deactivate user
-   * PATCH /users/:id/status
+   * PATCH /api/v1/users/:id/status
    */
   async toggleUserStatus(userId: string, isActive: boolean): Promise<User> {
     const response = await apiClient.patch<ApiResponse<{ user: User }>>(
-      `/users/${userId}/status`,
+      `/api/v1/users/${userId}/status`,
       { is_active: isActive }
     );
     return response.data.data.user;
@@ -99,23 +99,23 @@ class UserService {
 
   /**
    * Change user password
-   * POST /users/change-password
+   * POST /api/v1/users/change-password
    */
   async changePassword(data: ChangePasswordRequest): Promise<void> {
-    await apiClient.post('/users/change-password', data);
+    await apiClient.post('/api/v1/users/change-password', data);
   }
 
   /**
    * Reset password request
-   * POST /users/forgot-password
+   * POST /api/v1/users/forgot-password
    */
   async forgotPassword(email: string): Promise<void> {
-    await apiClient.post('/users/forgot-password', { email });
+    await apiClient.post('/api/v1/users/forgot-password', { email });
   }
 
   /**
    * Reset password
-   * POST /users/reset-password
+   * POST /api/v1/users/reset-password
    */
   async resetPassword(
     token: string,
@@ -123,7 +123,7 @@ class UserService {
     password: string,
     passwordConfirmation: string
   ): Promise<void> {
-    await apiClient.post('/users/reset-password', {
+    await apiClient.post('/api/v1/users/reset-password', {
       token,
       email,
       password,
@@ -133,24 +133,24 @@ class UserService {
 
   /**
    * Get users by role
-   * GET /users/role/:role
+   * GET /api/v1/users/role/:role
    */
   async getUsersByRole(role: string): Promise<User[]> {
     const response = await apiClient.get<ApiResponse<{ users: User[] }>>(
-      `/users/role/${role}`
+      `/api/v1/users/role/${role}`
     );
     return response.data.data.users;
   }
 
   /**
    * Bulk update users
-   * POST /users/bulk-update
+   * POST /api/v1/users/bulk-update
    */
   async bulkUpdateUsers(
     userIds: string[],
     updates: Partial<UpdateUserRequest>
   ): Promise<void> {
-    await apiClient.post('/users/bulk-update', {
+    await apiClient.post('/api/v1/users/bulk-update', {
       user_ids: userIds,
       updates,
     });
@@ -158,10 +158,10 @@ class UserService {
 
   /**
    * Export users to CSV
-   * GET /users/export
+   * GET /api/v1/users/export
    */
   async exportUsers(params?: UserListParams): Promise<Blob> {
-    const response = await apiClient.get('/users/export', {
+    const response = await apiClient.get('/api/v1/users/export', {
       params,
       responseType: 'blob',
     });

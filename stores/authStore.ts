@@ -22,19 +22,18 @@ interface User {
 interface AuthState {
   user: User | null;
   token: string | null;
-  isAuthenticated: boolean;
   isLoading: boolean;
-  
+
   // State Actions (no API calls)
   setUser: (user: User | null) => void;
   setToken: (token: string | null) => void;
   setLoading: (loading: boolean) => void;
   clearAuth: () => void;
-  
+
   // Business Logic Actions (uses service layer)
   login: (email: string, password: string) => Promise<boolean>;
   logout: () => Promise<void>;
-  checkAuth: () => Promise<void>;
+  checkAuth: (force?: boolean) => Promise<void>;
 }
 
 export const useAuthStore = create<AuthState>()(
@@ -42,19 +41,17 @@ export const useAuthStore = create<AuthState>()(
     (set, get) => ({
       user: null,
       token: null,
-      isAuthenticated: false,
       isLoading: true,
 
-      setUser: (user) => set({ user, isAuthenticated: !!user }),
-      
+      setUser: (user) => set({ user }),
+
       setToken: (token) => set({ token }),
-      
+
       setLoading: (loading) => set({ isLoading: loading }),
 
       clearAuth: () => set({
         user: null,
         token: null,
-        isAuthenticated: false,
       }),
 
       // Business logic actions (uses service layer)
@@ -64,7 +61,6 @@ export const useAuthStore = create<AuthState>()(
           set({
             user: data.user,
             token: data.token,
-            isAuthenticated: true,
           });
           return true;
         } catch (error) {
@@ -83,13 +79,28 @@ export const useAuthStore = create<AuthState>()(
         }
       },
 
-      checkAuth: async () => {
+      checkAuth: async (force = false) => {
+        const state = get();
+
+        // If user exists in persisted state and not forcing, skip API call
+        // User is already authenticated via persisted data
+        if (state.user && !force) {
+          set({ isLoading: false });
+          return;
+        }
+
+        // If user is null and not forcing, also skip (user logged out or never logged in)
+        // Only make API call on force or initial uncertain state
+        if (!state.user && !force) {
+          set({ isLoading: false });
+          return;
+        }
+
         set({ isLoading: true });
         try {
           const userData = await authService.getCurrentUser();
           set({
             user: userData,
-            isAuthenticated: true,
           });
         } catch (error: any) {
           // Silently handle unauthenticated state
@@ -99,7 +110,6 @@ export const useAuthStore = create<AuthState>()(
           }
           set({
             user: null,
-            isAuthenticated: false,
           });
         } finally {
           set({ isLoading: false });
@@ -111,7 +121,6 @@ export const useAuthStore = create<AuthState>()(
       storage: createJSONStorage(() => localStorage),
       partialize: (state) => ({
         user: state.user,
-        isAuthenticated: state.isAuthenticated,
       }),
     }
   )

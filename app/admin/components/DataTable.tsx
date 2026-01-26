@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import {
   useReactTable,
   getCoreRowModel,
@@ -52,7 +52,10 @@ export default function DataTable<T extends Record<string, any>>({
     totalPages: 0,
   });
   const [searchQuery, setSearchQuery] = useState('');
+  const [debouncedSearch, setDebouncedSearch] = useState('');
   const [sorting, setSorting] = useState<SortingState>([]);
+  const prevSearchRef = useRef('');
+  const prevEndpointRef = useRef(apiEndpoint);
 
   // Fetch data from server
   const fetchData = async () => {
@@ -63,8 +66,8 @@ export default function DataTable<T extends Record<string, any>>({
         per_page: pagination.pageSize.toString(),
       });
 
-      if (searchQuery) {
-        params.append('search', searchQuery);
+      if (debouncedSearch) {
+        params.append('search', debouncedSearch);
       }
 
       if (sorting.length > 0) {
@@ -89,20 +92,34 @@ export default function DataTable<T extends Record<string, any>>({
     }
   };
 
-  // Fetch data when page or sorting changes
-  useEffect(() => {
-    fetchData();
-  }, [pagination.page, sorting, apiEndpoint]);
-
-  // Fetch data with debounce when search changes
+  // Debounce search query
   useEffect(() => {
     const timer = setTimeout(() => {
-      setPagination((prev) => ({ ...prev, page: 1 }));
-      fetchData();
+      setDebouncedSearch(searchQuery);
     }, 300);
 
     return () => clearTimeout(timer);
   }, [searchQuery]);
+
+  // Single effect to handle all data fetching
+  useEffect(() => {
+    const searchChanged = prevSearchRef.current !== debouncedSearch;
+    const endpointChanged = prevEndpointRef.current !== apiEndpoint;
+
+    // Update refs
+    prevSearchRef.current = debouncedSearch;
+    prevEndpointRef.current = apiEndpoint;
+
+    // If search or endpoint changed, reset to page 1
+    if ((searchChanged || endpointChanged) && pagination.page !== 1) {
+      setPagination((prev) => ({ ...prev, page: 1 }));
+      return; // Don't fetch yet, let the page change trigger the fetch
+    }
+
+    // Otherwise fetch data
+    fetchData();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [pagination.page, debouncedSearch, sorting, apiEndpoint]);
 
   const table = useReactTable({
     data,
@@ -291,8 +308,8 @@ export default function DataTable<T extends Record<string, any>>({
                           onClick={() => goToPage(page)}
                           disabled={loading}
                           className={`min-w-6 px-2 py-0.5 rounded text-xs font-medium transition-colors ${pagination.page === page
-                              ? 'bg-indigo-600 text-white'
-                              : 'text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700'
+                            ? 'bg-indigo-600 text-white'
+                            : 'text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700'
                             }`}
                         >
                           {page}

@@ -15,8 +15,8 @@ import type {
 class AuthService {
   /**
    * Login user with email and password
-   * POST /api/auth/login
-   * Server sets HTTP-only cookie with auth token
+   * POST /api/proxy/api/v1/login
+   * Server sets HTTP-only cookie with auth token via proxy
    */
   async login(email: string, password: string): Promise<LoginResponse> {
     const loginData: LoginRequest = {
@@ -26,22 +26,22 @@ class AuthService {
     };
 
     const response = await axios.post<ApiResponse<LoginResponse>>(
-      '/api/auth/login',
+      '/api/proxy/api/v1/login',
       loginData
     );
-    
-    // Token is set as HTTP-only cookie by the Next.js API route
+
+    // Token is set as HTTP-only cookie by the proxy route
     return response.data.data;
   }
 
   /**
    * Logout current user
-   * POST /api/auth/logout
-   * Server clears the HTTP-only cookie
+   * POST /api/proxy/api/v1/logout
+   * Server clears the HTTP-only cookie via proxy
    */
   async logout(): Promise<void> {
     try {
-      await axios.post('/api/auth/logout');
+      await axios.post('/api/proxy/api/v1/logout');
     } catch (error) {
       console.error('Logout API error:', error);
     } finally {
@@ -67,7 +67,7 @@ class AuthService {
     const response = await apiClient.get<ApiResponse<UserProfileResponse>>('/api/v1/profile');
     return response.data.data;
   }
-  
+
   /**
    * Get auth token from cookie (if not HTTP-only)
    * Note: HTTP-only cookies cannot be accessed via JavaScript
@@ -75,7 +75,7 @@ class AuthService {
   getToken(): string | null {
     return getCookie('auth_token');
   }
-  
+
   /**
    * Check if user is authenticated
    * Note: This checks for non-HTTP-only cookie or makes an API call
