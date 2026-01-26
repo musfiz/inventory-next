@@ -51,15 +51,6 @@ class AuthService {
   }
 
   /**
-   * Get current authenticated user
-   * GET /api/v1/user
-   */
-  async getCurrentUser(): Promise<User> {
-    const response = await apiClient.get<ApiResponse<User>>('/api/v1/user');
-    return response.data.data;
-  }
-
-  /**
    * Get user profile with detailed information
    * GET /api/v1/profile
    */

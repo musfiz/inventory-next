@@ -1,6 +1,7 @@
 'use client';
 
 import { useAuthStore } from '@/stores/authStore';
+import { useAuth } from '@/hooks/useAuth';
 import { useState, useEffect } from 'react';
 import { usePathname, useRouter } from 'next/navigation';
 import Sidebar from './components/Sidebar';
@@ -14,7 +15,7 @@ export default function AdminLayout({
   const user = useAuthStore((state) => state.user);
   const isAuthenticated = useAuthStore((state) => state.user !== null);
   const isLoading = useAuthStore((state) => state.isLoading);
-  const logout = useAuthStore((state) => state.logout);
+  const { logout } = useAuth();
 
   const pathname = usePathname();
   const router = useRouter();
@@ -26,9 +27,11 @@ export default function AdminLayout({
   // Check authentication and redirect if needed
   useEffect(() => {
     if (!isLoading && !isAuthenticated) {
-      router.push('/login');
+      // Redirect to login with the current path as redirect param
+      const redirectUrl = encodeURIComponent(pathname);
+      router.push(`/login?redirect=${redirectUrl}`);
     }
-  }, [isLoading, isAuthenticated, router]);
+  }, [isLoading, isAuthenticated, router, pathname]);
 
   // Handle route changes
   useEffect(() => {

@@ -1,19 +1,25 @@
 'use client';
 
 import Link from "next/link";
-import { useAuth } from "@/contexts/AuthContext";
+import { useAuthStore } from "@/stores/authStore";
+import { useAuth } from "@/hooks/useAuth";
 import { useState, useRef, useEffect } from "react";
-import { 
-  ChevronDown, LayoutDashboard, LogOut, User, 
-  Package, TrendingUp, Building2, Laptop, ShoppingCart, 
-  Warehouse, CheckCircle, Target, BarChart3, Globe, 
+import { useRouter } from "next/navigation";
+import {
+  ChevronDown, LayoutDashboard, LogOut, User,
+  Package, TrendingUp, Building2, Laptop, ShoppingCart,
+  Warehouse, CheckCircle, Target, BarChart3, Globe,
   Shield, Zap, RefreshCw, Database, Users, FileText
 } from "lucide-react";
 
 export default function Home() {
-  const { user, isAuthenticated, logout } = useAuth();
+  const { user } = useAuthStore();
+  const { logout } = useAuth();
+  const router = useRouter();
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
+
+  const isAuthenticated = !!user;
 
   // Close dropdown when clicking outside
   useEffect(() => {
@@ -28,6 +34,7 @@ export default function Home() {
   }, []);
 
   const handleLogout = async () => {
+    router.push('/login');
     await logout();
     setIsDropdownOpen(false);
   };

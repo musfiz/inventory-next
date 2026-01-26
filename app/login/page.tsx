@@ -1,8 +1,8 @@
 'use client';
 
-import { useState, FormEvent } from 'react';
-import { useRouter } from 'next/navigation';
-import { useAuth } from '@/contexts/AuthContext';
+import { useState, FormEvent, useEffect } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
+import { useAuth } from '@/hooks/useAuth';
 import { Mail, Lock, Eye, EyeOff } from 'lucide-react';
 import Link from 'next/link';
 
@@ -14,7 +14,11 @@ export default function LoginPage() {
   const [error, setError] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const router = useRouter();
+  const searchParams = useSearchParams();
   const { login } = useAuth();
+
+  // Get redirect URL from query params
+  const redirectUrl = searchParams.get('redirect') || '/admin';
 
   const handleSubmit = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -25,8 +29,8 @@ export default function LoginPage() {
       const success = await login(email, password);
 
       if (success) {
-        // Redirect is handled in AuthContext
-        router.push('/admin');
+        // Redirect to the originally requested page or default to /admin
+        router.push(redirectUrl);
       } else {
         setError('Invalid email or password');
       }
