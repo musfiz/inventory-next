@@ -3,6 +3,7 @@
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useState, useEffect } from 'react';
+import { useAuth } from '@/hooks/useAuth'; // Adjust the import path as needed
 import {
   LayoutDashboard,
   Users,
@@ -12,7 +13,6 @@ import {
   UserPlus,
   Shield,
   Wrench,
-  Lock,
   Bell,
   ChevronDown,
   Folder,
@@ -20,9 +20,9 @@ import {
   Image,
   Video,
   Music,
-  Table,
   Building2,
-  type LucideIcon
+  SunMedium,
+  LucideIcon
 } from 'lucide-react';
 
 interface SidebarProps {
@@ -62,7 +62,7 @@ const navigation: NavigationItem[] = [
     icon: Settings,
     children: [
       { name: 'General', href: '/admin/settings', icon: Wrench },
-      { name: 'Security', href: '/admin/settings/security', icon: Lock },
+      { name: 'Brands', href: '/admin/brands', icon: SunMedium },
       { name: 'Notifications', href: '/admin/settings/notifications', icon: Bell },
     ]
   },
@@ -215,6 +215,15 @@ function NavItem({ item, sidebarOpen, pathname, setMobileMenuOpen, depth = 0, is
 export default function Sidebar({ sidebarOpen, mobileMenuOpen, setMobileMenuOpen }: SidebarProps) {
   const pathname = usePathname();
   const [openItems, setOpenItems] = useState<Set<string>>(new Set());
+  const { user } = useAuth();
+
+  // Filter navigation based on user type
+  const filteredNavigation = navigation.filter(item => {
+    if (item.name === 'Tenant Management' && user?.user_type !== 'super_admin') {
+      return false;
+    }
+    return true;
+  });
 
   // Helper function to find all parent paths for a given pathname
   const findParentPaths = (items: NavigationItem[], currentPath: string, parentPath = ''): string[] => {
@@ -242,7 +251,7 @@ export default function Sidebar({ sidebarOpen, mobileMenuOpen, setMobileMenuOpen
 
   // Open parent menus based on current pathname on mount and pathname change
   useEffect(() => {
-    const parentPaths = findParentPaths(navigation, pathname);
+    const parentPaths = findParentPaths(filteredNavigation, pathname);
     if (parentPaths.length > 0) {
       setOpenItems(new Set(parentPaths));
     }
@@ -294,7 +303,7 @@ export default function Sidebar({ sidebarOpen, mobileMenuOpen, setMobileMenuOpen
             </div>
           )}
           <div className="space-y-1">
-            {navigation.map((item) => (
+            {filteredNavigation.map((item) => (
               <NavItem
                 key={item.name}
                 item={item}

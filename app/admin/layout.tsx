@@ -77,7 +77,7 @@ export default function AdminLayout({
           <div className="flex items-center justify-between max-w-7xl mx-auto">
             <div className="flex items-center gap-3">
               <div className="flex items-center gap-2">
-                <span className="text-sm font-medium">🔄 Super Admin Debug Mode</span>
+                <span className="text-sm font-medium">🔄 Debug Mode Enabled</span>
               </div>
               <div className="h-4 w-px bg-orange-300"></div>
               <div className="text-sm">

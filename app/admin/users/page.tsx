@@ -160,7 +160,6 @@ export default function TenantsPage() {
                   const switchSuccess = await switchUser(row.original.id.toString());
                   if (switchSuccess) {
                     router.push('/admin');
-                    router.refresh();
                   } else {
                     notify.switchUserError();
                   }
