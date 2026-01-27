@@ -43,9 +43,7 @@ export default function Header({
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const [notificationOpen, setNotificationOpen] = useState(false);
   const [mounted, setMounted] = useState(false);
-  const [switchingBack, setSwitchingBack] = useState(false);
   const { theme, toggleTheme } = useTheme();
-  const { isSwitchedUser, switchBackToAdmin } = useAuth();
 
   useEffect(() => {
     setMounted(true);
@@ -241,39 +239,6 @@ export default function Header({
                     Settings
                   </Link>
                   <div className="border-t border-gray-200 dark:border-gray-700 my-1"></div>
-                  {isSwitchedUser && (
-                    <button
-                      onClick={async () => {
-                        setDropdownOpen(false);
-                        setSwitchingBack(true);
-                        try {
-                          const switchSuccess = await switchBackToAdmin();
-                          if (switchSuccess) {
-                            window.location.reload();
-                          } else {
-                            notify.switchBackError();
-                          }
-                        } catch (error) {
-                          console.error('Switch back error:', error);
-                          notify.error('An error occurred while switching back. Please try again.');
-                        } finally {
-                          setSwitchingBack(false);
-                        }
-                      }}
-                      disabled={switchingBack}
-                      className={`flex items-center gap-3 px-4 py-2.5 text-sm transition-colors cursor-pointer w-full text-left ${switchingBack
-                        ? 'text-gray-400 cursor-not-allowed'
-                        : 'text-orange-600 dark:text-orange-400 hover:bg-orange-50 dark:hover:bg-orange-900/20'
-                        }`}
-                    >
-                      {switchingBack ? (
-                        <div className="w-5 h-5 animate-spin rounded-full border-2 border-orange-600 border-t-transparent" />
-                      ) : (
-                        <User className="h-5 w-5" />
-                      )}
-                      {switchingBack ? 'Switching Back...' : 'Switch Back to Admin'}
-                    </button>
-                  )}
                   <button
                     onClick={() => {
                       setDropdownOpen(false);

@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import { useRouter } from 'next/navigation';
 import { Eye, Edit, Trash2, Rows4, UserCheck } from 'lucide-react';
 import { ColumnDef } from '@tanstack/react-table';
 import DataTable from '../components/DataTable';
@@ -9,6 +10,7 @@ import { useAuth } from '@/hooks/useAuth';
 import { confirm, notify, success } from '@/lib/notifications';
 
 export default function TenantsPage() {
+  const router = useRouter();
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [switchingUser, setSwitchingUser] = useState<string | null>(null);
   const { user: currentUser, switchUser } = useAuth();
@@ -157,12 +159,12 @@ export default function TenantsPage() {
                 try {
                   const switchSuccess = await switchUser(row.original.id.toString());
                   if (switchSuccess) {
-                    window.location.href = '/admin'; // Redirect to admin dashboard
+                    router.push('/admin');
+                    router.refresh();
                   } else {
                     notify.switchUserError();
                   }
                 } catch (error) {
-                  console.error('Switch user error:', error);
                   notify.error('An error occurred while switching user. Please try again.');
                 } finally {
                   setSwitchingUser(null);

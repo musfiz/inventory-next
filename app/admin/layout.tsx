@@ -90,18 +90,16 @@ export default function AdminLayout({
                 try {
                   const success = await switchBackToAdmin();
                   if (success) {
-                    window.location.reload();
+                    router.refresh();
                   } else {
                     notify.switchBackError();
                   }
                 } catch (error) {
-                  console.error('Switch back error:', error);
                   notify.error('An error occurred while switching back. Please try again.');
                 } finally {
                   setSwitchingBack(false);
                 }
               }}
-              disabled={switchingBack}
               className={`flex items-center gap-2 px-2 py-1 rounded-sm text-sm font-medium transition-all cursor-pointer ${switchingBack
                 ? 'bg-orange-700 cursor-not-allowed opacity-75'
                 : 'bg-white text-orange-600 hover:bg-purple-50 shadow-sm'
@@ -130,6 +128,20 @@ export default function AdminLayout({
             <div className="relative">
               <div className="w-20 h-20 border-4 border-gray-200 dark:border-gray-700 rounded-full"></div>
               <div className="w-20 h-20 border-4 border-indigo-600 dark:border-indigo-500 border-t-transparent rounded-full animate-spin absolute top-0 left-0"></div>
+            </div>
+          </div>
+        )}
+
+        {/* User Switching Loading Overlay */}
+        {isLoading && isHydrated && (
+          <div className="fixed inset-0 bg-white/90 dark:bg-gray-900/90 backdrop-blur-sm flex items-center justify-center z-[110]">
+            <div className="text-center">
+              <div className="relative mb-4">
+                <div className="w-16 h-16 border-4 border-orange-200 dark:border-orange-800 rounded-full"></div>
+                <div className="w-16 h-16 border-4 border-orange-600 border-t-transparent rounded-full animate-spin absolute top-0 left-0"></div>
+              </div>
+              <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-2">Switching User Account</h3>
+              <p className="text-sm text-gray-600 dark:text-gray-400">Please wait while we switch to the selected account...</p>
             </div>
           </div>
         )}
