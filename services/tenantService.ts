@@ -42,6 +42,17 @@ class TenantService {
   }
 
   /**
+   * Search tenants (Super Admin only)
+   * GET /api/v1/tenant/search
+   */
+  async searchTenants(name:string = ''): Promise<Tenant[]> {
+    const response = await apiClient.get('/api/v1/tenant/search');
+    // Handle both response formats: direct array or {success, message, data}
+    const data = response.data.data || response.data;
+    return Array.isArray(data) ? data : [];
+  }
+
+  /**
    * Get tenant details by ID
    * GET /api/v1/tenants/:id
    */

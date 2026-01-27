@@ -40,7 +40,6 @@ export interface Brand {
   name: string;
   description?: string;
   logo_url?: string;
-  website?: string;
   tenant_id?: string;
   tenant?: Tenant;
   is_active: boolean;
