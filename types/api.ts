@@ -35,6 +35,19 @@ export interface User {
   last_login_at?: string;
 }
 
+export interface Brand {
+  id: string;
+  name: string;
+  description?: string;
+  logo_url?: string;
+  website?: string;
+  tenant_id?: string;
+  tenant?: Tenant;
+  is_active: boolean;
+  created_at?: string;
+  updated_at?: string;
+}
+
 // Auth API Types
 export interface LoginRequest {
   email: string;

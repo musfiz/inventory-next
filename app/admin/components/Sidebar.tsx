@@ -62,7 +62,7 @@ const navigation: NavigationItem[] = [
     icon: Settings,
     children: [
       { name: 'General', href: '/admin/settings', icon: Wrench },
-      { name: 'Brands', href: '/admin/brands', icon: SunMedium },
+      { name: 'Brands', href: '/admin/brands', icon: Building2 },
       { name: 'Notifications', href: '/admin/settings/notifications', icon: Bell },
     ]
   },
