@@ -168,9 +168,6 @@ export default function TenantsPage() {
             <Rows4 className="w-5 h-5 text-indigo-600 dark:text-indigo-400" />
             Tenant List
           </h1>
-          <p className="text-xs text-gray-600 dark:text-gray-400 mt-0.5">
-            Manage all tenants and their information
-          </p>
         </div>
       </div>
 

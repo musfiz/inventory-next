@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import {Eye, Edit, Trash2, Rows4 } from 'lucide-react';
+import { Eye, Edit, Trash2, Rows4 } from 'lucide-react';
 import { ColumnDef } from '@tanstack/react-table';
 import DataTable from '../components/DataTable';
 import { User } from "@/types";
@@ -135,11 +135,39 @@ export default function TenantsPage() {
             <Rows4 className="w-5 h-5 text-indigo-600 dark:text-indigo-400" />
             User List
           </h1>
-          <p className="text-xs text-gray-600 dark:text-gray-400 mt-0.5">
-            Manage all user and their information
-          </p>
         </div>
       </div>
+
+      {/* Filters */}
+      {/* <div className="bg-white dark:bg-gray-800 rounded-md shadow-sm border border-gray-200 dark:border-gray-700 p-2">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+          <select
+            value={statusFilter}
+            onChange={(e) => setStatusFilter(e.target.value)}
+            className="px-2 py-1 text-sm border border-gray-300 dark:border-gray-600 rounded focus:ring-1 focus:ring-indigo-500 dark:bg-gray-700 dark:text-gray-100"
+          >
+            <option value="all">All Status</option>
+            <option value="active">Active</option>
+            <option value="inactive">Inactive</option>
+          </select>
+
+          <select
+            value={businessTypeFilter}
+            onChange={(e) => setBusinessTypeFilter(e.target.value)}
+            className="px-2 py-1 text-sm border border-gray-300 dark:border-gray-600 rounded focus:ring-1 focus:ring-indigo-500 dark:bg-gray-700 dark:text-gray-100"
+          >
+            <option value="all">All Types</option>
+            <option value="retail">Retail</option>
+            <option value="wholesale">Wholesale</option>
+            <option value="manufacturing">Manufacturing</option>
+            <option value="distribution">Distribution</option>
+            <option value="ecommerce">E-commerce</option>
+            <option value="service">Service</option>
+            <option value="restaurant">Restaurant</option>
+            <option value="other">Other</option>
+          </select>
+        </div>
+      </div> */}
 
       {/* DataTable */}
       <DataTable

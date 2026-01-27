@@ -126,6 +126,10 @@ export default function DataTable<T extends Record<string, any>>({
     columns,
     state: {
       sorting,
+      pagination: {
+        pageIndex: pagination.page - 1, // Convert 1-based to 0-based for TanStack Table
+        pageSize: pagination.pageSize,
+      },
     },
     onSortingChange: setSorting,
     getCoreRowModel: getCoreRowModel(),
@@ -164,19 +168,19 @@ export default function DataTable<T extends Record<string, any>>({
       <div className="bg-white dark:bg-gray-800 shadow-sm dark:shadow-gray-900/50 rounded-md overflow-hidden border border-gray-200 dark:border-gray-700">
         <div className="overflow-x-auto">
           <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
-            <thead className="bg-gray-50 dark:bg-gray-900/50">
+            <thead className="bg-gray-50 dark:bg-gray-900/50 sticky top-0 z-10">
               {table.getHeaderGroups().map((headerGroup) => (
                 <tr key={headerGroup.id}>
                   {headerGroup.headers.map((header) => (
                     <th
                       key={header.id}
-                      className="px-3 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide"
+                      className="px-3 py-2 text-left text-xs font-bold text-gray-700 dark:text-gray-300 uppercase tracking-wide"
                     >
                       {header.isPlaceholder ? null : (
                         <div
                           className={
                             header.column.getCanSort()
-                              ? 'flex items-center gap-1 cursor-pointer select-none hover:text-gray-700 dark:hover:text-gray-200 transition-colors group'
+                              ? 'flex items-center gap-1 cursor-pointer select-none hover:text-gray-900 dark:hover:text-gray-100 transition-colors group'
                               : ''
                           }
                           onClick={header.column.getToggleSortingHandler()}
@@ -202,6 +206,31 @@ export default function DataTable<T extends Record<string, any>>({
                 </tr>
               ))}
             </thead>
+          </table>
+        </div>
+        <div className="overflow-x-auto overflow-y-auto max-h-[calc(100vh-300px)]">
+          <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
+            {/* <thead className="h-0 overflow-hidden opacity-0 pointer-events-none">
+              {table.getHeaderGroups().map((headerGroup) => (
+                <tr key={headerGroup.id}>
+                  {headerGroup.headers.map((header) => (
+                    <th
+                      key={header.id}
+                      className="px-3 py-0 text-left text-xs font-bold text-gray-700 dark:text-gray-300 uppercase tracking-wide"
+                    >
+                      {header.isPlaceholder ? null : (
+                        <div>
+                          {flexRender(
+                            header.column.columnDef.header,
+                            header.getContext()
+                          )}
+                        </div>
+                      )}
+                    </th>
+                  ))}
+                </tr>
+              ))}
+            </thead> */}
             <tbody className="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
               {loading ? (
                 <tr>

@@ -49,7 +49,7 @@ export default function Header({
 
   return (
     <header className="bg-white dark:bg-gray-900 shadow-sm dark:shadow-gray-800 min-h-14 h-24 flex-0 sticky top-0 z-20 border-b border-gray-200 dark:border-gray-800" style={{ height: '6rem' }}>
-      <div className="h-full px-4 sm:px-6 lg:px-8 flex items-center justify-between gap-4">
+      <div className="h-full sm:px-4 lg:px-4 flex items-center justify-between gap-2">
         <div className="flex items-center gap-2">
           {/* Mobile menu button */}
           <button
