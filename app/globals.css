@@ -1,4 +1,5 @@
 @import "tailwindcss";
+@import "sweetalert2/dist/sweetalert2.min.css";
 
 @variant dark (&:where(.dark, .dark *));
 
@@ -45,4 +46,55 @@
 .scrollbar-hide {
   -ms-overflow-style: none;
   scrollbar-width: none;
+}
+
+/* SweetAlert2 Custom Styles */
+.swal2-popup-custom {
+  @apply bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-xl;
+  font-size: 14px;
+  animation: swal2-popup-show 0.3s ease-out;
+}
+
+.swal2-title-custom {
+  @apply text-gray-900 dark:text-gray-100 text-lg font-semibold;
+  margin-bottom: 8px;
+  line-height: 1.4;
+}
+
+.swal2-html-container-custom {
+  @apply text-gray-700 dark:text-gray-300 text-sm leading-relaxed;
+  margin-bottom: 16px;
+  line-height: 1.5;
+}
+
+.swal2-confirm-custom {
+  @apply bg-indigo-600 hover:bg-indigo-700 active:bg-indigo-800 text-white font-medium px-6 py-2.5 rounded-md transition-all duration-200 shadow-sm hover:shadow-md active:scale-95;
+  font-size: 14px;
+  border: none;
+  outline: none;
+}
+
+.swal2-cancel-custom {
+  @apply bg-gray-300 hover:bg-gray-400 active:bg-gray-500 dark:bg-gray-600 dark:hover:bg-gray-500 dark:active:bg-gray-400 text-gray-800 dark:text-gray-200 font-medium px-6 py-2.5 rounded-md transition-all duration-200 shadow-sm hover:shadow-md active:scale-95;
+  font-size: 14px;
+  border: none;
+  outline: none;
+}
+
+.swal2-toast-custom {
+  @apply bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-md shadow-lg;
+  font-size: 13px;
+}
+
+/* Custom animation for popup appearance */
+@keyframes swal2-popup-show {
+  0% {
+    opacity: 0;
+    transform: scale(0.9) translateY(-10px);
+  }
+
+  100% {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
 }

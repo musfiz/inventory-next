@@ -6,6 +6,7 @@ import { ColumnDef } from '@tanstack/react-table';
 import DataTable from '../components/DataTable';
 import { User } from "@/types";
 import { useAuth } from '@/hooks/useAuth';
+import { confirm, notify, success } from '@/lib/notifications';
 
 export default function TenantsPage() {
   const [statusFilter, setStatusFilter] = useState<string>('all');
@@ -39,6 +40,7 @@ export default function TenantsPage() {
     {
       id: 'serial',
       header: '#',
+      meta: { width: '4%' },
       cell: ({ row, table }) => {
         const page = table.getState().pagination?.pageIndex ?? 0;
         const pageSize = table.getState().pagination?.pageSize ?? 15;
@@ -52,17 +54,28 @@ export default function TenantsPage() {
     {
       accessorKey: 'name',
       header: 'Name',
-      cell: ({ row }) => (
-        <div className="flex items-center">
-          <div className="text-xs font-medium text-gray-900 dark:text-gray-100">
-            {row.original.name}
+      meta: { width: '10%' }, // Custom metadata for width
+      cell: ({ row }) => {
+        const name = row.original.name;
+        const maxLength = 15; // Maximum characters to display
+        const truncatedName = name.length > maxLength ? name.substring(0, maxLength) + '...' : name;
+
+        return (
+          <div className="flex items-center">
+            <div
+              className="text-xs font-medium text-gray-900 dark:text-gray-100 truncate w-full"
+              title={name} // Show full name on hover
+            >
+              {truncatedName}
+            </div>
           </div>
-        </div>
-      ),
+        );
+      },
     },
     {
-      accessorKey: 'business_type',
+      accessorKey: 'user_type',
       header: 'Type',
+      meta: { width: '10%' },
       cell: ({ row }) => (
         <span className="text-xs text-gray-600 dark:text-gray-400 capitalize">
           {row.original.user_type}
@@ -72,6 +85,7 @@ export default function TenantsPage() {
     {
       accessorKey: 'email',
       header: 'Email',
+      meta: { width: '20%' },
       cell: ({ row }) => (
         <div>
           <div className="text-xs text-gray-900 dark:text-gray-100">{row.original.email}</div>
@@ -81,6 +95,7 @@ export default function TenantsPage() {
     {
       accessorKey: 'phone',
       header: 'Mobile No',
+      meta: { width: '15%' },
       cell: ({ row }) => (
         <div>
           <div className="text-xs text-gray-500 dark:text-gray-400">{row.original.phone}</div>
@@ -90,11 +105,13 @@ export default function TenantsPage() {
     {
       accessorKey: 'is_active',
       header: 'Status',
+      meta: { width: '8%' },
       cell: ({ row }) => getStatusBadge(row.original.is_active),
     },
     {
       id: 'actions',
       header: 'Actions',
+      meta: { width: '14%' },
       cell: ({ row }) => (
         <div className="flex items-center gap-1">
           <button
@@ -111,7 +128,7 @@ export default function TenantsPage() {
           >
             <Edit className="w-3.5 h-3.5" />
           </button>
-          {isSuperAdmin && row.original.user_type !== 'super-admin' && (
+          {isSuperAdmin && row.original.user_type !== 'super_admin' && (
             <button
               className={`p-1 rounded transition-colors ${switchingUser === row.original.id
                 ? 'text-gray-400 cursor-not-allowed'
@@ -120,28 +137,33 @@ export default function TenantsPage() {
               title={switchingUser === row.original.id ? 'Switching...' : 'Switch to User'}
               disabled={switchingUser === row.original.id}
               onClick={async () => {
-                const confirmed = window.confirm(
-                  `Are you sure you want to switch to ${row.original.name}'s account?\n\n` +
-                  `Email: ${row.original.email}\n` +
-                  `Type: ${row.original.user_type}\n\n` +
-                  `This is for debugging purposes only. You can switch back from the header menu.`
-                );
+                const result = await confirm({
+                  title: 'Switch User Account',
+                  html: `Are you sure you want to switch to <strong>${row.original.name}</strong>'s account?<br><br>
+                          <div style="color: #6b7280; font-size: 13px; line-height: 1.5;">
+                            <strong>Email:</strong> ${row.original.email}<br>
+                            <strong>Type:</strong> ${row.original.user_type}
+                          </div><br>
+                          <em style="color: #6b7280; font-size: 12px;">This is for debugging purposes only.
+                            You can switch back from the header menu.
+                          </em>`,
+                  confirmButtonText: 'Switch',
+                  cancelButtonText: 'Cancel',
+                });
 
-                if (!confirmed) return;
+                if (!result.isConfirmed) return;
 
                 setSwitchingUser(row.original.id);
                 try {
-                  const success = await switchUser(row.original.id.toString());
-                  if (success) {
-                    // Show success message
-                    alert(`Successfully switched to ${row.original.name}'s account. The page will reload.`);
-                    window.location.reload(); // Refresh to load new user context
+                  const switchSuccess = await switchUser(row.original.id.toString());
+                  if (switchSuccess) {
+                    window.location.href = '/admin'; // Redirect to admin dashboard
                   } else {
-                    alert('Failed to switch user. Please try again.');
+                    notify.switchUserError();
                   }
                 } catch (error) {
                   console.error('Switch user error:', error);
-                  alert('An error occurred while switching user. Please try again.');
+                  notify.error('An error occurred while switching user. Please try again.');
                 } finally {
                   setSwitchingUser(null);
                 }

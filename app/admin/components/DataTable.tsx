@@ -166,7 +166,7 @@ export default function DataTable<T extends Record<string, any>>({
 
       {/* Table */}
       <div className="bg-white dark:bg-gray-800 shadow-sm dark:shadow-gray-900/50 rounded-md overflow-hidden border border-gray-200 dark:border-gray-700">
-        <div className="overflow-x-auto">
+        <div className="overflow-x-auto overflow-y-auto max-h-[calc(100vh-300px)]">
           <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
             <thead className="bg-gray-50 dark:bg-gray-900/50 sticky top-0 z-10">
               {table.getHeaderGroups().map((headerGroup) => (
@@ -175,6 +175,10 @@ export default function DataTable<T extends Record<string, any>>({
                     <th
                       key={header.id}
                       className="px-3 py-2 text-left text-xs font-bold text-gray-700 dark:text-gray-300 uppercase tracking-wide"
+                      style={{
+                        width: (header.column.columnDef as any).meta?.width || 'auto',
+                        minWidth: (header.column.columnDef as any).meta?.width || 'auto'
+                      }}
                     >
                       {header.isPlaceholder ? null : (
                         <div
@@ -206,31 +210,6 @@ export default function DataTable<T extends Record<string, any>>({
                 </tr>
               ))}
             </thead>
-          </table>
-        </div>
-        <div className="overflow-x-auto overflow-y-auto max-h-[calc(100vh-300px)]">
-          <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
-            {/* <thead className="h-0 overflow-hidden opacity-0 pointer-events-none">
-              {table.getHeaderGroups().map((headerGroup) => (
-                <tr key={headerGroup.id}>
-                  {headerGroup.headers.map((header) => (
-                    <th
-                      key={header.id}
-                      className="px-3 py-0 text-left text-xs font-bold text-gray-700 dark:text-gray-300 uppercase tracking-wide"
-                    >
-                      {header.isPlaceholder ? null : (
-                        <div>
-                          {flexRender(
-                            header.column.columnDef.header,
-                            header.getContext()
-                          )}
-                        </div>
-                      )}
-                    </th>
-                  ))}
-                </tr>
-              ))}
-            </thead> */}
             <tbody className="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
               {loading ? (
                 <tr>
@@ -253,7 +232,11 @@ export default function DataTable<T extends Record<string, any>>({
                     {row.getVisibleCells().map((cell) => (
                       <td
                         key={cell.id}
-                        className="px-3 py-2 whitespace-nowrap text-xs text-gray-900 dark:text-gray-100"
+                        className="px-3 py-2 text-left align-top whitespace-nowrap text-xs text-gray-900 dark:text-gray-100"
+                        style={{
+                          width: (cell.column.columnDef as any).meta?.width || 'auto',
+                          minWidth: (cell.column.columnDef as any).meta?.width || 'auto'
+                        }}
                       >
                         {flexRender(
                           cell.column.columnDef.cell,

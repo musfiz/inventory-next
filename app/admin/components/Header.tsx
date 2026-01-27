@@ -17,6 +17,7 @@ import {
 } from 'lucide-react';
 import { useTheme } from '@/contexts/ThemeContext';
 import { useAuth } from '@/hooks/useAuth';
+import { notify, success } from '@/lib/notifications';
 
 interface HeaderProps {
   user: any;
@@ -44,7 +45,7 @@ export default function Header({
   const [mounted, setMounted] = useState(false);
   const [switchingBack, setSwitchingBack] = useState(false);
   const { theme, toggleTheme } = useTheme();
-  const { isSwitchedUser, originalSuperAdmin, switchBackToAdmin } = useAuth();
+  const { isSwitchedUser, switchBackToAdmin } = useAuth();
 
   useEffect(() => {
     setMounted(true);
@@ -246,24 +247,23 @@ export default function Header({
                         setDropdownOpen(false);
                         setSwitchingBack(true);
                         try {
-                          const success = await switchBackToAdmin();
-                          if (success) {
-                            alert('Successfully switched back to admin account. The page will reload.');
+                          const switchSuccess = await switchBackToAdmin();
+                          if (switchSuccess) {
                             window.location.reload();
                           } else {
-                            alert('Failed to switch back to admin. Please try again.');
+                            notify.switchBackError();
                           }
                         } catch (error) {
                           console.error('Switch back error:', error);
-                          alert('An error occurred while switching back. Please try again.');
+                          notify.error('An error occurred while switching back. Please try again.');
                         } finally {
                           setSwitchingBack(false);
                         }
                       }}
                       disabled={switchingBack}
                       className={`flex items-center gap-3 px-4 py-2.5 text-sm transition-colors cursor-pointer w-full text-left ${switchingBack
-                          ? 'text-gray-400 cursor-not-allowed'
-                          : 'text-orange-600 dark:text-orange-400 hover:bg-orange-50 dark:hover:bg-orange-900/20'
+                        ? 'text-gray-400 cursor-not-allowed'
+                        : 'text-orange-600 dark:text-orange-400 hover:bg-orange-50 dark:hover:bg-orange-900/20'
                         }`}
                     >
                       {switchingBack ? (
