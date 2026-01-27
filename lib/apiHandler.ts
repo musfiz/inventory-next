@@ -187,7 +187,6 @@ export async function handleProxyRequest(
     const url = new URL(request.url);
     const apiPath = url.pathname.replace('/api/proxy', '');
     const queryString = url.search;
-    const fullPath = `${apiPath}${queryString}`;
 
     // Get auth token from cookie
     const token = getAuthToken(request);
@@ -201,8 +200,6 @@ export async function handleProxyRequest(
         // No body or invalid JSON
       }
     }
-
-    console.log(`[Proxy] ${method} ${apiPath}`);
 
     // Make request to Laravel backend
     const response = await axios({

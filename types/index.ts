@@ -4,7 +4,7 @@ export * from './api';
 // Legacy interface kept for backward compatibility
 // Use types from api.ts for new code
 export interface Tenant {
-  id: number;
+  id: string;
   business_name: string;
   slug: string;
   email: string;
@@ -16,23 +16,15 @@ export interface Tenant {
 }
 
 export interface User {
-  id: number;
+  id: string;
   email: string;
   name: string;
   user_type: string;
-  tenant_id?: number;
+  tenant_id?: string;
   phone?: string;
   is_active: boolean;
   tenant?: Tenant;
   created_at?: string;
   updated_at?: string;
   last_login_at?: string;
-}
-
-export interface AuthContextType {
-  user: User | null;
-  login: (email: string, password: string) => Promise<boolean>;
-  logout: () => void;
-  isAuthenticated: boolean;
-  isAdmin: boolean;
 }

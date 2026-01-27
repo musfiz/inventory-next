@@ -40,14 +40,14 @@ export default function Home() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-indigo-50 via-white to-purple-50">
+    <div className="min-h-screen bg-linear-to-br from-indigo-50 via-white to-purple-50">
       {/* Navigation */}
       <nav className="bg-white/80 backdrop-blur-sm shadow-sm sticky top-0 z-50">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between h-16">
             <div className="flex items-center">
               <Package className="h-8 w-8 text-indigo-600 mr-2" />
-              <h1 className="text-2xl font-bold bg-gradient-to-r from-indigo-600 to-purple-600 bg-clip-text text-transparent">
+              <h1 className="text-2xl font-bold bg-linear-to-r from-indigo-600 to-purple-600 bg-clip-text text-transparent">
                 Universal IMS
               </h1>
             </div>
@@ -100,7 +100,7 @@ export default function Home() {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-20">
           <div className="text-center">
             <h1 className="text-5xl md:text-6xl font-extrabold text-gray-900 mb-6">
-              <span className="bg-gradient-to-r from-indigo-600 to-purple-600 bg-clip-text text-transparent">
+              <span className="bg-linear-to-r from-indigo-600 to-purple-600 bg-clip-text text-transparent">
                 Universal Inventory
               </span>
               <br />
@@ -183,7 +183,7 @@ export default function Home() {
               { icon: "📦", title: "Warehouse Operations", desc: "Bulk storage, bin management, third-party logistics" },
               { icon: "🏭", title: "Manufacturing", desc: "Raw materials, work-in-progress, finished goods tracking" },
             ].map((item, idx) => (
-              <div key={idx} className="bg-gradient-to-br from-indigo-50 to-purple-50 rounded-lg p-6 hover:shadow-lg transition border border-indigo-100">
+              <div key={idx} className="bg-linear-to-br from-indigo-50 to-purple-50 rounded-lg p-6 hover:shadow-lg transition border border-indigo-100">
                 <div className="text-4xl mb-3">{item.icon}</div>
                 <h3 className="text-lg font-bold text-gray-900 mb-2">{item.title}</h3>
                 <p className="text-gray-600 text-sm">{item.desc}</p>
@@ -318,7 +318,7 @@ export default function Home() {
           <h2 className="text-3xl font-bold text-gray-900 mb-8 text-center">
             Technical Excellence
           </h2>
-          <div className="bg-gradient-to-r from-indigo-600 to-purple-600 rounded-xl shadow-xl p-8 text-white">
+          <div className="bg-linear-to-r from-indigo-600 to-purple-600 rounded-xl shadow-xl p-8 text-white">
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
               <div className="text-center">
                 <Globe className="h-12 w-12 mx-auto mb-3" />
@@ -384,7 +384,7 @@ export default function Home() {
         </div>
 
         {/* CTA Section */}
-        <div className="bg-gradient-to-r from-indigo-600 to-purple-600 rounded-xl shadow-2xl p-12 text-center text-white">
+        <div className="bg-linear-to-r from-indigo-600 to-purple-600 rounded-xl shadow-2xl p-12 text-center text-white">
           <h2 className="text-4xl font-bold mb-4">
             Ready to Transform Your Inventory Management?
           </h2>

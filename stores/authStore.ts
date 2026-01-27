@@ -1,35 +1,19 @@
 import { create } from 'zustand';
 import { persist, createJSONStorage } from 'zustand/middleware';
-
-interface User {
-  id: string;
-  name: string;
-  email: string;
-  user_type: string;
-  tenant_id?: string;
-  phone?: string;
-  is_active: boolean;
-  avatar_url?: string;
-  last_login_at: string;
-  tenant?: {
-    id: number;
-    business_name: string;
-    slug: string;
-    email: string;
-  };
-}
+import { User } from '@/types';
 
 interface AuthState {
   user: User | null;
-  token: string | null;
   isLoading: boolean;
   isHydrated: boolean;
+  isSwitchedUser: boolean;
+  originalSuperAdmin: User | null;
 
   // State Actions (no API calls)
   setUser: (user: User | null) => void;
-  setToken: (token: string | null) => void;
   setLoading: (loading: boolean) => void;
   setHydrated: (hydrated: boolean) => void;
+  setSwitchedUser: (isSwitched: boolean, originalAdmin?: User | null) => void;
   clearAuth: () => void;
 }
 
@@ -37,21 +21,26 @@ export const useAuthStore = create<AuthState>()(
   persist(
     (set) => ({
       user: null,
-      token: null,
       isLoading: false,
       isHydrated: false,
+      isSwitchedUser: false,
+      originalSuperAdmin: null,
 
       setUser: (user) => set({ user }),
-
-      setToken: (token) => set({ token }),
 
       setLoading: (loading) => set({ isLoading: loading }),
 
       setHydrated: (hydrated) => set({ isHydrated: hydrated }),
 
+      setSwitchedUser: (isSwitched, originalAdmin = null) => set({
+        isSwitchedUser: isSwitched,
+        originalSuperAdmin: originalAdmin,
+      }),
+
       clearAuth: () => set({
         user: null,
-        token: null,
+        isSwitchedUser: false,
+        originalSuperAdmin: null,
       }),
     }),
     {
@@ -59,7 +48,8 @@ export const useAuthStore = create<AuthState>()(
       storage: createJSONStorage(() => localStorage),
       partialize: (state) => ({
         user: state.user,
-        token: state.token,
+        isSwitchedUser: state.isSwitchedUser,
+        originalSuperAdmin: state.originalSuperAdmin,
       }),
       onRehydrateStorage: () => (state) => {
         state?.setHydrated(true);

@@ -4,7 +4,6 @@ import type {
   LoginRequest,
   LoginResponse,
   UserProfileResponse,
-  User,
 } from '@/types/api';
 
 /**
@@ -141,16 +140,28 @@ class AuthService {
   }
 
   /**
-   * Update current user's profile
-   * PUT /api/v1/profile
+   * Switch to another user (Super Admin only)
+   * POST /api/proxy/api/v1/switch-user/{userId}
    */
-  async updateProfile(data: {
-    name?: string;
-    email?: string;
-    phone?: string;
-  }): Promise<User> {
-    const response = await apiClient.put<ApiResponse<{ user: User }>>('/api/v1/profile', data);
-    return response.data.data.user;
+  async switchUser(userId: string): Promise<LoginResponse> {
+    const response = await axios.post<ApiResponse<LoginResponse>>(
+      `/api/proxy/api/v1/switch-user/${userId}`
+    );
+
+    return response.data.data;
+  }
+
+  /**
+   * Switch back to super admin account
+   * POST /api/proxy/api/v1/switch-back
+   */
+  async switchBackToAdmin(superAdminId: string): Promise<LoginResponse> {
+    const response = await axios.post<ApiResponse<LoginResponse>>(
+      '/api/proxy/api/v1/switch-back',
+      { super_admin_id: superAdminId }
+    );
+
+    return response.data.data;
   }
 }
 

@@ -7,7 +7,7 @@ import { useAuth } from '@/hooks/useAuth';
  * This demonstrates accessing user data and auth state
  */
 export default function UserProfile() {
-  const { user, isAuthenticated, isAdmin, isTenantAdmin, logout } = useAuth();
+  const { user, isAuthenticated, isAdmin, logout } = useAuth();
 
   if (!isAuthenticated || !user) {
     return (
@@ -22,7 +22,7 @@ export default function UserProfile() {
       <h2 className="text-2xl font-bold mb-4 text-gray-900 dark:text-gray-100">
         User Profile
       </h2>
-      
+
       <div className="space-y-3">
         <div>
           <label className="text-sm font-medium text-gray-500 dark:text-gray-400">
@@ -43,7 +43,7 @@ export default function UserProfile() {
             Role
           </label>
           <p className="text-gray-900 dark:text-gray-100 capitalize">
-            {user.role}
+            {user.user_type}
           </p>
         </div>
 
@@ -82,11 +82,11 @@ export default function UserProfile() {
               Admin
             </span>
           )}
-          {isTenantAdmin && (
+          {/* {isTenantAdmin && (
             <span className="px-3 py-1 bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400 rounded-full text-sm">
               Tenant Admin
             </span>
-          )}
+          )} */}
         </div>
 
         <div className="pt-4">

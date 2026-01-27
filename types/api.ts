@@ -46,6 +46,9 @@ export interface LoginResponse {
   user: User;
   token: string;
   token_type: string;
+  switched_from?: User;
+  is_switched_user?: boolean;
+  is_switched_back?: boolean;
 }
 
 export interface RegisterUserRequest {

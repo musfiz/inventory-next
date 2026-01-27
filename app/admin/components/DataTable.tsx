@@ -301,14 +301,14 @@ export default function DataTable<T extends Record<string, any>>({
                 <button
                   onClick={() => goToPage(1)}
                   disabled={pagination.page === 1 || loading}
-                  className="p-1 rounded text-gray-600 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                  className="p-1 rounded text-gray-600 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors cursor-pointer"
                 >
                   <ChevronsLeft className="h-3.5 w-3.5" />
                 </button>
                 <button
                   onClick={() => goToPage(pagination.page - 1)}
                   disabled={pagination.page === 1 || loading}
-                  className="p-1 rounded text-gray-600 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                  className="p-1 rounded text-gray-600 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors cursor-pointer"
                 >
                   <ChevronLeft className="h-3.5 w-3.5" />
                 </button>
@@ -336,7 +336,7 @@ export default function DataTable<T extends Record<string, any>>({
                         <button
                           onClick={() => goToPage(page)}
                           disabled={loading}
-                          className={`min-w-6 px-2 py-0.5 rounded text-xs font-medium transition-colors ${pagination.page === page
+                          className={`min-w-6 px-2 py-0.5 rounded text-xs font-medium transition-colors cursor-pointer ${pagination.page === page
                             ? 'bg-indigo-600 text-white'
                             : 'text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700'
                             }`}
@@ -352,7 +352,7 @@ export default function DataTable<T extends Record<string, any>>({
                   disabled={
                     pagination.page === pagination.totalPages || loading
                   }
-                  className="p-1 rounded text-gray-600 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                  className="p-1 rounded text-gray-600 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors cursor-pointer"
                 >
                   <ChevronRight className="h-3.5 w-3.5" />
                 </button>
@@ -361,7 +361,7 @@ export default function DataTable<T extends Record<string, any>>({
                   disabled={
                     pagination.page === pagination.totalPages || loading
                   }
-                  className="p-1 rounded text-gray-600 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                  className="p-1 rounded text-gray-600 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors cursor-pointer"
                 >
                   <ChevronsRight className="h-3.5 w-3.5" />
                 </button>
