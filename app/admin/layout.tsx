@@ -19,7 +19,7 @@ export default function AdminLayout({
   const isHydrated = useAuthStore((state) => state.isHydrated);
   const isSwitchedUser = useAuthStore((state) => state.isSwitchedUser);
   const originalSuperAdmin = useAuthStore((state) => state.originalSuperAdmin);
-  const { logout, switchBackToAdmin } = useAuth();
+  const { logout, switchBackToAdmin, checkAuth } = useAuth();
 
   const pathname = usePathname();
   const router = useRouter();
@@ -29,10 +29,32 @@ export default function AdminLayout({
   const [isRouteLoading, setIsRouteLoading] = useState(false);
   const [switchingBack, setSwitchingBack] = useState(false);
 
-  // Check authentication and redirect if needed (only once, after hydration)
+  // Check authentication and verify session cookie on mount (after hydration)
   useEffect(() => {
-    //
-  }, [isLoading, isHydrated, pathname, router]);
+    if (!isHydrated) return;
+
+    const verifyAuth = async () => {
+      // If no user in localStorage, try to restore from session cookie
+      if (!user) {
+        const isAuthenticated = await checkAuth();
+        if (!isAuthenticated) {
+          // No valid session, redirect to login
+          const redirectUrl = encodeURIComponent(pathname);
+          router.push(`/login?redirect=${redirectUrl}`);
+        }
+      } else {
+        // User exists in localStorage, verify session is still valid
+        const isAuthenticated = await checkAuth();
+        if (!isAuthenticated) {
+          // Session expired, redirect to login
+          const redirectUrl = encodeURIComponent(pathname);
+          router.push(`/login?redirect=${redirectUrl}`);
+        }
+      }
+    };
+
+    verifyAuth();
+  }, [isHydrated]); // Run once after hydration
 
   // Handle route changes
   useEffect(() => {

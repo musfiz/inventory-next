@@ -19,7 +19,7 @@ import axios, { AxiosRequestConfig, Method } from 'axios';
  * ============================================================================
  */
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
+const API_URL = process.env.NEXT_PUBLIC_LARAVEL_BASE_URL || 'http://localhost:8000';
 
 /**
  * Cookie configuration for auth token

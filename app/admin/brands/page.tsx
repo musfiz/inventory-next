@@ -266,7 +266,7 @@ export default function BrandsPage() {
     // if (statusFilter !== 'all') params.append('status', statusFilter);
     if (isSuperAdmin && tenantFilter) params.append('tenant_id', tenantFilter);
     const queryString = params.toString();
-    return `/api/v1/brand${queryString ? `?${queryString}` : ''}`;
+    return `/v1/brand${queryString ? `?${queryString}` : ''}`;
   };
 
   return (

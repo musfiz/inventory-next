@@ -156,7 +156,7 @@ export default function TenantsPage() {
     if (businessTypeFilter !== 'all') params.append('business_type', businessTypeFilter);
 
     const queryString = params.toString();
-    return `/api/v1/tenants${queryString ? `?${queryString}` : ''}`;
+    return `/v1/tenants${queryString ? `?${queryString}` : ''}`;
   };
 
   return (

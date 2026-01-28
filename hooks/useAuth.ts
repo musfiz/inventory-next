@@ -1,9 +1,9 @@
 import { useAuthStore } from '@/stores/authStore';
-import { authService } from '@/services/authService';
+import { authService, type LoginCredentials } from '@/services/authService';
 
 /**
- * Custom hook for authentication business logic
- * Orchestrates service calls and store updates
+ * Custom hook for authentication with cookie-based flow
+ * No localStorage token management needed - all handled by HTTP-only cookies
  */
 export const useAuth = () => {
   const { setUser, setLoading, setSwitchedUser, clearAuth } = useAuthStore();
@@ -11,15 +11,21 @@ export const useAuth = () => {
   // Get state from store
   const user = useAuthStore((state) => state.user);
   const isAuthenticated = useAuthStore((state) => state.user !== null);
+  const isLoading = useAuthStore((state) => state.isLoading);
   const isSwitchedUser = useAuthStore((state) => state.isSwitchedUser);
   const originalSuperAdmin = useAuthStore((state) => state.originalSuperAdmin);
-  const isAdmin = user?.user_type === 'admin' || user?.user_type === 'super-admin';
+
+  /**
+   * Login with email and password
+   * Session cookie is automatically set by Laravel
+   */
   const login = async (email: string, password: string): Promise<boolean> => {
     try {
       setLoading(true);
-      const data = await authService.login(email, password);
+      const credentials: LoginCredentials = { email, password };
+      const data = await authService.login(credentials);
 
-      // Store user data in authStore
+      // Store user data in memory (store)
       setUser(data.user);
 
       return true;
@@ -32,7 +38,7 @@ export const useAuth = () => {
   };
 
   /**
-   * Logout current user
+   * Logout current user and destroy session
    */
   const logout = async (): Promise<void> => {
     try {
@@ -40,34 +46,32 @@ export const useAuth = () => {
     } catch (error) {
       console.error('Logout failed:', error);
     } finally {
+      // Clear local state
       clearAuth();
     }
   };
 
   /**
-   * Check and restore authentication from cookie
-   * Useful for page refreshes to verify cookie-based auth
+   * Check and restore authentication from session cookie
+   * Useful for page refreshes
    */
   const checkAuth = async (): Promise<boolean> => {
     try {
       setLoading(true);
-      const { user } = useAuthStore.getState();
-
-      // If user exists in store, verify with backend
-      if (user) {
-        try {
-          const profile = await authService.getProfile();
-          setUser(profile.user);
-          return true;
-        } catch (error) {
-          // Cookie expired or invalid, clear auth
-          clearAuth();
-          return false;
-        }
+      
+      // Try to get current user from session cookie
+      const currentUser = await authService.getCurrentUser();
+      
+      if (currentUser) {
+        setUser(currentUser);
+        return true;
       }
+      
+      clearAuth();
       return false;
     } catch (error) {
       console.error('Auth check failed:', error);
+      clearAuth();
       return false;
     } finally {
       setLoading(false);
@@ -75,9 +79,21 @@ export const useAuth = () => {
   };
 
   /**
+   * Get fresh user data from server
+   */
+  const refreshUser = async (): Promise<void> => {
+    try {
+      const currentUser = await authService.getCurrentUser();
+      if (currentUser) {
+        setUser(currentUser);
+      }
+    } catch (error) {
+      console.error('Failed to refresh user:', error);
+    }
+  };
+
+  /**
    * Switch to another user (Super Admin only)
-   * @param userId - Target user ID to switch to
-   * @returns Promise<boolean> - Success status
    */
   const switchUser = async (userId: string): Promise<boolean> => {
     try {
@@ -103,7 +119,6 @@ export const useAuth = () => {
 
   /**
    * Switch back to super admin account
-   * @returns Promise<boolean> - Success status
    */
   const switchBackToAdmin = async (): Promise<boolean> => {
     try {
@@ -133,17 +148,15 @@ export const useAuth = () => {
   };
 
   return {
-    // State
     user,
     isAuthenticated,
-    isAdmin,
+    isLoading,
     isSwitchedUser,
     originalSuperAdmin,
-
-    // Methods
     login,
     logout,
     checkAuth,
+    refreshUser,
     switchUser,
     switchBackToAdmin,
   };

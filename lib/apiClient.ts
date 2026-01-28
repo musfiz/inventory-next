@@ -1,7 +1,7 @@
 import axios, { AxiosError, AxiosResponse, InternalAxiosRequestConfig } from 'axios';
 
-// Use Next.js API routes as proxy to handle cookies securely
-const API_URL = '/api/proxy';
+// Laravel API URL - Direct connection with credentials
+const LARAVEL_API_URL = process.env.NEXT_PUBLIC_LARAVEL_API_URL || 'http://localhost:8000/api';
 
 // Standard API response structure
 export interface ApiResponse<T = any> {
@@ -16,22 +16,38 @@ export interface ApiError {
   errors?: Record<string, string[]>;
 }
 
-// Create axios instance
+/**
+ * Axios client configured for Laravel Sanctum cookie-based authentication
+ * 
+ * Key configurations:
+ * - withCredentials: true - Automatically sends cookies with every request
+ * - baseURL points directly to Laravel API
+ * - Handles CSRF token from Laravel
+ * - No Authorization headers needed (cookies handle auth)
+ */
 export const apiClient = axios.create({
-  baseURL: API_URL,
+  baseURL: LARAVEL_API_URL,
   headers: {
     'Content-Type': 'application/json',
     'Accept': 'application/json',
   },
   timeout: 30000,
-  withCredentials: true, // Enable sending cookies with requests
+  withCredentials: true, // Critical: enables cookie-based authentication
 });
 
-// Request interceptor (cookies are sent automatically)
+// Request interceptor
 apiClient.interceptors.request.use(
   (config: InternalAxiosRequestConfig) => {
     // Cookies are automatically sent with withCredentials: true
-    // No need to manually add Authorization header
+    // Laravel Sanctum handles the session cookie authentication
+    
+    // Add CSRF token from cookie if available (for state-changing requests)
+    if (typeof document !== 'undefined') {
+      const token = getCookie('XSRF-TOKEN');
+      if (token) {
+        config.headers['X-XSRF-TOKEN'] = decodeURIComponent(token);
+      }
+    }
 
     // If sending FormData, remove Content-Type to let browser set it with boundary
     if (config.data instanceof FormData) {
@@ -57,18 +73,18 @@ apiClient.interceptors.response.use(
 
       // Handle authentication errors
       if (status === 401) {
-        // Cookie expired or invalid
+        // Session expired or invalid
         if (typeof window !== 'undefined') {
           const currentPath = window.location.pathname;
           const isPublicRoute = ['/login', '/register'].some(route => currentPath.startsWith(route));
 
           // Only redirect to login if not already on a public route
           if (!isPublicRoute) {
-            window.location.href = '/login';
+            // Preserve the current path for redirect after login
+            const redirectPath = encodeURIComponent(currentPath);
+            window.location.href = `/login?redirect=${redirectPath}`;
           }
         }
-        // Re-throw the error so calling code can handle it
-        throw error;
       }
 
       // Handle validation errors (422)
@@ -88,7 +104,7 @@ apiClient.interceptors.response.use(
   }
 );
 
-// Cookie utilities (optional - cookies are handled by the browser)
+// Cookie utilities
 export const getCookie = (name: string): string | null => {
   if (typeof document === 'undefined') return null;
 
@@ -98,17 +114,6 @@ export const getCookie = (name: string): string | null => {
     return parts.pop()?.split(';').shift() || null;
   }
   return null;
-};
-
-export const deleteCookie = (name: string): void => {
-  if (typeof document === 'undefined') return;
-
-  document.cookie = `${name}=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;`;
-};
-
-// Check if user is authenticated by checking for auth cookie
-export const isAuthenticated = (): boolean => {
-  return !!getCookie('auth_token');
 };
 
 export default apiClient;

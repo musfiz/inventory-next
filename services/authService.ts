@@ -1,169 +1,169 @@
-import axios from 'axios';
-import apiClient, { ApiResponse, getCookie, deleteCookie, isAuthenticated as checkAuthCookie } from '@/lib/apiClient';
-import type {
-  LoginRequest,
-  LoginResponse,
-  UserProfileResponse,
-} from '@/types/api';
+import { apiClient } from '@/lib/apiClient';
+
+export interface User {
+  id: string;
+  name: string;
+  email: string;
+  user_type: string;
+  is_active: boolean;
+  tenant_id: string | null;
+  tenant?: {
+    id: string;
+    name: string;
+    subdomain: string;
+    is_active: boolean;
+  };
+  roles?: string[];
+  permissions?: string[];
+}
+
+export interface LoginCredentials {
+  email: string;
+  password: string;
+}
+
+export interface AuthResponse {
+  user: User;
+  message: string;
+}
 
 /**
- * Authentication Service
- * Handles all authentication-related API calls
- * Uses HTTP-only cookies via Next.js API routes for secure token storage
+ * Cookie-Based Authentication Service
+ * 
+ * Uses Laravel Sanctum's stateful authentication with HTTP-only cookies.
+ * This is the industry-standard approach for SPA authentication:
+ * 
+ * 1. Client requests CSRF cookie from Laravel
+ * 2. Client sends login credentials
+ * 3. Laravel creates session and returns HTTP-only cookie
+ * 4. All subsequent requests automatically include the cookie
+ * 5. No tokens stored in localStorage/sessionStorage
+ * 
+ * Benefits:
+ * - XSS protection (cookies are HTTP-only, not accessible via JavaScript)
+ * - CSRF protection (via Sanctum's CSRF token)
+ * - Automatic cookie management by browser
+ * - Session-based, can be revoked server-side
  */
 class AuthService {
-  /**
-   * Login user with email and password
-   * POST /api/proxy/api/v1/login
-   * Server sets HTTP-only cookie with auth token via proxy
-   */
-  async login(email: string, password: string): Promise<LoginResponse> {
-    const loginData: LoginRequest = {
-      email,
-      password,
-      device_name: 'inventory-ui',
-    };
-
-    const response = await axios.post<ApiResponse<LoginResponse>>(
-      '/api/proxy/api/v1/login',
-      loginData
-    );
-
-    // Token is set as HTTP-only cookie by the proxy route
-    return response.data.data;
-  }
+  private readonly LARAVEL_BASE_URL = process.env.NEXT_PUBLIC_LARAVEL_API_URL?.replace('/api', '') || 'http://localhost:8000';
 
   /**
-   * Logout current user
-   * POST /api/proxy/api/v1/logout
-   * Server clears the HTTP-only cookie via proxy
+   * Initialize CSRF protection
+   * Must be called before login or any state-changing request
    */
-  async logout(): Promise<void> {
+  async initCsrfProtection(): Promise<void> {
     try {
-      await axios.post('/api/proxy/api/v1/logout');
+      await fetch(`${this.LARAVEL_BASE_URL}/sanctum/csrf-cookie`, {
+        credentials: 'include', // Important: send/receive cookies
+        headers: {
+          'Accept': 'application/json',
+        },
+      });
     } catch (error) {
-      console.error('Logout API error:', error);
-    } finally {
-      // Clear any non-HTTP-only cookies if they exist
-      deleteCookie('auth_token');
+      console.error('Failed to initialize CSRF protection:', error);
+      throw error;
     }
   }
 
   /**
-   * Get user profile with detailed information
-   * GET /api/v1/profile
+   * Login with email and password
+   * Creates a session and returns user data
    */
-  async getProfile(): Promise<UserProfileResponse> {
-    const response = await apiClient.get<ApiResponse<UserProfileResponse>>('/api/v1/profile');
+  async login(credentials: LoginCredentials): Promise<AuthResponse> {
+    // Step 1: Get CSRF cookie
+    await this.initCsrfProtection();
+
+    // Step 2: Login (session cookie will be set automatically)
+    const response = await apiClient.post<{ data: AuthResponse }>(
+      '/v1/login',
+      credentials
+    );
+
     return response.data.data;
   }
 
   /**
-   * Get auth token from cookie (if not HTTP-only)
-   * Note: HTTP-only cookies cannot be accessed via JavaScript
+   * Logout and destroy session
    */
-  getToken(): string | null {
-    return getCookie('auth_token');
+  async logout(): Promise<void> {
+    try {
+      await apiClient.post('/v1/logout');
+    } catch (error) {
+      console.error('Logout failed:', error);
+      // Even if logout fails, we should still redirect
+    }
+  }
+
+  /**
+   * Get current authenticated user
+   */
+  async getCurrentUser(): Promise<User | null> {
+    try {
+      const response = await apiClient.get<{ data: { user: User } }>('/v1/profile');
+      return response.data.data.user;
+    } catch (error) {
+      return null;
+    }
   }
 
   /**
    * Check if user is authenticated
-   * Note: This checks for non-HTTP-only cookie or makes an API call
+   * This is done by attempting to fetch the current user
    */
-  isAuthenticated(): boolean {
-    return checkAuthCookie();
+  async isAuthenticated(): Promise<boolean> {
+    const user = await this.getCurrentUser();
+    return user !== null;
   }
 
   /**
-   * Refresh user session/token
-   * POST /api/v1/refresh
-   * Server updates the HTTP-only cookie
+   * Verify session is valid (for middleware checks)
    */
-  async refreshToken(): Promise<void> {
-    await apiClient.post('/api/v1/refresh');
-    // Server automatically updates the cookie
-  }
-
-  /**
-   * Verify if current token is valid
-   * GET /api/v1/verify-token
-   */
-  async verifyToken(): Promise<boolean> {
+  async verifySession(): Promise<boolean> {
     try {
-      await apiClient.get('/api/v1/verify-token');
+      await apiClient.get('/v1/profile');
       return true;
-    } catch (error) {
+    } catch {
       return false;
     }
   }
 
   /**
-   * Request password reset
-   * POST /api/v1/forgot-password
-   */
-  async forgotPassword(email: string): Promise<void> {
-    await apiClient.post('/api/v1/forgot-password', { email });
-  }
-
-  /**
-   * Reset password with token
-   * POST /api/v1/reset-password
-   */
-  async resetPassword(
-    token: string,
-    email: string,
-    password: string,
-    passwordConfirmation: string
-  ): Promise<void> {
-    await apiClient.post('/api/v1/reset-password', {
-      token,
-      email,
-      password,
-      password_confirmation: passwordConfirmation,
-    });
-  }
-
-  /**
-   * Update current user's password
-   * POST /api/v1/change-password
-   */
-  async changePassword(
-    currentPassword: string,
-    newPassword: string,
-    passwordConfirmation: string
-  ): Promise<void> {
-    await apiClient.post('/api/v1/change-password', {
-      current_password: currentPassword,
-      password: newPassword,
-      password_confirmation: passwordConfirmation,
-    });
-  }
-
-  /**
    * Switch to another user (Super Admin only)
-   * POST /api/proxy/api/v1/switch-user/{userId}
    */
-  async switchUser(userId: string): Promise<LoginResponse> {
-    const response = await axios.post<ApiResponse<LoginResponse>>(
-      `/api/proxy/api/v1/switch-user/${userId}`
+  async switchUser(userId: string): Promise<any> {
+    // Refresh CSRF token before switching
+    await this.initCsrfProtection();
+    
+    const response = await apiClient.post<{ data: any }>(
+      `/v1/switch-user/${userId}`
     );
-
+    
+    // Refresh CSRF token after switching for subsequent requests
+    await this.initCsrfProtection();
+    
     return response.data.data;
   }
 
   /**
    * Switch back to super admin account
-   * POST /api/proxy/api/v1/switch-back
    */
-  async switchBackToAdmin(superAdminId: string): Promise<LoginResponse> {
-    const response = await axios.post<ApiResponse<LoginResponse>>(
-      '/api/proxy/api/v1/switch-back',
+  async switchBackToAdmin(superAdminId: string): Promise<any> {
+    // Refresh CSRF token before switching back
+    await this.initCsrfProtection();
+    
+    const response = await apiClient.post<{ data: any }>(
+      '/v1/switch-back',
       { super_admin_id: superAdminId }
     );
-
+    
+    // Refresh CSRF token after switching back for subsequent requests
+    await this.initCsrfProtection();
+    
     return response.data.data;
   }
 }
 
+// Export singleton instance
 export const authService = new AuthService();
 export default authService;
