@@ -82,8 +82,34 @@
 }
 
 .swal2-toast-custom {
-  @apply bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-md shadow-lg;
-  font-size: 13px;
+  @apply bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-xl;
+  font-size: 14px;
+  min-width: 320px;
+  padding: 12px 16px;
+}
+
+.swal2-toast-custom .swal2-title {
+  @apply text-gray-900 dark:text-gray-100 font-semibold;
+  font-size: 14px;
+  margin: 0 0 4px 0;
+  line-height: 1.4;
+}
+
+.swal2-toast-custom .swal2-html-container {
+  @apply text-gray-600 dark:text-gray-400 text-sm;
+  margin: 0;
+  line-height: 1.5;
+}
+
+.swal2-toast-custom .swal2-icon {
+  margin: 0 12px 0 0;
+  width: 24px;
+  height: 24px;
+  border-width: 2px;
+}
+
+.swal2-toast-custom .swal2-timer-progress-bar {
+  @apply bg-indigo-600;
 }
 
 /* Custom animation for popup appearance */

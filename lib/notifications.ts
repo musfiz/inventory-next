@@ -147,30 +147,34 @@ export const toast = notifications.toast.bind(notifications);
 export const notify = {
   // User switch notifications
   switchUserError: () =>
-    notifications.error('Error', 'Failed to switch user. Please try again.'),
+    notifications.toast({ title: 'Error', text: 'Failed to switch user. Please try again.', icon: 'error', timer: 3000 }),
 
   switchBackSuccess: () =>
-    notifications.success(
-      'Success!',
-      'Successfully switched back to admin account. The page will reload.',
-      { timer: 2000 }
-    ),
+    notifications.toast({
+      title: 'Success',
+      text: 'Successfully switched back to admin account. The page will reload.',
+      icon: 'success',
+      timer: 3000
+    }),
 
   switchBackError: () =>
-    notifications.error('Error', 'Failed to switch back to admin. Please try again.'),
+    notifications.toast({ title: 'Error', text: 'Failed to switch back to admin. Please try again.', icon: 'error', timer: 3000 }),
 
   // Generic notifications
+  success: (message: string) =>
+    notifications.toast({ title: 'Success', text: message, icon: 'success', timer: 3000 }),
+
   saved: () =>
-    notifications.success('Saved!', 'Changes have been saved successfully.', { timer: 3000 }),
+    notifications.toast({ title: 'Saved', text: 'Changes have been saved successfully.', icon: 'success', timer: 3000 }),
 
   deleted: () =>
-    notifications.success('Deleted!', 'Item has been deleted successfully.', { timer: 3000 }),
+    notifications.toast({ title: 'Deleted', text: 'Item has been deleted successfully.', icon: 'success', timer: 3000 }),
 
   updated: () =>
-    notifications.success('Updated!', 'Changes have been updated successfully.', { timer: 3000 }),
+    notifications.toast({ title: 'Updated', text: 'Changes have been updated successfully.', icon: 'success', timer: 3000 }),
 
   error: (message?: string) =>
-    notifications.error('Error', message || 'An error occurred. Please try again.'),
+    notifications.toast({ title: 'Error', text: message || 'An error occurred. Please try again.', icon: 'error', timer: 3000 }),
 };
 
 /*

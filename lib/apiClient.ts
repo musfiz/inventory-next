@@ -32,6 +32,12 @@ apiClient.interceptors.request.use(
   (config: InternalAxiosRequestConfig) => {
     // Cookies are automatically sent with withCredentials: true
     // No need to manually add Authorization header
+
+    // If sending FormData, remove Content-Type to let browser set it with boundary
+    if (config.data instanceof FormData) {
+      delete config.headers['Content-Type'];
+    }
+
     return config;
   },
   (error) => {
@@ -48,14 +54,14 @@ apiClient.interceptors.response.use(
     // Handle common errors
     if (error.response) {
       const { status, data } = error.response;
-      
+
       // Handle authentication errors
       if (status === 401) {
         // Cookie expired or invalid
         if (typeof window !== 'undefined') {
           const currentPath = window.location.pathname;
           const isPublicRoute = ['/login', '/register'].some(route => currentPath.startsWith(route));
-          
+
           // Only redirect to login if not already on a public route
           if (!isPublicRoute) {
             window.location.href = '/login';
@@ -64,13 +70,13 @@ apiClient.interceptors.response.use(
         // Re-throw the error so calling code can handle it
         throw error;
       }
-      
+
       // Handle validation errors (422)
       if (status === 422 && data.errors) {
         const errorMessages = Object.values(data.errors).flat();
         throw new Error(errorMessages.join(', '));
       }
-      
+
       // Handle other errors
       throw new Error(data.message || 'An error occurred');
     } else if (error.request) {
@@ -85,7 +91,7 @@ apiClient.interceptors.response.use(
 // Cookie utilities (optional - cookies are handled by the browser)
 export const getCookie = (name: string): string | null => {
   if (typeof document === 'undefined') return null;
-  
+
   const value = `; ${document.cookie}`;
   const parts = value.split(`; ${name}=`);
   if (parts.length === 2) {
@@ -96,7 +102,7 @@ export const getCookie = (name: string): string | null => {
 
 export const deleteCookie = (name: string): void => {
   if (typeof document === 'undefined') return;
-  
+
   document.cookie = `${name}=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;`;
 };
 

@@ -6,6 +6,7 @@
 export { authService } from './authService';
 export { tenantService } from './tenantService';
 export { userService } from './userService';
+export { default as brandService } from './brandService';
 
 // Re-export types for convenience
 export type {

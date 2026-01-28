@@ -10,8 +10,8 @@ const notoSans = Noto_Sans({
 });
 
 export const metadata: Metadata = {
-  title: "Nexus Dashboard - Modern Admin Panel",
-  description: "Professional dashboard application with authentication",
+  title: "Inventory - Modern SaaS Application",
+  description: "Universal inventory managment system",
 };
 
 export default function RootLayout({

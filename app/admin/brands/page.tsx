@@ -9,9 +9,10 @@ import { Brand } from "@/types";
 import { useAuth } from '@/hooks/useAuth';
 import { confirm, notify } from '@/lib/notifications';
 import tenantService from '@/services/tenantService';
+import brandService from '@/services/brandService';
 
 export default function BrandsPage() {
-  const [tenantFilter, setTenantFilter] = useState<string>('all');
+  const [tenantFilter, setTenantFilter] = useState<string>('');
   const [tenants, setTenants] = useState<any[]>([]);
   const { user: currentUser } = useAuth();
 
@@ -33,13 +34,21 @@ export default function BrandsPage() {
   const handleAddBrand = () => {
     setIsEditing(false);
     setCurrentBrand(null);
-    setFormData({ name: '', logo_url: null, description: '', is_active: true, tenant_id: '' });
+    // Use tenantFilter for superadmin, empty for regular users
+    const initialTenantId = isSuperAdmin ? tenantFilter : '';
+    setFormData({ name: '', logo_url: null, description: '', is_active: true, tenant_id: initialTenantId });
     setShowForm(true);
   };
 
   const handleEditBrand = (brand: Brand) => {
     setIsEditing(true);
     setCurrentBrand(brand);
+
+    // For superadmin, set the tenantFilter to the brand's tenant_id
+    if (isSuperAdmin && brand.tenant?.id) {
+      setTenantFilter(brand.tenant.id);
+    }
+
     setFormData({
       name: brand.name,
       logo_url: null,
@@ -52,32 +61,36 @@ export default function BrandsPage() {
 
   const handleFormSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    const url = '/api/proxy/api/v1/brand/store';
-    const method = 'POST';
-
-    const formDataToSend = new FormData();
-    if (isEditing && currentBrand?.id) formDataToSend.append('id', currentBrand.id);
-    formDataToSend.append('name', formData.name);
-    formDataToSend.append('description', formData.description);
-    formDataToSend.append('is_active', formData.is_active ? '1' : '0');
-    if (formData.tenant_id) formDataToSend.append('tenant_id', formData.tenant_id);
-    if (formData.logo_url) formDataToSend.append('logo_url', formData.logo_url);
+    // For superadmin, validate tenant is selected
+    if (isSuperAdmin && !tenantFilter) {
+      notify.error('Please select a tenant from the filter before adding a brand');
+      return;
+    }
 
     try {
-      const response = await fetch(url, {
-        method,
-        body: formDataToSend,
-        credentials: 'include',
-      });
-      if (response.ok) {
-        notify.success(isEditing ? 'Brand updated successfully' : 'Brand added successfully');
-        setShowForm(false);
-        setRefreshKey(prev => prev + 1);
-      } else {
-        notify.error('Failed to save brand');
+      // Set tenant_id: from tenantFilter for superadmin (set from CustomSelect), otherwise from currentUser
+      const tenantId = isSuperAdmin ? tenantFilter : (currentUser?.tenant_id || '');
+
+      if (!tenantId) {
+        notify.error('Tenant ID is required');
+        return;
       }
-    } catch (error) {
-      notify.error('Error saving brand');
+
+      await brandService.storeBrand({
+        id: isEditing && currentBrand?.id ? currentBrand.id : undefined,
+        name: formData.name,
+        description: formData.description,
+        is_active: formData.is_active,
+        tenant_id: tenantId,
+        logo_url: formData.logo_url,
+      });
+
+      notify.success(isEditing ? 'Brand updated successfully' : 'Brand added successfully');
+      setShowForm(false);
+      setRefreshKey(prev => prev + 1);
+    } catch (error: any) {
+      const errorMessage = error?.response?.data?.message || error?.message || 'Failed to save brand';
+      notify.error(errorMessage);
     }
   };
 
@@ -117,11 +130,11 @@ export default function BrandsPage() {
 
   // Create tenant options for React Select
   const tenantOptions = [
-    { value: 'all', label: 'All Tenants' },
+    { value: '', label: 'Select Tenant' },
     ...tenants.map((tenant) => ({
       value: tenant.id,
       label: tenant.business_name,
-    })),
+    }))
   ];
 
   const columns: ColumnDef<Brand>[] = [
@@ -150,9 +163,6 @@ export default function BrandsPage() {
 
         return (
           <div className="flex items-center gap-2">
-            <div className="w-8 h-8 bg-gray-100 dark:bg-gray-700 rounded-full flex items-center justify-center flex-shrink-0">
-              <Building2 className="w-4 h-4 text-gray-600 dark:text-gray-400" />
-            </div>
             <div
               className="text-xs font-medium text-gray-900 dark:text-gray-100 truncate w-full"
               title={name} // Show full name on hover
@@ -206,26 +216,21 @@ export default function BrandsPage() {
       cell: ({ row }) => (
         <div className="flex items-center gap-1">
           <button
-            className="p-1 text-indigo-600 hover:text-indigo-900 dark:text-indigo-400 dark:hover:text-indigo-300 hover:bg-indigo-50 dark:hover:bg-indigo-900/20 rounded cursor-pointer"
-            title="View Details"
-            onClick={() => console.log('View', row.original.id)}
-          >
-            <Eye className="w-3.5 h-3.5" />
-          </button>
-          <button
             className="p-1 text-blue-600 hover:text-blue-900 dark:text-blue-400 dark:hover:text-blue-300 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded cursor-pointer"
             title="Edit"
             onClick={() => handleEditBrand(row.original)}
           >
             <Edit className="w-3.5 h-3.5" />
           </button>
-          <button
-            className="p-1 text-red-600 hover:text-red-900 dark:text-red-400 dark:hover:text-red-300 hover:bg-red-50 dark:hover:bg-red-900/20 rounded cursor-pointer"
-            title="Delete"
-            onClick={() => console.log('Delete', row.original.id)}
-          >
-            <Trash2 className="w-3.5 h-3.5" />
-          </button>
+          {isSuperAdmin && (
+            <button
+              className="p-1 text-red-600 hover:text-red-900 dark:text-red-400 dark:hover:text-red-300 hover:bg-red-50 dark:hover:bg-red-900/20 rounded cursor-pointer"
+              title="Delete"
+              onClick={() => console.log('Delete', row.original.id)}
+            >
+              <Trash2 className="w-3.5 h-3.5" />
+            </button>
+          )}
         </div>
       ),
     },
@@ -235,13 +240,13 @@ export default function BrandsPage() {
   const buildApiEndpoint = () => {
     const params = new URLSearchParams();
     // if (statusFilter !== 'all') params.append('status', statusFilter);
-    if (isSuperAdmin && tenantFilter !== 'all') params.append('tenant_id', tenantFilter);
+    if (isSuperAdmin && tenantFilter) params.append('tenant_id', tenantFilter);
     const queryString = params.toString();
     return `/api/proxy/api/v1/brand${queryString ? `?${queryString}` : ''}`;
   };
 
   return (
-    <div className="space-y-3">
+    <div className="space-y-2">
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
@@ -250,80 +255,59 @@ export default function BrandsPage() {
             Brand List
           </h1>
         </div>
+        <button
+          onClick={handleAddBrand}
+          className="flex items-center gap-2 px-3 py-1.5 bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-medium rounded-lg transition-colors duration-200 cursor-pointer"
+        >
+          <Plus className="w-4 h-4" />
+          Add Brand
+        </button>
       </div>
 
       {/* Filters */}
-      <div className="bg-white dark:bg-gray-800 rounded-md shadow-sm border border-gray-200 dark:border-gray-700 p-[0.04in]">
-        <div className="flex items-center justify-between">
-          <div className="flex gap-4">
-            {/* Status Filter */}
-            {/* <div>
-              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                Status
-              </label>
-              <select
-                value={statusFilter}
-                onChange={(e) => setStatusFilter(e.target.value)}
-                className="w-full px-3 py-2 text-sm border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-1 focus:ring-indigo-500 dark:bg-gray-700 dark:text-gray-100"
-              >
-                <option value="all">All Status</option>
-                <option value="active">Active</option>
-                <option value="inactive">Inactive</option>
-              </select>
-            </div> */}
-
-            {/* Tenant Filter - Only for Super Admin */}
-            {isSuperAdmin && (
-              <div className="w-[250px]">
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                  Tenant
-                </label>
+      {isSuperAdmin && (
+        <div className="bg-white dark:bg-gray-800 rounded-md shadow-sm border border-gray-200 dark:border-gray-700 p-1">
+          <div className="flex items-center justify-between">
+            <div className="flex gap-3">
+              {/* Tenant Filter - Only for Super Admin */}
+              <div className="md:col-span-2">
                 <CustomSelect
-                  value={tenantOptions.find(option => option.value === tenantFilter)}
-                  onChange={(selectedOption) => setTenantFilter(selectedOption?.value || 'all')}
+                  value={tenantOptions.find(t => t.value === tenantFilter) || null}
+                  onChange={(option) => setTenantFilter(option?.value || '')}
                   options={tenantOptions}
-                  placeholder="Select Tenants"
+                  placeholder="Select a tenant"
                 />
               </div>
-            )}
-
-            {/* Placeholder for future filters */}
+            </div>
           </div>
-          <button
-            className="flex items-center gap-2 px-4 py-2 bg-indigo-600 text-white text-sm font-medium rounded-lg hover:bg-indigo-700 transition-colors cursor-pointer"
-            onClick={handleAddBrand}
-          >
-            <Plus className="w-4 h-4" />
-            Add Brand
-          </button>
         </div>
-      </div>
+      )}
 
       {/* Add/Edit Brand Form */}
       {showForm && (
-        <div className="bg-white dark:bg-gray-800 rounded-md shadow-sm border border-gray-200 dark:border-gray-700 p-2 mb-2">
-          <h2 className="text-lg font-semibold mb-2 text-gray-900 dark:text-gray-100">
+        <div className="bg-white dark:bg-gray-800 rounded-md shadow-sm border border-gray-200 dark:border-gray-700 p-1.5 mb-1">
+          <h2 className="text-lg font-semibold mb-1.5 text-gray-900 dark:text-gray-100">
             {isEditing ? 'Edit Brand' : 'Add New Brand'}
           </h2>
-          <form onSubmit={handleFormSubmit} className="grid grid-cols-1 md:grid-cols-2 gap-2" encType="multipart/form-data">
+          <form onSubmit={handleFormSubmit} className="grid grid-cols-1 md:grid-cols-2 gap-1.5" encType="multipart/form-data">
             <div className="md:col-span-2 grid grid-cols-1 md:grid-cols-2 gap-1">
               <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Name</label>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-0.5">Name</label>
                 <input
                   type="text"
                   placeholder="Enter brand name"
                   value={formData.name}
                   onChange={e => setFormData({ ...formData, name: e.target.value })}
-                  className="w-full px-2.5 py-2 text-sm border border-gray-300 dark:border-gray-600 rounded-sm focus:outline-none focus:ring-1 focus:ring-indigo-500 dark:focus:ring-indigo-400 focus:border-transparent dark:bg-gray-700 dark:text-gray-100"
+                  className="w-full px-2 py-1.5 text-sm border border-gray-300 dark:border-gray-600 rounded-sm focus:outline-none focus:ring-1 focus:ring-indigo-500 dark:focus:ring-indigo-400 focus:border-transparent dark:bg-gray-700 dark:text-gray-100"
                   required
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Status</label>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-0.5">Status</label>
                 <select
                   value={formData.is_active ? 'active' : 'inactive'}
                   onChange={e => setFormData({ ...formData, is_active: e.target.value === 'active' })}
-                  className="w-full px-2.5 py-2 text-sm border border-gray-300 dark:border-gray-600 rounded-sm focus:outline-none focus:ring-1 focus:ring-indigo-500 dark:focus:ring-indigo-400 focus:border-transparent dark:bg-gray-700 dark:text-gray-100"
+                  className="w-full px-2 py-1.5 text-sm border border-gray-300 dark:border-gray-600 rounded-sm focus:outline-none focus:ring-1 focus:ring-indigo-500 dark:focus:ring-indigo-400 focus:border-transparent dark:bg-gray-700 dark:text-gray-100"
                 >
                   <option value="active">Active</option>
                   <option value="inactive">Inactive</option>
@@ -333,8 +317,8 @@ export default function BrandsPage() {
             <div className="md:col-span-2 grid grid-cols-1 md:grid-cols-2 gap-1">
               <div className="flex flex-col justify-end">
                 <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Logo</label>
-                <div className="flex items-center gap-4 h-24">
-                  <label className="flex flex-col items-center justify-center w-full h-24 border-2 border-dashed border-gray-300 dark:border-gray-600 rounded-sm cursor-pointer hover:border-indigo-500 transition-colors bg-gray-50 dark:bg-gray-700">
+                <div className="flex items-center gap-3 h-20">
+                  <label className="flex flex-col items-center justify-center w-full h-20 border-2 border-dashed border-gray-300 dark:border-gray-600 rounded-sm cursor-pointer hover:border-indigo-500 transition-colors bg-gray-50 dark:bg-gray-700">
                     <input
                       type="file"
                       accept="image/*"
@@ -347,52 +331,35 @@ export default function BrandsPage() {
                       className="hidden"
                     />
                     <span className="flex flex-col items-center">
-                      <svg className="w-8 h-8 text-gray-400 mb-1" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M7 16V4a1 1 0 011-1h8a1 1 0 011 1v12m-4 4h-4a1 1 0 01-1-1v-1m6 2a2 2 0 002-2v-1a2 2 0 00-2-2h-4a2 2 0 00-2 2v1a2 2 0 002 2h4z" /></svg>
+                      <svg className="w-6 h-6 text-gray-400 mb-0.5" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M7 16V4a1 1 0 011-1h8a1 1 0 011 1v12m-4 4h-4a1 1 0 01-1-1v-1m6 2a2 2 0 002-2v-1a2 2 0 00-2-2h-4a2 2 0 00-2 2v1a2 2 0 002 2h4z" /></svg>
                       <span className="text-xs text-gray-500 dark:text-gray-400">Click to upload image</span>
                     </span>
                   </label>
                   {(formData.logo_url || formData.logo_url) && (
                     <div className="flex flex-col items-center">
-                      <img src={formData.logo_url ? URL.createObjectURL(formData.logo_url) : formData.logo_url} alt="Logo Preview" className="w-16 h-16 object-contain rounded border border-gray-200 dark:border-gray-600" />
-                      <span className="text-xs text-gray-500 mt-1">{formData.logo_url ? 'New' : 'Current'}</span>
+                      <img src={formData.logo_url ? URL.createObjectURL(formData.logo_url) : formData.logo_url} alt="Logo Preview" className="w-12 h-12 object-contain rounded border border-gray-200 dark:border-gray-600" />
+                      <span className="text-xs text-gray-500 mt-0.5">{formData.logo_url ? 'New' : 'Current'}</span>
                     </div>
                   )}
                 </div>
               </div>
               <div className="flex flex-col gap-1">
                 <div className="flex flex-row justify-between items-center">
-                  <span className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1 text-right">Description</span>
+                  <span className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-0.5 text-right">Description</span>
                 </div>
                 <textarea
                   placeholder="Describe the brand and its unique attributes"
                   value={formData.description}
                   onChange={e => setFormData({ ...formData, description: e.target.value })}
-                  className="w-full px-2.5 py-2 text-sm border border-gray-300 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-1 focus:ring-indigo-500 dark:focus:ring-indigo-400 focus:border-transparent dark:bg-gray-700 dark:text-gray-100 h-24 md:h-24 resize-none"
-                  rows={6}
+                  className="w-full px-2 py-1.5 text-sm border border-gray-300 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-1 focus:ring-indigo-500 dark:focus:ring-indigo-400 focus:border-transparent dark:bg-gray-700 dark:text-gray-100 h-20 md:h-20 resize-none"
+                  rows={5}
                 />
               </div>
             </div>
-            {/* Tenant select for superadmin below all inputs */}
-            {isSuperAdmin && (
-              <div className="flex-1 flex-col justify-end">
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Tenant</label>
-                <select
-                  value={formData.tenant_id || ''}
-                  onChange={e => setFormData({ ...formData, tenant_id: e.target.value })}
-                  className="w-1/2 px-2.5 py-2 text-sm border border-gray-300 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-1 focus:ring-indigo-500 dark:focus:ring-indigo-400 focus:border-transparent dark:bg-gray-700 dark:text-gray-100"
-                  required
-                >
-                  <option value="">Select Tenant</option>
-                  {tenants.map(tenant => (
-                    <option key={tenant.id} value={tenant.id}>{tenant.business_name}</option>
-                  ))}
-                </select>
-              </div>
-            )}
-            <div className="flex gap-2 md:col-span-2 mt-2">
+            <div className="flex gap-2 md:col-span-2 mt-1.5">
               <button
                 type="submit"
-                className="px-4 py-2 bg-indigo-600 text-white text-sm font-medium rounded-lg hover:bg-indigo-700 transition-colors flex items-center gap-2 cursor-pointer"
+                className="px-3 py-1.5 bg-indigo-600 text-white text-sm font-medium rounded-lg hover:bg-indigo-700 transition-colors flex items-center gap-2 cursor-pointer"
               >
                 <Edit className="w-4 h-4" />
                 {isEditing ? 'Update Brand' : 'Save Brand'}
@@ -400,7 +367,7 @@ export default function BrandsPage() {
               <button
                 type="button"
                 onClick={() => setShowForm(false)}
-                className="px-4 py-2 bg-gray-600 text-white text-sm font-medium rounded-lg hover:bg-gray-700 transition-colors flex items-center gap-2 cursor-pointer"
+                className="px-3 py-1.5 bg-gray-600 text-white text-sm font-medium rounded-lg hover:bg-gray-700 transition-colors flex items-center gap-2 cursor-pointer"
               >
                 <X className="w-4 h-4" />
                 Cancel

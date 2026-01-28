@@ -27,9 +27,22 @@ const customStyles: StylesConfig<SelectOption, false> = {
     borderRadius: '0.25rem', // rounded-md
     boxShadow: state.isFocused ? '0 0 0 1px rgb(99, 102, 241)' : 'none',
     cursor: 'pointer',
+    minHeight: '32px',
+    height: '32px',
     '&:hover': {
       borderColor: state.isFocused ? 'rgb(99, 102, 241)' : 'rgb(156, 163, 175)', // border-gray-400
     },
+  }),
+  valueContainer: (provided) => ({
+    ...provided,
+    height: '32px',
+    padding: '0 8px',
+    display: 'flex',
+    alignItems: 'center',
+  }),
+  indicatorsContainer: (provided) => ({
+    ...provided,
+    height: '32px',
   }),
   singleValue: (provided) => ({
     ...provided,

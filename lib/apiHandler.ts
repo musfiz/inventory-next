@@ -191,25 +191,41 @@ export async function handleProxyRequest(
     // Get auth token from cookie
     const token = getAuthToken(request);
 
-    // Get request body for POST/PUT/PATCH
+    // Get request body and content type for POST/PUT/PATCH
     let body = null;
+    let contentType = request.headers.get('content-type') || 'application/json';
+
     if (['POST', 'PUT', 'PATCH'].includes(method)) {
-      try {
-        body = await request.json();
-      } catch {
-        // No body or invalid JSON
+      // Check if it's FormData (multipart/form-data)
+      if (contentType.includes('multipart/form-data')) {
+        // Get FormData from request
+        body = await request.formData();
+      } else {
+        // Try to parse as JSON
+        try {
+          body = await request.json();
+        } catch {
+          // No body or invalid JSON
+        }
       }
+    }
+
+    // Prepare headers
+    const headers: Record<string, string> = {
+      'Accept': 'application/json',
+      ...(token && { Authorization: `Bearer ${token}` }),
+    };
+
+    // Only set Content-Type for non-FormData requests
+    if (!contentType.includes('multipart/form-data')) {
+      headers['Content-Type'] = 'application/json';
     }
 
     // Make request to Laravel backend
     const response = await axios({
       method,
       url: `${API_URL}${apiPath}${queryString}`,
-      headers: {
-        'Content-Type': 'application/json',
-        'Accept': 'application/json',
-        ...(token && { Authorization: `Bearer ${token}` }),
-      },
+      headers,
       data: body,
       validateStatus: () => true, // Don't throw on any status
     });
