@@ -15,7 +15,6 @@ export default function AdminLayout({
   children: React.ReactNode;
 }) {
   const user = useAuthStore((state) => state.user);
-  const isAuthenticated = useAuthStore((state) => state.user !== null);
   const isLoading = useAuthStore((state) => state.isLoading);
   const isHydrated = useAuthStore((state) => state.isHydrated);
   const isSwitchedUser = useAuthStore((state) => state.isSwitchedUser);
@@ -28,15 +27,12 @@ export default function AdminLayout({
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [isRouteLoading, setIsRouteLoading] = useState(false);
-  const [hasCheckedAuth, setHasCheckedAuth] = useState(false);
   const [switchingBack, setSwitchingBack] = useState(false);
 
   // Check authentication and redirect if needed (only once, after hydration)
   useEffect(() => {
-    if (!hasCheckedAuth && !isLoading && isHydrated) {
-      setHasCheckedAuth(true);
-    }
-  }, [isLoading, isAuthenticated, hasCheckedAuth, isHydrated, pathname, router]);
+    //
+  }, [isLoading, isHydrated, pathname, router]);
 
   // Handle route changes
   useEffect(() => {
@@ -56,18 +52,6 @@ export default function AdminLayout({
     await logout();
     router.push('/login');
   };
-
-  // Show loading while checking authentication or hydrating
-  if (isLoading || !isHydrated) {
-    return (
-      <div className="min-h-screen bg-gray-100 dark:bg-gray-900 flex items-center justify-center">
-        <div className="relative">
-          <div className="w-20 h-20 border-4 border-gray-200 dark:border-gray-700 rounded-full"></div>
-          <div className="w-20 h-20 border-4 border-indigo-600 dark:border-indigo-500 border-t-transparent rounded-full animate-spin absolute top-0 left-0"></div>
-        </div>
-      </div>
-    );
-  }
 
   return (
     <div>
@@ -122,12 +106,14 @@ export default function AdminLayout({
       )}
 
       <div className={`min-h-screen bg-gray-100 dark:bg-gray-900 flex h-screen overflow-hidden relative ${isSwitchedUser ? 'border-5 border-red-500 pt-[0.67cm]' : ''}`}>
-        {/* Full Page Loading Spinner */}
+        {/* Route Loading Progress Bar */}
         {isRouteLoading && (
-          <div className="fixed inset-0 bg-white/80 dark:bg-gray-900/80 backdrop-blur-sm flex items-center justify-center z-[100]">
-            <div className="relative">
-              <div className="w-20 h-20 border-4 border-gray-200 dark:border-gray-700 rounded-full"></div>
-              <div className="w-20 h-20 border-4 border-indigo-600 dark:border-indigo-500 border-t-transparent rounded-full animate-spin absolute top-0 left-0"></div>
+          <div className="fixed top-0 left-0 right-0 h-1 bg-gray-200 dark:bg-gray-700 z-100 overflow-hidden">
+            <div className="h-full bg-linear-to-r from-indigo-500 via-purple-500 to-pink-500 animate-[loading_1s_ease-in-out_infinite]"
+              style={{
+                width: '50%',
+                animation: 'loading 1s ease-in-out infinite'
+              }}>
             </div>
           </div>
         )}

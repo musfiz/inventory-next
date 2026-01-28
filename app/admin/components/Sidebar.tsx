@@ -115,7 +115,6 @@ function NavItem({ item, sidebarOpen, pathname, setMobileMenuOpen, depth = 0, is
         // Close siblings at the same level
         const pathParts = currentPath.split('.');
         const parentPath = pathParts.slice(0, -1).join('.');
-        const siblingPrefix = parentPath ? `${parentPath}.` : '';
 
         Array.from(openItems).forEach(path => {
           const parts = path.split('.');
@@ -150,7 +149,10 @@ function NavItem({ item, sidebarOpen, pathname, setMobileMenuOpen, depth = 0, is
       {item.href && !hasChildren ? (
         <Link
           href={item.href}
-          onClick={() => setMobileMenuOpen(false)}
+          onClick={() => {
+            setMobileMenuOpen(false);
+            setOpenItems(new Set());
+          }}
           className={`
             relative group flex items-center px-3 py-2 text-sm font-medium rounded-md transition-colors cursor-pointer
             ${depth > 0 && sidebarOpen ? 'ml-4' : ''}

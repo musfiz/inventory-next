@@ -29,6 +29,7 @@ export default function BrandsPage() {
     is_active: true,
     tenant_id: '',
   });
+  const [formErrors, setFormErrors] = useState<{ [key: string]: string }>({});
   const [refreshKey, setRefreshKey] = useState(0);
 
   const handleAddBrand = () => {
@@ -37,6 +38,7 @@ export default function BrandsPage() {
     // Use tenantFilter for superadmin, empty for regular users
     const initialTenantId = isSuperAdmin ? tenantFilter : '';
     setFormData({ name: '', logo_url: null, description: '', is_active: true, tenant_id: initialTenantId });
+    setFormErrors({});
     setShowForm(true);
   };
 
@@ -56,26 +58,41 @@ export default function BrandsPage() {
       is_active: brand.is_active,
       tenant_id: brand.tenant?.id || '',
     });
+    setFormErrors({});
     setShowForm(true);
+  };
+
+  const validateForm = () => {
+    const errors: { [key: string]: string } = {};
+    if (!formData.name.trim()) {
+      errors.name = 'Brand name is required';
+    }
+    if (isSuperAdmin && !tenantFilter) {
+      errors.tenant = 'Please select a tenant';
+    }
+    const tenantId = isSuperAdmin ? tenantFilter : (currentUser?.tenant_id || '');
+    if (!tenantId) {
+      errors.tenant_id = 'Tenant ID is required';
+    }
+    setFormErrors(errors);
+    return Object.keys(errors).length === 0;
   };
 
   const handleFormSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    // For superadmin, validate tenant is selected
-    if (isSuperAdmin && !tenantFilter) {
-      notify.error('Please select a tenant from the filter before adding a brand');
+    // Set tenant_id: from tenantFilter for superadmin (set from CustomSelect), otherwise from currentUser
+    const tenantId = isSuperAdmin ? tenantFilter : (currentUser?.tenant_id || '');
+
+    if (!tenantId) {
+      notify.error('Tenant selection required');
+      return;
+    }
+    setFormErrors({}); // Clear previous errors before validation/submission
+    if (!validateForm()) {
       return;
     }
 
     try {
-      // Set tenant_id: from tenantFilter for superadmin (set from CustomSelect), otherwise from currentUser
-      const tenantId = isSuperAdmin ? tenantFilter : (currentUser?.tenant_id || '');
-
-      if (!tenantId) {
-        notify.error('Tenant ID is required');
-        return;
-      }
-
       await brandService.storeBrand({
         id: isEditing && currentBrand?.id ? currentBrand.id : undefined,
         name: formData.name,
@@ -89,8 +106,15 @@ export default function BrandsPage() {
       setShowForm(false);
       setRefreshKey(prev => prev + 1);
     } catch (error: any) {
-      const errorMessage = error?.response?.data?.message || error?.message || 'Failed to save brand';
-      notify.error(errorMessage);
+      const errorData = error?.response?.data;
+      if (errorData?.errors) {
+        // Map server-side errors to formErrors state (assumes { errors: { fieldName: 'message' } })
+        setFormErrors(errorData.errors);
+      } else {
+        // Fallback to general error notification if no field-specific errors
+        const errorMessage = errorData?.message || error?.message || 'Failed to save brand';
+        notify.error(errorMessage);
+      }
     }
   };
 
@@ -257,7 +281,7 @@ export default function BrandsPage() {
         </div>
         <button
           onClick={handleAddBrand}
-          className="flex items-center gap-2 px-3 py-1.5 bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-medium rounded-lg transition-colors duration-200 cursor-pointer"
+          className="flex items-center gap-2 px-3 py-1.5 bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-medium rounded-sm transition-colors duration-200 cursor-pointer"
         >
           <Plus className="w-4 h-4" />
           Add Brand
@@ -272,11 +296,15 @@ export default function BrandsPage() {
               {/* Tenant Filter - Only for Super Admin */}
               <div className="md:col-span-2">
                 <CustomSelect
+                  className={'w-64 text-xs'}
                   value={tenantOptions.find(t => t.value === tenantFilter) || null}
                   onChange={(option) => setTenantFilter(option?.value || '')}
                   options={tenantOptions}
                   placeholder="Select a tenant"
                 />
+                {formErrors.tenant && (
+                  <p className="text-red-600 text-xs mt-1">{formErrors.tenant}</p>
+                )}
               </div>
             </div>
           </div>
@@ -298,9 +326,13 @@ export default function BrandsPage() {
                   placeholder="Enter brand name"
                   value={formData.name}
                   onChange={e => setFormData({ ...formData, name: e.target.value })}
-                  className="w-full px-2 py-1.5 text-sm border border-gray-300 dark:border-gray-600 rounded-sm focus:outline-none focus:ring-1 focus:ring-indigo-500 dark:focus:ring-indigo-400 focus:border-transparent dark:bg-gray-700 dark:text-gray-100"
+                  className={`w-full px-2 py-1.5 text-sm border rounded-sm focus:outline-none focus:ring-1 focus:ring-indigo-500 dark:focus:ring-indigo-400 focus:border-transparent dark:bg-gray-700 dark:text-gray-100 ${formErrors.name ? 'border-red-500' : 'border-gray-300 dark:border-gray-600'
+                    }`}
                   required
                 />
+                {formErrors.name && (
+                  <p className="text-red-600 text-xs mt-1">{formErrors.name}</p>
+                )}
               </div>
               <div>
                 <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-0.5">Status</label>
@@ -359,7 +391,7 @@ export default function BrandsPage() {
             <div className="flex gap-2 md:col-span-2 mt-1.5">
               <button
                 type="submit"
-                className="px-3 py-1.5 bg-indigo-600 text-white text-sm font-medium rounded-lg hover:bg-indigo-700 transition-colors flex items-center gap-2 cursor-pointer"
+                className="px-3 py-1.5 bg-indigo-600 text-white text-sm font-medium rounded-sm hover:bg-indigo-700 transition-colors flex items-center gap-2 cursor-pointer"
               >
                 <Edit className="w-4 h-4" />
                 {isEditing ? 'Update Brand' : 'Save Brand'}
@@ -367,7 +399,7 @@ export default function BrandsPage() {
               <button
                 type="button"
                 onClick={() => setShowForm(false)}
-                className="px-3 py-1.5 bg-gray-600 text-white text-sm font-medium rounded-lg hover:bg-gray-700 transition-colors flex items-center gap-2 cursor-pointer"
+                className="px-3 py-1.5 bg-gray-600 text-white text-sm font-medium rounded-sm hover:bg-gray-700 transition-colors flex items-center gap-2 cursor-pointer"
               >
                 <X className="w-4 h-4" />
                 Cancel
