@@ -9,6 +9,7 @@ import {
   ColumnDef,
   SortingState,
 } from '@tanstack/react-table';
+import apiClient from '@/lib/apiClient';
 import {
   ChevronLeft,
   ChevronRight,
@@ -75,10 +76,9 @@ export default function DataTable<T extends Record<string, any>>({
         params.append('sortOrder', sorting[0].desc ? 'desc' : 'asc');
       }
 
-      const response = await fetch(`${apiEndpoint}${apiEndpoint.includes('?') ? '&' : '?'}${params.toString()}`, {
-        credentials: 'include',
-      });
-      const result = await response.json();
+      const response = await apiClient.get(`${apiEndpoint}${apiEndpoint.includes('?') ? '&' : '?'}${params.toString()}`);
+
+      const result = response.data;
 
       // Handle custom pagination format
       setData(result.data || []);
