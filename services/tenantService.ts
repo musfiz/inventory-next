@@ -1,12 +1,13 @@
 import axios from 'axios';
-import apiClient, { ApiResponse } from '@/lib/apiClient';
+import apiClient from '@/lib/api/axios';
 import type {
   RegisterTenantRequest,
   RegisterTenantResponse,
   Tenant,
   TenantDetailsResponse,
   TenantListResponse,
-} from '@/types/api';
+  ApiResponse,
+} from '@/types/api.types';
 
 /**
  * Tenant Service

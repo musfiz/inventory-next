@@ -1,6 +1,5 @@
 import { NextRequest } from 'next/server';
-import { handleProxyRequest } from '@/lib/apiHandler';
-
+import apiClient from "@/lib/api/axios";
 /**
  * API Proxy Route Handler
  * Proxies all API requests and adds auth token from HTTP-only cookie

@@ -1,5 +1,5 @@
-import apiClient, { ApiResponse } from '@/lib/apiClient';
-import type { Brand } from '@/types';
+import apiClient from '@/lib/api/axios';
+import type { Brand, ApiResponse } from '@/types';
 
 /**
  * Brand Service

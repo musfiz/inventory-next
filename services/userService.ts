@@ -1,5 +1,5 @@
 import axios from 'axios';
-import apiClient, { ApiResponse } from '@/lib/apiClient';
+import apiClient from '@/lib/api/axios';
 import type {
   User,
   RegisterUserRequest,
@@ -9,7 +9,8 @@ import type {
   CreateUserRequest,
   UpdateUserRequest,
   ChangePasswordRequest,
-} from '@/types/api';
+  ApiResponse,
+} from '@/types/api.types';
 
 /**
  * User Service

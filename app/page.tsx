@@ -1,8 +1,8 @@
 'use client';
 
 import Link from "next/link";
-import { useAuthStore } from "@/stores/authStore";
-import { useAuth } from "@/hooks/useAuth";
+import { useAuthStore } from "@/stores/auth-store";
+import { logout as logoutApi } from "@/lib/api/auth";
 import { useState, useRef, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import {
@@ -14,7 +14,7 @@ import {
 
 export default function Home() {
   const { user } = useAuthStore();
-  const { logout } = useAuth();
+  const clearAuth = useAuthStore((state) => state.clearAuth);
   const router = useRouter();
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
@@ -34,9 +34,15 @@ export default function Home() {
   }, []);
 
   const handleLogout = async () => {
-    router.push('/login');
-    await logout();
-    setIsDropdownOpen(false);
+    try {
+      await logoutApi();
+    } catch (error) {
+      console.error('Logout failed:', error);
+    } finally {
+      clearAuth();
+      router.push('/login');
+      setIsDropdownOpen(false);
+    }
   };
 
   return (
@@ -65,7 +71,7 @@ export default function Home() {
                   {isDropdownOpen && (
                     <div className="absolute right-0 mt-2 w-48 bg-white rounded-md shadow-lg border border-gray-200 py-1">
                       <Link
-                        href="/admin"
+                        href="/dashboard"
                         onClick={() => setIsDropdownOpen(false)}
                         className="flex items-center space-x-2 px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 transition"
                       >
@@ -114,7 +120,7 @@ export default function Home() {
             </p>
             <div className="flex flex-col sm:flex-row gap-4 justify-center">
               <Link
-                href={isAuthenticated ? "/admin" : "/login"}
+                href={isAuthenticated ? "/dashboard" : "/login"}
                 className="inline-flex items-center justify-center px-8 py-3 border border-transparent text-base font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700 transition shadow-lg"
               >
                 {isAuthenticated ? "Go to Dashboard" : "Get Started"}
@@ -392,7 +398,7 @@ export default function Home() {
             Join businesses that have eliminated inefficiencies and gained complete control over their inventory.
           </p>
           <Link
-            href={isAuthenticated ? "/admin" : "/login"}
+            href={isAuthenticated ? "/dashboard" : "/login"}
             className="inline-flex items-center justify-center px-8 py-4 border-2 border-white text-lg font-medium rounded-md text-indigo-600 bg-white hover:bg-indigo-50 transition shadow-lg"
           >
             {isAuthenticated ? "Go to Dashboard" : "Start Your Journey"}
