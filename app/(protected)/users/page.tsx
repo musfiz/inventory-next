@@ -31,14 +31,6 @@ export default function TenantsPage() {
     );
   };
 
-  const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString('en-US', {
-      year: 'numeric',
-      month: 'short',
-      day: 'numeric',
-    });
-  };
-
   const columns: ColumnDef<User>[] = [
     {
       id: 'serial',
@@ -195,7 +187,7 @@ export default function TenantsPage() {
     const params = new URLSearchParams();
     if (statusFilter !== 'all') params.append('status', statusFilter);
     const queryString = params.toString();
-    return `/api/v1/user${queryString ? `?${queryString}` : ''}`;
+    return `/api/v1/users${queryString ? `?${queryString}` : ''}`;
   };
 
   return (

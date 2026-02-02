@@ -1,8 +1,8 @@
 'use client';
 
 import { useAuthStore } from '@/stores/auth-store';
-import { useState } from 'react';
-import { useRouter } from 'next/navigation';
+import { useState, useEffect } from 'react';
+import { usePathname } from 'next/navigation';
 import { User } from 'lucide-react';
 import { notify } from '@/lib/notifications';
 import Header from "@/components/layout/header";
@@ -16,11 +16,21 @@ export default function AdminLayout({
   const user = useAuthStore((state) => state.user);
   const isSwitchedUser = useAuthStore((state) => state.isSwitchedUser);
   const originalSuperAdmin = useAuthStore((state) => state.originalSuperAdmin);
+  const pathname = usePathname();
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [isRouteLoading, setIsRouteLoading] = useState(false);
   const [switchingBack, setSwitchingBack] = useState(false);
+
+  // Handle route changes - show loading indicator
+  useEffect(() => {
+    setIsRouteLoading(true);
+    const timer = setTimeout(() => {
+      setIsRouteLoading(false);
+    }, 500);
+    return () => clearTimeout(timer);
+  }, [pathname]);
 
 
   const handleSearch = (e: React.FormEvent) => {
