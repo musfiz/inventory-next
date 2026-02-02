@@ -1,12 +1,13 @@
 'use client';
 
 import { useAuthStore } from '@/stores/auth-store';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, Suspense } from 'react';
 import { usePathname } from 'next/navigation';
 import { User } from 'lucide-react';
 import { notify } from '@/lib/notifications';
 import Header from "@/components/layout/header";
 import Sidebar from "@/components/layout/sidebar";
+import Loading from './Loading';
 
 export default function AdminLayout({
   children,
@@ -123,7 +124,9 @@ export default function AdminLayout({
 
           {/* Page Content - Scrollable */}
           <main className="flex-1 overflow-y-auto py-2 px-2 sm:px-4 lg:px-4">
-            {children}
+            <Suspense fallback={<Loading />}>
+              {children}
+            </Suspense>
           </main>
         </div>
       </div>

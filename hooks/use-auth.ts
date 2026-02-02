@@ -1,6 +1,6 @@
 import useSWR from 'swr'
 import axios from '@/lib/api/axios'
-import { useEffect } from 'react'
+import { useEffect, useState } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import useAuthStore from '@/stores/auth-store'
 
@@ -13,6 +13,7 @@ export const useAuth = ({ middleware, redirectIfAuthenticated }: UseAuthOptions 
   const router = useRouter()
   const params = useParams()
   const { setUser, clearAuth } = useAuthStore()
+  const [isRedirecting, setIsRedirecting] = useState(false)
 
   const { data: user, error, mutate } = useSWR('/api/v1/user', () =>
     axios
@@ -43,7 +44,7 @@ export const useAuth = ({ middleware, redirectIfAuthenticated }: UseAuthOptions 
     setErrors([])
 
     axios
-      .post('/api/v1/register', props)
+      .post('/v1/register', props)
       .then(() => mutate())
       .catch(error => {
         if (error.response.status !== 422) throw error
@@ -58,7 +59,7 @@ export const useAuth = ({ middleware, redirectIfAuthenticated }: UseAuthOptions 
     setErrors([])
 
     axios
-      .post('/api/v1/login', props)
+      .post('/v1/login', props)
       .then(() => mutate())
       .catch(error => {
         if (error.response.status !== 422) throw error
@@ -74,7 +75,7 @@ export const useAuth = ({ middleware, redirectIfAuthenticated }: UseAuthOptions 
     setStatus(null)
 
     axios
-      .post('/api/v1/forgot-password', { email })
+      .post('/v1/forgot-password', { email })
       .then(response => setStatus(response.data.status))
       .catch(error => {
         if (error.response.status !== 422) throw error
@@ -90,7 +91,7 @@ export const useAuth = ({ middleware, redirectIfAuthenticated }: UseAuthOptions 
     setStatus(null)
 
     axios
-      .post('/api/v1/reset-password', { token: params.token, ...props })
+      .post('/v1/reset-password', { token: params.token, ...props })
       .then(response =>
         router.push('/login?reset=' + btoa(response.data.status)),
       )
@@ -103,21 +104,23 @@ export const useAuth = ({ middleware, redirectIfAuthenticated }: UseAuthOptions 
 
   const resendEmailVerification = ({ setStatus }: { setStatus: (status: any) => void }) => {
     axios
-      .post('/api/v1/email/verification-notification')
+      .post('/v1/email/verification-notification')
       .then(response => setStatus(response.data.status))
   }
 
   const logout = async () => {
     if (!error) {
-      await axios.post('/api/v1/logout').then(() => mutate())
+      await axios.post('/v1/logout').then(() => mutate())
     }
     clearAuth();
     window.location.href = '/login';
   }
 
   useEffect(() => {
-    if (middleware === 'guest' && redirectIfAuthenticated && user)
+    if (middleware === 'guest' && redirectIfAuthenticated && user) {
+      setIsRedirecting(true)
       router.push(redirectIfAuthenticated)
+    }
 
     //if (middleware === 'auth' && (user && !user.email_verified_at))
     //router.push('/verify-email')
@@ -126,9 +129,15 @@ export const useAuth = ({ middleware, redirectIfAuthenticated }: UseAuthOptions 
       window.location.pathname === '/verify-email' &&
       user?.email_verified_at &&
       redirectIfAuthenticated
-    )
+    ) {
+      setIsRedirecting(true)
       router.push(redirectIfAuthenticated)
-    if (middleware === 'auth' && error) logout()
+    }
+      
+    if (middleware === 'auth' && error) {
+      setIsRedirecting(true)
+      logout()
+    }
   }, [user, error])
 
   return {
@@ -139,5 +148,6 @@ export const useAuth = ({ middleware, redirectIfAuthenticated }: UseAuthOptions 
     resetPassword,
     resendEmailVerification,
     logout,
+    isRedirecting,
   }
 }
