@@ -2,7 +2,6 @@
 
 import Link from "next/link";
 import { useAuthStore } from "@/stores/auth-store";
-import { logout as logoutApi } from "@/lib/api/auth";
 import { useState, useRef, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import {

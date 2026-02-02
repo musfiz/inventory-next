@@ -4,8 +4,6 @@ import { User } from '@/types';
 
 interface AuthState {
   user: User | null;
-  isAuthenticated: boolean;
-  isHydrated: boolean;
   loading: boolean;
   isSwitchedUser: boolean;
   originalSuperAdmin: User | null;
@@ -22,36 +20,27 @@ export const useAuthStore = create<AuthState>()(
   persist(
     (set) => ({
       user: null,
-      isAuthenticated: false,
-      isHydrated: false,
       loading: false,
       isSwitchedUser: false,
       originalSuperAdmin: null,
-      login: (user) => set({ user, isAuthenticated: true }),
-      logout: () => set({ user: null, isAuthenticated: false, isSwitchedUser: false, originalSuperAdmin: null }),
-      setUser: (user) => set({ user, isAuthenticated: !!user }),
+      login: (user) => set({ user }),
+      logout: () => set({ user: null, isSwitchedUser: false, originalSuperAdmin: null }),
+      setUser: (user) => set({ user }),
       setLoading: (loading) => set({ loading }),
-      clearAuth: () => set({ user: null, isAuthenticated: false, isSwitchedUser: false, originalSuperAdmin: null }),
-      switchUser: (targetUser, originalAdmin) => set({ 
-        user: targetUser, 
-        isAuthenticated: true,
+      clearAuth: () => set({ user: null, isSwitchedUser: false, originalSuperAdmin: null }),
+      switchUser: (targetUser, originalAdmin) => set({
+        user: targetUser,
         isSwitchedUser: true,
         originalSuperAdmin: originalAdmin
       }),
       switchBack: () => set((state) => ({
         user: state.originalSuperAdmin,
-        isAuthenticated: true,
         isSwitchedUser: false,
         originalSuperAdmin: null
       })),
     }),
     {
       name: 'auth-storage',
-      onRehydrateStorage: () => (state) => {
-        if (state) {
-          state.isHydrated = true;
-        }
-      },
     }
   )
 );

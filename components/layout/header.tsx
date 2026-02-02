@@ -16,11 +16,10 @@ import {
   Moon
 } from 'lucide-react';
 import { useTheme } from '@/contexts/ThemeContext';
-import { notify, success } from '@/lib/notifications';
+import { useAuth } from '@/hooks/use-auth';
 
 interface HeaderProps {
   user: any;
-  logout: () => void;
   sidebarOpen: boolean;
   setSidebarOpen: (open: boolean) => void;
   setMobileMenuOpen: (open: boolean) => void;
@@ -31,7 +30,6 @@ interface HeaderProps {
 
 export default function Header({
   user,
-  logout,
   sidebarOpen,
   setSidebarOpen,
   setMobileMenuOpen,
@@ -43,6 +41,7 @@ export default function Header({
   const [notificationOpen, setNotificationOpen] = useState(false);
   const [mounted, setMounted] = useState(false);
   const { theme, toggleTheme } = useTheme();
+  const { logout } = useAuth();
 
   useEffect(() => {
     setMounted(true);

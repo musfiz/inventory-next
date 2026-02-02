@@ -1,9 +1,8 @@
 'use client';
 
 import { useAuthStore } from '@/stores/auth-store';
-import { logout as logoutApi, getAuthUser } from '@/lib/api/auth';
-import { useState, useEffect } from 'react';
-import { usePathname, useRouter } from 'next/navigation';
+import { useState } from 'react';
+import { useRouter } from 'next/navigation';
 import { User } from 'lucide-react';
 import { notify } from '@/lib/notifications';
 import Header from "@/components/layout/header";
@@ -15,82 +14,18 @@ export default function AdminLayout({
   children: React.ReactNode;
 }) {
   const user = useAuthStore((state) => state.user);
-  const isLoading = useAuthStore((state) => state.loading);
-  const isHydrated = useAuthStore((state) => state.isHydrated);
   const isSwitchedUser = useAuthStore((state) => state.isSwitchedUser);
   const originalSuperAdmin = useAuthStore((state) => state.originalSuperAdmin);
-  const setUser = useAuthStore((state) => state.setUser);
-  const setLoading = useAuthStore((state) => state.setLoading);
-  const clearAuth = useAuthStore((state) => state.clearAuth);
-
-  const pathname = usePathname();
-  const router = useRouter();
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [isRouteLoading, setIsRouteLoading] = useState(false);
   const [switchingBack, setSwitchingBack] = useState(false);
-  const [authChecked, setAuthChecked] = useState(false);
 
-  // Check authentication ONCE on mount (after hydration)
-  useEffect(() => {
-    if (!isHydrated || authChecked) return;
-
-    const verifyAuth = async () => {
-      // If no user in store, try to fetch from API
-      if (!user) {
-        try {
-          setLoading(true);
-          const currentUser = await getAuthUser();
-          if (currentUser) {
-            setUser(currentUser);
-          } else {
-            // No valid session, redirect to login
-            clearAuth();
-            const redirectUrl = encodeURIComponent(pathname);
-            router.push(`/login?redirect=${redirectUrl}`);
-          }
-        } catch (error) {
-          console.error('Auth check failed:', error);
-          clearAuth();
-          const redirectUrl = encodeURIComponent(pathname);
-          router.push(`/login?redirect=${redirectUrl}`);
-        } finally {
-          setLoading(false);
-          setAuthChecked(true);
-        }
-      } else {
-        // User exists in store, trust it
-        setAuthChecked(true);
-      }
-    };
-
-    verifyAuth();
-  }, [isHydrated]); // Only run once after hydration
-
-  // Handle route changes
-  useEffect(() => {
-    setIsRouteLoading(true);
-    const timer = setTimeout(() => {
-      setIsRouteLoading(false);
-    }, 500);
-    return () => clearTimeout(timer);
-  }, [pathname]);
 
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
-    console.log('Searching for:', searchQuery);
-  };
-
-  const handleLogout = async () => {
-    try {
-      await logoutApi();
-    } catch (error) {
-      console.error('Logout failed:', error);
-    } finally {
-      clearAuth();
-      router.push('/login');
-    }
+    //
   };
 
   const handleSwitchBackToAdmin = async () => {
@@ -106,26 +41,6 @@ export default function AdminLayout({
       setSwitchingBack(false);
     }
   };
-
-  // Show loading screen ONLY on initial auth check, not on every navigation
-  if (!isHydrated || (isLoading && !authChecked)) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-100 dark:bg-gray-900">
-        <div className="text-center">
-          <div className="relative mb-4 inline-block">
-            <div className="w-16 h-16 border-4 border-indigo-200 dark:border-indigo-800 rounded-full"></div>
-            <div className="w-16 h-16 border-4 border-indigo-600 border-t-transparent rounded-full animate-spin absolute top-0 left-0"></div>
-          </div>
-          <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-2">Loading...</h3>
-        </div>
-      </div>
-    );
-  }
-
-  // Don't render protected content if not authenticated (after auth check is complete)
-  if (authChecked && !user) {
-    return null;
-  }
 
   return (
     <div>
@@ -178,19 +93,6 @@ export default function AdminLayout({
           </div>
         )}
 
-        {/* User Switching Loading Overlay */}
-        {isLoading && isHydrated && (
-          <div className="fixed inset-0 bg-white/90 dark:bg-gray-900/90 backdrop-blur-sm flex items-center justify-center z-[110]">
-            <div className="text-center">
-              <div className="relative mb-4">
-                <div className="w-16 h-16 border-4 border-orange-200 dark:border-orange-800 rounded-full"></div>
-                <div className="w-16 h-16 border-4 border-orange-600 border-t-transparent rounded-full animate-spin absolute top-0 left-0"></div>
-              </div>
-              <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-2">Loading ...</h3>
-            </div>
-          </div>
-        )}
-
         <Sidebar
           sidebarOpen={sidebarOpen}
           mobileMenuOpen={mobileMenuOpen}
@@ -201,7 +103,6 @@ export default function AdminLayout({
         <div className="flex-1 flex flex-col overflow-hidden">
           <Header
             user={user}
-            logout={handleLogout}
             sidebarOpen={sidebarOpen}
             setSidebarOpen={setSidebarOpen}
             setMobileMenuOpen={setMobileMenuOpen}

@@ -1,57 +1,35 @@
 'use client';
 
-import { useState, FormEvent, useEffect, Suspense } from 'react';
-import { useRouter, useSearchParams } from 'next/navigation';
-import useAuthStore from "@/stores/auth-store";
-import { login as loginApi } from '@/lib/api/auth';
+import { useState, FormEvent, Suspense } from 'react';
 import { Mail, Lock, Eye, EyeOff } from 'lucide-react';
 import Link from 'next/link';
+import { useAuth } from '@/hooks/use-auth';
 
 function LoginForm() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
-  const [rememberMe, setRememberMe] = useState(false);
-  const [error, setError] = useState('');
-  const [isLoading, setIsLoading] = useState(false);
-  const router = useRouter();
-  const searchParams = useSearchParams();
-  const login = useAuthStore((state) => state.login);
-  const user = useAuthStore((state) => state.user);
-  const isHydrated = useAuthStore((state) => state.isHydrated);
+  const [shouldRemember, setShouldRemember] = useState(false)
+  const [errors, setErrors] = useState([])
+  const [isLoading, setIsLoading] = useState(false)
+  const { login } = useAuth({
+    middleware: 'guest',
+    redirectIfAuthenticated: '/dashboard',
+  });
 
-  // Get redirect URL from query params
-  const redirectUrl = searchParams.get('redirect') || '/dashboard';
 
-  // Redirect if already authenticated
-  useEffect(() => {
-    if (isHydrated && user) {
-      router.push(redirectUrl);
-    }
-  }, [isHydrated, user, redirectUrl, router]);
-
-  const handleSubmit = async (e: FormEvent<HTMLFormElement>) => {
-    e.preventDefault();
-    setError('');
+  const handleSubmit = async (event: FormEvent<HTMLFormElement>): Promise<void> => {
+    event.preventDefault();
     setIsLoading(true);
 
-    try {
-      const response = await loginApi({ email, password, remember: rememberMe });
-      
-      if (response?.data?.user) {
-        // Store user in auth store
-        login(response.data.user);
-        
-        // Redirect to the originally requested page or default to /dashboard
-        router.push(redirectUrl);
-      } else {
-        setError('Invalid email or password');
-      }
-    } catch (err: any) {
-      setError(err.response?.data?.message || 'An error occurred during login');
-    } finally {
-      setIsLoading(false);
-    }
+    login({
+      email,
+      password,
+      remember: shouldRemember,
+      setErrors,
+    });
+
+    setIsLoading(false);
   };
 
   return (
@@ -71,9 +49,9 @@ function LoginForm() {
         <div className="bg-white dark:bg-gray-800 shadow-lg dark:shadow-gray-900/50 rounded-lg border border-gray-200 dark:border-gray-700 p-8">
           <form className="space-y-4" onSubmit={handleSubmit}>
             {/* Error Message */}
-            {error && (
+            {errors.length > 0 && (
               <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 text-red-700 dark:text-red-400 px-4 py-3 rounded-md text-sm">
-                {error}
+                {errors}
               </div>
             )}
 
@@ -141,8 +119,8 @@ function LoginForm() {
                   id="remember-me"
                   name="remember-me"
                   type="checkbox"
-                  checked={rememberMe}
-                  onChange={(e) => setRememberMe(e.target.checked)}
+                  checked={shouldRemember}
+                  onChange={(e) => setShouldRemember(e.target.checked)}
                   className="h-4 w-4 text-indigo-600 focus:ring-indigo-500 dark:focus:ring-indigo-400 border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-gray-700 cursor-pointer"
                 />
                 <label htmlFor="remember-me" className="ml-2 block text-sm text-gray-700 dark:text-gray-300 cursor-pointer">
@@ -161,7 +139,7 @@ function LoginForm() {
             <button
               type="submit"
               disabled={isLoading}
-              className="w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 dark:focus:ring-offset-gray-800 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+              className="w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 dark:focus:ring-offset-gray-800 disabled:opacity-50 disabled:cursor-not-allowed transition-colors cursor-pointer"
             >
               {isLoading ? (
                 <div className="flex items-center gap-2">
