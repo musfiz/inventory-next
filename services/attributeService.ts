@@ -45,6 +45,30 @@ class AttributeService {
     const response = await apiClient.get<ApiResponse<Attribute>>(`/api/v1/attribute/${id}`);
     return response.data.data;
   }
+
+  /**
+   * Get all attributes
+   * GET /api/v1/attribute
+   */
+  async getAllAttributes(): Promise<Attribute[]> {
+    const response = await apiClient.get<ApiResponse<Attribute[]>>('/api/v1/attribute');
+    return response.data.data;
+  }
+
+  /**
+   * Search attributes by name with limit
+   * GET /api/v1/attribute/search
+   */
+  async searchAttributes(search?: string, limit: number = 5): Promise<Attribute[]> {
+    const params = new URLSearchParams();
+    if (search) params.append('search', search);
+    params.append('limit', limit.toString());
+
+    const response = await apiClient.get<ApiResponse<Attribute[]>>(
+      `/api/v1/attribute/search?${params.toString()}`
+    );
+    return response.data.data;
+  }
 }
 
 // Create singleton instance

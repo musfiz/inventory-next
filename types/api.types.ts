@@ -70,6 +70,17 @@ export interface Attribute {
   updated_at?: string;
 }
 
+export interface AttributeValue {
+  id: string;
+  attribute_id: string;
+  value: string;
+  display_value?: string;
+  hex_code?: string;
+  sort_order?: number;
+  attribute?: Attribute;
+  created_at?: string;
+}
+
 // Auth API Types
 export interface LoginRequest {
   email: string;

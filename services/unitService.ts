@@ -16,7 +16,6 @@ class UnitService {
     short_name: string;
     is_default: boolean;
     is_active: boolean;
-    tenant_id: string;
   }): Promise<Unit> {
     const response = await apiClient.post<ApiResponse<Unit>>(
       '/api/v1/unit/store',

@@ -27,8 +27,7 @@ export default function UnitsPage() {
     name: '',
     short_name: '',
     is_default: false,
-    is_active: true,
-    tenant_id: '',
+    is_active: true
   });
   const [formErrors, setFormErrors] = useState<{ [key: string]: string }>({});
   const [refreshKey, setRefreshKey] = useState(0);
@@ -38,7 +37,7 @@ export default function UnitsPage() {
     setCurrentUnit(null);
     // Use tenantFilter for superadmin, empty for regular users
     const initialTenantId = isSuperAdmin ? tenantFilter : '';
-    setFormData({ name: '', short_name: '', is_default: false, is_active: true, tenant_id: initialTenantId });
+    setFormData({ name: '', short_name: '', is_default: false, is_active: true });
     setFormErrors({});
     setShowForm(true);
   };
@@ -47,17 +46,11 @@ export default function UnitsPage() {
     setIsEditing(true);
     setCurrentUnit(unit);
 
-    // For superadmin, set the tenantFilter to the unit's tenant_id
-    if (isSuperAdmin && unit.tenant?.id) {
-      setTenantFilter(unit.tenant.id);
-    }
-
     setFormData({
       name: unit.name,
       short_name: unit.short_name,
       is_default: unit.is_default,
-      is_active: unit.is_active,
-      tenant_id: unit.tenant?.id || '',
+      is_active: unit.is_active
     });
     setFormErrors({});
     setShowForm(true);
@@ -102,8 +95,7 @@ export default function UnitsPage() {
         name: formData.name,
         short_name: formData.short_name,
         is_default: formData.is_default,
-        is_active: formData.is_active,
-        tenant_id: tenantId,
+        is_active: formData.is_active
       });
 
       notify.success(isEditing ? 'Unit updated successfully' : 'Unit added successfully');
@@ -146,7 +138,6 @@ export default function UnitsPage() {
       html: `Are you sure you want to delete <strong>${unit.name}</strong>?<br><br>
             <div style="color: #6b7280; font-size: 13px; line-height: 1.5;">
               <strong>Short Name:</strong> ${unit.short_name}<br>
-              <strong>Tenant:</strong> ${unit.tenant?.business_name || 'N/A'}<br>
               <strong>Status:</strong> ${unit.is_active ? 'Active' : 'Inactive'}<br>
               <strong>Default:</strong> ${unit.is_default ? 'Yes' : 'No'}
             </div><br>
@@ -244,16 +235,6 @@ export default function UnitsPage() {
       cell: ({ row }) => getDefaultBadge(row.original.is_default),
     },
     {
-      accessorKey: 'tenant.business_name',
-      header: 'Tenant',
-      meta: { width: '15%' },
-      cell: ({ row }) => (
-        <span className="text-xs text-gray-600 dark:text-gray-400">
-          {row.original.tenant?.business_name || 'N/A'}
-        </span>
-      ),
-    },
-    {
       accessorKey: 'created_at',
       header: 'Created At',
       meta: { width: '15%' },
@@ -299,7 +280,6 @@ export default function UnitsPage() {
   // Build API endpoint with filters
   const buildApiEndpoint = () => {
     const params = new URLSearchParams();
-    if (isSuperAdmin && tenantFilter) params.append('tenant_id', tenantFilter);
     const queryString = params.toString();
     return `/api/v1/unit${queryString ? `?${queryString}` : ''}`;
   };

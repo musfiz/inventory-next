@@ -15,7 +15,6 @@ class BrandService {
     name: string;
     description: string;
     is_active: boolean;
-    tenant_id: string;
     logo_url?: File | null;
   }): Promise<Brand> {
     const formData = new FormData();
@@ -24,7 +23,6 @@ class BrandService {
     formData.append('name', data.name);
     formData.append('description', data.description);
     formData.append('is_active', data.is_active ? '1' : '0');
-    formData.append('tenant_id', data.tenant_id);
 
     if (data.logo_url) {
       formData.append('logo_url', data.logo_url);

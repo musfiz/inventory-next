@@ -1,6 +1,7 @@
 'use client';
 
 import Select, { StylesConfig, ThemeConfig } from 'react-select';
+import AsyncSelect from 'react-select/async';
 
 export interface SelectOption {
   value: string;
@@ -10,19 +11,26 @@ export interface SelectOption {
 interface CustomSelectProps {
   value?: SelectOption | null;
   onChange: (option: SelectOption | null) => void;
-  options: SelectOption[];
+  options?: SelectOption[];
+  loadOptions?: (inputValue: string, callback: (options: SelectOption[]) => void) => void;
   placeholder?: string;
   className?: string;
   classNamePrefix?: string;
   isDisabled?: boolean;
   isLoading?: boolean;
+  defaultOptions?: boolean | SelectOption[];
+  isInvalid?: boolean;
 }
 
-const customStyles: StylesConfig<SelectOption, false> = {
+const customStyles = (isInvalid?: boolean): StylesConfig<SelectOption, false> => ({
   control: (provided, state) => ({
     ...provided,
     backgroundColor: 'var(--tw-bg-gray-700)',
-    borderColor: state.isFocused ? 'rgb(99, 102, 241)' : 'rgb(209, 213, 219)', // border-gray-300
+    borderColor: isInvalid
+      ? 'rgb(239, 68, 68)' // red-500
+      : state.isFocused
+        ? 'rgb(99, 102, 241)' // indigo-500
+        : 'rgb(209, 213, 219)', // border-gray-300
     borderWidth: '1px',
     borderRadius: '0.25rem', // rounded-md
     boxShadow: state.isFocused ? '0 0 0 1px rgb(99, 102, 241)' : 'none',
@@ -30,7 +38,11 @@ const customStyles: StylesConfig<SelectOption, false> = {
     minHeight: '32px',
     height: '32px',
     '&:hover': {
-      borderColor: state.isFocused ? 'rgb(99, 102, 241)' : 'rgb(156, 163, 175)', // border-gray-400
+      borderColor: isInvalid
+        ? 'rgb(239, 68, 68)' // red-500
+        : state.isFocused
+          ? 'rgb(99, 102, 241)' // indigo-500
+          : 'rgb(156, 163, 175)', // border-gray-400
     },
   }),
   valueContainer: (provided) => ({
@@ -77,7 +89,7 @@ const customStyles: StylesConfig<SelectOption, false> = {
     ...provided,
     color: 'var(--tw-text-gray-100)',
   }),
-};
+});
 
 const customTheme: ThemeConfig = (theme) => ({
   ...theme,
@@ -94,21 +106,48 @@ export default function CustomSelect({
   value,
   onChange,
   options,
+  loadOptions,
   placeholder = "Select...",
   className = "text-sm",
   classNamePrefix = "react-select",
   isDisabled = false,
   isLoading = false,
+  defaultOptions = false,
+  isInvalid = false,
 }: CustomSelectProps) {
+  const styles = customStyles(isInvalid);
+
+  // Use AsyncSelect if loadOptions is provided
+  if (loadOptions) {
+    return (
+      <AsyncSelect
+        value={value}
+        onChange={onChange}
+        loadOptions={loadOptions}
+        defaultOptions={defaultOptions}
+        placeholder={placeholder}
+        className={className}
+        classNamePrefix={classNamePrefix}
+        styles={styles}
+        theme={customTheme}
+        isDisabled={isDisabled}
+        isLoading={isLoading}
+        cacheOptions
+        defaultMenuIsOpen={false}
+      />
+    );
+  }
+
+  // Use regular Select
   return (
     <Select
       value={value}
       onChange={onChange}
-      options={options}
+      options={options || []}
       placeholder={placeholder}
       className={className}
       classNamePrefix={classNamePrefix}
-      styles={customStyles}
+      styles={styles}
       theme={customTheme}
       isDisabled={isDisabled}
       isLoading={isLoading}

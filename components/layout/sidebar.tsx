@@ -66,7 +66,14 @@ const navigation: NavigationItem[] = [
       { name: 'General', href: '/settings', icon: Wrench },
       { name: 'Brands', href: '/brands', icon: Building2 },
       { name: 'Units', href: '/units', icon: Package },
-      { name: 'Attributes', href: '/attributes', icon: Tag },
+      {
+        name: 'Attributes',
+        icon: Tag,
+        children: [
+          { name: 'Attribute List', href: '/attributes', icon: List },
+          { name: 'Attribute Values', href: '/attribute-values', icon: Tag },
+        ]
+      },
       { name: 'Notifications', href: '/settings/notifications', icon: Bell },
     ]
   },

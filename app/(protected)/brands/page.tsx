@@ -27,8 +27,7 @@ export default function BrandsPage() {
     name: '',
     logo_url: null as File | null,
     description: '',
-    is_active: true,
-    tenant_id: '',
+    is_active: true
   });
   const [formErrors, setFormErrors] = useState<{ [key: string]: string }>({});
   const [refreshKey, setRefreshKey] = useState(0);
@@ -36,9 +35,7 @@ export default function BrandsPage() {
   const handleAddBrand = () => {
     setIsEditing(false);
     setCurrentBrand(null);
-    // Use tenantFilter for superadmin, empty for regular users
-    const initialTenantId = isSuperAdmin ? tenantFilter : '';
-    setFormData({ name: '', logo_url: null, description: '', is_active: true, tenant_id: initialTenantId });
+    setFormData({ name: '', logo_url: null, description: '', is_active: true });
     setFormErrors({});
     setShowForm(true);
   };
@@ -47,17 +44,11 @@ export default function BrandsPage() {
     setIsEditing(true);
     setCurrentBrand(brand);
 
-    // For superadmin, set the tenantFilter to the brand's tenant_id
-    if (isSuperAdmin && brand.tenant?.id) {
-      setTenantFilter(brand.tenant.id);
-    }
-
     setFormData({
       name: brand.name,
       logo_url: null,
       description: brand.description || '',
-      is_active: brand.is_active,
-      tenant_id: brand.tenant?.id || '',
+      is_active: brand.is_active
     });
     setFormErrors({});
     setShowForm(true);
@@ -68,26 +59,13 @@ export default function BrandsPage() {
     if (!formData.name.trim()) {
       errors.name = 'Brand name is required';
     }
-    if (isSuperAdmin && !tenantFilter) {
-      errors.tenant = 'Please select a tenant';
-    }
-    const tenantId = isSuperAdmin ? tenantFilter : (currentUser?.tenant_id || '');
-    if (!tenantId) {
-      errors.tenant_id = 'Tenant ID is required';
-    }
     setFormErrors(errors);
     return Object.keys(errors).length === 0;
   };
 
   const handleFormSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    // Set tenant_id: from tenantFilter for superadmin (set from CustomSelect), otherwise from currentUser
-    const tenantId = isSuperAdmin ? tenantFilter : (currentUser?.tenant_id || '');
 
-    if (!tenantId) {
-      notify.error('Tenant selection required');
-      return;
-    }
     setFormErrors({}); // Clear previous errors before validation/submission
     if (!validateForm()) {
       return;
@@ -99,7 +77,6 @@ export default function BrandsPage() {
         name: formData.name,
         description: formData.description,
         is_active: formData.is_active,
-        tenant_id: tenantId,
         logo_url: formData.logo_url,
       });
 
@@ -134,8 +111,7 @@ export default function BrandsPage() {
       title: 'Delete Brand',
       html: `Are you sure you want to delete <strong>${brand.name}</strong>?<br><br>
             <div style="color: #6b7280; font-size: 13px; line-height: 1.5;">
-              <strong>Description:</strong> ${brand.description || 'No description'}<br>
-              <strong>Tenant:</strong> ${brand.tenant?.business_name || 'N/A'}<br>
+              <strong>Name:</strong> ${brand.name || 'No description'}<br>
               <strong>Status:</strong> ${brand.is_active ? 'Active' : 'Inactive'}
             </div><br>
             <em style="color: #dc2626; font-size: 12px;">This action cannot be undone and will permanently delete the brand.</em>`,
@@ -223,16 +199,6 @@ export default function BrandsPage() {
         <div className="text-xs text-gray-600 dark:text-gray-400 truncate max-w-xs" title={row.original.description}>
           {row.original.description || 'No description'}
         </div>
-      ),
-    },
-    {
-      accessorKey: 'tenant.business_name',
-      header: 'Tenant',
-      meta: { width: '15%' },
-      cell: ({ row }) => (
-        <span className="text-xs text-gray-600 dark:text-gray-400">
-          {row.original.tenant?.business_name || 'N/A'}
-        </span>
       ),
     },
     {
