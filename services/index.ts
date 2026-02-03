@@ -7,6 +7,7 @@ export { tenantService } from './tenantService';
 export { userService } from './userService';
 export { default as brandService } from './brandService';
 export { default as unitService } from './unitService';
+export { default as attributeService } from './attributeService';
 
 // Re-export types for convenience
 export type {
@@ -14,6 +15,7 @@ export type {
   Tenant,
   Brand,
   Unit,
+  Attribute,
   RegisterUserRequest,
   RegisterUserResponse,
   RegisterTenantRequest,

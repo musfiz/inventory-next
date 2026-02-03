@@ -41,8 +41,6 @@ export interface Brand {
   name: string;
   description?: string;
   logo_url?: string;
-  tenant_id?: string;
-  tenant?: Tenant;
   is_active: boolean;
   created_at?: string;
   updated_at?: string;
@@ -53,9 +51,21 @@ export interface Unit {
   name: string;
   short_name: string;
   is_default: boolean;
-  tenant_id?: string;
-  tenant?: Tenant;
   is_active: boolean;
+  created_at?: string;
+  updated_at?: string;
+}
+
+export interface Attribute {
+  id: string;
+  name: string;
+  type: 'text' | 'select' | 'number' | 'date' | 'boolean' | 'color' | 'size';
+  data_type: 'string' | 'integer' | 'decimal' | 'date' | 'boolean';
+  measurement_unit?: string;
+  is_global: boolean;
+  is_system: boolean;
+  description?: string;
+  sort_order?: number;
   created_at?: string;
   updated_at?: string;
 }
