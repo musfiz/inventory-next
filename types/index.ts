@@ -1,5 +1,5 @@
 // Re-export all API types
-export * from './api';
+export * from './api.types';
 
 // Legacy interface kept for backward compatibility
 // Use types from api.ts for new code
@@ -19,6 +19,7 @@ export interface User {
   id: string;
   email: string;
   name: string;
+  email_verified_at?: string | null;
   user_type: string;
   tenant_id?: string;
   phone?: string;

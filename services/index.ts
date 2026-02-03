@@ -3,7 +3,6 @@
  * Central export point for all API services
  */
 
-export { authService } from './authService';
 export { tenantService } from './tenantService';
 export { userService } from './userService';
 export { default as brandService } from './brandService';
@@ -12,8 +11,6 @@ export { default as brandService } from './brandService';
 export type {
   User,
   Tenant,
-  LoginRequest,
-  LoginResponse,
   RegisterUserRequest,
   RegisterUserResponse,
   RegisterTenantRequest,
@@ -23,12 +20,4 @@ export type {
   UserListResponse,
   ApiResponse,
   ApiError,
-} from '@/types/api';
-
-// Re-export API client utilities
-export {
-  apiClient,
-  getCookie,
-  deleteCookie,
-  isAuthenticated,
-} from '@/lib/apiClient';
+} from '@/types/api.types';
