@@ -21,6 +21,7 @@ import {
   Video,
   Music,
   Building2,
+  Package,
   SunMedium,
   LucideIcon
 } from 'lucide-react';
@@ -63,6 +64,7 @@ const navigation: NavigationItem[] = [
     children: [
       { name: 'General', href: '/settings', icon: Wrench },
       { name: 'Brands', href: '/brands', icon: Building2 },
+      { name: 'Units', href: '/units', icon: Package },
       { name: 'Notifications', href: '/settings/notifications', icon: Bell },
     ]
   },

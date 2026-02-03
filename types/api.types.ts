@@ -48,6 +48,18 @@ export interface Brand {
   updated_at?: string;
 }
 
+export interface Unit {
+  id: string;
+  name: string;
+  short_name: string;
+  is_default: boolean;
+  tenant_id?: string;
+  tenant?: Tenant;
+  is_active: boolean;
+  created_at?: string;
+  updated_at?: string;
+}
+
 // Auth API Types
 export interface LoginRequest {
   email: string;
