@@ -13,10 +13,14 @@ import {
   CheckCircle,
   AlertTriangle,
   Sun,
-  Moon
+  Moon,
+  ArrowLeftRight
 } from 'lucide-react';
 import { useTheme } from '@/contexts/ThemeContext';
 import { useAuth } from '@/hooks/use-auth';
+import { useAuthStore } from '@/stores/auth-store';
+import { useRouter } from 'next/navigation';
+import { notify } from '@/lib/notifications';
 
 interface HeaderProps {
   user: any;
@@ -40,12 +44,35 @@ export default function Header({
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const [notificationOpen, setNotificationOpen] = useState(false);
   const [mounted, setMounted] = useState(false);
+  const [switchingBack, setSwitchingBack] = useState(false);
+  const router = useRouter();
   const { theme, toggleTheme } = useTheme();
   const { logout } = useAuth();
+  const isSwitchedUser = useAuthStore((state) => state.isSwitchedUser);
+  const originalSuperAdmin = useAuthStore((state) => state.originalSuperAdmin);
+  const switchBack = useAuthStore((state) => state.switchBack);
 
   useEffect(() => {
     setMounted(true);
   }, []);
+
+  const handleSwitchBack = async () => {
+    setSwitchingBack(true);
+    setDropdownOpen(false);
+    try {
+      const success = await switchBack();
+      if (success) {
+        notify.success('Switched back to super admin');
+        router.push('/dashboard');
+      } else {
+        notify.error('Failed to switch back. Please try again or logout and login');
+      }
+    } catch (error) {
+      notify.error('An error occurred. Please try again');
+    } finally {
+      setSwitchingBack(false);
+    }
+  };
 
   return (
     <header className="bg-white dark:bg-gray-900 shadow-sm dark:shadow-gray-800 min-h-14 h-24 flex-0 sticky top-0 z-20 border-b border-gray-200 dark:border-gray-800" style={{ height: '6rem' }}>
@@ -219,7 +246,37 @@ export default function Header({
                   <div className="px-4 py-3 border-b border-gray-200 dark:border-gray-700">
                     <p className="text-sm font-medium text-gray-900 dark:text-gray-100">{user?.name || 'No Name'}</p>
                     <p className="text-xs text-gray-500 dark:text-gray-400">{user?.email || 'No Email'}</p>
+                    {isSwitchedUser && originalSuperAdmin && (
+                      <div className="mt-2 px-2 py-1 bg-orange-100 dark:bg-orange-900/30 rounded text-xs text-orange-800 dark:text-orange-300">
+                        Switched from: {originalSuperAdmin.name}
+                      </div>
+                    )}
                   </div>
+                  {isSwitchedUser && (
+                    <>
+                      <button
+                        onClick={handleSwitchBack}
+                        disabled={switchingBack}
+                        className={`flex items-center gap-3 px-4 py-2.5 text-sm transition-colors cursor-pointer w-full text-left ${switchingBack
+                          ? 'text-gray-400 dark:text-gray-600 cursor-not-allowed'
+                          : 'text-orange-600 dark:text-orange-400 hover:bg-orange-50 dark:hover:bg-orange-900/20'
+                          }`}
+                      >
+                        {switchingBack ? (
+                          <>
+                            <div className="w-5 h-5 animate-spin rounded-full border-2 border-orange-600 border-t-transparent" />
+                            Switching back...
+                          </>
+                        ) : (
+                          <>
+                            <ArrowLeftRight className="h-5 w-5" />
+                            Switch Back to Admin
+                          </>
+                        )}
+                      </button>
+                      <div className="border-t border-gray-200 dark:border-gray-700 my-1"></div>
+                    </>
+                  )}
                   <Link
                     href="/settings"
                     onClick={() => setDropdownOpen(false)}

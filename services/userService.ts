@@ -168,6 +168,40 @@ class UserService {
     });
     return response.data;
   }
+
+  /**
+   * Switch to another user (Super Admin only)
+   * POST /api/v1/switch-user/:userId
+   */
+  async switchUser(userId: string): Promise<{
+    user: User;
+    switched_from: { id: string; name: string; email: string };
+    is_switched_user: boolean;
+  }> {
+    const response = await apiClient.post<ApiResponse<{
+      user: User;
+      switched_from: { id: string; name: string; email: string };
+      is_switched_user: boolean;
+    }>>(`/api/v1/switch-user/${userId}`);
+    return response.data.data;
+  }
+
+  /**
+   * Switch back to super admin account
+   * POST /api/v1/switch-back
+   */
+  async switchBack(): Promise<{
+    user: User;
+    switched_back_from: { id: string; name: string; email: string };
+    is_switched_back: boolean;
+  }> {
+    const response = await apiClient.post<ApiResponse<{
+      user: User;
+      switched_back_from: { id: string; name: string; email: string };
+      is_switched_back: boolean;
+    }>>('/api/v1/switch-back');
+    return response.data.data;
+  }
 }
 
 export const userService = new UserService();

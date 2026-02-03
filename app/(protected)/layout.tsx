@@ -2,7 +2,7 @@
 
 import { useAuthStore } from '@/stores/auth-store';
 import { useState, useEffect, Suspense } from 'react';
-import { usePathname } from 'next/navigation';
+import { usePathname, useRouter } from 'next/navigation';
 import { User } from 'lucide-react';
 import { notify } from '@/lib/notifications';
 import Header from "@/components/layout/header";
@@ -17,7 +17,9 @@ export default function AdminLayout({
   const user = useAuthStore((state) => state.user);
   const isSwitchedUser = useAuthStore((state) => state.isSwitchedUser);
   const originalSuperAdmin = useAuthStore((state) => state.originalSuperAdmin);
+  const switchBack = useAuthStore((state) => state.switchBack);
   const pathname = usePathname();
+  const router = useRouter();
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
@@ -42,12 +44,15 @@ export default function AdminLayout({
   const handleSwitchBackToAdmin = async () => {
     setSwitchingBack(true);
     try {
-      // TODO: Implement when API endpoint is available
-      console.warn('switchBackToAdmin not yet implemented');
-      notify.error('Feature not yet implemented');
+      const success = await switchBack();
+      if (success) {
+        notify.success('Switched back to super admin');
+        router.push('/dashboard');
+      } else {
+        notify.error('Failed to switch back. Please try again or logout and login');
+      }
     } catch (error) {
-      console.error('Switch back failed:', error);
-      notify.error('Failed to switch back to admin');
+      notify.error('An error occurred while switching back. Please try again');
     } finally {
       setSwitchingBack(false);
     }

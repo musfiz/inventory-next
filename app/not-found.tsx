@@ -48,7 +48,7 @@ export default function NotFound() {
           </Link>
 
           <Link
-            href="/admin"
+            href="/dashboard"
             className="group flex items-center gap-2 px-6 py-3 bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 rounded-lg border-2 border-gray-300 dark:border-gray-600 hover:border-indigo-500 dark:hover:border-indigo-400 hover:text-indigo-600 dark:hover:text-indigo-400 transition-all duration-200 font-medium shadow-sm hover:shadow-md"
           >
             <Search className="w-5 h-5 group-hover:scale-110 transition-transform duration-200" />

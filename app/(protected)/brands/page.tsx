@@ -7,9 +7,10 @@ import DataTable from '@/components/ui/datatable';
 import CustomSelect from '@/components/ui/custom-select';
 import { Brand } from "@/types";
 import { useAuthStore } from '@/stores/auth-store';
-import { confirm, notify } from '@/lib/notifications';
+import { notify, confirm } from '@/lib/notifications';
 import tenantService from '@/services/tenantService';
 import brandService from '@/services/brandService';
+import { formatDate } from '@/lib/utils/date';
 
 export default function BrandsPage() {
   const [tenantFilter, setTenantFilter] = useState<string>('');
@@ -108,10 +109,8 @@ export default function BrandsPage() {
     } catch (error: any) {
       const errorData = error?.response?.data;
       if (errorData?.errors) {
-        // Map server-side errors to formErrors state (assumes { errors: { fieldName: 'message' } })
         setFormErrors(errorData.errors);
       } else {
-        // Fallback to general error notification if no field-specific errors
         const errorMessage = errorData?.message || error?.message || 'Failed to save brand';
         notify.error(errorMessage);
       }
@@ -130,12 +129,31 @@ export default function BrandsPage() {
     );
   };
 
-  const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString('en-US', {
-      year: 'numeric',
-      month: 'short',
-      day: 'numeric',
+  const handleDeleteBrand = async (brand: Brand) => {
+    const result = await confirm({
+      title: 'Delete Brand',
+      html: `Are you sure you want to delete <strong>${brand.name}</strong>?<br><br>
+            <div style="color: #6b7280; font-size: 13px; line-height: 1.5;">
+              <strong>Description:</strong> ${brand.description || 'No description'}<br>
+              <strong>Tenant:</strong> ${brand.tenant?.business_name || 'N/A'}<br>
+              <strong>Status:</strong> ${brand.is_active ? 'Active' : 'Inactive'}
+            </div><br>
+            <em style="color: #dc2626; font-size: 12px;">This action cannot be undone and will permanently delete the brand.</em>`,
+      confirmButtonText: 'Delete',
+      cancelButtonText: 'Cancel',
+      icon: 'warning',
     });
+
+    if (!result.isConfirmed) return;
+
+    try {
+      await brandService.deleteBrand(brand.id);
+      notify.success('Brand deleted successfully');
+      setRefreshKey(prev => prev + 1);
+    } catch (error: any) {
+      const errorMessage = error?.response?.data?.message || 'Failed to delete brand';
+      notify.error(errorMessage);
+    }
   };
 
   // Fetch tenants for superadmin filter
@@ -250,7 +268,7 @@ export default function BrandsPage() {
             <button
               className="p-1 text-red-600 hover:text-red-900 dark:text-red-400 dark:hover:text-red-300 hover:bg-red-50 dark:hover:bg-red-900/20 rounded cursor-pointer"
               title="Delete"
-              onClick={() => console.log('Delete', row.original.id)}
+              onClick={() => handleDeleteBrand(row.original)}
             >
               <Trash2 className="w-3.5 h-3.5" />
             </button>

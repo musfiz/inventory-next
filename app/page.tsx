@@ -10,6 +10,8 @@ import {
   Warehouse, CheckCircle, Target, BarChart3, Globe,
   Shield, Zap, RefreshCw, Database, Users, FileText
 } from "lucide-react";
+import { useAuth } from "@/hooks/use-auth";
+
 
 export default function Home() {
   const { user } = useAuthStore();
@@ -19,6 +21,8 @@ export default function Home() {
   const dropdownRef = useRef<HTMLDivElement>(null);
 
   const isAuthenticated = !!user;
+
+  const { logout } = useAuth();
 
   // Close dropdown when clicking outside
   useEffect(() => {
@@ -34,7 +38,7 @@ export default function Home() {
 
   const handleLogout = async () => {
     try {
-      await logoutApi();
+      await logout();
     } catch (error) {
       console.error('Logout failed:', error);
     } finally {

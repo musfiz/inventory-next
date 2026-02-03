@@ -41,10 +41,10 @@ class BrandService {
 
   /**
    * Delete a brand
-   * DELETE /api/v1/brand/{id}
+   * GET /api/v1/brand/{id}
    */
   async deleteBrand(id: string): Promise<void> {
-    await apiClient.delete(`/api/v1/brand/${id}`);
+    await apiClient.get(`/api/v1/brand/${id}`);
   }
 
   /**

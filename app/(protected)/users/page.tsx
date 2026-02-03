@@ -152,7 +152,7 @@ export default function TenantsPage() {
                 try {
                   const switchSuccess = await switchUser(row.original.id.toString());
                   if (switchSuccess) {
-                    router.push('/admin');
+                    router.push('/dashboard');
                   } else {
                     notify.switchUserError();
                   }
