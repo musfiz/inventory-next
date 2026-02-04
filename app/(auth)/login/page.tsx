@@ -165,7 +165,7 @@ function LoginForm() {
         {/* Footer Links */}
         <div className="text-center text-xs text-gray-500 dark:text-gray-400 space-y-1">
           <p>
-            Don't have an account?{' '}
+            Don&apos;t have an account?{' '}
             <Link href="/signup" className="font-medium text-indigo-600 dark:text-indigo-400 hover:text-indigo-500 dark:hover:text-indigo-300 transition-colors">
               Create account
             </Link>

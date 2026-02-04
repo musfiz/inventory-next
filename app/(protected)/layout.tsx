@@ -5,6 +5,7 @@ import { useState, useEffect, Suspense } from 'react';
 import { usePathname, useRouter } from 'next/navigation';
 import { User } from 'lucide-react';
 import { notify } from '@/lib/notifications';
+import { useAuth } from '@/hooks/use-auth';
 import Header from "@/components/layout/header";
 import Sidebar from "@/components/layout/sidebar";
 import Loading from './Loading';
@@ -14,6 +15,7 @@ export default function AdminLayout({
 }: {
   children: React.ReactNode;
 }) {
+  const { user: authUser, isRedirecting } = useAuth({ middleware: 'auth' });
   const user = useAuthStore((state) => state.user);
   const isSwitchedUser = useAuthStore((state) => state.isSwitchedUser);
   const originalSuperAdmin = useAuthStore((state) => state.originalSuperAdmin);
@@ -25,6 +27,11 @@ export default function AdminLayout({
   const [searchQuery, setSearchQuery] = useState('');
   const [isRouteLoading, setIsRouteLoading] = useState(false);
   const [switchingBack, setSwitchingBack] = useState(false);
+
+  // Show loading while authenticating or redirecting
+  if (isRedirecting || !authUser) {
+    return <Loading />;
+  }
 
   // Handle route changes - show loading indicator
   useEffect(() => {
