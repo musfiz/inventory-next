@@ -1,21 +1,33 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 import { Eye, Edit, Trash2, Building2, Plus, X } from 'lucide-react';
 import { ColumnDef } from '@tanstack/react-table';
 import DataTable from '@/components/ui/datatable';
 import CustomSelect from '@/components/ui/custom-select';
 import { Brand } from "@/types";
 import { useAuthStore } from '@/stores/auth-store';
+import { usePermissions } from '@/hooks/use-permissions';
 import { notify, confirm } from '@/lib/notifications';
 import tenantService from '@/services/tenantService';
 import brandService from '@/services/brandService';
 import { formatDate } from '@/lib/utils/date';
 
 export default function BrandsPage() {
+  const router = useRouter();
   const [tenantFilter, setTenantFilter] = useState<string>('');
   const [tenants, setTenants] = useState<any[]>([]);
   const currentUser = useAuthStore((state) => state.user);
+  const { hasPermission } = usePermissions();
+
+  // Check permissions
+  useEffect(() => {
+    if (!hasPermission('view-settings')) {
+      router.push('/dashboard');
+      notify('You do not have permission to view brands', 'error');
+    }
+  }, [hasPermission, router]);
 
   // Check if current user is super admin
   const isSuperAdmin = currentUser?.user_type === 'super_admin';

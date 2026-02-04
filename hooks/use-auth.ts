@@ -23,12 +23,18 @@ export const useAuth = ({ middleware, redirectIfAuthenticated }: UseAuthOptions 
         return res.data
       })
       .catch(error => {
-        if (error.response.status === 401) {
-          router.push('/login')
+        if (error.response?.status === 401) {
+          // Only redirect to login if this is a protected route (middleware: 'auth')
+          if (middleware === 'auth') {
+            router.push('/login')
+          }
           return
         }
-        if (error.response.status !== 409) throw error
-        router.push('/verify-email')
+        if (error.response?.status === 409) {
+          router.push('/verify-email')
+          return
+        }
+        throw error
       }),
   )
 
@@ -112,8 +118,8 @@ export const useAuth = ({ middleware, redirectIfAuthenticated }: UseAuthOptions 
     if (!error) {
       await axios.post('/v1/logout').then(() => mutate())
     }
-    clearAuth();
-    window.location.href = '/login';
+    clearAuth();   
+      window.location.href = '/';
   }
 
   useEffect(() => {

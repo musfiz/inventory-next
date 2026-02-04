@@ -1,20 +1,30 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { Eye, Edit, Trash2, Rows4, UserCheck } from 'lucide-react';
 import { ColumnDef } from '@tanstack/react-table';
 import DataTable from '@/components/ui/datatable';
 import { User } from "@/types";
 import { useAuthStore } from '@/stores/auth-store';
+import { usePermissions } from '@/hooks/use-permissions';
 import { confirm, notify, success } from '@/lib/notifications';
 
-export default function TenantsPage() {
+export default function UsersPage() {
   const router = useRouter();
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [switchingUser, setSwitchingUser] = useState<string | null>(null);
   const currentUser = useAuthStore((state) => state.user);
   const switchUser = useAuthStore((state) => state.switchUser);
+  const { hasPermission } = usePermissions();
+
+  // Check permissions
+  useEffect(() => {
+    if (!hasPermission('view-users')) {
+      router.push('/dashboard');
+      notify.error('You do not have permission to view users');
+    }
+  }, [hasPermission, router]);
 
   // Check if current user is super admin
   const isSuperAdmin = currentUser?.user_type === 'super_admin';

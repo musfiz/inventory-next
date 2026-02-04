@@ -20,10 +20,11 @@ export interface User {
   email: string;
   name: string;
   email_verified_at?: string | null;
-  user_type: string;
+  user_type: 'super_admin' | 'tenant_admin' | 'tenant_user';
   tenant_id?: string;
   phone?: string;
   is_active: boolean;
+  permissions?: string[];
   tenant?: Tenant;
   created_at?: string;
   updated_at?: string;

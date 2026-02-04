@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useState, useEffect } from 'react';
 import { useAuthStore } from '@/stores/auth-store';
+import { usePermissions } from '@/hooks/use-permissions';
 import {
   LayoutDashboard,
   Users,
@@ -38,6 +39,8 @@ interface NavigationItem {
   href?: string;
   icon: LucideIcon;
   children?: NavigationItem[];
+  permission?: string;
+  permissions?: string[];
 }
 
 const navigation: NavigationItem[] = [
@@ -45,56 +48,62 @@ const navigation: NavigationItem[] = [
   {
     name: 'Tenant Management',
     icon: Building2,
+    permission: 'view-tenants',
     children: [
-      { name: 'Tenant List', href: '/tenants', icon: List },
-      { name: 'Tenant Registration', href: '/tenants/register', icon: UserPlus },
+      { name: 'Tenant List', href: '/tenants', icon: List, permission: 'view-tenants' },
+      { name: 'Tenant Registration', href: '/tenants/register', icon: UserPlus, permission: 'create-tenants' },
     ]
   },
   {
     name: 'User Management',
     icon: Users,
+    permission: 'view-users',
     children: [
-      { name: 'All Users', href: '/users', icon: List },
-      { name: 'Add User', href: '/users/add', icon: UserPlus },
-      { name: 'User Roles', href: '/users/roles', icon: Shield },
+      { name: 'All Users', href: '/users', icon: List, permission: 'view-users' },
+      { name: 'Add User', href: '/users/add', icon: UserPlus, permission: 'create-users' },
+      { name: 'User Roles', href: '/users/roles', icon: Shield, permission: 'assign-roles' },
     ]
   },
   {
     name: 'Settings',
     icon: Settings,
+    permission: 'view-settings',
     children: [
-      { name: 'General', href: '/settings', icon: Wrench },
-      { name: 'Brands', href: '/brands', icon: Building2 },
-      { name: 'Units', href: '/units', icon: Package },
+      { name: 'General', href: '/settings', icon: Wrench, permission: 'view-settings' },
+      { name: 'Brands', href: '/brands', icon: Building2, permission: 'view-settings' },
+      { name: 'Units', href: '/units', icon: Package, permission: 'view-settings' },
       {
         name: 'Attributes',
         icon: Tag,
+        permission: 'view-settings',
         children: [
-          { name: 'Attribute List', href: '/attributes', icon: List },
-          { name: 'Attribute Values', href: '/attribute-values', icon: Tag },
+          { name: 'Attribute List', href: '/attributes', icon: List, permission: 'view-settings' },
+          { name: 'Attribute Values', href: '/attribute-values', icon: Tag, permission: 'view-settings' },
         ]
       },
-      { name: 'Notifications', href: '/settings/notifications', icon: Bell },
+      { name: 'Notifications', href: '/settings/notifications', icon: Bell, permission: 'view-settings' },
     ]
   },
   {
     name: 'File Manager',
     icon: Folder,
+    permission: 'view-settings',
     children: [
-      { name: 'All Files', href: '/files', icon: FileText },
+      { name: 'All Files', href: '/files', icon: FileText, permission: 'view-settings' },
       {
         name: 'Media',
         icon: Folder,
+        permission: 'view-settings',
         children: [
-          { name: 'Images', href: '/files/media/images', icon: Image },
-          { name: 'Videos', href: '/files/media/videos', icon: Video },
-          { name: 'Audio', href: '/files/media/audio', icon: Music },
+          { name: 'Images', href: '/files/media/images', icon: Image, permission: 'view-settings' },
+          { name: 'Videos', href: '/files/media/videos', icon: Video, permission: 'view-settings' },
+          { name: 'Audio', href: '/files/media/audio', icon: Music, permission: 'view-settings' },
         ]
       },
-      { name: 'Documents', href: '/files/documents', icon: FileText },
+      { name: 'Documents', href: '/files/documents', icon: FileText, permission: 'view-settings' },
     ]
   },
-  { name: 'Analytics', href: '/analytics', icon: TrendingUp },
+  { name: 'Analytics', href: '/analytics', icon: TrendingUp, permission: 'view-analytics' },
 ];
 
 function NavItem({ item, sidebarOpen, pathname, setMobileMenuOpen, depth = 0, isLast = false, itemPath = '', openItems, setOpenItems }: {
@@ -108,6 +117,24 @@ function NavItem({ item, sidebarOpen, pathname, setMobileMenuOpen, depth = 0, is
   openItems: Set<string>;
   setOpenItems: (items: Set<string>) => void;
 }) {
+  const { hasPermission, hasAnyPermission } = usePermissions();
+
+  // Check if user has permission for this item
+  const hasAccess = () => {
+    if (item.permission) {
+      return hasPermission(item.permission);
+    }
+    if (item.permissions) {
+      return hasAnyPermission(item.permissions);
+    }
+    return true; // No permission required
+  };
+
+  // Don't render if no access
+  if (!hasAccess()) {
+    return null;
+  }
+
   const currentPath = itemPath ? `${itemPath}.${item.name}` : item.name;
   const isOpen = openItems.has(currentPath);
   const hasChildren = item.children && item.children.length > 0;
@@ -228,13 +255,40 @@ function NavItem({ item, sidebarOpen, pathname, setMobileMenuOpen, depth = 0, is
 export default function Sidebar({ sidebarOpen, mobileMenuOpen, setMobileMenuOpen }: SidebarProps) {
   const pathname = usePathname();
   const [openItems, setOpenItems] = useState<Set<string>>(new Set());
-  const user = useAuthStore((state) => state.user);
+  const { hasPermission, hasAnyPermission } = usePermissions();
 
-  // Filter navigation based on user type
+  // Filter navigation based on permissions
   const filteredNavigation = navigation.filter(item => {
-    if (item.name === 'Tenant Management' && user?.user_type !== 'super_admin') {
-      return false;
+    // Check item permission
+    if (item.permission) {
+      if (!hasPermission(item.permission)) {
+        return false;
+      }
     }
+    if (item.permissions) {
+      if (!hasAnyPermission(item.permissions)) {
+        return false;
+      }
+    }
+
+    // Check children permissions
+    if (item.children) {
+      item.children = item.children.filter(child => {
+        if (child.permission) {
+          return hasPermission(child.permission);
+        }
+        if (child.permissions) {
+          return hasAnyPermission(child.permissions);
+        }
+        return true;
+      });
+
+      // Hide parent if no children have access
+      if (item.children.length === 0) {
+        return false;
+      }
+    }
+
     return true;
   });
 
