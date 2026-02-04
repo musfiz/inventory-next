@@ -2,8 +2,7 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { useState, useEffect } from 'react';
-import { useAuthStore } from '@/stores/auth-store';
+import { useState, useEffect, useMemo } from 'react';
 import { usePermissions } from '@/hooks/use-permissions';
 import {
   LayoutDashboard,
@@ -25,6 +24,7 @@ import {
   Package,
   Tag,
   SunMedium,
+  Key,
   LucideIcon
 } from 'lucide-react';
 
@@ -62,6 +62,15 @@ const navigation: NavigationItem[] = [
       { name: 'All Users', href: '/users', icon: List, permission: 'view-users' },
       { name: 'Add User', href: '/users/add', icon: UserPlus, permission: 'create-users' },
       { name: 'User Roles', href: '/users/roles', icon: Shield, permission: 'assign-roles' },
+    ]
+  },
+  {
+    name: 'Permission Management',
+    icon: Key,
+    permission: 'view-permissions',
+    children: [
+      { name: 'All Permissions', href: '/permissions', icon: List, permission: 'view-permissions' },
+      { name: 'Add Permission', href: '/permissions/add', icon: UserPlus, permission: 'create-permissions' },
     ]
   },
   {
@@ -257,40 +266,44 @@ export default function Sidebar({ sidebarOpen, mobileMenuOpen, setMobileMenuOpen
   const [openItems, setOpenItems] = useState<Set<string>>(new Set());
   const { hasPermission, hasAnyPermission } = usePermissions();
 
-  // Filter navigation based on permissions
-  const filteredNavigation = navigation.filter(item => {
-    // Check item permission
-    if (item.permission) {
-      if (!hasPermission(item.permission)) {
-        return false;
-      }
-    }
-    if (item.permissions) {
-      if (!hasAnyPermission(item.permissions)) {
-        return false;
-      }
-    }
+  // Filter navigation based on permissions (deep clone to avoid mutating original)
+  const filteredNavigation = useMemo(() => {
+    return navigation.map(item => {
+      const clonedItem = { ...item };
 
-    // Check children permissions
-    if (item.children) {
-      item.children = item.children.filter(child => {
-        if (child.permission) {
-          return hasPermission(child.permission);
+      // Check item permission
+      if (clonedItem.permission) {
+        if (!hasPermission(clonedItem.permission)) {
+          return null;
         }
-        if (child.permissions) {
-          return hasAnyPermission(child.permissions);
-        }
-        return true;
-      });
-
-      // Hide parent if no children have access
-      if (item.children.length === 0) {
-        return false;
       }
-    }
+      if (clonedItem.permissions) {
+        if (!hasAnyPermission(clonedItem.permissions)) {
+          return null;
+        }
+      }
 
-    return true;
-  });
+      // Check children permissions
+      if (clonedItem.children) {
+        clonedItem.children = clonedItem.children.filter(child => {
+          if (child.permission) {
+            return hasPermission(child.permission);
+          }
+          if (child.permissions) {
+            return hasAnyPermission(child.permissions);
+          }
+          return true;
+        }).map(child => ({ ...child })); // Clone children too
+
+        // Hide parent if no children have access
+        if (clonedItem.children.length === 0) {
+          return null;
+        }
+      }
+
+      return clonedItem;
+    }).filter(Boolean) as NavigationItem[];
+  }, [hasPermission, hasAnyPermission]);
 
   // Helper function to find all parent paths for a given pathname
   const findParentPaths = (items: NavigationItem[], currentPath: string, parentPath = ''): string[] => {
@@ -322,7 +335,7 @@ export default function Sidebar({ sidebarOpen, mobileMenuOpen, setMobileMenuOpen
     if (parentPaths.length > 0) {
       setOpenItems(new Set(parentPaths));
     }
-  }, [pathname]);
+  }, [pathname, filteredNavigation]);
 
   return (
     <>

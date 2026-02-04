@@ -8,6 +8,7 @@ export { userService } from './userService';
 export { default as brandService } from './brandService';
 export { default as unitService } from './unitService';
 export { default as attributeService } from './attributeService';
+export { default as permissionService } from './permissionService';
 
 // Re-export types for convenience
 export type {
@@ -16,6 +17,7 @@ export type {
   Brand,
   Unit,
   Attribute,
+  Permission,
   RegisterUserRequest,
   RegisterUserResponse,
   RegisterTenantRequest,
@@ -23,6 +25,10 @@ export type {
   UserProfileResponse,
   UserListParams,
   UserListResponse,
+  PermissionListParams,
+  PermissionListResponse,
+  CreatePermissionRequest,
+  UpdatePermissionRequest,
   ApiResponse,
   ApiError,
 } from '@/types/api.types';

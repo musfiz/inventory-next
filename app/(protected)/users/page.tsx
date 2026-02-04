@@ -16,15 +16,24 @@ export default function UsersPage() {
   const [switchingUser, setSwitchingUser] = useState<string | null>(null);
   const currentUser = useAuthStore((state) => state.user);
   const switchUser = useAuthStore((state) => state.switchUser);
-  const { hasPermission } = usePermissions();
+  const { hasPermission, isHydrated } = usePermissions();
 
-  // Check permissions
+  // Check permissions only after store is hydrated
   useEffect(() => {
-    if (!hasPermission('view-users')) {
+    if (isHydrated && !hasPermission('view-users')) {
       router.push('/dashboard');
       notify.error('You do not have permission to view users');
     }
-  }, [hasPermission, router]);
+  }, [hasPermission, isHydrated, router]);
+
+  // Show loading while store is hydrating
+  if (!isHydrated) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-indigo-600"></div>
+      </div>
+    );
+  }
 
   // Check if current user is super admin
   const isSuperAdmin = currentUser?.user_type === 'super_admin';

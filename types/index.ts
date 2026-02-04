@@ -1,5 +1,6 @@
 // Re-export all API types
 export * from './api.types';
+export * from './permission.types';
 
 // Legacy interface kept for backward compatibility
 // Use types from api.ts for new code

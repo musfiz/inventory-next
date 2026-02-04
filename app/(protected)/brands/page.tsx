@@ -25,7 +25,7 @@ export default function BrandsPage() {
   useEffect(() => {
     if (!hasPermission('view-settings')) {
       router.push('/dashboard');
-      notify('You do not have permission to view brands', 'error');
+      notify.error('You do not have permission to view brands');
     }
   }, [hasPermission, router]);
 

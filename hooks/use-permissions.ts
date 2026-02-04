@@ -15,7 +15,7 @@ import { useAuthStore } from '@/stores/auth-store';
  * }
  */
 export const usePermissions = () => {
-  const { user } = useAuthStore();
+  const { user, hydrated } = useAuthStore();
 
   // Check if user is super admin
   const isSuperAdmin = useMemo(() => user?.user_type === 'super_admin', [user?.user_type]);
@@ -27,6 +27,9 @@ export const usePermissions = () => {
    */
   const hasPermission = useMemo(
     () => (permission: string): boolean => {
+      // Wait for store to be hydrated
+      if (!hydrated) return false;
+      
       if (!user) return false;
       
       // Super admin has all permissions
@@ -35,7 +38,7 @@ export const usePermissions = () => {
       // Check if user has the specific permission
       return user.permissions?.includes(permission) ?? false;
     },
-    [user, isSuperAdmin]
+    [user, isSuperAdmin, hydrated]
   );
 
   /**
@@ -45,6 +48,9 @@ export const usePermissions = () => {
    */
   const hasAnyPermission = useMemo(
     () => (permissions: string[]): boolean => {
+      // Wait for store to be hydrated
+      if (!hydrated) return false;
+      
       if (!user) return false;
       if (!permissions || permissions.length === 0) return false;
       
@@ -54,7 +60,7 @@ export const usePermissions = () => {
       // Check if user has any of the permissions
       return permissions.some(permission => user.permissions?.includes(permission) ?? false);
     },
-    [user, isSuperAdmin]
+    [user, isSuperAdmin, hydrated]
   );
 
   /**
@@ -64,6 +70,9 @@ export const usePermissions = () => {
    */
   const hasAllPermissions = useMemo(
     () => (permissions: string[]): boolean => {
+      // Wait for store to be hydrated
+      if (!hydrated) return false;
+      
       if (!user) return false;
       if (!permissions || permissions.length === 0) return true;
       
@@ -73,7 +82,7 @@ export const usePermissions = () => {
       // Check if user has all permissions
       return permissions.every(permission => user.permissions?.includes(permission) ?? false);
     },
-    [user, isSuperAdmin]
+    [user, isSuperAdmin, hydrated]
   );
 
   /**
@@ -96,5 +105,6 @@ export const usePermissions = () => {
     permissions: user?.permissions ?? [],
     userType: user?.user_type,
     isAuthenticated: !!user,
+    isHydrated: hydrated,
   };
 };
