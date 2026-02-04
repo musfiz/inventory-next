@@ -1,33 +1,21 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { useRouter } from 'next/navigation';
 import { Eye, Edit, Trash2, Building2, Plus, X } from 'lucide-react';
 import { ColumnDef } from '@tanstack/react-table';
 import DataTable from '@/components/ui/datatable';
 import CustomSelect from '@/components/ui/custom-select';
 import { Brand } from "@/types";
 import { useAuthStore } from '@/stores/auth-store';
-import { usePermissions } from '@/hooks/use-permissions';
 import { notify, confirm } from '@/lib/notifications';
 import tenantService from '@/services/tenantService';
 import brandService from '@/services/brandService';
 import { formatDate } from '@/lib/utils/date';
 
 export default function BrandsPage() {
-  const router = useRouter();
   const [tenantFilter, setTenantFilter] = useState<string>('');
   const [tenants, setTenants] = useState<any[]>([]);
   const currentUser = useAuthStore((state) => state.user);
-  const { hasPermission } = usePermissions();
-
-  // Check permissions
-  useEffect(() => {
-    if (!hasPermission('view-settings')) {
-      router.push('/dashboard');
-      notify.error('You do not have permission to view brands');
-    }
-  }, [hasPermission, router]);
 
   // Check if current user is super admin
   const isSuperAdmin = currentUser?.user_type === 'super_admin';
@@ -39,7 +27,8 @@ export default function BrandsPage() {
     name: '',
     logo_url: null as File | null,
     description: '',
-    is_active: true
+    is_active: true,
+    tenant_id: '',
   });
   const [formErrors, setFormErrors] = useState<{ [key: string]: string }>({});
   const [refreshKey, setRefreshKey] = useState(0);
@@ -47,7 +36,9 @@ export default function BrandsPage() {
   const handleAddBrand = () => {
     setIsEditing(false);
     setCurrentBrand(null);
-    setFormData({ name: '', logo_url: null, description: '', is_active: true });
+    // Use tenantFilter for superadmin, empty for regular users
+    const initialTenantId = isSuperAdmin ? tenantFilter : '';
+    setFormData({ name: '', logo_url: null, description: '', is_active: true, tenant_id: initialTenantId });
     setFormErrors({});
     setShowForm(true);
   };
@@ -56,11 +47,17 @@ export default function BrandsPage() {
     setIsEditing(true);
     setCurrentBrand(brand);
 
+    // For superadmin, set the tenantFilter to the brand's tenant_id
+    if (isSuperAdmin && brand.tenant_id) {
+      setTenantFilter(brand.tenant_id);
+    }
+
     setFormData({
       name: brand.name,
       logo_url: null,
       description: brand.description || '',
-      is_active: brand.is_active
+      is_active: brand.is_active,
+      tenant_id: brand.tenant_id || '',
     });
     setFormErrors({});
     setShowForm(true);
@@ -71,13 +68,26 @@ export default function BrandsPage() {
     if (!formData.name.trim()) {
       errors.name = 'Brand name is required';
     }
+    if (isSuperAdmin && !tenantFilter) {
+      errors.tenant = 'Please select a tenant';
+    }
+    const tenantId = isSuperAdmin ? tenantFilter : (currentUser?.tenant_id || '');
+    if (!tenantId) {
+      errors.tenant_id = 'Tenant ID is required';
+    }
     setFormErrors(errors);
     return Object.keys(errors).length === 0;
   };
 
   const handleFormSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    // Set tenant_id: from tenantFilter for superadmin (set from CustomSelect), otherwise from currentUser
+    const tenantId = isSuperAdmin ? tenantFilter : (currentUser?.tenant_id || '');
 
+    if (!tenantId) {
+      notify.error('Tenant selection required');
+      return;
+    }
     setFormErrors({}); // Clear previous errors before validation/submission
     if (!validateForm()) {
       return;
@@ -89,6 +99,7 @@ export default function BrandsPage() {
         name: formData.name,
         description: formData.description,
         is_active: formData.is_active,
+        tenant_id: tenantId,
         logo_url: formData.logo_url,
       });
 
@@ -123,7 +134,7 @@ export default function BrandsPage() {
       title: 'Delete Brand',
       html: `Are you sure you want to delete <strong>${brand.name}</strong>?<br><br>
             <div style="color: #6b7280; font-size: 13px; line-height: 1.5;">
-              <strong>Name:</strong> ${brand.name || 'No description'}<br>
+              <strong>Description:</strong> ${brand.description || 'No description'}<br>
               <strong>Status:</strong> ${brand.is_active ? 'Active' : 'Inactive'}
             </div><br>
             <em style="color: #dc2626; font-size: 12px;">This action cannot be undone and will permanently delete the brand.</em>`,

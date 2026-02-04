@@ -25,7 +25,8 @@ import {
   Tag,
   SunMedium,
   Key,
-  LucideIcon
+  LucideIcon,
+  UserLock
 } from 'lucide-react';
 
 interface SidebarProps {
@@ -50,8 +51,8 @@ const navigation: NavigationItem[] = [
     icon: Building2,
     permission: 'view-tenants',
     children: [
-      { name: 'Tenant List', href: '/tenants', icon: List, permission: 'view-tenants' },
-      { name: 'Tenant Registration', href: '/tenants/register', icon: UserPlus, permission: 'create-tenants' },
+      { name: 'Tenant List', href: '/tenants', icon: List },
+      { name: 'Tenant Registration', href: '/tenants/register', icon: UserPlus },
     ]
   },
   {
@@ -61,16 +62,15 @@ const navigation: NavigationItem[] = [
     children: [
       { name: 'All Users', href: '/users', icon: List, permission: 'view-users' },
       { name: 'Add User', href: '/users/add', icon: UserPlus, permission: 'create-users' },
-      { name: 'User Roles', href: '/users/roles', icon: Shield, permission: 'assign-roles' },
     ]
   },
   {
     name: 'Permission Management',
-    icon: Key,
+    icon: UserLock,
     permission: 'view-permissions',
     children: [
-      { name: 'All Permissions', href: '/permissions', icon: List, permission: 'view-permissions' },
-      { name: 'Add Permission', href: '/permissions/add', icon: UserPlus, permission: 'create-permissions' },
+      { name: 'All Permissions', href: '/permissions', icon: List },
+      { name: 'User Permission', href: '/permissions/add', icon: UserPlus },
     ]
   },
   {

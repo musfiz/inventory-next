@@ -1,31 +1,89 @@
 'use client';
 
-import { useState, useEffect } from 'react';
-import { useRouter } from 'next/navigation';
-import { Eye, Edit, Trash2, Plus, Key, ListChecks } from 'lucide-react';
+import { useState } from 'react';
+import { Eye, Edit, Trash2, Plus, Key, ListChecks, X } from 'lucide-react';
 import { ColumnDef } from '@tanstack/react-table';
 import DataTable from '@/components/ui/datatable';
-import { Permission } from "@/types";
-import { usePermissions } from '@/hooks/use-permissions';
+import { Permission } from "@/types/permission.types";
 import { confirm, notify } from '@/lib/notifications';
 import permissionService from '@/services/permissionService';
 
 export default function PermissionsPage() {
-  const router = useRouter();
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [moduleFilter, setModuleFilter] = useState<string>('all');
   const [searchQuery, setSearchQuery] = useState<string>('');
-  const { hasPermission } = usePermissions();
 
-  const getModuleBadge = (module?: string) => {
-    if (!module) return null;
-
-    return (
-      <span className="px-2 py-1 text-xs font-medium rounded bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400 capitalize">
-        {module.replace('-', ' ')}
-      </span>
-    );
+  // Form handling functions
+  const handleAddPermission = () => {
+    setIsEditing(false);
+    setCurrentPermission(null);
+    setFormData({
+      name: '',
+      guard_name: 'web'
+    });
+    setFormErrors({});
+    setShowForm(true);
   };
+
+  const handleEditPermission = (permission: Permission) => {
+    setIsEditing(true);
+    setCurrentPermission(permission);
+    setFormData({
+      name: permission.name,
+      guard_name: permission.guard_name
+    });
+    setFormErrors({});
+    setShowForm(true);
+  };
+
+  const validateForm = () => {
+    const errors: { [key: string]: string } = {};
+    if (!formData.name.trim()) {
+      errors.name = 'Permission name is required';
+    }
+    setFormErrors(errors);
+    return Object.keys(errors).length === 0;
+  };
+
+  const handleFormSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+
+    setFormErrors({});
+    if (!validateForm()) {
+      return;
+    }
+
+    try {
+      if (isEditing && currentPermission) {
+        await permissionService.updatePermission(currentPermission.id, formData);
+        notify.success('Permission updated successfully');
+      } else {
+        await permissionService.storePermission(formData);
+        notify.success('Permission created successfully');
+      }
+      setShowForm(false);
+      setRefreshKey(prev => prev + 1);
+    } catch (error: unknown) {
+      const errorData = (error as { response?: { data?: { errors?: Record<string, string>; message?: string } } })?.response?.data;
+      if (errorData?.errors) {
+        setFormErrors(errorData.errors);
+      } else {
+        const errorMessage = errorData?.message || (error as Error)?.message || 'Failed to save permission';
+        notify.error(errorMessage);
+      }
+    }
+  };
+
+  // Form state
+  const [showForm, setShowForm] = useState(false);
+  const [isEditing, setIsEditing] = useState(false);
+  const [currentPermission, setCurrentPermission] = useState<Permission | null>(null);
+  const [formData, setFormData] = useState({
+    name: '',
+    guard_name: 'web'
+  });
+  const [formErrors, setFormErrors] = useState<{ [key: string]: string }>({});
+  const [refreshKey, setRefreshKey] = useState(0);
 
   const columns: ColumnDef<Permission>[] = [
     {
@@ -45,7 +103,7 @@ export default function PermissionsPage() {
     {
       accessorKey: 'name',
       header: 'Permission Name',
-      meta: { width: '25%' },
+      meta: { width: '20%' },
       cell: ({ row }) => (
         <div className="flex items-center">
           <Key className="w-4 h-4 mr-2 text-gray-400" />
@@ -53,25 +111,14 @@ export default function PermissionsPage() {
             <div className="text-sm font-medium text-gray-900 dark:text-gray-100">
               {row.original.name}
             </div>
-            {row.original.display_name && (
-              <div className="text-xs text-gray-500 dark:text-gray-400">
-                {row.original.display_name}
-              </div>
-            )}
           </div>
         </div>
       ),
     },
     {
-      accessorKey: 'module',
-      header: 'Module',
-      meta: { width: '15%' },
-      cell: ({ row }) => getModuleBadge(row.original.module),
-    },
-    {
       accessorKey: 'guard_name',
       header: 'Guard',
-      meta: { width: '15%' },
+      meta: { width: '12%' },
       cell: ({ row }) => (
         <span className="text-xs text-gray-600 dark:text-gray-400 bg-gray-100 dark:bg-gray-800 px-2 py-1 rounded">
           {row.original.guard_name}
@@ -79,60 +126,42 @@ export default function PermissionsPage() {
       ),
     },
     {
-      accessorKey: 'description',
-      header: 'Description',
-      meta: { width: '25%' },
-      cell: ({ row }) => (
-        <div className="text-sm text-gray-600 dark:text-gray-400 truncate max-w-xs" title={row.original.description}>
-          {row.original.description || 'No description'}
-        </div>
-      ),
-    },
-    {
       id: 'actions',
       header: 'Actions',
-      meta: { width: '16%' },
+      meta: { width: '10%' },
       cell: ({ row }) => (
         <div className="flex items-center gap-1">
-          <button
-            className="p-1 text-indigo-600 hover:text-indigo-900 dark:text-indigo-400 dark:hover:text-indigo-300 hover:bg-indigo-50 dark:hover:bg-indigo-900/20 rounded cursor-pointer"
-            title="View Details"
-            onClick={() => console.log('View', row.original.id)}
-          >
-            <Eye className="w-3.5 h-3.5" />
-          </button>
-          <button
-            className="p-1 text-blue-600 hover:text-blue-900 dark:text-blue-400 dark:hover:text-blue-300 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded cursor-pointer"
-            title="Edit"
-            onClick={() => router.push(`/permissions/${row.original.id}/edit`)}
-          >
-            <Edit className="w-3.5 h-3.5" />
-          </button>
-          <button
-            className="p-1 text-red-600 hover:text-red-900 dark:text-red-400 dark:hover:text-red-300 hover:bg-red-50 dark:hover:bg-red-900/20 rounded cursor-pointer"
-            title="Delete"
-            onClick={async () => {
-              const result = await confirm({
-                title: 'Delete Permission',
-                html: `Are you sure you want to delete the permission <strong>${row.original.name}</strong>?<br><br>This action cannot be undone.`,
-                confirmButtonText: 'Delete',
-                cancelButtonText: 'Cancel',
-              });
+            <button
+              className="p-1 text-blue-600 hover:text-blue-900 dark:text-blue-400 dark:hover:text-blue-300 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded cursor-pointer"
+              title="Edit"
+              onClick={() => handleEditPermission(row.original)}
+            >
+              <Edit className="w-3.5 h-3.5" />
+            </button>
+            <button
+              className="p-1 text-red-600 hover:text-red-900 dark:text-red-400 dark:hover:text-red-300 hover:bg-red-50 dark:hover:bg-red-900/20 rounded cursor-pointer"
+              title="Delete"
+              onClick={async () => {
+                const result = await confirm({
+                  title: 'Delete Permission',
+                  html: `Are you sure you want to delete the permission <strong>${row.original.name}</strong>?<br><br>This action cannot be undone.`,
+                  confirmButtonText: 'Delete',
+                  cancelButtonText: 'Cancel',
+                });
 
-              if (result.isConfirmed) {
-                try {
-                  await permissionService.deletePermission(row.original.id);
-                  notify.success('Permission deleted successfully');
-                  // Refresh the table
-                  window.location.reload();
-                } catch (error) {
-                  notify.error('Failed to delete permission');
+                if (result.isConfirmed) {
+                  try {
+                    await permissionService.deletePermission(row.original.id);
+                    notify.success('Permission deleted successfully');
+                    setRefreshKey(prev => prev + 1);
+                  } catch (error) {
+                    notify.error('Failed to delete permission');
+                  }
                 }
-              }
-            }}
-          >
-            <Trash2 className="w-3.5 h-3.5" />
-          </button>
+              }}
+            >
+              <Trash2 className="w-3.5 h-3.5" />
+            </button>
         </div>
       ),
     },
@@ -157,19 +186,79 @@ export default function PermissionsPage() {
             <ListChecks className="w-5 h-5 text-indigo-600 dark:text-indigo-400" />
             Permission List
           </h1>
-        </div>
-        {hasPermission('create-permissions') && (
-          <button
-            onClick={() => router.push('/permissions/add')}
-            className="inline-flex items-center px-4 py-1 border border-transparent text-sm font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 transition-colors"
-          >
-            <Plus className="w-4 h-4 mr-2" />
-            Add Permission
-          </button>
-        )}
+        </div>        
+        <button
+          onClick={handleAddPermission}
+          className="cursor-pointer inline-flex items-center px-4 py-1 border border-transparent text-sm font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 transition-colors"
+        >
+          <Plus className="w-4 h-4 mr-2" />
+          Add Permission
+        </button>
       </div>      
+      {/* Add/Edit Permission Form */}
+      {showForm && (
+        <div className="bg-white dark:bg-gray-800 rounded-md shadow-sm border border-gray-200 dark:border-gray-700 p-4 mb-4">
+          <h2 className="text-lg font-semibold mb-4 text-gray-900 dark:text-gray-100">
+            {isEditing ? 'Edit Permission' : 'New Permission'}
+          </h2>
+          <form onSubmit={handleFormSubmit} className="grid grid-cols-1 md:grid-cols-4 gap-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                Permission Name *
+              </label>
+              <input
+                type="text"
+                placeholder="e.g., create-users, view-reports"
+                value={formData.name}
+                onChange={e => setFormData({ ...formData, name: e.target.value })}
+                className={`w-full px-3 py-1 text-sm border rounded-md focus:outline-none focus:ring-1 focus:ring-indigo-500 dark:focus:ring-indigo-400 focus:border-transparent dark:bg-gray-700 dark:text-gray-100 ${
+                  formErrors.name ? 'border-red-500' : 'border-gray-300 dark:border-gray-600'
+                }`}
+                required
+              />
+              {formErrors.name && (
+                <p className="text-red-600 text-xs mt-1">{formErrors.name}</p>
+              )}
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                Guard Name
+              </label>
+              <select
+                value={formData.guard_name}
+                onChange={e => setFormData({ ...formData, guard_name: e.target.value })}
+                className="w-full px-3 py-1 text-sm border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-1 focus:ring-indigo-500 dark:focus:ring-indigo-400 focus:border-transparent dark:bg-gray-700 dark:text-gray-100"
+              >
+                <option value="web">Web</option>
+                <option value="api">API</option>
+              </select>
+            </div>
+
+            <div className="flex gap-2 md:col-span-2">
+              <button
+                type="submit"
+                className="mt-5.5 px-3 py-1 bg-indigo-600 text-white text-sm font-medium rounded-md hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 transition-colors flex items-center gap-2 h-8"
+              >
+                <Edit className="w-4 h-4" />
+                {isEditing ? 'Update Permission' : 'Create Permission'}
+              </button>
+              <button
+                type="button"
+                onClick={() => setShowForm(false)}
+                className="mt-5.5 px-3 py-1 bg-gray-600 text-white text-sm font-medium rounded-md hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-500 transition-colors flex items-center gap-2 h-8"
+              >
+                <X className="w-4 h-4" />
+                Cancel
+              </button>
+            </div>
+          </form>
+        </div>
+      )}
+
       {/* Data Table */}
       <DataTable
+        key={refreshKey}
         columns={columns}
         apiEndpoint={buildApiEndpoint()}
         searchQuery={searchQuery}

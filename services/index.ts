@@ -17,7 +17,6 @@ export type {
   Brand,
   Unit,
   Attribute,
-  Permission,
   RegisterUserRequest,
   RegisterUserResponse,
   RegisterTenantRequest,
@@ -25,10 +24,6 @@ export type {
   UserProfileResponse,
   UserListParams,
   UserListResponse,
-  PermissionListParams,
-  PermissionListResponse,
-  CreatePermissionRequest,
-  UpdatePermissionRequest,
   ApiResponse,
   ApiError,
 } from '@/types/api.types';
