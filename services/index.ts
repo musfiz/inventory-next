@@ -9,6 +9,7 @@ export { default as brandService } from './brandService';
 export { default as unitService } from './unitService';
 export { default as attributeService } from './attributeService';
 export { default as permissionService } from './permissionService';
+export { default as userPermissionService } from './userPermissionService';
 
 // Re-export types for convenience
 export type {

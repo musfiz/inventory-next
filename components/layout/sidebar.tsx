@@ -42,6 +42,7 @@ interface NavigationItem {
   children?: NavigationItem[];
   permission?: string;
   permissions?: string[];
+  superAdminOnly?: boolean;
 }
 
 const navigation: NavigationItem[] = [
@@ -50,6 +51,7 @@ const navigation: NavigationItem[] = [
     name: 'Tenant Management',
     icon: Building2,
     permission: 'view-tenants',
+    superAdminOnly: true,
     children: [
       { name: 'Tenant List', href: '/tenants', icon: List },
       { name: 'Tenant Registration', href: '/tenants/register', icon: UserPlus },
@@ -67,10 +69,9 @@ const navigation: NavigationItem[] = [
   {
     name: 'Permission Management',
     icon: UserLock,
-    permission: 'view-permissions',
     children: [
-      { name: 'All Permissions', href: '/permissions', icon: List },
-      { name: 'User Permission', href: '/permissions/add', icon: UserPlus },
+      { name: 'All Permissions', href: '/permissions', icon: Key, superAdminOnly: true },
+      { name: 'User Permissions', href: '/user-permissions', icon: Shield },
     ]
   },
   {
@@ -126,10 +127,15 @@ function NavItem({ item, sidebarOpen, pathname, setMobileMenuOpen, depth = 0, is
   openItems: Set<string>;
   setOpenItems: (items: Set<string>) => void;
 }) {
-  const { hasPermission, hasAnyPermission } = usePermissions();
+  const { hasPermission, hasAnyPermission, isSuperAdmin } = usePermissions();
 
   // Check if user has permission for this item
   const hasAccess = () => {
+    // Check super admin only access first
+    if (item.superAdminOnly && !isSuperAdmin) {
+      return false;
+    }
+    
     if (item.permission) {
       return hasPermission(item.permission);
     }
