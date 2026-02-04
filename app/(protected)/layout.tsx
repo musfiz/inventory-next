@@ -28,11 +28,6 @@ export default function AdminLayout({
   const [isRouteLoading, setIsRouteLoading] = useState(false);
   const [switchingBack, setSwitchingBack] = useState(false);
 
-  // Show loading while authenticating or redirecting
-  if (isRedirecting || !authUser) {
-    return <Loading />;
-  }
-
   // Handle route changes - show loading indicator
   useEffect(() => {
     setIsRouteLoading(true);
@@ -64,6 +59,11 @@ export default function AdminLayout({
       setSwitchingBack(false);
     }
   };
+
+  // Show loading while authenticating or redirecting
+  if (isRedirecting || !authUser) {
+    return <Loading />;
+  }
 
   return (
     <div>

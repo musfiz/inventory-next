@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { Eye, Edit, Trash2, Plus, Key } from 'lucide-react';
+import { Eye, Edit, Trash2, Plus, Key, ListChecks } from 'lucide-react';
 import { ColumnDef } from '@tanstack/react-table';
 import DataTable from '@/components/ui/datatable';
 import { Permission } from "@/types";
@@ -149,82 +149,32 @@ export default function PermissionsPage() {
   };
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-1">
       {/* Header */}
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100">Permissions</h1>
-          <p className="text-gray-600 dark:text-gray-400">Manage system permissions</p>
+          <h1 className="text-xl font-bold text-gray-900 dark:text-gray-100 flex items-center gap-2">
+            <ListChecks className="w-5 h-5 text-indigo-600 dark:text-indigo-400" />
+            Permission List
+          </h1>
         </div>
         {hasPermission('create-permissions') && (
           <button
             onClick={() => router.push('/permissions/add')}
-            className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 transition-colors"
+            className="inline-flex items-center px-4 py-1 border border-transparent text-sm font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 transition-colors"
           >
             <Plus className="w-4 h-4 mr-2" />
             Add Permission
           </button>
         )}
-      </div>
-
-      {/* Filters */}
-      <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
-          <div>
-            <label htmlFor="search" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-              Search
-            </label>
-            <input
-              type="text"
-              id="search"
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder="Search permissions..."
-              className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 placeholder-gray-400 dark:placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:focus:ring-indigo-400 focus:border-transparent"
-            />
-          </div>
-          <div>
-            <label htmlFor="module" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-              Module
-            </label>
-            <select
-              id="module"
-              value={moduleFilter}
-              onChange={(e) => setModuleFilter(e.target.value)}
-              className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:focus:ring-indigo-400 focus:border-transparent"
-            >
-              <option value="all">All Modules</option>
-              <option value="users">Users</option>
-              <option value="tenants">Tenants</option>
-              <option value="settings">Settings</option>
-              <option value="analytics">Analytics</option>
-            </select>
-          </div>
-          <div>
-            <label htmlFor="status" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-              Status
-            </label>
-            <select
-              id="status"
-              value={statusFilter}
-              onChange={(e) => setStatusFilter(e.target.value)}
-              className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:focus:ring-indigo-400 focus:border-transparent"
-            >
-              <option value="all">All Status</option>
-              <option value="active">Active</option>
-              <option value="inactive">Inactive</option>
-            </select>
-          </div>
-        </div>
-
-        {/* Data Table */}
-        <DataTable
-          columns={columns}
-          apiEndpoint={buildApiEndpoint()}
-          searchQuery={searchQuery}
-          enableSearch={false} // We handle search via filters
-        />
-      </div>
+      </div>      
+      {/* Data Table */}
+      <DataTable
+        columns={columns}
+        apiEndpoint={buildApiEndpoint()}
+        searchQuery={searchQuery}
+        enableSearch={false} // We handle search via filters
+      />
     </div>
   );
 }
