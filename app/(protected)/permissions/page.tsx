@@ -131,37 +131,37 @@ export default function PermissionsPage() {
       meta: { width: '10%' },
       cell: ({ row }) => (
         <div className="flex items-center gap-1">
-            <button
-              className="p-1 text-blue-600 hover:text-blue-900 dark:text-blue-400 dark:hover:text-blue-300 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded cursor-pointer"
-              title="Edit"
-              onClick={() => handleEditPermission(row.original)}
-            >
-              <Edit className="w-3.5 h-3.5" />
-            </button>
-            <button
-              className="p-1 text-red-600 hover:text-red-900 dark:text-red-400 dark:hover:text-red-300 hover:bg-red-50 dark:hover:bg-red-900/20 rounded cursor-pointer"
-              title="Delete"
-              onClick={async () => {
-                const result = await confirm({
-                  title: 'Delete Permission',
-                  html: `Are you sure you want to delete the permission <strong>${row.original.name}</strong>?<br><br>This action cannot be undone.`,
-                  confirmButtonText: 'Delete',
-                  cancelButtonText: 'Cancel',
-                });
+          <button
+            className="p-1 text-blue-600 hover:text-blue-900 dark:text-blue-400 dark:hover:text-blue-300 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded cursor-pointer"
+            title="Edit"
+            onClick={() => handleEditPermission(row.original)}
+          >
+            <Edit className="w-3.5 h-3.5" />
+          </button>
+          <button
+            className="p-1 text-red-600 hover:text-red-900 dark:text-red-400 dark:hover:text-red-300 hover:bg-red-50 dark:hover:bg-red-900/20 rounded cursor-pointer"
+            title="Delete"
+            onClick={async () => {
+              const result = await confirm({
+                title: 'Delete Permission',
+                html: `Are you sure you want to delete the permission <strong>${row.original.name}</strong>?<br><br>This action cannot be undone.`,
+                confirmButtonText: 'Delete',
+                cancelButtonText: 'Cancel',
+              });
 
-                if (result.isConfirmed) {
-                  try {
-                    await permissionService.deletePermission(row.original.id);
-                    notify.success('Permission deleted successfully');
-                    setRefreshKey(prev => prev + 1);
-                  } catch (error) {
-                    notify.error('Failed to delete permission');
-                  }
+              if (result.isConfirmed) {
+                try {
+                  await permissionService.deletePermission(row.original.id);
+                  notify.success('Permission deleted successfully');
+                  setRefreshKey(prev => prev + 1);
+                } catch (error) {
+                  notify.error('Failed to delete permission');
                 }
-              }}
-            >
-              <Trash2 className="w-3.5 h-3.5" />
-            </button>
+              }
+            }}
+          >
+            <Trash2 className="w-3.5 h-3.5" />
+          </button>
         </div>
       ),
     },
@@ -186,7 +186,7 @@ export default function PermissionsPage() {
             <ListChecks className="w-5 h-5 text-indigo-600 dark:text-indigo-400" />
             Permission List
           </h1>
-        </div>        
+        </div>
         <button
           onClick={handleAddPermission}
           className="cursor-pointer inline-flex items-center px-4 py-1 border border-transparent text-sm font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 transition-colors"
@@ -194,7 +194,7 @@ export default function PermissionsPage() {
           <Plus className="w-4 h-4 mr-2" />
           Add Permission
         </button>
-      </div>      
+      </div>
       {/* Add/Edit Permission Form */}
       {showForm && (
         <div className="bg-white dark:bg-gray-800 rounded-md shadow-sm border border-gray-200 dark:border-gray-700 p-4 mb-4">
@@ -211,9 +211,8 @@ export default function PermissionsPage() {
                 placeholder="e.g., create-users, view-reports"
                 value={formData.name}
                 onChange={e => setFormData({ ...formData, name: e.target.value })}
-                className={`w-full px-3 py-1 text-sm border rounded-md focus:outline-none focus:ring-1 focus:ring-indigo-500 dark:focus:ring-indigo-400 focus:border-transparent dark:bg-gray-700 dark:text-gray-100 ${
-                  formErrors.name ? 'border-red-500' : 'border-gray-300 dark:border-gray-600'
-                }`}
+                className={`w-full px-3 py-1 text-sm border rounded-md focus:outline-none focus:ring-1 focus:ring-indigo-500 dark:focus:ring-indigo-400 focus:border-transparent dark:bg-gray-700 dark:text-gray-100 ${formErrors.name ? 'border-red-500' : 'border-gray-300 dark:border-gray-600'
+                  }`}
                 required
               />
               {formErrors.name && (
@@ -261,8 +260,7 @@ export default function PermissionsPage() {
         key={refreshKey}
         columns={columns}
         apiEndpoint={buildApiEndpoint()}
-        searchQuery={searchQuery}
-        enableSearch={false} // We handle search via filters
+        searchable={false} // We handle search via filters
       />
     </div>
   );

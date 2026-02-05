@@ -42,7 +42,10 @@ export interface Brand {
   description?: string;
   logo_url?: string;
   is_active: boolean;
-  tenant_id: string;
+  tenant_id?: string;
+  tenant?: Tenant;
+  created_at?: string;
+  updated_at?: string;
 }
 
 export interface Unit {

@@ -23,6 +23,7 @@ export interface UserSelection {
   id: string;
   name: string;
   email: string;
+  user_type: string;
 }
 
 class UserPermissionService {

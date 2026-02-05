@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { Shield, Search, Save, UserCheck, Check, X } from 'lucide-react';
+import CustomSelect from '@/components/ui/custom-select';
 import { notify } from '@/lib/notifications';
 import userPermissionService, { UserPermissionModule, UserSelection } from '@/services/userPermissionService';
 
@@ -15,9 +16,10 @@ export default function UserPermissionsPage() {
   const [selectedPermissions, setSelectedPermissions] = useState<Set<string>>(new Set());
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [formErrors, setFormErrors] = useState<{ [key: string]: string }>({});
 
   // Available permission actions
-  const permissionActions = ['view', 'create', 'edit', 'delete', 'export'];
+  const permissionActions = ['view', 'store', 'update', 'delete', 'PDF', 'XLSX'];
 
   // Fetch users and modules on mount
   useEffect(() => {
@@ -60,7 +62,7 @@ export default function UserPermissionsPage() {
     // Filter by search query
     if (searchQuery.trim()) {
       const query = searchQuery.toLowerCase();
-      filtered = filtered.filter(m => 
+      filtered = filtered.filter(m =>
         m.module.toLowerCase().includes(query) ||
         m.permissions.some(p => p.name.toLowerCase().includes(query))
       );
@@ -71,7 +73,7 @@ export default function UserPermissionsPage() {
 
   const loadUserPermissions = async (userId: string) => {
     if (!userId) return;
-    
+
     setLoading(true);
     try {
       const data = await userPermissionService.getUserPermissions(userId);
@@ -125,7 +127,11 @@ export default function UserPermissionsPage() {
   };
 
   const handleSavePermissions = async () => {
+    // Clear previous errors
+    setFormErrors({});
+
     if (!selectedUserId) {
+      setFormErrors({ user: 'Please select a user' });
       notify.error('Please select a user');
       return;
     }
@@ -141,11 +147,17 @@ export default function UserPermissionsPage() {
     }
   };
 
+  const handleResetFilters = () => {
+    setSearchQuery('');
+    setSelectedModule('all');
+    setFormErrors({});
+  };
+
   // Get unique modules for filter dropdown
   const uniqueModules = Array.from(new Set(modules.map(m => m.module))).sort();
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-1">
       {/* Header */}
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
@@ -153,43 +165,44 @@ export default function UserPermissionsPage() {
             <Shield className="w-5 h-5 text-indigo-600 dark:text-indigo-400" />
             User Permissions
           </h1>
-          <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
-            Assign permissions to users by selecting checkboxes
-          </p>
         </div>
       </div>
 
       {/* Filters Section */}
-      <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-4">
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          {/* User Selection */}
-          <div>
+      <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-2">
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-4">
+          {/* User Selection - spans 5 columns on large screens */}
+          <div className="lg:col-span-4">
             <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
               Select User *
             </label>
-            <select
-              value={selectedUserId}
-              onChange={(e) => handleUserChange(e.target.value)}
-              className="w-full px-3 py-2 text-sm border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:focus:ring-indigo-400 dark:bg-gray-700 dark:text-gray-100"
-            >
-              <option value="">-- Select User --</option>
-              {users.map(user => (
-                <option key={user.id} value={user.id}>
-                  {user.name} ({user.email})
-                </option>
-              ))}
-            </select>
+            <CustomSelect
+              value={users.find(user => user.id === selectedUserId) ? {
+                value: users.find(user => user.id === selectedUserId)!.id,
+                label: `${users.find(user => user.id === selectedUserId)!.name} (${users.find(user => user.id === selectedUserId)!.user_type})`
+              } : null}
+              onChange={(option) => handleUserChange(option?.value || '')}
+              options={users.map(user => ({
+                value: user.id,
+                label: `${user.name} (${user.user_type})`
+              }))}
+              placeholder="Select a user"
+              isInvalid={!!formErrors.user}
+            />
+            {formErrors.user && (
+              <p className="text-red-600 text-xs mt-1">{formErrors.user}</p>
+            )}
           </div>
 
-          {/* Module Filter */}
-          <div>
+          {/* Module Filter - spans 2 columns */}
+          <div className="lg:col-span-3">
             <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
               Filter by Module
             </label>
             <select
               value={selectedModule}
               onChange={(e) => setSelectedModule(e.target.value)}
-              className="w-full px-3 py-2 text-sm border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:focus:ring-indigo-400 dark:bg-gray-700 dark:text-gray-100"
+              className="w-full px-3 py-1.5 text-sm border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:focus:ring-indigo-400 dark:bg-gray-700 dark:text-gray-100 h-8"
             >
               <option value="all">All Modules</option>
               {uniqueModules.map(module => (
@@ -200,8 +213,8 @@ export default function UserPermissionsPage() {
             </select>
           </div>
 
-          {/* Search */}
-          <div>
+          {/* Search - spans 3 columns */}
+          <div className="lg:col-span-3">
             <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
               Search Permissions
             </label>
@@ -212,9 +225,23 @@ export default function UserPermissionsPage() {
                 placeholder="Search by module or permission..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className="w-full pl-10 pr-3 py-2 text-sm border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:focus:ring-indigo-400 dark:bg-gray-700 dark:text-gray-100"
+                className="w-full pl-10 pr-3 py-1.5 text-sm border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:focus:ring-indigo-400 dark:bg-gray-700 dark:text-gray-100 h-8"
               />
             </div>
+          </div>
+
+          {/* Reset Button - spans 2 columns */}
+          <div className="lg:col-span-2">
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+              Actions
+            </label>
+            <button
+              onClick={handleResetFilters}
+              className="w-full px-3 py-1.5 h-8 text-sm bg-gray-600 hover:bg-gray-700 text-white font-medium rounded-md transition-colors duration-200 flex items-center justify-center gap-2 cursor-pointer"
+            >
+              <X className="w-4 h-4" />
+              Reset
+            </button>
           </div>
         </div>
       </div>
@@ -251,7 +278,10 @@ export default function UserPermissionsPage() {
                       Delete
                     </th>
                     <th className="px-4 py-3 text-center text-xs font-medium text-gray-700 dark:text-gray-300 uppercase tracking-wider">
-                      Export
+                      PDF
+                    </th>
+                    <th className="px-4 py-3 text-center text-xs font-medium text-gray-700 dark:text-gray-300 uppercase tracking-wider">
+                      XLSX
                     </th>
                     <th className="px-4 py-3 text-center text-xs font-medium text-gray-700 dark:text-gray-300 uppercase tracking-wider w-20">
                       All
@@ -281,7 +311,7 @@ export default function UserPermissionsPage() {
                                 className="w-4 h-4 text-indigo-600 bg-gray-100 border-gray-300 rounded focus:ring-indigo-500 dark:focus:ring-indigo-600 dark:ring-offset-gray-800 focus:ring-2 dark:bg-gray-700 dark:border-gray-600 cursor-pointer"
                               />
                             ) : (
-                              <span className="text-gray-300 dark:text-gray-600">-</span>
+                              <span className="text-gray-600 dark:text-gray-800">-</span>
                             )}
                           </td>
                         );
