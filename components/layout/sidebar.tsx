@@ -79,7 +79,6 @@ const navigation: NavigationItem[] = [
     icon: Settings,
     permission: 'view-settings',
     children: [
-      { name: 'General', href: '/settings', icon: Wrench, permission: 'view-settings' },
       { name: 'Brands', href: '/brands', icon: Building2, permission: 'view-settings' },
       { name: 'Units', href: '/units', icon: Package, permission: 'view-settings' },
       {
@@ -135,7 +134,7 @@ function NavItem({ item, sidebarOpen, pathname, setMobileMenuOpen, depth = 0, is
     if (item.superAdminOnly && !isSuperAdmin) {
       return false;
     }
-    
+
     if (item.permission) {
       return hasPermission(item.permission);
     }
