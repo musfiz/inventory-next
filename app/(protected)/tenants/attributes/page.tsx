@@ -9,7 +9,7 @@ import { notify, confirm } from '@/lib/notifications';
 import attributeService from '@/services/attributeService';
 import { formatDate } from '@/lib/utils/date';
 
-export default function AttributesPage() {
+export default function TenantAttributesPage() {
   const [showForm, setShowForm] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
   const [currentAttribute, setCurrentAttribute] = useState<Attribute | null>(null);
@@ -314,7 +314,7 @@ export default function AttributesPage() {
         <div>
           <h1 className="text-xl font-bold text-gray-900 dark:text-gray-100 flex items-center gap-2">
             <Tag className="w-5 h-5 text-indigo-600 dark:text-indigo-400" />
-            Attribute List
+            Tenant Attribute List
           </h1>
         </div>
         <button

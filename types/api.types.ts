@@ -72,6 +72,39 @@ export interface Attribute {
   updated_at?: string;
 }
 
+export interface TenantAttribute {
+  id: string;
+  uuid: string;
+  tenant_id: string;
+  attribute_id?: string;
+  name: string;
+  slug: string;
+  type: 'text' | 'select' | 'number' | 'date' | 'boolean' | 'color' | 'file';
+  data_type?: 'string' | 'integer' | 'decimal' | 'date' | 'boolean';
+  measurement_unit?: string;
+  is_required: boolean;
+  is_filterable: boolean;
+  is_variation_attribute: boolean;
+  is_visible: boolean;
+  sort_order?: number;
+  validation_rules?: any;
+  attribute?: Attribute;
+  values?: TenantAttributeValue[];
+  created_at?: string;
+  updated_at?: string;
+}
+
+export interface TenantAttributeValue {
+  id: string;
+  uuid: string;
+  tenant_attribute_id: string;
+  value: string;
+  display_value?: string;
+  hex_code?: string;
+  sort_order?: number;
+  created_at?: string;
+}
+
 export interface AttributeValue {
   id: string;
   attribute_id: string;

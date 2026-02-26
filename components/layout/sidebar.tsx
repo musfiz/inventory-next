@@ -79,7 +79,6 @@ const navigation: NavigationItem[] = [
     icon: Settings,
     permission: 'view-settings',
     children: [
-      { name: 'General', href: '/settings', icon: Wrench, permission: 'view-settings' },
       { name: 'Brands', href: '/brands', icon: Building2, permission: 'view-settings' },
       { name: 'Units', href: '/units', icon: Package, permission: 'view-settings' },
       {
@@ -88,7 +87,16 @@ const navigation: NavigationItem[] = [
         permission: 'view-settings',
         children: [
           { name: 'Attribute List', href: '/attributes', icon: List, permission: 'view-settings' },
-          { name: 'Attribute Values', href: '/attribute-values', icon: Tag, permission: 'view-settings' },
+          { name: 'Attribute Values', href: '/attributes/values', icon: Tag, permission: 'view-settings' },
+        ]
+      },
+      {
+        name: 'Tenant Attributes',
+        icon: Tag,
+        permission: '',
+        children: [
+          { name: 'Attribute List', href: '/tenants/attributes', icon: List, permission: '' },
+          { name: 'Attribute Values', href: '/tenants/attributes/values', icon: Tag, permission: '' },
         ]
       },
       { name: 'Notifications', href: '/settings/notifications', icon: Bell, permission: 'view-settings' },
@@ -135,7 +143,7 @@ function NavItem({ item, sidebarOpen, pathname, setMobileMenuOpen, depth = 0, is
     if (item.superAdminOnly && !isSuperAdmin) {
       return false;
     }
-    
+
     if (item.permission) {
       return hasPermission(item.permission);
     }
