@@ -39,11 +39,10 @@ export interface User {
 export interface Brand {
   id: string;
   name: string;
+  business_type?: 'pharmacy' | 'electric' | 'electronics' | 'fashion' | 'furniture' | 'bookshop' | 'departmental' | 'computer' | 'clothing' | 'footwear' | 'cosmetics' | 'stationery' | 'grocery' | 'hardware' | 'restaurant' | 'cafe' | 'supermarket' | 'other';
   description?: string;
   logo_url?: string;
   is_active: boolean;
-  tenant_id?: string;
-  tenant?: Tenant;
   created_at?: string;
   updated_at?: string;
 }

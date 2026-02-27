@@ -6,19 +6,12 @@ import { ColumnDef } from '@tanstack/react-table';
 import DataTable from '@/components/ui/datatable';
 import CustomSelect from '@/components/ui/custom-select';
 import { Brand } from "@/types";
-import { useAuthStore } from '@/stores/auth-store';
 import { notify, confirm } from '@/lib/notifications';
-import tenantService from '@/services/tenantService';
 import brandService from '@/services/brandService';
 import { formatDate } from '@/lib/utils/date';
 
 export default function BrandsPage() {
-  const [tenantFilter, setTenantFilter] = useState<string>('');
-  const [tenants, setTenants] = useState<any[]>([]);
-  const currentUser = useAuthStore((state) => state.user);
-
-  // Check if current user is super admin
-  const isSuperAdmin = currentUser?.user_type === 'super_admin';
+  const [businessTypeFilter, setBusinessTypeFilter] = useState<string>('');
 
   const [showForm, setShowForm] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
@@ -28,7 +21,6 @@ export default function BrandsPage() {
     logo_url: null as File | null,
     description: '',
     is_active: true,
-    tenant_id: '',
   });
   const [formErrors, setFormErrors] = useState<{ [key: string]: string }>({});
   const [refreshKey, setRefreshKey] = useState(0);
@@ -36,9 +28,7 @@ export default function BrandsPage() {
   const handleAddBrand = () => {
     setIsEditing(false);
     setCurrentBrand(null);
-    // Use tenantFilter for superadmin, empty for regular users
-    const initialTenantId = isSuperAdmin ? tenantFilter : '';
-    setFormData({ name: '', logo_url: null, description: '', is_active: true, tenant_id: initialTenantId });
+    setFormData({ name: '', logo_url: null, description: '', is_active: true });
     setFormErrors({});
     setShowForm(true);
   };
@@ -47,17 +37,11 @@ export default function BrandsPage() {
     setIsEditing(true);
     setCurrentBrand(brand);
 
-    // For superadmin, set the tenantFilter to the brand's tenant_id
-    if (isSuperAdmin && brand.tenant_id) {
-      setTenantFilter(brand.tenant_id);
-    }
-
     setFormData({
       name: brand.name,
       logo_url: null,
       description: brand.description || '',
       is_active: brand.is_active,
-      tenant_id: brand.tenant_id || '',
     });
     setFormErrors({});
     setShowForm(true);
@@ -68,26 +52,12 @@ export default function BrandsPage() {
     if (!formData.name.trim()) {
       errors.name = 'Brand name is required';
     }
-    if (isSuperAdmin && !tenantFilter) {
-      errors.tenant = 'Please select a tenant';
-    }
-    const tenantId = isSuperAdmin ? tenantFilter : (currentUser?.tenant_id || '');
-    if (!tenantId) {
-      errors.tenant_id = 'Tenant ID is required';
-    }
     setFormErrors(errors);
     return Object.keys(errors).length === 0;
   };
 
   const handleFormSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    // Set tenant_id: from tenantFilter for superadmin (set from CustomSelect), otherwise from currentUser
-    const tenantId = isSuperAdmin ? tenantFilter : (currentUser?.tenant_id || '');
-
-    if (!tenantId) {
-      notify.error('Tenant selection required');
-      return;
-    }
     setFormErrors({}); // Clear previous errors before validation/submission
     if (!validateForm()) {
       return;
@@ -97,9 +67,9 @@ export default function BrandsPage() {
       await brandService.storeBrand({
         id: isEditing && currentBrand?.id ? currentBrand.id : undefined,
         name: formData.name,
+        business_type: businessTypeFilter,
         description: formData.description,
         is_active: formData.is_active,
-        tenant_id: tenantId,
         logo_url: formData.logo_url,
       });
 
@@ -109,7 +79,12 @@ export default function BrandsPage() {
     } catch (error: any) {
       const errorData = error?.response?.data;
       if (errorData?.errors) {
-        setFormErrors(errorData.errors);
+        const errors = { ...errorData.errors };
+        if (errors.business_type) {
+          notify.error('Please select a business type before saving the brand');
+          delete errors.business_type;
+        }
+        setFormErrors(errors);
       } else {
         const errorMessage = errorData?.message || error?.message || 'Failed to save brand';
         notify.error(errorMessage);
@@ -155,27 +130,26 @@ export default function BrandsPage() {
     }
   };
 
-  // Fetch tenants for superadmin filter
-  useEffect(() => {
-    if (isSuperAdmin) {
-      tenantService.searchTenants()
-        .then((tenants) => {
-          setTenants(Array.isArray(tenants) ? tenants : []);
-        })
-        .catch((error) => {
-          console.error('Failed to fetch tenants:', error);
-          setTenants([]);
-        });
-    }
-  }, [isSuperAdmin]);
-
-  // Create tenant options for React Select
-  const tenantOptions = [
-    { value: '', label: 'Select Tenant' },
-    ...tenants.map((tenant) => ({
-      value: tenant.id,
-      label: tenant.business_name,
-    }))
+  // Business type options
+  const businessTypeOptions = [
+    { value: 'pharmacy', label: 'Pharmacy' },
+    { value: 'electric', label: 'Electric' },
+    { value: 'electronics', label: 'Electronics' },
+    { value: 'fashion', label: 'Fashion' },
+    { value: 'furniture', label: 'Furniture' },
+    { value: 'bookshop', label: 'Bookshop' },
+    { value: 'departmental', label: 'Departmental' },
+    { value: 'computer', label: 'Computer' },
+    { value: 'clothing', label: 'Clothing' },
+    { value: 'footwear', label: 'Footwear' },
+    { value: 'cosmetics', label: 'Cosmetics' },
+    { value: 'stationery', label: 'Stationery' },
+    { value: 'grocery', label: 'Grocery' },
+    { value: 'hardware', label: 'Hardware' },
+    { value: 'restaurant', label: 'Restaurant' },
+    { value: 'cafe', label: 'Cafe' },
+    { value: 'supermarket', label: 'Supermarket' },
+    { value: 'other', label: 'Other' },
   ];
 
   const columns: ColumnDef<Brand>[] = [
@@ -256,6 +230,18 @@ export default function BrandsPage() {
       ),
     },
     {
+      accessorKey: 'business_type',
+      header: 'Business Type',
+      meta: { width: '12%' },
+      cell: ({ row }) => (
+        <div className="flex items-center">
+          <span className="text-xs text-gray-600 dark:text-gray-400 capitalize">
+            {row.original.business_type || 'Other'}
+          </span>
+        </div>
+      ),
+    },
+    {
       accessorKey: 'created_at',
       header: 'Created At',
       meta: { width: '15%' },
@@ -290,15 +276,13 @@ export default function BrandsPage() {
           >
             <Edit className="w-3.5 h-3.5" />
           </button>
-          {isSuperAdmin && (
-            <button
-              className="p-1 text-red-600 hover:text-red-900 dark:text-red-400 dark:hover:text-red-300 hover:bg-red-50 dark:hover:bg-red-900/20 rounded cursor-pointer"
-              title="Delete"
-              onClick={() => handleDeleteBrand(row.original)}
-            >
-              <Trash2 className="w-3.5 h-3.5" />
-            </button>
-          )}
+          <button
+            className="p-1 text-red-600 hover:text-red-900 dark:text-red-400 dark:hover:text-red-300 hover:bg-red-50 dark:hover:bg-red-900/20 rounded cursor-pointer"
+            title="Delete"
+            onClick={() => handleDeleteBrand(row.original)}
+          >
+            <Trash2 className="w-3.5 h-3.5" />
+          </button>
         </div>
       ),
     },
@@ -307,8 +291,7 @@ export default function BrandsPage() {
   // Build API endpoint with filters
   const buildApiEndpoint = () => {
     const params = new URLSearchParams();
-    // if (statusFilter !== 'all') params.append('status', statusFilter);
-    if (isSuperAdmin && tenantFilter) params.append('tenant_id', tenantFilter);
+    if (businessTypeFilter) params.append('business_type', businessTypeFilter);
     const queryString = params.toString();
     return `/api/v1/brand${queryString ? `?${queryString}` : ''}`;
   };
@@ -333,34 +316,32 @@ export default function BrandsPage() {
       </div>
 
       {/* Filters */}
-      {isSuperAdmin && (
-        <div className="bg-white dark:bg-gray-800 rounded-md shadow-sm border border-gray-200 dark:border-gray-700 p-1">
-          <div className="flex items-center justify-between">
-            <div className="flex gap-3">
-              {/* Tenant Filter - Only for Super Admin */}
-              <div className="md:col-span-2">
-                <CustomSelect
-                  className={'w-64 text-xs'}
-                  value={tenantOptions.find(t => t.value === tenantFilter) || null}
-                  onChange={(option) => setTenantFilter(option?.value || '')}
-                  options={tenantOptions}
-                  placeholder="Select a tenant"
-                />
-                {formErrors.tenant && (
-                  <p className="text-red-600 text-xs mt-1">{formErrors.tenant}</p>
-                )}
-              </div>
+      <div className="bg-white dark:bg-gray-800 rounded-md shadow-sm border border-gray-200 dark:border-gray-700 p-1">
+        <div className="flex items-center justify-between">
+          <div className="flex gap-3">
+            {/* Business Type Filter */}
+            <div className="md:col-span-2">
+              <CustomSelect
+                className={'w-64 text-xs'}
+                value={businessTypeOptions.find(t => t.value === businessTypeFilter) || null}
+                onChange={(option) => setBusinessTypeFilter(option?.value || '')}
+                options={[{ value: '', label: 'All Business Types' }, ...businessTypeOptions]}
+                placeholder="Filter by business type"
+              />
             </div>
           </div>
         </div>
-      )}
+      </div>
 
       {/* Add/Edit Brand Form */}
       {showForm && (
         <div className="bg-white dark:bg-gray-800 rounded-md shadow-sm border border-gray-200 dark:border-gray-700 p-1.5 mb-1">
           <h2 className="text-lg font-semibold mb-1.5 text-gray-900 dark:text-gray-100">
-            {isEditing ? 'Edit Brand' : 'Add New Brand'}
+            {isEditing ? 'Edit Brand' : 'Add Brand'}
           </h2>
+          {formErrors.business_type && (
+            <p className="text-red-600 text-sm mb-2">{formErrors.business_type}</p>
+          )}
           <form onSubmit={handleFormSubmit} className="grid grid-cols-1 md:grid-cols-2 gap-1.5" encType="multipart/form-data">
             <div className="md:col-span-2 grid grid-cols-1 md:grid-cols-2 gap-1">
               <div>
