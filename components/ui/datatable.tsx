@@ -232,7 +232,7 @@ export default function DataTable<T extends Record<string, any>>({
                     {row.getVisibleCells().map((cell) => (
                       <td
                         key={cell.id}
-                        className="px-3 py-2 text-left align-top whitespace-nowrap text-xs text-gray-900 dark:text-gray-100"
+                        className="px-3 py-2 text-left align-middle whitespace-nowrap text-xs text-gray-900 dark:text-gray-100"
                         style={{
                           width: (cell.column.columnDef as any).meta?.width || 'auto',
                           minWidth: (cell.column.columnDef as any).meta?.width || 'auto'

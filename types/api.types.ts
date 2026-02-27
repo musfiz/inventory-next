@@ -102,6 +102,7 @@ export interface TenantAttributeValue {
   display_value?: string;
   hex_code?: string;
   sort_order?: number;
+  tenant_attribute?: TenantAttribute; // Laravel returns snake_case in JSON
   created_at?: string;
 }
 

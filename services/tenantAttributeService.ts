@@ -23,6 +23,7 @@ class TenantAttributeService {
     is_visible: boolean;
     sort_order?: number;
     validation_rules?: any;
+    tenant_id?: string;
   }): Promise<TenantAttribute> {
     const response = await apiClient.post<ApiResponse<TenantAttribute>>(
       '/api/v1/tenant-attribute/store',
@@ -75,10 +76,11 @@ class TenantAttributeService {
    * Search tenant attributes by name with limit
    * GET /api/v1/tenant-attribute/search
    */
-  async searchTenantAttributes(search?: string, limit: number = 5): Promise<TenantAttribute[]> {
+  async searchTenantAttributes(search?: string, limit: number = 5, tenantId?: string): Promise<TenantAttribute[]> {
     const params = new URLSearchParams();
     if (search) params.append('search', search);
     params.append('limit', limit.toString());
+    if (tenantId) params.append('tenant_id', tenantId);
 
     const response = await apiClient.get<ApiResponse<TenantAttribute[]>>(
       `/api/v1/tenant-attribute/search?${params.toString()}`

@@ -26,7 +26,8 @@ import {
   SunMedium,
   Key,
   LucideIcon,
-  UserLock
+  UserLock,
+  ListTodo
 } from 'lucide-react';
 
 interface SidebarProps {
@@ -92,7 +93,7 @@ const navigation: NavigationItem[] = [
       },
       {
         name: 'Tenant Attributes',
-        icon: Tag,
+        icon: ListTodo,
         permission: '',
         children: [
           { name: 'Attribute List', href: '/tenants/attributes', icon: List, permission: '' },
@@ -215,7 +216,7 @@ function NavItem({ item, sidebarOpen, pathname, setMobileMenuOpen, depth = 0, is
             setOpenItems(new Set());
           }}
           className={`
-            relative group flex items-center px-3 py-2 text-sm font-medium rounded-md transition-colors cursor-pointer
+            relative group flex items-center px-3 py-1 text-sm font-medium rounded-md transition-colors cursor-pointer
             ${depth > 0 && sidebarOpen ? 'ml-4' : ''}
             ${isActive
               ? 'bg-indigo-100 dark:bg-indigo-900/30 text-indigo-900 dark:text-indigo-300'
@@ -390,13 +391,13 @@ export default function Sidebar({ sidebarOpen, mobileMenuOpen, setMobileMenuOpen
         </div>
 
         {/* Sidebar Navigation */}
-        <nav className="flex-1 px-2 py-4 overflow-y-auto scrollbar-hide">
+        <nav className="flex-1 px-2 py-1 overflow-y-auto scrollbar-hide">
           {sidebarOpen && (
             <div className="px-3 mb-3">
               <p className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Menu</p>
             </div>
           )}
-          <div className="space-y-1">
+          <div className="space-y-0">
             {filteredNavigation.map((item) => (
               <NavItem
                 key={item.name}

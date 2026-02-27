@@ -187,23 +187,52 @@ export default function BrandsPage() {
         const page = table.getState().pagination?.pageIndex ?? 0;
         const pageSize = table.getState().pagination?.pageSize ?? 15;
         return (
-          <span className="text-xs text-gray-600 dark:text-gray-400">
-            {page * pageSize + row.index + 1}
-          </span>
+          <div className="flex items-center">
+            <span className="text-xs text-gray-600 dark:text-gray-400">
+              {page * pageSize + row.index + 1}
+            </span>
+          </div>
+        );
+      },
+    },
+    {
+      accessorKey: 'logo_url',
+      header: 'Logo',
+      meta: { width: '8%' },
+      cell: ({ row }) => {
+        const logoUrl = row.original.logo_url;
+        const fullLogoUrl = logoUrl ? `${process.env.NEXT_PUBLIC_BACKEND_URL}/${logoUrl}` : null;
+        return (
+          <div className="flex items-center justify-center">
+            {fullLogoUrl ? (
+              <img
+                src={fullLogoUrl}
+                alt={row.original.name}
+                className="w-10 h-10 object-contain rounded border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-700"
+                onError={(e) => {
+                  (e.target as HTMLImageElement).src = 'data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 width=%2740%27 height=%2740%27%3E%3Crect width=%2740%27 height=%2740%27 fill=%27%23f3f4f6%27/%3E%3Ctext x=%2750%25%27 y=%2750%25%27 dominant-baseline=%27middle%27 text-anchor=%27middle%27 fill=%27%239ca3af%27 font-size=%2712%27%3ENo Logo%3C/text%3E%3C/svg%3E';
+                }}
+              />
+            ) : (
+              <div className="w-10 h-10 flex items-center justify-center rounded border border-gray-200 dark:border-gray-600 bg-gray-50 dark:bg-gray-800 text-xs text-gray-400">
+                No Logo
+              </div>
+            )}
+          </div>
         );
       },
     },
     {
       accessorKey: 'name',
       header: 'Brand Name',
-      meta: { width: '20%' },
+      meta: { width: '17%' },
       cell: ({ row }) => {
         const name = row.original.name;
         const maxLength = 20; // Maximum characters to display
         const truncatedName = name.length > maxLength ? name.substring(0, maxLength) + '...' : name;
 
         return (
-          <div className="flex items-center gap-2">
+          <div className="flex items-center">
             <div
               className="text-xs font-medium text-gray-900 dark:text-gray-100 truncate w-full"
               title={name} // Show full name on hover
@@ -217,10 +246,12 @@ export default function BrandsPage() {
     {
       accessorKey: 'description',
       header: 'Description',
-      meta: { width: '25%' },
+      meta: { width: '22%' },
       cell: ({ row }) => (
-        <div className="text-xs text-gray-600 dark:text-gray-400 truncate max-w-xs" title={row.original.description}>
-          {row.original.description || 'No description'}
+        <div className="flex items-center">
+          <div className="text-xs text-gray-600 dark:text-gray-400 truncate max-w-xs" title={row.original.description}>
+            {row.original.description || 'No description'}
+          </div>
         </div>
       ),
     },
@@ -229,16 +260,22 @@ export default function BrandsPage() {
       header: 'Created At',
       meta: { width: '15%' },
       cell: ({ row }) => (
-        <span className="text-xs text-gray-600 dark:text-gray-400">
-          {row.original.created_at ? formatDate(row.original.created_at) : 'N/A'}
-        </span>
+        <div className="flex items-center">
+          <span className="text-xs text-gray-600 dark:text-gray-400">
+            {row.original.created_at ? formatDate(row.original.created_at) : 'N/A'}
+          </span>
+        </div>
       ),
     },
     {
       accessorKey: 'is_active',
       header: 'Status',
       meta: { width: '8%' },
-      cell: ({ row }) => getStatusBadge(row.original.is_active),
+      cell: ({ row }) => (
+        <div className="flex items-center">
+          {getStatusBadge(row.original.is_active)}
+        </div>
+      ),
     },
     {
       id: 'actions',
@@ -374,9 +411,16 @@ export default function BrandsPage() {
                       <span className="text-xs text-gray-500 dark:text-gray-400">Click to upload image</span>
                     </span>
                   </label>
-                  {(formData.logo_url || formData.logo_url) && (
+                  {(formData.logo_url || (isEditing && currentBrand?.logo_url)) && (
                     <div className="flex flex-col items-center">
-                      <img src={formData.logo_url ? URL.createObjectURL(formData.logo_url) : formData.logo_url} alt="Logo Preview" className="w-12 h-12 object-contain rounded border border-gray-200 dark:border-gray-600" />
+                      <img
+                        src={formData.logo_url ? URL.createObjectURL(formData.logo_url) : `${process.env.NEXT_PUBLIC_BACKEND_URL}/${currentBrand?.logo_url}` || ''}
+                        alt="Logo Preview"
+                        className="w-16 h-16 object-contain rounded border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-700 p-1"
+                        onError={(e) => {
+                          (e.target as HTMLImageElement).style.display = 'none';
+                        }}
+                      />
                       <span className="text-xs text-gray-500 mt-0.5">{formData.logo_url ? 'New' : 'Current'}</span>
                     </div>
                   )}

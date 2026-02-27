@@ -1,27 +1,40 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Edit, Trash2, Tag, Plus, X } from 'lucide-react';
 import { ColumnDef } from '@tanstack/react-table';
 import DataTable from '@/components/ui/datatable';
-import { Attribute } from "@/types";
+import CustomSelect from '@/components/ui/custom-select';
+import { TenantAttribute } from "@/types";
+import { useAuthStore } from '@/stores/auth-store';
 import { notify, confirm } from '@/lib/notifications';
-import attributeService from '@/services/attributeService';
+import tenantAttributeService from '@/services/tenantAttributeService';
+import tenantService from '@/services/tenantService';
 import { formatDate } from '@/lib/utils/date';
 
 export default function TenantAttributesPage() {
+  const [tenantFilter, setTenantFilter] = useState<string>('');
+  const [tenants, setTenants] = useState<any[]>([]);
+  const currentUser = useAuthStore((state) => state.user);
+
+  // Check if current user is super admin
+  const isSuperAdmin = currentUser?.user_type === 'super_admin';
+
   const [showForm, setShowForm] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
-  const [currentAttribute, setCurrentAttribute] = useState<Attribute | null>(null);
+  const [currentAttribute, setCurrentAttribute] = useState<TenantAttribute | null>(null);
   const [formData, setFormData] = useState({
+    attribute_id: '',
     name: '',
-    type: 'text' as 'text' | 'select' | 'number' | 'date' | 'boolean' | 'color' | 'size',
+    type: 'text' as 'text' | 'select' | 'number' | 'date' | 'boolean' | 'color' | 'file',
     data_type: 'string' as 'string' | 'integer' | 'decimal' | 'date' | 'boolean',
     measurement_unit: '',
-    is_global: true,
-    is_system: false,
-    description: '',
+    is_required: false,
+    is_filterable: false,
+    is_variation_attribute: false,
+    is_visible: true,
     sort_order: undefined as number | undefined,
+    validation_rules: undefined as any,
   });
   const [formErrors, setFormErrors] = useState<{ [key: string]: string }>({});
   const [refreshKey, setRefreshKey] = useState(0);
@@ -30,32 +43,43 @@ export default function TenantAttributesPage() {
     setIsEditing(false);
     setCurrentAttribute(null);
     setFormData({
+      attribute_id: '',
       name: '',
       type: 'text',
       data_type: 'string',
       measurement_unit: '',
-      is_global: true,
-      is_system: false,
-      description: '',
-      sort_order: undefined
+      is_required: false,
+      is_filterable: false,
+      is_variation_attribute: false,
+      is_visible: true,
+      sort_order: undefined,
+      validation_rules: undefined,
     });
     setFormErrors({});
     setShowForm(true);
   };
 
-  const handleEditAttribute = (attribute: Attribute) => {
+  const handleEditAttribute = (attribute: TenantAttribute) => {
     setIsEditing(true);
     setCurrentAttribute(attribute);
 
+    // For superadmin, set the tenantFilter to the attribute's tenant_id
+    if (isSuperAdmin && attribute.tenant_id) {
+      setTenantFilter(attribute.tenant_id);
+    }
+
     setFormData({
+      attribute_id: attribute.attribute_id || '',
       name: attribute.name,
       type: attribute.type,
-      data_type: attribute.data_type,
+      data_type: attribute.data_type || 'string',
       measurement_unit: attribute.measurement_unit || '',
-      is_global: attribute.is_global,
-      is_system: attribute.is_system,
-      description: attribute.description || '',
-      sort_order: attribute.sort_order || 1
+      is_required: attribute.is_required,
+      is_filterable: attribute.is_filterable,
+      is_variation_attribute: attribute.is_variation_attribute,
+      is_visible: attribute.is_visible,
+      sort_order: attribute.sort_order || undefined,
+      validation_rules: attribute.validation_rules,
     });
     setFormErrors({});
     setShowForm(true);
@@ -72,12 +96,23 @@ export default function TenantAttributesPage() {
     if (!formData.data_type) {
       errors.data_type = 'Data type is required';
     }
+    if (isSuperAdmin && !tenantFilter) {
+      errors.tenant = 'Please select a tenant';
+    }
     setFormErrors(errors);
     return Object.keys(errors).length === 0;
   };
 
   const handleFormSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    // Set tenant_id: from tenantFilter for superadmin, otherwise from currentUser
+    const tenantId = isSuperAdmin ? tenantFilter : (currentUser?.tenant_id || '');
+
+    // For superadmin, validate tenant selection
+    if (isSuperAdmin && !tenantId) {
+      notify.error('Please select a tenant');
+      return;
+    }
 
     setFormErrors({}); // Clear previous errors before validation/submission
     if (!validateForm()) {
@@ -85,19 +120,23 @@ export default function TenantAttributesPage() {
     }
 
     try {
-      await attributeService.storeAttribute({
+      await tenantAttributeService.storeTenantAttribute({
         id: isEditing && currentAttribute?.id ? currentAttribute.id : undefined,
+        attribute_id: formData.attribute_id || undefined,
         name: formData.name,
         type: formData.type,
-        data_type: formData.data_type,
+        data_type: formData.data_type || undefined,
         measurement_unit: formData.measurement_unit || undefined,
-        is_global: formData.is_global,
-        is_system: formData.is_system,
-        description: formData.description,
+        is_required: formData.is_required,
+        is_filterable: formData.is_filterable,
+        is_variation_attribute: formData.is_variation_attribute,
+        is_visible: formData.is_visible,
         sort_order: formData.sort_order || undefined,
+        validation_rules: formData.validation_rules,
+        tenant_id: isSuperAdmin ? tenantId : undefined,
       });
 
-      notify.success(isEditing ? 'Attribute updated successfully' : 'Attribute added successfully');
+      notify.success(isEditing ? 'Tenant attribute updated successfully' : 'Tenant attribute added successfully');
       setShowForm(false);
       setRefreshKey(prev => prev + 1);
     } catch (error: any) {
@@ -105,23 +144,23 @@ export default function TenantAttributesPage() {
       if (errorData?.errors) {
         setFormErrors(errorData.errors);
       } else {
-        const errorMessage = errorData?.message || error?.message || 'Failed to save attribute';
+        const errorMessage = errorData?.message || error?.message || 'Failed to save tenant attribute';
         notify.error(errorMessage);
       }
     }
   };
 
-  const handleDeleteAttribute = async (attribute: Attribute) => {
+  const handleDeleteAttribute = async (attribute: TenantAttribute) => {
     const result = await confirm({
-      title: 'Delete Attribute',
+      title: 'Delete Tenant Attribute',
       html: `Are you sure you want to delete <strong>${attribute.name}</strong>?<br><br>
             <div style="color: #6b7280; font-size: 13px; line-height: 1.5;">
               <strong>Type:</strong> ${attribute.type}<br>
               <strong>Data Type:</strong> ${attribute.data_type}<br>
-              <strong>Is Global:</strong> ${attribute.is_global ? 'Yes' : 'No'}<br>
-              <strong>Is System:</strong> ${attribute.is_system ? 'Yes' : 'No'}
+              <strong>Required:</strong> ${attribute.is_required ? 'Yes' : 'No'}<br>
+              <strong>Filterable:</strong> ${attribute.is_filterable ? 'Yes' : 'No'}
             </div><br>
-            <em style="color: #dc2626; font-size: 12px;">This action cannot be undone and will permanently delete the attribute.</em>`,
+            <em style="color: #dc2626; font-size: 12px;">This action cannot be undone and will permanently delete the tenant attribute.</em>`,
       confirmButtonText: 'Delete',
       cancelButtonText: 'Cancel',
       icon: 'warning',
@@ -130,11 +169,11 @@ export default function TenantAttributesPage() {
     if (!result.isConfirmed) return;
 
     try {
-      await attributeService.deleteAttribute(attribute.id);
-      notify.success('Attribute deleted successfully');
+      await tenantAttributeService.deleteTenantAttribute(attribute.id);
+      notify.success('Tenant attribute deleted successfully');
       setRefreshKey(prev => prev + 1);
     } catch (error: any) {
-      const errorMessage = error?.response?.data?.message || 'Failed to delete attribute';
+      const errorMessage = error?.response?.data?.message || 'Failed to delete tenant attribute';
       notify.error(errorMessage);
     }
   };
@@ -146,7 +185,7 @@ export default function TenantAttributesPage() {
     { value: 'date', label: 'Date' },
     { value: 'boolean', label: 'Boolean' },
     { value: 'color', label: 'Color' },
-    { value: 'size', label: 'Size' },
+    { value: 'file', label: 'File' },
   ];
 
   const dataTypeOptions = [
@@ -157,31 +196,78 @@ export default function TenantAttributesPage() {
     { value: 'boolean', label: 'Boolean' },
   ];
 
-  const getGlobalBadge = (isGlobal: boolean) => {
-    return isGlobal ? (
-      <span className="px-1.5 py-0.5 text-xs font-medium rounded bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400">
-        Yes
-      </span>
-    ) : (
-      <span className="px-1.5 py-0.5 text-xs font-medium rounded bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400">
-        No
-      </span>
-    );
-  };
+  // Fetch tenants for superadmin filter
+  useEffect(() => {
+    if (isSuperAdmin) {
+      tenantService.searchTenants()
+        .then((tenants) => {
+          setTenants(Array.isArray(tenants) ? tenants : []);
+        })
+        .catch((error) => {
+          console.error('Failed to fetch tenants:', error);
+          setTenants([]);
+        });
+    }
+  }, [isSuperAdmin]);
 
-  const getSystemBadge = (isSystem: boolean) => {
-    return isSystem ? (
-      <span className="px-1.5 py-0.5 text-xs font-medium rounded bg-purple-100 text-purple-800 dark:bg-purple-900/30 dark:text-purple-400">
-        Yes
+  // Create tenant options for React Select
+  const tenantOptions = [
+    { value: '', label: 'Select Tenant' },
+    ...tenants.map((tenant) => ({
+      value: tenant.id,
+      label: tenant.business_name,
+    }))
+  ];
+
+  const getRequiredBadge = (isRequired: boolean) => {
+    return isRequired ? (
+      <span className="px-1.5 py-0.5 text-xs font-medium rounded bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400">
+        Required
       </span>
     ) : (
       <span className="px-1.5 py-0.5 text-xs font-medium rounded bg-gray-100 text-gray-800 dark:bg-gray-900/30 dark:text-gray-400">
-        No
+        Optional
       </span>
     );
   };
 
-  const columns: ColumnDef<Attribute>[] = [
+  const getFilterableBadge = (isFilterable: boolean) => {
+    return isFilterable ? (
+      <span className="px-1.5 py-0.5 text-xs font-medium rounded bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400">
+        Filterable
+      </span>
+    ) : (
+      <span className="px-1.5 py-0.5 text-xs font-medium rounded bg-gray-100 text-gray-800 dark:bg-gray-900/30 dark:text-gray-400">
+        Not Filterable
+      </span>
+    );
+  };
+
+  const getVariationBadge = (isVariation: boolean) => {
+    return isVariation ? (
+      <span className="px-1.5 py-0.5 text-xs font-medium rounded bg-purple-100 text-purple-800 dark:bg-purple-900/30 dark:text-purple-400">
+        Variation
+      </span>
+    ) : (
+      <span className="px-1.5 py-0.5 text-xs font-medium rounded bg-gray-100 text-gray-800 dark:bg-gray-900/30 dark:text-gray-400">
+        Standard
+      </span>
+    );
+  };
+
+  const getVisibleBadge = (isVisible: boolean) => {
+    return isVisible ? (
+      <span className="px-1.5 py-0.5 text-xs font-medium rounded bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400">
+        Visible
+      </span>
+    ) : (
+      <span className="px-1.5 py-0.5 text-xs font-medium rounded bg-gray-100 text-gray-800 dark:bg-gray-900/30 dark:text-gray-400">
+        Hidden
+      </span>
+    );
+  };
+
+  const columns: ColumnDef<TenantAttribute>[] = [
     {
       id: 'serial',
       header: '#',
@@ -199,7 +285,7 @@ export default function TenantAttributesPage() {
     {
       accessorKey: 'name',
       header: 'Attribute Name',
-      meta: { width: '12%' },
+      meta: { width: '25%' },
       cell: ({ row }) => {
         const name = row.original.name;
         const maxLength = 20;
@@ -218,57 +304,33 @@ export default function TenantAttributesPage() {
       },
     },
     {
-      accessorKey: 'type',
-      header: 'Type',
-      meta: { width: '6%' },
-      cell: ({ row }) => (
-        <span className="text-xs text-gray-600 dark:text-gray-400 capitalize">
-          {row.original.type}
-        </span>
-      ),
+      accessorKey: 'is_required',
+      header: 'Required',
+      meta: { width: '10%' },
+      cell: ({ row }) => getRequiredBadge(row.original.is_required),
     },
     {
-      accessorKey: 'data_type',
-      header: 'Data Type',
+      accessorKey: 'is_filterable',
+      header: 'Filterable',
+      meta: { width: '12%' },
+      cell: ({ row }) => getFilterableBadge(row.original.is_filterable),
+    },
+    {
+      accessorKey: 'is_variation_attribute',
+      header: 'Variation',
+      meta: { width: '10%' },
+      cell: ({ row }) => getVariationBadge(row.original.is_variation_attribute),
+    },
+    {
+      accessorKey: 'is_visible',
+      header: 'Visible',
       meta: { width: '8%' },
-      cell: ({ row }) => (
-        <span className="text-xs text-gray-600 dark:text-gray-400 capitalize">
-          {row.original.data_type}
-        </span>
-      ),
-    },
-    {
-      accessorKey: 'is_global',
-      header: 'Is Global',
-      meta: { width: '7%' },
-      cell: ({ row }) => getGlobalBadge(row.original.is_global),
-    },
-    {
-      accessorKey: 'is_system',
-      header: 'Is System',
-      meta: { width: '7%' },
-      cell: ({ row }) => getSystemBadge(row.original.is_system),
-    },
-    {
-      accessorKey: 'description',
-      header: 'Description',
-      meta: { width: '15%' },
-      cell: ({ row }) => {
-        const description = row.original.description;
-        const maxLength = 30;
-        const truncatedDesc = description && description.length > maxLength ? description.substring(0, maxLength) + '...' : description;
-
-        return (
-          <span className="text-xs text-gray-600 dark:text-gray-400" title={description}>
-            {truncatedDesc || 'N/A'}
-          </span>
-        );
-      },
+      cell: ({ row }) => getVisibleBadge(row.original.is_visible),
     },
     {
       accessorKey: 'created_at',
       header: 'Created At',
-      meta: { width: '8%' },
+      meta: { width: '12%' },
       cell: ({ row }) => (
         <span className="text-xs text-gray-600 dark:text-gray-400">
           {row.original.created_at ? formatDate(row.original.created_at) : 'N/A'}
@@ -278,7 +340,7 @@ export default function TenantAttributesPage() {
     {
       id: 'actions',
       header: 'Actions',
-      meta: { width: '8%' },
+      meta: { width: '10%' },
       cell: ({ row }) => (
         <div className="flex items-center gap-1">
           <button
@@ -303,8 +365,11 @@ export default function TenantAttributesPage() {
   // Build API endpoint with filters
   const buildApiEndpoint = () => {
     const params = new URLSearchParams();
+    if (isSuperAdmin && tenantFilter) {
+      params.append('tenant_id', tenantFilter);
+    }
     const queryString = params.toString();
-    return `/api/v1/attribute${queryString ? `?${queryString}` : ''}`;
+    return `/api/v1/tenant-attribute${queryString ? `?${queryString}` : ''}`;
   };
 
   return (
@@ -326,11 +391,33 @@ export default function TenantAttributesPage() {
         </button>
       </div>
 
+      {/* Tenant Filter - Only for Super Admin */}
+      {isSuperAdmin && (
+        <div className="bg-white dark:bg-gray-800 rounded-md shadow-sm border border-gray-200 dark:border-gray-700 p-1">
+          <div className="flex items-center justify-between">
+            <div className="flex gap-3">
+              <div className="md:col-span-2">
+                <CustomSelect
+                  className={'w-64 text-xs'}
+                  value={tenantOptions.find(t => t.value === tenantFilter) || null}
+                  onChange={(option) => setTenantFilter(option?.value || '')}
+                  options={tenantOptions}
+                  placeholder="Select a tenant"
+                />
+                {formErrors.tenant && (
+                  <p className="text-red-600 text-xs mt-1">{formErrors.tenant}</p>
+                )}
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Add/Edit Attribute Form */}
       {showForm && (
         <div className="bg-white dark:bg-gray-800 rounded-md shadow-sm border border-gray-200 dark:border-gray-700 p-1.5 mb-1">
           <h2 className="text-lg font-semibold mb-1.5 text-gray-900 dark:text-gray-100">
-            {isEditing ? 'Edit Attribute' : 'New Attribute'}
+            {isEditing ? 'Edit Attribute' : 'Add Attribute'}
           </h2>
           <form onSubmit={handleFormSubmit} className="grid grid-cols-1 md:grid-cols-2 gap-1.5">
             <div className="md:col-span-2 grid grid-cols-1 md:grid-cols-3 gap-1">
@@ -398,8 +485,50 @@ export default function TenantAttributesPage() {
                 )}
               </div>
 
+              <div className="md:col-span-3 grid grid-cols-2 md:grid-cols-4 gap-5">
+                <label className="flex items-center gap-2">
+                  <input
+                    type="checkbox"
+                    checked={formData.is_required}
+                    onChange={e => setFormData({ ...formData, is_required: e.target.checked })}
+                    className="w-4 h-4 rounded border-gray-300 dark:border-gray-600 text-indigo-600 focus:ring-indigo-500 dark:focus:ring-indigo-400 dark:bg-gray-700"
+                  />
+                  <span className="text-sm font-medium text-gray-700 dark:text-gray-300">Required</span>
+                </label>
+
+                <label className="flex items-center gap-2">
+                  <input
+                    type="checkbox"
+                    checked={formData.is_filterable}
+                    onChange={e => setFormData({ ...formData, is_filterable: e.target.checked })}
+                    className="w-4 h-4 rounded border-gray-300 dark:border-gray-600 text-indigo-600 focus:ring-indigo-500 dark:focus:ring-indigo-400 dark:bg-gray-700"
+                  />
+                  <span className="text-sm font-medium text-gray-700 dark:text-gray-300">Filterable</span>
+                </label>
+
+                <label className="flex items-center gap-2">
+                  <input
+                    type="checkbox"
+                    checked={formData.is_variation_attribute}
+                    onChange={e => setFormData({ ...formData, is_variation_attribute: e.target.checked })}
+                    className="w-4 h-4 rounded border-gray-300 dark:border-gray-600 text-indigo-600 focus:ring-indigo-500 dark:focus:ring-indigo-400 dark:bg-gray-700"
+                  />
+                  <span className="text-sm font-medium text-gray-700 dark:text-gray-300">Variation</span>
+                </label>
+
+                <label className="flex items-center gap-2">
+                  <input
+                    type="checkbox"
+                    checked={formData.is_visible}
+                    onChange={e => setFormData({ ...formData, is_visible: e.target.checked })}
+                    className="w-4 h-4 rounded border-gray-300 dark:border-gray-600 text-indigo-600 focus:ring-indigo-500 dark:focus:ring-indigo-400 dark:bg-gray-700"
+                  />
+                  <span className="text-sm font-medium text-gray-700 dark:text-gray-300">Visible</span>
+                </label>
+              </div>
+
               {isEditing && (
-                <div>
+                <div className="md:col-span-4 mt-2">
                   <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-0.5">Sort Order</label>
                   <input
                     type="number"
@@ -416,41 +545,6 @@ export default function TenantAttributesPage() {
                 </div>
               )}
 
-              <div className="md:col-span-2">
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-0.5">Description</label>
-                <input
-                  placeholder="Enter attribute description"
-                  value={formData.description}
-                  onChange={e => setFormData({ ...formData, description: e.target.value })}
-                  className={`w-full px-2 py-1.5 text-sm border rounded-sm focus:outline-none focus:ring-1 focus:ring-indigo-500 dark:focus:ring-indigo-400 focus:border-transparent dark:bg-gray-700 dark:text-gray-100 ${formErrors.description ? 'border-red-500' : 'border-gray-300 dark:border-gray-600'
-                    }`}
-                />
-                {formErrors.description && (
-                  <p className="text-red-600 text-xs mt-1">{formErrors.description}</p>
-                )}
-              </div>
-
-            </div>
-            <div className="md:col-span-2 grid grid-cols-2 md:grid-cols-4 gap-5">
-              <label className="flex items-center gap-2">
-                <input
-                  type="checkbox"
-                  checked={formData.is_global}
-                  onChange={e => setFormData({ ...formData, is_global: e.target.checked })}
-                  className="rounded border-gray-300 dark:border-gray-600 text-indigo-600 focus:ring-indigo-500 dark:focus:ring-indigo-400 dark:bg-gray-700"
-                />
-                <span className="text-sm font-medium text-gray-700 dark:text-gray-300">Is global</span>
-              </label>
-
-              <label className="flex items-center gap-2">
-                <input
-                  type="checkbox"
-                  checked={formData.is_system}
-                  onChange={e => setFormData({ ...formData, is_system: e.target.checked })}
-                  className="rounded border-gray-300 dark:border-gray-600 text-indigo-600 focus:ring-indigo-500 dark:focus:ring-indigo-400 dark:bg-gray-700"
-                />
-                <span className="text-sm font-medium text-gray-700 dark:text-gray-300">Is System</span>
-              </label>
             </div>
 
             <div className="flex gap-2 md:col-span-2 mt-1.5">
