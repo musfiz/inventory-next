@@ -12,7 +12,6 @@ import {
   List,
   UserPlus,
   Shield,
-  Wrench,
   Bell,
   ChevronDown,
   Folder,
@@ -23,7 +22,6 @@ import {
   Building2,
   Package,
   Tag,
-  SunMedium,
   Key,
   LucideIcon,
   UserLock,
@@ -51,7 +49,6 @@ const navigation: NavigationItem[] = [
   {
     name: 'Tenant Management',
     icon: Building2,
-    permission: 'view-tenants',
     superAdminOnly: true,
     children: [
       { name: 'Tenant List', href: '/tenants', icon: List },
@@ -70,6 +67,7 @@ const navigation: NavigationItem[] = [
   {
     name: 'Permission Management',
     icon: UserLock,
+    permission: 'create-user-permission',
     children: [
       { name: 'All Permissions', href: '/permissions', icon: Key, superAdminOnly: true },
       { name: 'User Permissions', href: '/user-permissions', icon: Shield },
@@ -78,48 +76,44 @@ const navigation: NavigationItem[] = [
   {
     name: 'Settings',
     icon: Settings,
-    permission: 'view-settings',
     children: [
-      { name: 'Brands', href: '/brands', icon: Building2, permission: 'view-settings' },
-      { name: 'Units', href: '/units', icon: Package, permission: 'view-settings' },
+      { name: 'Brands', href: '/brands', icon: Building2, superAdminOnly: true },
+      { name: 'Units', href: '/units', icon: Package, superAdminOnly: true },
       {
         name: 'Attributes',
         icon: Tag,
-        permission: 'view-settings',
+        superAdminOnly: true,
         children: [
-          { name: 'Attribute List', href: '/attributes', icon: List, permission: 'view-settings' },
-          { name: 'Attribute Values', href: '/attributes/values', icon: Tag, permission: 'view-settings' },
+          { name: 'Attribute List', href: '/attributes', icon: List },
+          { name: 'Attribute Values', href: '/attributes/values', icon: Tag },
         ]
       },
       {
         name: 'Tenant Attributes',
         icon: ListTodo,
-        permission: '',
+        permissions: ['view-tenant-attributes', 'view-tenant-attribute-values'],
         children: [
-          { name: 'Attribute List', href: '/tenants/attributes', icon: List, permission: '' },
-          { name: 'Attribute Values', href: '/tenants/attributes/values', icon: Tag, permission: '' },
+          { name: 'Attribute List', href: '/tenants/attributes', icon: List, permission: 'view-tenant-attributes' },
+          { name: 'Attribute Values', href: '/tenants/attributes/values', icon: Tag, permission: 'view-tenant-attribute-values' },
         ]
-      },
-      { name: 'Notifications', href: '/settings/notifications', icon: Bell, permission: 'view-settings' },
+      }
     ]
   },
   {
     name: 'File Manager',
     icon: Folder,
-    permission: 'view-settings',
     children: [
-      { name: 'All Files', href: '/files', icon: FileText, permission: 'view-settings' },
+      { name: 'All Files', href: '/files', icon: FileText, permission: 'view-files' },
       {
         name: 'Media',
         icon: Folder,
-        permission: 'view-settings',
         children: [
-          { name: 'Images', href: '/files/media/images', icon: Image, permission: 'view-settings' },
-          { name: 'Videos', href: '/files/media/videos', icon: Video, permission: 'view-settings' },
-          { name: 'Audio', href: '/files/media/audio', icon: Music, permission: 'view-settings' },
+          { name: 'Images', href: '/files/media/images', icon: Image, permission: 'view-files' },
+          { name: 'Videos', href: '/files/media/videos', icon: Video, permission: 'view-files' },
+          { name: 'Audio', href: '/files/media/audio', icon: Music, permission: 'view-files' },
         ]
       },
-      { name: 'Documents', href: '/files/documents', icon: FileText, permission: 'view-settings' },
+      { name: 'Documents', href: '/files/documents', icon: FileText, permission: 'view-files' },
     ]
   },
   { name: 'Analytics', href: '/analytics', icon: TrendingUp, permission: 'view-analytics' },
@@ -279,46 +273,54 @@ function NavItem({ item, sidebarOpen, pathname, setMobileMenuOpen, depth = 0, is
 export default function Sidebar({ sidebarOpen, mobileMenuOpen, setMobileMenuOpen }: SidebarProps) {
   const pathname = usePathname();
   const [openItems, setOpenItems] = useState<Set<string>>(new Set());
-  const { hasPermission, hasAnyPermission } = usePermissions();
+  const { hasPermission, hasAnyPermission, isSuperAdmin } = usePermissions();
 
-  // Filter navigation based on permissions (deep clone to avoid mutating original)
-  const filteredNavigation = useMemo(() => {
-    return navigation.map(item => {
+  // Recursive function to filter navigation based on permissions
+  const filterNavigationRecursive = (items: NavigationItem[]): NavigationItem[] => {
+    return items.map(item => {
       const clonedItem = { ...item };
 
-      // Check item permission
-      if (clonedItem.permission) {
-        if (!hasPermission(clonedItem.permission)) {
-          return null;
-        }
-      }
-      if (clonedItem.permissions) {
-        if (!hasAnyPermission(clonedItem.permissions)) {
-          return null;
-        }
+      // Check super admin only access
+      if (clonedItem.superAdminOnly && !isSuperAdmin) {
+        return null;
       }
 
-      // Check children permissions
+      // Filter children recursively first
       if (clonedItem.children) {
-        clonedItem.children = clonedItem.children.filter(child => {
-          if (child.permission) {
-            return hasPermission(child.permission);
-          }
-          if (child.permissions) {
-            return hasAnyPermission(child.permissions);
-          }
-          return true;
-        }).map(child => ({ ...child })); // Clone children too
-
-        // Hide parent if no children have access
+        clonedItem.children = filterNavigationRecursive(clonedItem.children);
+        
+        // If no accessible children, check if parent has direct access
         if (clonedItem.children.length === 0) {
+          // Only show parent if it has its own permission that user has
+          if (clonedItem.permission && !hasPermission(clonedItem.permission)) {
+            return null;
+          }
+          if (clonedItem.permissions && !hasAnyPermission(clonedItem.permissions)) {
+            return null;
+          }
+          // If parent has no permission requirement and no children, hide it
+          if (!clonedItem.permission && !clonedItem.permissions) {
+            return null;
+          }
+        }
+      } else {
+        // Leaf node - check permission
+        if (clonedItem.permission && !hasPermission(clonedItem.permission)) {
+          return null;
+        }
+        if (clonedItem.permissions && !hasAnyPermission(clonedItem.permissions)) {
           return null;
         }
       }
 
       return clonedItem;
     }).filter(Boolean) as NavigationItem[];
-  }, [hasPermission, hasAnyPermission]);
+  };
+
+  // Filter navigation based on permissions
+  const filteredNavigation = useMemo(() => {
+    return filterNavigationRecursive(navigation);
+  }, [hasPermission, hasAnyPermission, isSuperAdmin]);
 
   // Helper function to find all parent paths for a given pathname
   const findParentPaths = (items: NavigationItem[], currentPath: string, parentPath = ''): string[] => {

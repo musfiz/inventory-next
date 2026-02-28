@@ -7,7 +7,7 @@ export default function AccessDeniedPage() {
   const router = useRouter();
 
   return (
-    <div className="min-h-[calc(100vh-4rem)] flex items-center justify-center px-4">
+    <div className="min-h-[calc(100vh-8rem)] flex items-center justify-center px-4">
       <div className="max-w-md w-full text-center">
         {/* Icon */}
         <div className="mx-auto w-24 h-24 bg-red-100 dark:bg-red-900/20 rounded-full flex items-center justify-center mb-6">

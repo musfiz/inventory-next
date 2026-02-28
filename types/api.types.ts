@@ -7,16 +7,30 @@ export interface Tenant {
   id: string;
   business_name: string;
   slug: string;
-  email: string;
   business_type?: string;
+  contact_person?: string;
   phone?: string;
+  email?: string;
   address?: string;
   city?: string;
   country?: string;
+  trade_license?: string;
+  tin_number?: string;
+  bin_number?: string;
+  vat_number?: string;
+  currency?: string;
+  timezone?: string;
+  theme_color?: string;
   subscription_plan?: string;
+  subscription_status?: string;
+  max_users?: number;
+  max_products?: number;
+  max_warehouses?: number;
   is_active?: boolean;
+  is_verified?: boolean;
   created_at?: string;
   updated_at?: string;
+  trial_ends_at?: string;
 }
 
 export interface User {

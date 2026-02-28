@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { Building2, Eye, Edit, Trash2, List, ListX, ListCheck, View, Rows4 } from 'lucide-react';
+import { Eye, Edit, Trash2, Rows4 } from 'lucide-react';
 import { ColumnDef } from '@tanstack/react-table';
 import DataTable from "@/components/ui/datatable";
 
@@ -11,7 +11,6 @@ interface Tenant {
   business_type: string;
   email: string;
   phone: string;
-  slug: string;
   is_active: boolean;
   users_count: number;
   created_at: string;
@@ -86,15 +85,6 @@ export default function TenantsPage() {
       ),
     },
     {
-      accessorKey: 'slug',
-      header: 'Slug',
-      cell: ({ row }) => (
-        <code className="text-xs bg-gray-100 dark:bg-gray-700 px-2 py-1 rounded text-gray-700 dark:text-gray-300">
-          {row.original.slug}
-        </code>
-      ),
-    },
-    {
       accessorKey: 'users_count',
       header: () => <div className="text-center">Users(Total)</div>,
       cell: ({ row }) => (
@@ -164,9 +154,8 @@ export default function TenantsPage() {
       </div>
 
       {/* Filters */}
-      <div className="bg-white dark:bg-gray-800 rounded-md shadow-sm border border-gray-200 dark:border-gray-700 p-2">
+      {/* <div className="bg-white dark:bg-gray-800 rounded-md shadow-sm border border-gray-200 dark:border-gray-700 p-2">
         <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
-          {/* Status Filter */}
           <select
             value={statusFilter}
             onChange={(e) => setStatusFilter(e.target.value)}
@@ -177,7 +166,6 @@ export default function TenantsPage() {
             <option value="inactive">Inactive</option>
           </select>
 
-          {/* Business Type Filter */}
           <select
             value={businessTypeFilter}
             onChange={(e) => setBusinessTypeFilter(e.target.value)}
@@ -194,7 +182,7 @@ export default function TenantsPage() {
             <option value="other">Other</option>
           </select>
         </div>
-      </div>
+      </div> */}
 
       {/* DataTable */}
       <DataTable

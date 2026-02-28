@@ -159,7 +159,7 @@ export default function UsersPage() {
                 try {
                   const switchSuccess = await switchUser(row.original.id.toString());
                   if (switchSuccess) {
-                    router.push('/dashboard');
+                    window.location.href = '/dashboard';
                   } else {
                     notify.switchUserError();
                   }
