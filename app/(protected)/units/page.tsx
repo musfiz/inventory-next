@@ -311,7 +311,7 @@ export default function UnitsPage() {
         columns={columns}
         apiEndpoint={buildApiEndpoint()}
         pageSize={15}
-        searchable={true}
+        enableSearch={true}
         searchPlaceholder="Search by unit name, short name..."
       />
     </div>

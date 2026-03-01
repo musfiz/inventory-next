@@ -420,7 +420,7 @@ export default function AttributeValuesPage() {
         columns={columns}
         apiEndpoint={buildApiEndpoint()}
         pageSize={15}
-        searchable={true}
+        enableSearch={true}
         searchPlaceholder="Search by value, display value..."
       />
     </div>

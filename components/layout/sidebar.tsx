@@ -25,7 +25,8 @@ import {
   Key,
   LucideIcon,
   UserLock,
-  ListTodo
+  ListTodo,
+  Package2
 } from 'lucide-react';
 
 interface SidebarProps {
@@ -65,6 +66,17 @@ const navigation: NavigationItem[] = [
     ]
   },
   {
+    name: 'Product Management',
+    icon: Package2,
+    permission: 'view-products',
+    children: [
+      { name: 'All Products', href: '/products', icon: List, permission: 'view-products' },
+      { name: 'Add Product', href: '/products/add', icon: UserPlus, permission: 'create-products' },
+      { name: 'Product Variations', href: '/products/variations', icon: Tag, permission: 'view-product-variations' },
+      { name: 'Product Images', href: '/products/images', icon: Image, permission: 'view-product-images' },
+    ]
+  },
+  {
     name: 'Permission Management',
     icon: UserLock,
     permission: 'create-user-permission',
@@ -78,7 +90,8 @@ const navigation: NavigationItem[] = [
     icon: Settings,
     children: [
       { name: 'Brands', href: '/brands', icon: Building2, superAdminOnly: true },
-      { name: 'Units', href: '/units', icon: Package, superAdminOnly: true },
+      { name: 'Units', href: '/units', icon: Package, superAdminOnly: true }, 
+      { name: 'Categories', href: '/categories', icon: ListTodo, superAdminOnly: true },
       {
         name: 'Attributes',
         icon: Tag,

@@ -447,7 +447,7 @@ export default function BrandsPage() {
         columns={columns}
         apiEndpoint={buildApiEndpoint()}
         pageSize={15}
-        searchable={true}
+        enableSearch={true}
         searchPlaceholder="Search by brand name, description..."
       />
     </div>

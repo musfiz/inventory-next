@@ -286,7 +286,7 @@ export default function PermissionsPage() {
         key={refreshKey}
         columns={columns}
         apiEndpoint={buildApiEndpoint()}
-        searchable={false} // We handle search via filters
+        enableSearch={false} // We handle search via filters
       />
     </div>
   );

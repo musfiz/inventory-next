@@ -481,7 +481,7 @@ export default function AttributesPage() {
         columns={columns}
         apiEndpoint={buildApiEndpoint()}
         pageSize={15}
-        searchable={true}
+        enableSearch={true}
         searchPlaceholder="Search by attribute name, type..."
       />
     </div >

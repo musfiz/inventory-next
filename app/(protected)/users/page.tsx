@@ -245,7 +245,7 @@ export default function UsersPage() {
         columns={columns}
         apiEndpoint={buildApiEndpoint()}
         pageSize={15}
-        searchable={true}
+        enableSearch={true}
         searchPlaceholder="Search by business name, email, or slug..."
       />
     </div>

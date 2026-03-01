@@ -12,6 +12,8 @@ export { default as tenantAttributeService } from './tenantAttributeService';
 export { default as tenantAttributeValueService } from './tenantAttributeValueService';
 export { default as permissionService } from './permissionService';
 export { default as userPermissionService } from './userPermissionService';
+export { default as productService } from './productService';
+export { default as categoryService } from './categoryService';
 
 // Re-export types for convenience
 export type {
@@ -19,6 +21,10 @@ export type {
   Tenant,
   Brand,
   Unit,
+  Category,
+  Product,
+  ProductVariation,
+  ProductImage,
   Attribute,
   TenantAttribute,
   TenantAttributeValue,
@@ -29,6 +35,16 @@ export type {
   UserProfileResponse,
   UserListParams,
   UserListResponse,
+  CreateProductRequest,
+  UpdateProductRequest,
+  CreateCategoryRequest,
+  UpdateCategoryRequest,
+  CreateProductVariationRequest,
+  UpdateProductVariationRequest,
+  CreateProductImageRequest,
+  ProductListResponse,
+  ProductVariationListResponse,
+  ProductImageListResponse,
   ApiResponse,
   ApiError,
 } from '@/types/api.types';
