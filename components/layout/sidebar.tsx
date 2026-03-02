@@ -90,7 +90,7 @@ const navigation: NavigationItem[] = [
     icon: Settings,
     children: [
       { name: 'Brands', href: '/brands', icon: Building2, superAdminOnly: true },
-      { name: 'Units', href: '/units', icon: Package, superAdminOnly: true }, 
+      { name: 'Units', href: '/units', icon: Package, superAdminOnly: true },
       { name: 'Categories', href: '/categories', icon: ListTodo, superAdminOnly: true },
       {
         name: 'Attributes',
@@ -99,15 +99,6 @@ const navigation: NavigationItem[] = [
         children: [
           { name: 'Attribute List', href: '/attributes', icon: List },
           { name: 'Attribute Values', href: '/attributes/values', icon: Tag },
-        ]
-      },
-      {
-        name: 'Tenant Attributes',
-        icon: ListTodo,
-        permissions: ['view-tenant-attributes', 'view-tenant-attribute-values'],
-        children: [
-          { name: 'Attribute List', href: '/tenants/attributes', icon: List, permission: 'view-tenant-attributes' },
-          { name: 'Attribute Values', href: '/tenants/attributes/values', icon: Tag, permission: 'view-tenant-attribute-values' },
         ]
       }
     ]
@@ -301,7 +292,7 @@ export default function Sidebar({ sidebarOpen, mobileMenuOpen, setMobileMenuOpen
       // Filter children recursively first
       if (clonedItem.children) {
         clonedItem.children = filterNavigationRecursive(clonedItem.children);
-        
+
         // If no accessible children, check if parent has direct access
         if (clonedItem.children.length === 0) {
           // Only show parent if it has its own permission that user has

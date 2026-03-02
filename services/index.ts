@@ -8,8 +8,6 @@ export { userService } from './userService';
 export { default as brandService } from './brandService';
 export { default as unitService } from './unitService';
 export { default as attributeService } from './attributeService';
-export { default as tenantAttributeService } from './tenantAttributeService';
-export { default as tenantAttributeValueService } from './tenantAttributeValueService';
 export { default as permissionService } from './permissionService';
 export { default as userPermissionService } from './userPermissionService';
 export { default as productService } from './productService';
@@ -26,8 +24,6 @@ export type {
   ProductVariation,
   ProductImage,
   Attribute,
-  TenantAttribute,
-  TenantAttributeValue,
   RegisterUserRequest,
   RegisterUserResponse,
   RegisterTenantRequest,
