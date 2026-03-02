@@ -65,6 +65,18 @@ class TenantService {
   }
 
   /**
+   * Store a new tenant (Super Admin only)
+   * POST /api/v1/tenants/store
+   */
+  async storeTenant(data: Partial<Tenant>): Promise<Tenant> {
+    const response = await apiClient.post<ApiResponse<{ tenant: Tenant }>>(
+      '/api/v1/tenants/store',
+      data
+    );
+    return response.data.data.tenant;
+  }
+
+  /**
    * Get current tenant details (for logged-in tenant users)
    * GET /api/v1/tenant/current
    */

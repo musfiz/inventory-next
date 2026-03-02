@@ -1,10 +1,10 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Eye, Edit, Trash2, Plus, Key, ListChecks, X } from 'lucide-react';
 import { ColumnDef } from '@tanstack/react-table';
 import DataTable from '@/components/ui/datatable';
-import { Permission } from "@/types/permission.types";
+import { Permission, Module } from "@/types/permission.types";
 import { confirm, notify } from '@/lib/notifications';
 import permissionService from '@/services/permissionService';
 
@@ -12,6 +12,23 @@ export default function PermissionsPage() {
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [moduleFilter, setModuleFilter] = useState<string>('all');
   const [searchQuery, setSearchQuery] = useState<string>('');
+  const [modules, setModules] = useState<Module[]>([]);
+  const [loadingModules, setLoadingModules] = useState(true);
+
+  // Load modules on component mount
+  useEffect(() => {
+    const loadModules = async () => {
+      try {
+        const modulesData = await permissionService.getModules();
+        setModules(modulesData);
+      } catch (error) {
+        notify.error('Failed to load modules');
+      } finally {
+        setLoadingModules(false);
+      }
+    };
+    loadModules();
+  }, []);
 
   // Form handling functions
   const handleAddPermission = () => {
@@ -19,7 +36,7 @@ export default function PermissionsPage() {
     setCurrentPermission(null);
     setFormData({
       name: '',
-      guard_name: 'web'
+      module_id: ''
     });
     setFormErrors({});
     setShowForm(true);
@@ -30,7 +47,7 @@ export default function PermissionsPage() {
     setCurrentPermission(permission);
     setFormData({
       name: permission.name,
-      guard_name: permission.guard_name
+      module_id: permission.module_id || ''
     });
     setFormErrors({});
     setShowForm(true);
@@ -80,7 +97,7 @@ export default function PermissionsPage() {
   const [currentPermission, setCurrentPermission] = useState<Permission | null>(null);
   const [formData, setFormData] = useState({
     name: '',
-    guard_name: 'web'
+    module_id: ''
   });
   const [formErrors, setFormErrors] = useState<{ [key: string]: string }>({});
   const [refreshKey, setRefreshKey] = useState(0);
@@ -116,12 +133,12 @@ export default function PermissionsPage() {
       ),
     },
     {
-      accessorKey: 'guard_name',
-      header: 'Guard',
-      meta: { width: '12%' },
+      accessorKey: 'module',
+      header: 'Module',
+      meta: { width: '15%' },
       cell: ({ row }) => (
-        <span className="text-xs text-gray-600 dark:text-gray-400 bg-gray-100 dark:bg-gray-800 px-2 py-1 rounded">
-          {row.original.guard_name}
+        <span className="text-xs text-gray-600 dark:text-gray-400">
+          {row.original.module?.name || 'General'}
         </span>
       ),
     },
@@ -222,16 +239,25 @@ export default function PermissionsPage() {
 
             <div>
               <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                Guard Name
+                Module
               </label>
               <select
-                value={formData.guard_name}
-                onChange={e => setFormData({ ...formData, guard_name: e.target.value })}
-                className="w-full px-3 py-1 text-sm border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-1 focus:ring-indigo-500 dark:focus:ring-indigo-400 focus:border-transparent dark:bg-gray-700 dark:text-gray-100"
+                value={formData.module_id}
+                onChange={e => setFormData({ ...formData, module_id: e.target.value })}
+                className={`w-full px-3 py-1 text-sm border rounded-md focus:outline-none focus:ring-1 focus:ring-indigo-500 dark:focus:ring-indigo-400 focus:border-transparent dark:bg-gray-700 dark:text-gray-100 ${formErrors.module_id ? 'border-red-500' : 'border-gray-300 dark:border-gray-600'
+                  }`}
+                disabled={loadingModules}
               >
-                <option value="web">Web</option>
-                <option value="api">API</option>
+                <option value="">Select Module (Optional)</option>
+                {modules.map((module) => (
+                  <option key={module.id} value={module.id}>
+                    {module.name}
+                  </option>
+                ))}
               </select>
+              {formErrors.module_id && (
+                <p className="text-red-600 text-xs mt-1">{formErrors.module_id}</p>
+              )}
             </div>
 
             <div className="flex gap-2 md:col-span-2">
@@ -260,7 +286,7 @@ export default function PermissionsPage() {
         key={refreshKey}
         columns={columns}
         apiEndpoint={buildApiEndpoint()}
-        searchable={false} // We handle search via filters
+        enableSearch={false} // We handle search via filters
       />
     </div>
   );

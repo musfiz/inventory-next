@@ -10,6 +10,8 @@ export { default as unitService } from './unitService';
 export { default as attributeService } from './attributeService';
 export { default as permissionService } from './permissionService';
 export { default as userPermissionService } from './userPermissionService';
+export { default as productService } from './productService';
+export { default as categoryService } from './categoryService';
 
 // Re-export types for convenience
 export type {
@@ -17,6 +19,10 @@ export type {
   Tenant,
   Brand,
   Unit,
+  Category,
+  Product,
+  ProductVariation,
+  ProductImage,
   Attribute,
   RegisterUserRequest,
   RegisterUserResponse,
@@ -25,6 +31,16 @@ export type {
   UserProfileResponse,
   UserListParams,
   UserListResponse,
+  CreateProductRequest,
+  UpdateProductRequest,
+  CreateCategoryRequest,
+  UpdateCategoryRequest,
+  CreateProductVariationRequest,
+  UpdateProductVariationRequest,
+  CreateProductImageRequest,
+  ProductListResponse,
+  ProductVariationListResponse,
+  ProductImageListResponse,
   ApiResponse,
   ApiError,
 } from '@/types/api.types';

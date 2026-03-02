@@ -8,7 +8,7 @@ import { notify } from '@/lib/notifications';
 import { useAuth } from '@/hooks/use-auth';
 import Header from "@/components/layout/header";
 import Sidebar from "@/components/layout/sidebar";
-import Loading from './Loading';
+import Loading from "@/app/loading";
 
 export default function AdminLayout({
   children,

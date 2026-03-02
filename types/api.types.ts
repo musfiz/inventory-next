@@ -7,16 +7,30 @@ export interface Tenant {
   id: string;
   business_name: string;
   slug: string;
-  email: string;
   business_type?: string;
+  contact_person?: string;
   phone?: string;
+  email?: string;
   address?: string;
   city?: string;
   country?: string;
+  trade_license?: string;
+  tin_number?: string;
+  bin_number?: string;
+  vat_number?: string;
+  currency?: string;
+  timezone?: string;
+  theme_color?: string;
   subscription_plan?: string;
+  subscription_status?: string;
+  max_users?: number;
+  max_products?: number;
+  max_warehouses?: number;
   is_active?: boolean;
+  is_verified?: boolean;
   created_at?: string;
   updated_at?: string;
+  trial_ends_at?: string;
 }
 
 export interface User {
@@ -36,14 +50,246 @@ export interface User {
   last_login_at?: string;
 }
 
+export interface Product {
+  id: string;
+  uuid?: string;
+  tenant_id?: string;
+  sku?: string;
+  name: string;
+  slug?: string;
+  description?: string;
+  short_description?: string;
+  gtin?: string;
+  ean?: string;
+  upc?: string;
+  isbn?: string;
+  mpn?: string;
+  manufacturer?: string;
+  manufacturer_sku?: string;
+  category_id?: string;
+  brand_id?: string;
+  unit_id?: string;
+  type?: 'simple' | 'variable' | 'composite' | 'digital' | 'service';
+  status?: 'draft' | 'active' | 'inactive' | 'discontinued' | 'archived';
+  cost_price?: number;
+  base_price?: number;
+  mrp?: number;
+  compare_at_price?: number;
+  tax_rate?: number;
+  is_taxable?: boolean;
+  weight?: number;
+  length?: number;
+  width?: number;
+  height?: number;
+  track_inventory?: boolean;
+  manage_stock?: boolean;
+  allow_backorder?: boolean;
+  low_stock_threshold?: number;
+  reorder_point?: number;
+  reorder_quantity?: number;
+  is_featured?: boolean;
+  is_new?: boolean;
+  is_bestseller?: boolean;
+  is_on_sale?: boolean;
+  available_from?: string;
+  available_until?: string;
+  display_order?: number;
+  meta_title?: string;
+  meta_description?: string;
+  meta_keywords?: string;
+  custom_fields?: Record<string, any>;
+  images?: ProductImage[];
+  variations?: ProductVariation[];
+  brand?: Brand;
+  category?: Category;
+  unit?: Unit;
+  created_at?: string;
+  updated_at?: string;
+}
+
+export interface ProductVariation {
+  id: string;
+  product_id: string;
+  name: string;
+  sku?: string;
+  price?: number;
+  cost_price?: number;
+  sale_price?: number;
+  quantity: number;
+  weight?: number;
+  dimensions?: string;
+  attributes: Record<string, any>;
+  is_active: boolean;
+  sort_order?: number;
+  created_at?: string;
+  updated_at?: string;
+}
+
+export interface ProductImage {
+  id: string;
+  product_id: string;
+  variation_id?: string;
+  image_path: string;
+  image_url: string;
+  alt_text?: string;
+  is_primary: boolean;
+  is_active?: boolean;
+  sort_order?: number;
+  created_at?: string;
+  updated_at?: string;
+}
+
 export interface Brand {
   id: string;
   name: string;
+  slug: string;
+  description?: string;
+  logo?: string;
+  is_active: boolean;
+  created_at?: string;
+  updated_at?: string;
+}
+
+export interface Category {
+  id: string;
+  name: string;
+  slug: string;
+  description?: string;
+  parent_id?: string;
+  business_type?: 'pharmacy' | 'electric' | 'electronics' | 'fashion' | 'furniture' | 'bookshop' | 'departmental' | 'computer' | 'clothing' | 'footwear' | 'cosmetics' | 'stationery' | 'grocery' | 'hardware' | 'restaurant' | 'cafe' | 'supermarket' | 'other';
+  sort_order?: number;
+  parent?: Category;
+  children?: Category[];
+  image?: string;
+  image_url?: string;
+  is_active: boolean;
+  created_at?: string;
+  updated_at?: string;
+}
+
+export interface Unit {
+  id: string;
+  name: string;
+  symbol: string;
+  is_active: boolean;
+  created_at?: string;
+  updated_at?: string;
+}
+
+export interface CreateProductRequest {
+  name: string;
+  description?: string;
+  short_description?: string;
+  sku?: string;
+  gtin?: string;
+  ean?: string;
+  upc?: string;
+  isbn?: string;
+  mpn?: string;
+  manufacturer?: string;
+  manufacturer_sku?: string;
+  category_id?: string;
+  brand_id?: string;
+  unit_id?: string;
+  type?: 'simple' | 'variable' | 'composite' | 'digital' | 'service';
+  status?: 'draft' | 'active' | 'inactive' | 'discontinued' | 'archived';
+  cost_price?: number;
+  base_price?: number;
+  mrp?: number;
+  compare_at_price?: number;
+  tax_rate?: number;
+  is_taxable?: boolean;
+  weight?: number;
+  length?: number;
+  width?: number;
+  height?: number;
+  track_inventory?: boolean;
+  manage_stock?: boolean;
+  allow_backorder?: boolean;
+  low_stock_threshold?: number;
+  reorder_point?: number;
+  reorder_quantity?: number;
+  is_featured?: boolean;
+  is_new?: boolean;
+  is_bestseller?: boolean;
+  is_on_sale?: boolean;
+  available_from?: string;
+  available_until?: string;
+  display_order?: number;
+  meta_title?: string;
+  meta_description?: string;
+  meta_keywords?: string;
+  custom_fields?: Record<string, any>;
+}
+
+export interface UpdateProductRequest extends Partial<CreateProductRequest> {
+  id: string;
+}
+
+export interface CreateCategoryRequest {
+  name: string;
+  description?: string;
+  parent_id?: string;
+  business_type?: 'pharmacy' | 'electric' | 'electronics' | 'fashion' | 'furniture' | 'bookshop' | 'departmental' | 'computer' | 'clothing' | 'footwear' | 'cosmetics' | 'stationery' | 'grocery' | 'hardware' | 'restaurant' | 'cafe' | 'supermarket' | 'other';
+  image_url?: string;
+  sort_order?: number;
+  is_active?: boolean;
+}
+
+export interface UpdateCategoryRequest extends Partial<CreateCategoryRequest> {
+  id: string;
+}
+
+export interface CreateProductVariationRequest {
+  product_id: string;
+  name: string;
+  sku?: string;
+  price?: number;
+  cost_price?: number;
+  sale_price?: number;
+  quantity: number;
+  weight?: number;
+  dimensions?: string;
+  attributes: Record<string, any>;
+  is_active?: boolean;
+  sort_order?: number;
+}
+
+export interface UpdateProductVariationRequest extends Partial<CreateProductVariationRequest> {
+  id: string;
+}
+
+export interface CreateProductImageRequest {
+  product_id: string;
+  variation_id?: string;
+  image: File;
+  alt_text?: string;
+  is_primary?: boolean;
+  sort_order?: number;
+}
+
+export interface ProductListResponse {
+  data: Product[];
+  meta: PaginationMeta;
+}
+
+export interface ProductVariationListResponse {
+  data: ProductVariation[];
+  meta: PaginationMeta;
+}
+
+export interface ProductImageListResponse {
+  data: ProductImage[];
+  meta: PaginationMeta;
+}
+
+export interface Brand {
+  id: string;
+  name: string;
+  business_type?: 'pharmacy' | 'electric' | 'electronics' | 'fashion' | 'furniture' | 'bookshop' | 'departmental' | 'computer' | 'clothing' | 'footwear' | 'cosmetics' | 'stationery' | 'grocery' | 'hardware' | 'restaurant' | 'cafe' | 'supermarket' | 'other';
   description?: string;
   logo_url?: string;
   is_active: boolean;
-  tenant_id?: string;
-  tenant?: Tenant;
   created_at?: string;
   updated_at?: string;
 }
@@ -52,7 +298,6 @@ export interface Unit {
   id: string;
   name: string;
   short_name: string;
-  is_default: boolean;
   is_active: boolean;
   created_at?: string;
   updated_at?: string;

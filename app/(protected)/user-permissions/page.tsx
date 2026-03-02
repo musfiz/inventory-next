@@ -1,12 +1,14 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { Shield, Search, Save, UserCheck, Check, X } from 'lucide-react';
 import CustomSelect from '@/components/ui/custom-select';
 import { notify } from '@/lib/notifications';
 import userPermissionService, { UserPermissionModule, UserSelection } from '@/services/userPermissionService';
+import { usePermissions } from '@/hooks/use-permissions';
 
 export default function UserPermissionsPage() {
+  const { isTenantAdmin } = usePermissions();
   const [users, setUsers] = useState<UserSelection[]>([]);
   const [selectedUserId, setSelectedUserId] = useState<string>('');
   const [modules, setModules] = useState<UserPermissionModule[]>([]);
@@ -20,6 +22,14 @@ export default function UserPermissionsPage() {
 
   // Available permission actions
   const permissionActions = ['view', 'store', 'update', 'delete', 'PDF', 'XLSX'];
+
+  // Filter users: if current user is tenant_admin, exclude other tenant_admins
+  const filteredUsers = useMemo(() => {
+    if (isTenantAdmin) {
+      return users.filter(user => user.user_type !== 'tenant_admin');
+    }
+    return users;
+  }, [users, isTenantAdmin]);
 
   // Fetch users and modules on mount
   useEffect(() => {
@@ -177,12 +187,12 @@ export default function UserPermissionsPage() {
               Select User *
             </label>
             <CustomSelect
-              value={users.find(user => user.id === selectedUserId) ? {
-                value: users.find(user => user.id === selectedUserId)!.id,
-                label: `${users.find(user => user.id === selectedUserId)!.name} (${users.find(user => user.id === selectedUserId)!.user_type})`
+              value={filteredUsers.find(user => user.id === selectedUserId) ? {
+                value: filteredUsers.find(user => user.id === selectedUserId)!.id,
+                label: `${filteredUsers.find(user => user.id === selectedUserId)!.name} (${filteredUsers.find(user => user.id === selectedUserId)!.user_type})`
               } : null}
               onChange={(option) => handleUserChange(option?.value || '')}
-              options={users.map(user => ({
+              options={filteredUsers.map(user => ({
                 value: user.id,
                 label: `${user.name} (${user.user_type})`
               }))}

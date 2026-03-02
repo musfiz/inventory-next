@@ -20,7 +20,7 @@ export default function AttributeValuesPage() {
     value: '',
     display_value: '',
     hex_code: '',
-    sort_order: 0,
+    sort_order: undefined as number | undefined,
   });
   const [formErrors, setFormErrors] = useState<{ [key: string]: string }>({});
   const [refreshKey, setRefreshKey] = useState(0);
@@ -64,7 +64,7 @@ export default function AttributeValuesPage() {
       value: '',
       display_value: '',
       hex_code: '',
-      sort_order: 0
+      sort_order: undefined
     });
     setFormErrors({});
     setShowForm(true);
@@ -175,6 +175,16 @@ export default function AttributeValuesPage() {
       },
     },
     {
+      accessorKey: 'attribute.name',
+      header: 'Attribute Name',
+      meta: { width: '20%' },
+      cell: ({ row }) => (
+        <span className="text-xs text-gray-600 dark:text-gray-400">
+          {row.original.attribute?.name || 'N/A'}
+        </span>
+      ),
+    },
+    {
       accessorKey: 'value',
       header: 'Value',
       meta: { width: '20%' },
@@ -202,16 +212,6 @@ export default function AttributeValuesPage() {
       cell: ({ row }) => (
         <span className="text-xs text-gray-600 dark:text-gray-400">
           {row.original.display_value || 'N/A'}
-        </span>
-      ),
-    },
-    {
-      accessorKey: 'attribute.name',
-      header: 'Attribute',
-      meta: { width: '20%' },
-      cell: ({ row }) => (
-        <span className="text-xs text-gray-600 dark:text-gray-400">
-          {row.original.attribute?.name || 'N/A'}
         </span>
       ),
     },
@@ -374,21 +374,23 @@ export default function AttributeValuesPage() {
                 )}
               </div>
 
-              <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-0.5">Sort Order</label>
-                <input
-                  type="number"
-                  placeholder="0"
-                  value={formData.sort_order}
-                  onChange={e => setFormData({ ...formData, sort_order: parseInt(e.target.value) || 0 })}
-                  className={`w-full px-2 py-1.5 text-sm border rounded-sm focus:outline-none focus:ring-1 focus:ring-indigo-500 dark:focus:ring-indigo-400 focus:border-transparent dark:bg-gray-700 dark:text-gray-100 ${formErrors.sort_order ? 'border-red-500' : 'border-gray-300 dark:border-gray-600'
-                    }`}
-                  min="0"
-                />
-                {formErrors.sort_order && (
-                  <p className="text-red-600 text-xs mt-1">{formErrors.sort_order}</p>
-                )}
-              </div>
+              {isEditing && (
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-0.5">Sort Order</label>
+                  <input
+                    type="number"
+                    placeholder="0"
+                    value={formData.sort_order}
+                    onChange={e => setFormData({ ...formData, sort_order: parseInt(e.target.value) || 0 })}
+                    className={`w-full px-2 py-1.5 text-sm border rounded-sm focus:outline-none focus:ring-1 focus:ring-indigo-500 dark:focus:ring-indigo-400 focus:border-transparent dark:bg-gray-700 dark:text-gray-100 ${formErrors.sort_order ? 'border-red-500' : 'border-gray-300 dark:border-gray-600'
+                      }`}
+                    min="0"
+                  />
+                  {formErrors.sort_order && (
+                    <p className="text-red-600 text-xs mt-1">{formErrors.sort_order}</p>
+                  )}
+                </div>
+              )}
             </div>
 
             <div className="flex gap-2 md:col-span-2 mt-1.5">
@@ -418,7 +420,7 @@ export default function AttributeValuesPage() {
         columns={columns}
         apiEndpoint={buildApiEndpoint()}
         pageSize={15}
-        searchable={true}
+        enableSearch={true}
         searchPlaceholder="Search by value, display value..."
       />
     </div>

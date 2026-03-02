@@ -14,7 +14,6 @@ class UnitService {
     id?: string;
     name: string;
     short_name: string;
-    is_default: boolean;
     is_active: boolean;
   }): Promise<Unit> {
     const response = await apiClient.post<ApiResponse<Unit>>(

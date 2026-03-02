@@ -20,20 +20,8 @@ export default function UsersPage() {
 
   // Check permissions only after store is hydrated
   useEffect(() => {
-    if (isHydrated && !hasPermission('view-users')) {
-      router.push('/dashboard');
-      notify.error('You do not have permission to view users');
-    }
-  }, [hasPermission, isHydrated, router]);
 
-  // Show loading while store is hydrating
-  if (!isHydrated) {
-    return (
-      <div className="flex items-center justify-center min-h-screen">
-        <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-indigo-600"></div>
-      </div>
-    );
-  }
+  }, [hasPermission, isHydrated, router]);
 
   // Check if current user is super admin
   const isSuperAdmin = currentUser?.user_type === 'super_admin';
@@ -171,7 +159,7 @@ export default function UsersPage() {
                 try {
                   const switchSuccess = await switchUser(row.original.id.toString());
                   if (switchSuccess) {
-                    router.push('/dashboard');
+                    window.location.href = '/dashboard';
                   } else {
                     notify.switchUserError();
                   }
@@ -257,7 +245,7 @@ export default function UsersPage() {
         columns={columns}
         apiEndpoint={buildApiEndpoint()}
         pageSize={15}
-        searchable={true}
+        enableSearch={true}
         searchPlaceholder="Search by business name, email, or slug..."
       />
     </div>

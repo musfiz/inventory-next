@@ -2,7 +2,8 @@ import apiClient from '@/lib/api/axios';
 import {
   Permission,
   CreatePermissionRequest,
-  UpdatePermissionRequest
+  UpdatePermissionRequest,
+  Module
 } from '@/types';
 
 class PermissionService {
@@ -37,6 +38,14 @@ class PermissionService {
    */
   async deletePermission(id: string): Promise<void> {
     await apiClient.get(`${this.baseUrl}/${id}`);
+  }
+
+  /**
+   * Get all modules
+   */
+  async getModules(): Promise<Module[]> {
+    const response = await apiClient.get('/api/v1/user-permissions/all-modules');
+    return response.data.data;
   }
 }
 

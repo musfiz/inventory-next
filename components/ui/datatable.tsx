@@ -24,10 +24,13 @@ import {
 
 export interface ServerDataTableProps<T = any> {
   columns: ColumnDef<T>[];
-  apiEndpoint: string;
+  apiEndpoint?: string;
+  fetchData?: (params: any) => Promise<{ data: T[]; total: number; page: number; per_page: number }>;
   pageSize?: number;
-  searchable?: boolean;
+  enableSearch?: boolean;
   searchPlaceholder?: string;
+  enablePagination?: boolean;
+  enableSorting?: boolean;
 }
 
 interface PaginationData {
@@ -40,9 +43,12 @@ interface PaginationData {
 export default function DataTable<T extends Record<string, any>>({
   columns,
   apiEndpoint,
+  fetchData,
   pageSize = 10,
-  searchable = true,
+  enableSearch = true,
   searchPlaceholder = 'Search...',
+  enablePagination = true,
+  enableSorting = true,
 }: ServerDataTableProps<T>) {
   const [data, setData] = useState<T[]>([]);
   const [loading, setLoading] = useState(false);
@@ -59,31 +65,45 @@ export default function DataTable<T extends Record<string, any>>({
   const prevEndpointRef = useRef(apiEndpoint);
 
   // Fetch data from server
-  const fetchData = async () => {
+  const fetchDataInternal = async () => {
     setLoading(true);
     try {
-      const params = new URLSearchParams({
-        page: pagination.page.toString(),
-        per_page: pagination.pageSize.toString(),
-      });
+      const params = {
+        page: pagination.page,
+        per_page: pagination.pageSize,
+        search: debouncedSearch || undefined,
+        sortBy: sorting.length > 0 ? sorting[0].id : undefined,
+        sortOrder: sorting.length > 0 ? (sorting[0].desc ? 'desc' : 'asc') : undefined,
+      };
 
-      if (debouncedSearch) {
-        params.append('search', debouncedSearch);
+      let result;
+      if (fetchData) {
+        // Use custom fetchData function
+        result = await fetchData(params);
+      } else if (apiEndpoint) {
+        // Use API endpoint
+        const queryParams = new URLSearchParams();
+        Object.entries(params).forEach(([key, value]) => {
+          if (value !== undefined) {
+            queryParams.append(key, value.toString());
+          }
+        });
+        const response = await apiClient.get(`${apiEndpoint}${apiEndpoint.includes('?') ? '&' : '?'}${queryParams.toString()}`);
+        result = response.data;
+      } else {
+        throw new Error('Either apiEndpoint or fetchData must be provided');
       }
-
-      if (sorting.length > 0) {
-        params.append('sortBy', sorting[0].id);
-        params.append('sortOrder', sorting[0].desc ? 'desc' : 'asc');
-      }
-
-      const response = await apiClient.get(`${apiEndpoint}${apiEndpoint.includes('?') ? '&' : '?'}${params.toString()}`);
-
-      const result = response.data;
 
       // Handle custom pagination format
       setData(result.data || []);
       if (result.pagination) {
         setPagination(result.pagination);
+      } else if (result.total !== undefined) {
+        setPagination(prev => ({
+          ...prev,
+          total: result.total,
+          totalPages: Math.ceil(result.total / prev.pageSize),
+        }));
       }
     } catch (error) {
       console.error('Failed to fetch data:', error);
@@ -117,7 +137,7 @@ export default function DataTable<T extends Record<string, any>>({
     }
 
     // Otherwise fetch data
-    fetchData();
+    fetchDataInternal();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [pagination.page, debouncedSearch, sorting, apiEndpoint]);
 
@@ -149,7 +169,7 @@ export default function DataTable<T extends Record<string, any>>({
   return (
     <div className="space-y-2">
       {/* Search Bar */}
-      {searchable && (
+      {enableSearch && (
         <div className="flex items-center gap-2">
           <div className="relative flex-1 max-w-sm">
             <Search className="absolute left-2 top-1/2 transform -translate-y-1/2 h-3.5 w-3.5 text-gray-400 dark:text-gray-500" />
@@ -232,7 +252,7 @@ export default function DataTable<T extends Record<string, any>>({
                     {row.getVisibleCells().map((cell) => (
                       <td
                         key={cell.id}
-                        className="px-3 py-2 text-left align-top whitespace-nowrap text-xs text-gray-900 dark:text-gray-100"
+                        className="px-3 py-2 text-left align-middle whitespace-nowrap text-xs text-gray-900 dark:text-gray-100"
                         style={{
                           width: (cell.column.columnDef as any).meta?.width || 'auto',
                           minWidth: (cell.column.columnDef as any).meta?.width || 'auto'

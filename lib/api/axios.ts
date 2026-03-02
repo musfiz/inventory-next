@@ -39,7 +39,7 @@ axios.interceptors.request.use(
   }
 )
 
-// Response interceptor to handle 419 CSRF token mismatch
+// Response interceptor to handle 419 CSRF token mismatch and 403 permission errors
 axios.interceptors.response.use(
   (response) => response,
   async (error) => {
@@ -62,6 +62,15 @@ axios.interceptors.response.use(
       } catch (csrfError) {
         console.error('Failed to refresh CSRF cookie:', csrfError)
       }
+    }
+
+    // Handle 403 permission errors
+    if (error.response?.status === 403) {
+      // Redirect to access denied page if permission denied
+      if (typeof window !== 'undefined') {
+        window.location.href = '/access-denied'
+      }
+      return Promise.reject(error)
     }
 
     return Promise.reject(error)
