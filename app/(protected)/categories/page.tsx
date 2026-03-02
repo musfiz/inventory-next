@@ -16,7 +16,7 @@ export default function CategoriesPage() {
   const [showForm, setShowForm] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
   const [currentCategory, setCurrentCategory] = useState<Category | null>(null);
-  const [parentCategories, ] = useState<Category[]>([]);
+  const [parentCategories,] = useState<Category[]>([]);
   const [formData, setFormData] = useState({
     name: '',
     description: '',
@@ -25,35 +25,35 @@ export default function CategoriesPage() {
     parent_id: undefined as string | undefined,
   });
   const [formErrors, setFormErrors] = useState<{ [key: string]: string }>({});
-  const [refreshKey, setRefreshKey] = useState(0);  
+  const [refreshKey, setRefreshKey] = useState(0);
 
   const [defaultParentOptions, setDefaultParentOptions] = useState<{ value: string; label: string }[]>([]);
 
   const loadParentCategoryOptions = async (inputValue: string, callback: (options: { value: string; label: string }[]) => void) => {
     try {
       const params: { search?: string } = {};
-      
+
       if (inputValue) {
         params.search = inputValue;
       }
-      
+
       const categories = await categoryService.getCategoriesForDropdown(params);
-      
+
       // Filter out current category when editing
-      const filteredCategories = categories.filter(cat => 
+      const filteredCategories = categories.filter(cat =>
         !isEditing || cat.id !== currentCategory?.id
       );
-      
+
       const options = filteredCategories.map(cat => ({
         value: cat.id,
         label: cat.name
       }));
-      
+
       // Store default options for initial load
       if (!inputValue && defaultParentOptions.length === 0) {
         setDefaultParentOptions(options);
       }
-      
+
       callback(options);
     } catch (error) {
       console.error('Failed to load parent categories:', error);
@@ -67,7 +67,7 @@ export default function CategoriesPage() {
     setFormData({ name: '', description: '', business_type: 'other', is_active: true, parent_id: undefined });
     setFormErrors({});
     // Load default parent category options
-    loadParentCategoryOptions('', () => {});
+    loadParentCategoryOptions('', () => { });
     setShowForm(true);
   };
 
@@ -83,7 +83,7 @@ export default function CategoriesPage() {
     });
     setFormErrors({});
     // Load default parent category options
-    loadParentCategoryOptions('', () => {});
+    loadParentCategoryOptions('', () => { });
     setShowForm(true);
   };
 
@@ -156,15 +156,6 @@ export default function CategoriesPage() {
       ),
     },
     {
-      accessorKey: 'description',
-      header: 'Description',
-      cell: ({ row }) => (
-        <span className="text-gray-600 dark:text-gray-400">
-          {row.original.description || '-'}
-        </span>
-      ),
-    },
-    {
       accessorKey: 'business_type',
       header: 'Business Type',
       cell: ({ row }) => (
@@ -174,10 +165,12 @@ export default function CategoriesPage() {
       ),
     },
     {
-      accessorKey: 'sort_order',
-      header: 'Sort Order',
+      accessorKey: 'description',
+      header: 'Description',
       cell: ({ row }) => (
-        <span className="text-center">{row.original.sort_order || 0}</span>
+        <span className="text-gray-600 dark:text-gray-400">
+          {row.original.description || '-'}
+        </span>
       ),
     },
     {
@@ -185,11 +178,10 @@ export default function CategoriesPage() {
       header: 'Status',
       cell: ({ row }) => (
         <span
-          className={`px-2 py-1 text-xs rounded-full ${
-            row.original.is_active
-              ? 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400'
-              : 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400'
-          }`}
+          className={`px-2 py-1 text-xs rounded-full ${row.original.is_active
+            ? 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400'
+            : 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400'
+            }`}
         >
           {row.original.is_active ? 'Active' : 'Inactive'}
         </span>
@@ -200,13 +192,6 @@ export default function CategoriesPage() {
       header: 'Actions',
       cell: ({ row }) => (
         <div className="flex items-center gap-2">
-          <button
-            onClick={() => router.push(`/categories/${row.original.id}`)}
-            className="p-1 text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300"
-            title="View"
-          >
-            <Eye className="w-4 h-4" />
-          </button>
           <button
             onClick={() => handleEditCategory(row.original)}
             className="p-1 text-green-600 hover:text-green-800 dark:text-green-400 dark:hover:text-green-300"
@@ -267,7 +252,7 @@ export default function CategoriesPage() {
                   placeholder="Enter category name"
                   value={formData.name}
                   onChange={e => setFormData({ ...formData, name: e.target.value })}
-                  className={`w-full px-2 py-[5px] text-sm border rounded-sm focus:outline-none focus:ring-1 focus:ring-blue-500 dark:focus:ring-blue-400 focus:border-transparent dark:bg-gray-700 dark:text-gray-100 ${formErrors.name ? 'border-red-500' : 'border-gray-300 dark:border-gray-600'
+                  className={`w-full px-2 py-1.25 text-sm border rounded-sm focus:outline-none focus:ring-1 focus:ring-blue-500 dark:focus:ring-blue-400 focus:border-transparent dark:bg-gray-700 dark:text-gray-100 ${formErrors.name ? 'border-red-500' : 'border-gray-300 dark:border-gray-600'
                     }`}
                   required
                 />
@@ -301,21 +286,21 @@ export default function CategoriesPage() {
                 <select
                   value={formData.is_active ? 'active' : 'inactive'}
                   onChange={e => setFormData({ ...formData, is_active: e.target.value === 'active' })}
-                  className="w-full px-2 py-[5px] text-sm border border-gray-300 dark:border-gray-600 rounded-sm focus:outline-none focus:ring-1 focus:ring-blue-500 dark:focus:ring-blue-400 focus:border-transparent dark:bg-gray-700 dark:text-gray-100"
+                  className="w-full px-2 py-1.25 text-sm border border-gray-300 dark:border-gray-600 rounded-sm focus:outline-none focus:ring-1 focus:ring-blue-500 dark:focus:ring-blue-400 focus:border-transparent dark:bg-gray-700 dark:text-gray-100"
                 >
                   <option value="active">Active</option>
                   <option value="inactive">Inactive</option>
                 </select>
               </div>
             </div>
-            <div className="md:col-span-2 grid grid-cols-1 md:grid-cols-2 gap-1">              
+            <div className="md:col-span-2 grid grid-cols-1 md:grid-cols-2 gap-1">
               <div>
                 <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-0.5">Description</label>
                 <textarea
                   placeholder="Describe the category"
                   value={formData.description}
                   onChange={e => setFormData({ ...formData, description: e.target.value })}
-                  className="w-full px-2 py-[5px] text-sm border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500 dark:focus:ring-blue-400 focus:border-transparent dark:bg-gray-700 dark:text-gray-100 h-9 resize-none"
+                  className="w-full px-2 py-1.25 text-sm border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500 dark:focus:ring-blue-400 focus:border-transparent dark:bg-gray-700 dark:text-gray-100 h-9 resize-none"
                   rows={3}
                 />
               </div>
@@ -342,14 +327,14 @@ export default function CategoriesPage() {
       )}
 
       {/* DataTable */}
-        <DataTable
-          key={refreshKey}
-          columns={columns}
-          apiEndpoint={buildApiEndpoint()}
-          pageSize={15}
-          enableSearch={true}
-          searchPlaceholder="Search by unit name, short name..."
-        />
+      <DataTable
+        key={refreshKey}
+        columns={columns}
+        apiEndpoint={buildApiEndpoint()}
+        pageSize={15}
+        enableSearch={true}
+        searchPlaceholder="Search by unit name, short name..."
+      />
     </div>
   );
 }
