@@ -5,6 +5,7 @@
 
 export const BUSINESS_TYPES = [
   { value: 'pharmacy', label: 'Pharmacy' },
+  { value: 'electric', label: 'Electric' },
   { value: 'electronics', label: 'Electronics' },
   { value: 'fashion', label: 'Fashion' },
   { value: 'furniture', label: 'Furniture' },

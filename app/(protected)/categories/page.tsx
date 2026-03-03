@@ -12,11 +12,10 @@ import CustomSelect from '@/components/ui/custom-select';
 import { BUSINESS_TYPES } from '@/lib/constants';
 
 export default function CategoriesPage() {
-  const router = useRouter();
   const [showForm, setShowForm] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
   const [currentCategory, setCurrentCategory] = useState<Category | null>(null);
-  const [parentCategories,] = useState<Category[]>([]);
+  const [parentCategories, setParentCategories] = useState<Category[]>([]);
   const [formData, setFormData] = useState({
     name: '',
     description: '',
@@ -48,6 +47,9 @@ export default function CategoriesPage() {
         value: cat.id,
         label: cat.name
       }));
+
+      // Update parent categories state
+      setParentCategories(filteredCategories);
 
       // Store default options for initial load
       if (!inputValue && defaultParentOptions.length === 0) {
@@ -141,6 +143,15 @@ export default function CategoriesPage() {
 
   const columns: ColumnDef<Category>[] = [
     {
+      id: 'serial',
+      header: 'SL',
+      cell: ({ row }) => (
+        <span className="text-gray-600 dark:text-gray-400">
+          {row.index + 1}
+        </span>
+      ),
+    },
+    {
       accessorKey: 'name',
       header: 'Name',
       cell: ({ row }) => (
@@ -153,6 +164,15 @@ export default function CategoriesPage() {
             </span>
           )}
         </div>
+      ),
+    },
+    {
+      id: 'parent_category',
+      header: 'Parent Category',
+      cell: ({ row }) => (
+        <span className="px-2 py-1 text-xs rounded-full bg-purple-100 text-purple-800 dark:bg-teal-900/30 dark:text-purple-400">
+          {row.original.parent?.name || '-'}
+        </span>
       ),
     },
     {

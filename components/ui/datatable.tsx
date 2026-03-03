@@ -186,7 +186,7 @@ export default function DataTable<T extends Record<string, any>>({
 
       {/* Table */}
       <div className="bg-white dark:bg-gray-800 shadow-sm dark:shadow-gray-900/50 rounded-md overflow-hidden border border-gray-200 dark:border-gray-700">
-        <div className="overflow-x-auto overflow-y-auto max-h-[calc(100vh-300px)]">
+        <div className="overflow-x-auto overflow-y-auto max-h-[calc(100vh-200px)]">
           <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
             <thead className="bg-gray-50 dark:bg-gray-900/50 sticky top-0 z-10">
               {table.getHeaderGroups().map((headerGroup) => (
