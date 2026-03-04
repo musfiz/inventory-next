@@ -304,7 +304,7 @@ export default function AttributesPage() {
   const buildApiEndpoint = () => {
     const params = new URLSearchParams();
     const queryString = params.toString();
-    return `/api/v1/attribute${queryString ? `?${queryString}` : ''}`;
+    return `attribute${queryString ? `?${queryString}` : ''}`;
   };
 
   return (

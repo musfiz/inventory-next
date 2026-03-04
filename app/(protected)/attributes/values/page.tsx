@@ -274,7 +274,7 @@ export default function AttributeValuesPage() {
   const buildApiEndpoint = () => {
     const params = new URLSearchParams();
     const queryString = params.toString();
-    return `/api/v1/attribute-value${queryString ? `?${queryString}` : ''}`;
+    return `attribute-value${queryString ? `?${queryString}` : ''}`;
   };
 
   return (

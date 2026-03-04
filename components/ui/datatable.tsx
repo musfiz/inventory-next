@@ -20,6 +20,7 @@ import {
   ArrowUp,
   ArrowDown,
   Loader2,
+  X,
 } from 'lucide-react';
 
 export interface ServerDataTableProps<T = any> {
@@ -31,6 +32,8 @@ export interface ServerDataTableProps<T = any> {
   searchPlaceholder?: string;
   enablePagination?: boolean;
   enableSorting?: boolean;
+  baseApiPath?: string;
+  searchValue?: string;
 }
 
 interface PaginationData {
@@ -49,6 +52,7 @@ export default function DataTable<T extends Record<string, any>>({
   searchPlaceholder = 'Search...',
   enablePagination = true,
   enableSorting = true,
+  baseApiPath = '/api/v1',
 }: ServerDataTableProps<T>) {
   const [data, setData] = useState<T[]>([]);
   const [loading, setLoading] = useState(false);
@@ -88,7 +92,8 @@ export default function DataTable<T extends Record<string, any>>({
             queryParams.append(key, value.toString());
           }
         });
-        const response = await apiClient.get(`${apiEndpoint}${apiEndpoint.includes('?') ? '&' : '?'}${queryParams.toString()}`);
+        const fullEndpoint = `${baseApiPath}${apiEndpoint.startsWith('/') ? '' : '/'}${apiEndpoint}`;
+        const response = await apiClient.get(`${fullEndpoint}${fullEndpoint.includes('?') ? '&' : '?'}${queryParams.toString()}`);
         result = response.data;
       } else {
         throw new Error('Either apiEndpoint or fetchData must be provided');
@@ -178,8 +183,16 @@ export default function DataTable<T extends Record<string, any>>({
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               placeholder={searchPlaceholder}
-              className="w-full pl-8 pr-3 py-1 text-sm border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 placeholder-gray-400 dark:placeholder-gray-500 focus:outline-none focus:ring-1 focus:ring-indigo-500 dark:focus:ring-indigo-400 focus:border-transparent"
+              className="w-full pl-8 pr-8 py-1 text-sm border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 placeholder-gray-400 dark:placeholder-gray-500 focus:outline-none focus:ring-1 focus:ring-indigo-500 dark:focus:ring-indigo-400 focus:border-transparent"
             />
+            {searchQuery && (
+              <button
+                onClick={() => setSearchQuery('')}
+                className="absolute right-2 top-1/2 transform -translate-y-1/2 h-3.5 w-3.5 text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300"
+              >
+                <X className="h-3.5 w-3.5" />
+              </button>
+            )}
           </div>
         </div>
       )}

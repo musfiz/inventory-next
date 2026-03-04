@@ -293,7 +293,7 @@ export default function BrandsPage() {
     const params = new URLSearchParams();
     if (businessTypeFilter) params.append('business_type', businessTypeFilter);
     const queryString = params.toString();
-    return `/api/v1/brand${queryString ? `?${queryString}` : ''}`;
+    return `brand${queryString ? `?${queryString}` : ''}`;
   };
 
   return (

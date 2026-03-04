@@ -236,7 +236,7 @@ export default function ProductsPage() {
     const params = new URLSearchParams();
     if (statusFilter !== 'all') params.append('status', statusFilter);
     const queryString = params.toString();
-    return `/api/v1/products${queryString ? `?${queryString}` : ''}`;
+    return `products${queryString ? `?${queryString}` : ''}`;
   };
 
   return (

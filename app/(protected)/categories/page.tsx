@@ -1,7 +1,7 @@
 'use client';
 
-import { useState } from 'react';
-import { useRouter } from 'next/navigation';
+import { useState, useEffect } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { FolderOpen, Plus, Edit, Trash2, Eye, X } from 'lucide-react';
 import { ColumnDef } from '@tanstack/react-table';
 import { notify } from '@/lib/notifications';
@@ -145,9 +145,9 @@ export default function CategoriesPage() {
     {
       id: 'serial',
       header: 'SL',
-      cell: ({ row }) => (
+      cell: ({ row, table }) => (
         <span className="text-gray-600 dark:text-gray-400">
-          {row.index + 1}
+          {(table.getState().pagination.pageIndex * table.getState().pagination.pageSize) + row.index + 1}
         </span>
       ),
     },
@@ -235,7 +235,7 @@ export default function CategoriesPage() {
   const buildApiEndpoint = () => {
     const params = new URLSearchParams();
     const queryString = params.toString();
-    return `/api/v1/categories${queryString ? `?${queryString}` : ''}`;
+    return `categories${queryString ? `?${queryString}` : ''}`;
   };
 
   return (

@@ -212,7 +212,7 @@ export default function UnitsPage() {
   const buildApiEndpoint = () => {
     const params = new URLSearchParams();
     const queryString = params.toString();
-    return `/api/v1/unit${queryString ? `?${queryString}` : ''}`;
+    return `unit${queryString ? `?${queryString}` : ''}`;
   };
 
   return (
