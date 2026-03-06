@@ -17,9 +17,6 @@ interface Tenant {
 }
 
 export default function TenantsPage() {
-  const [statusFilter, setStatusFilter] = useState<string>('all');
-  const [businessTypeFilter, setBusinessTypeFilter] = useState<string>('all');
-
   const getStatusBadge = (isActive: boolean) => {
     return isActive ? (
       <span className="px-1.5 py-0.5 text-xs font-medium rounded bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400">
@@ -134,9 +131,6 @@ export default function TenantsPage() {
   // Build API endpoint with filters
   const buildApiEndpoint = () => {
     const params = new URLSearchParams();
-    if (statusFilter !== 'all') params.append('status', statusFilter);
-    if (businessTypeFilter !== 'all') params.append('business_type', businessTypeFilter);
-
     const queryString = params.toString();
     return `tenants${queryString ? `?${queryString}` : ''}`;
   };
@@ -164,22 +158,6 @@ export default function TenantsPage() {
             <option value="all">All Status</option>
             <option value="active">Active</option>
             <option value="inactive">Inactive</option>
-          </select>
-
-          <select
-            value={businessTypeFilter}
-            onChange={(e) => setBusinessTypeFilter(e.target.value)}
-            className="px-2 py-1 text-sm border border-gray-300 dark:border-gray-600 rounded focus:ring-1 focus:ring-indigo-500 dark:bg-gray-700 dark:text-gray-100"
-          >
-            <option value="all">All Types</option>
-            <option value="retail">Retail</option>
-            <option value="wholesale">Wholesale</option>
-            <option value="manufacturing">Manufacturing</option>
-            <option value="distribution">Distribution</option>
-            <option value="ecommerce">E-commerce</option>
-            <option value="service">Service</option>
-            <option value="restaurant">Restaurant</option>
-            <option value="other">Other</option>
           </select>
         </div>
       </div> */}

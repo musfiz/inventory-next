@@ -12,7 +12,6 @@ import { confirm, notify, success } from '@/lib/notifications';
 
 export default function UsersPage() {
   const router = useRouter();
-  const [statusFilter, setStatusFilter] = useState<string>('all');
   const [switchingUser, setSwitchingUser] = useState<string | null>(null);
   const currentUser = useAuthStore((state) => state.user);
   const switchUser = useAuthStore((state) => state.switchUser);
@@ -192,9 +191,8 @@ export default function UsersPage() {
   // Build API endpoint with filters
   const buildApiEndpoint = () => {
     const params = new URLSearchParams();
-    if (statusFilter !== 'all') params.append('status', statusFilter);
     const queryString = params.toString();
-    return `/api/v1/users${queryString ? `?${queryString}` : ''}`;
+    return `users${queryString ? `?${queryString}` : ''}`;
   };
 
   return (
