@@ -45,6 +45,7 @@ export interface User {
   is_active: boolean;
   permissions?: string[];
   tenant?: Tenant;
+  business_type?: string;
   created_at?: string;
   updated_at?: string;
   last_login_at?: string;

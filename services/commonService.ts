@@ -8,11 +8,12 @@ import type {
 class CommonService {
   /**
   * Get categories for dropdown (simplified)
-  * GET /api/v1/categories/dropdown
+  * GET /api/v1/dropdown/category
   */
   async getCategoriesForDropdown(params?: {
     search?: string;
     only_parent?: boolean;
+    business_type?: string;
   }): Promise<Category[]> {
     const response = await apiClient.get<{
       data: Category[];
@@ -28,6 +29,7 @@ class CommonService {
   */
   async getBrandsForDropdown(params?: {
     search?: string;
+    business_type?: string;
   }): Promise<Brand[]> {
     const response = await apiClient.get<{
       data: Brand[];

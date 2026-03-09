@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { Package2, Save } from 'lucide-react';
 import { notify } from '@/lib/notifications';
@@ -8,6 +8,8 @@ import { productService } from '@/services';
 import { Brand, Category, Unit } from '@/types/api.types';
 import CustomSelect, { SelectOption } from '@/components/ui/custom-select';
 import commonService from '@/services/commonService';
+import { useAuthStore } from '@/stores/auth-store';
+import { BUSINESS_TYPES } from '@/lib/constants';
 
 interface ProductFormData {
   name: string;
@@ -37,17 +39,25 @@ interface ProductFormData {
 
 export default function AddProductPage() {
   const router = useRouter();
+  const user = useAuthStore((state) => state.user);
+  const isSuperAdmin = user?.user_type === 'super_admin';
+
   const [isLoading, setIsLoading] = useState(false);
   const [errors, setErrors] = useState<Record<string, string[]>>({});
-  const [categories, setCategories] = useState<Category[]>([]);
-  const [brands, setBrands] = useState<Brand[]>([]);
-  const [units, setUnits] = useState<Unit[]>([]);
   const [selectedCategory, setSelectedCategory] = useState<SelectOption | null>(null);
   const [selectedBrand, setSelectedBrand] = useState<SelectOption | null>(null);
   const [selectedUnit, setSelectedUnit] = useState<SelectOption | null>(null);
   const [defaultCategoryOptions, setDefaultCategoryOptions] = useState<SelectOption[]>([]);
   const [defaultBrandOptions, setDefaultBrandOptions] = useState<SelectOption[]>([]);
   const [defaultUnitOptions, setDefaultUnitOptions] = useState<SelectOption[]>([]);
+
+  // Business type state
+  const [businessType, setBusinessType] = useState<string>('');
+  const [selectedBusinessType, setSelectedBusinessType] = useState<SelectOption | null>(null);
+
+  // Track if initial data has been loaded to prevent duplicate API calls
+  const hasLoadedData = useRef(false);
+  const isLoadingData = useRef(false);
 
   const [formData, setFormData] = useState<ProductFormData>({
     name: '',
@@ -75,42 +85,29 @@ export default function AddProductPage() {
     image: '',
   });
 
-  // Load dropdown data
-  useEffect(() => {
-    const loadData = async () => {
-      try {
-        // Load initial categories, brands, and units in parallel
-        await Promise.all([
-          loadCategoryOptions(''),
-          loadBrandOptions(''),
-          loadUnitOptions('')
-        ]);
-      } catch (error) {
-        notify.error('Failed to load form data');
-      }
-    };
-    loadData();
-  }, []);
-
   // Load categories for async select with search
-  const loadCategoryOptions = async (inputValue: string): Promise<SelectOption[]> => {
+  const loadCategoryOptions = useCallback(async (inputValue: string): Promise<SelectOption[]> => {
     try {
-      const params: { search?: string } = {};
+      const params: { search?: string; business_type?: string } = {};
 
       // Add search parameter only if inputValue is provided
       if (inputValue && inputValue.trim()) {
         params.search = inputValue.trim();
       }
 
+      // Add business_type filter if set (for tenant users, use their business type)
+      if (businessType) {
+        params.business_type = businessType;
+      }
+
+      console.log('📦 Loading categories with params:', params);
       const categoriesData = await commonService.getCategoriesForDropdown(params);
+      console.log('📦 Categories loaded:', categoriesData.length);
 
       const options = categoriesData.map((category: Category) => ({
         value: category.id.toString(),
         label: category.name,
       }));
-
-      // Update categories state
-      setCategories(categoriesData);
 
       // Store default options for initial load
       if (!inputValue && defaultCategoryOptions.length === 0) {
@@ -119,30 +116,35 @@ export default function AddProductPage() {
 
       return options;
     } catch (error) {
-      console.error('Failed to load categories:', error);
+      console.error('❌ Failed to load categories:', error);
       return [];
     }
-  };
+  }, [businessType]);
 
   // Load brands for async select with search
-  const loadBrandOptions = async (inputValue: string): Promise<SelectOption[]> => {
+  const loadBrandOptions = useCallback(async (inputValue: string): Promise<SelectOption[]> => {
     try {
-      const params: { search?: string } = {};
+      const params: { search?: string; business_type?: string } = {};
 
       // Add search parameter only if inputValue is provided
       if (inputValue && inputValue.trim()) {
         params.search = inputValue.trim();
       }
 
+      // Add business_type filter if set (for tenant users, use their business type)
+      if (businessType) {
+        params.business_type = businessType;
+      }
+
+      console.log('🏷️ Loading brands with params:', params);
       const brandsData = await commonService.getBrandsForDropdown(params);
+      console.log('🏷️ Brands loaded:', brandsData.length);
 
       const options = brandsData.map((brand: Brand) => ({
         value: brand.id.toString(),
         label: brand.name,
       }));
 
-      // Update brands state
-      setBrands(brandsData);
 
       // Store default options for initial load
       if (!inputValue && defaultBrandOptions.length === 0) {
@@ -154,10 +156,10 @@ export default function AddProductPage() {
       console.error('Failed to load brands:', error);
       return [];
     }
-  };
+  }, [businessType]);
 
   // Load units for async select with search
-  const loadUnitOptions = async (inputValue: string): Promise<SelectOption[]> => {
+  const loadUnitOptions = useCallback(async (inputValue: string): Promise<SelectOption[]> => {
     try {
       const params: { search?: string } = {};
 
@@ -173,9 +175,6 @@ export default function AddProductPage() {
         label: `${unit.name} (${unit.short_name})`,
       }));
 
-      // Update units state
-      setUnits(unitsData);
-
       // Store default options for initial load
       if (!inputValue && defaultUnitOptions.length === 0) {
         setDefaultUnitOptions(options);
@@ -186,7 +185,37 @@ export default function AddProductPage() {
       console.error('Failed to load units:', error);
       return [];
     }
-  };
+  }, []);
+
+  // Load dropdown data when business type is set
+  useEffect(() => {
+    // Only load when business type is available (either selected by super admin or set from tenant data)
+    const shouldLoad = businessType !== '';
+
+    // Prevent duplicate calls
+    if (shouldLoad && !hasLoadedData.current && !isLoadingData.current) {
+      const loadData = async () => {
+        isLoadingData.current = true;
+        try {
+          console.log('🔄 Loading initial dropdown data with business type:', businessType);
+          // Load initial categories, brands, and units in parallel
+          await Promise.all([
+            loadCategoryOptions(''),
+            loadBrandOptions(''),
+            loadUnitOptions('')
+          ]);
+          hasLoadedData.current = true;
+          console.log('✅ Initial dropdown data loaded');
+        } catch (error) {
+          notify.error('Failed to load form data');
+        } finally {
+          isLoadingData.current = false;
+        }
+      };
+      loadData();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [businessType]);
 
   const handleCategoryChange = (option: SelectOption | null) => {
     setSelectedCategory(option);
@@ -237,6 +266,27 @@ export default function AddProductPage() {
         return newErrors;
       });
     }
+  };
+
+  const handleBusinessTypeChange = (option: SelectOption | null) => {
+    setSelectedBusinessType(option);
+    setBusinessType(option?.value || '');
+
+    // Reset category and brand selections when business type changes
+    setSelectedCategory(null);
+    setSelectedBrand(null);
+    setFormData(prev => ({
+      ...prev,
+      category_id: '',
+      brand_id: '',
+    }));
+
+    // Clear cached options to force reload with new business type
+    setDefaultCategoryOptions([]);
+    setDefaultBrandOptions([]);
+
+    // Reset loaded state to allow reloading with new business type
+    hasLoadedData.current = false;
   };
 
   const handleInputChange = (
@@ -402,6 +452,33 @@ export default function AddProductPage() {
             <h3 className="text-base font-semibold text-gray-900 dark:text-gray-100 mb-2">
               Categorization
             </h3>
+
+            {/* Business Type Dropdown - Visible only for Super Admin */}
+            {isSuperAdmin && (
+              <div className="mb-3">
+                <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-2">
+                  Business Type <span className="text-red-500">*</span>
+                </label>
+                <CustomSelect
+                  value={selectedBusinessType}
+                  onChange={handleBusinessTypeChange}
+                  options={BUSINESS_TYPES.map(bt => ({ value: bt.value, label: bt.label }))}
+                  placeholder="Select business type..."
+                  isInvalid={false}
+                />
+                <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
+                  Select a business type to filter categories and brands
+                </p>
+              </div>
+            )}
+
+            {/* Show message if super admin hasn't selected business type */}
+            {isSuperAdmin && !businessType && (
+              <div className="mb-3 p-2 bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded text-xs text-yellow-700 dark:text-yellow-300">
+                Please select a business type to see available categories and brands
+              </div>
+            )}
+
             <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
               <div>
                 <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-2">

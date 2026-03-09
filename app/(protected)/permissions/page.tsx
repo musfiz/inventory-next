@@ -9,8 +9,6 @@ import { confirm, notify } from '@/lib/notifications';
 import permissionService from '@/services/permissionService';
 
 export default function PermissionsPage() {
-  const [statusFilter, setStatusFilter] = useState<string>('all');
-  const [moduleFilter, setModuleFilter] = useState<string>('all');
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [modules, setModules] = useState<Module[]>([]);
   const [loadingModules, setLoadingModules] = useState(true);
@@ -187,11 +185,9 @@ export default function PermissionsPage() {
   // Build API endpoint with filters
   const buildApiEndpoint = () => {
     const params = new URLSearchParams();
-    if (statusFilter !== 'all') params.append('status', statusFilter);
-    if (moduleFilter !== 'all') params.append('module', moduleFilter);
     if (searchQuery) params.append('search', searchQuery);
     const queryString = params.toString();
-    return `/api/v1/permissions${queryString ? `?${queryString}` : ''}`;
+    return `permissions${queryString ? `?${queryString}` : ''}`;
   };
 
   return (
