@@ -43,16 +43,16 @@ export default function AttributeValuesPage() {
     }
   };
 
-  const loadAttributeOptions = async (inputValue: string, callback: (options: SelectOption[]) => void) => {
+  const loadAttributeOptions = async (inputValue: string): Promise<SelectOption[]> => {
     try {
       const attrs = await attributeService.searchAttributes(inputValue, 20); // Load more for search
       const options = attrs.map(attr => ({
         value: attr.id,
         label: attr.name
       }));
-      callback(options);
+      return options;
     } catch (error) {
-      callback([]);
+      return [];
     }
   };
 

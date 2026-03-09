@@ -153,15 +153,11 @@ export interface Brand {
 export interface Category {
   id: string;
   name: string;
-  slug: string;
   description?: string;
   parent_id?: string;
   business_type?: 'pharmacy' | 'electric' | 'electronics' | 'fashion' | 'furniture' | 'bookshop' | 'departmental' | 'computer' | 'clothing' | 'footwear' | 'cosmetics' | 'stationery' | 'grocery' | 'hardware' | 'restaurant' | 'cafe' | 'supermarket' | 'other';
-  sort_order?: number;
   parent?: Category;
   children?: Category[];
-  image?: string;
-  image_url?: string;
   is_active: boolean;
   created_at?: string;
   updated_at?: string;

@@ -6,6 +6,8 @@ import { Package2, Save } from 'lucide-react';
 import { notify } from '@/lib/notifications';
 import { productService } from '@/services';
 import { Brand, Category, Unit } from '@/types/api.types';
+import CustomSelect, { SelectOption } from '@/components/ui/custom-select';
+import commonService from '@/services/commonService';
 
 interface ProductFormData {
   name: string;
@@ -39,9 +41,15 @@ export default function AddProductPage() {
   const router = useRouter();
   const [isLoading, setIsLoading] = useState(false);
   const [errors, setErrors] = useState<Record<string, string[]>>({});
-  const [brands, setBrands] = useState<Brand[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
+  const [brands, setBrands] = useState<Brand[]>([]);
   const [units, setUnits] = useState<Unit[]>([]);
+  const [selectedCategory, setSelectedCategory] = useState<SelectOption | null>(null);
+  const [selectedBrand, setSelectedBrand] = useState<SelectOption | null>(null);
+  const [selectedUnit, setSelectedUnit] = useState<SelectOption | null>(null);
+  const [defaultCategoryOptions, setDefaultCategoryOptions] = useState<SelectOption[]>([]);
+  const [defaultBrandOptions, setDefaultBrandOptions] = useState<SelectOption[]>([]);
+  const [defaultUnitOptions, setDefaultUnitOptions] = useState<SelectOption[]>([]);
 
   const [formData, setFormData] = useState<ProductFormData>({
     name: '',
@@ -75,20 +83,165 @@ export default function AddProductPage() {
   useEffect(() => {
     const loadData = async () => {
       try {
-        const [brandsData, categoriesData, unitsData] = await Promise.all([
-          productService.getBrands({ per_page: 100 }),
-          productService.getCategories({ per_page: 100 }),
-          productService.getUnits({ per_page: 100 }),
+        // Load initial categories, brands, and units in parallel
+        await Promise.all([
+          loadCategoryOptions(''),
+          loadBrandOptions(''),
+          loadUnitOptions('')
         ]);
-        setBrands(brandsData.data || []);
-        setCategories(categoriesData.data || []);
-        setUnits(unitsData.data || []);
       } catch (error) {
         notify.error('Failed to load form data');
       }
     };
     loadData();
   }, []);
+
+  // Load categories for async select with search
+  const loadCategoryOptions = async (inputValue: string): Promise<SelectOption[]> => {
+    try {
+      const params: { search?: string } = {};
+
+      // Add search parameter only if inputValue is provided
+      if (inputValue && inputValue.trim()) {
+        params.search = inputValue.trim();
+      }
+
+      const categoriesData = await commonService.getCategoriesForDropdown(params);
+
+      const options = categoriesData.map((category: Category) => ({
+        value: category.id.toString(),
+        label: category.name,
+      }));
+
+      // Update categories state
+      setCategories(categoriesData);
+
+      // Store default options for initial load
+      if (!inputValue && defaultCategoryOptions.length === 0) {
+        setDefaultCategoryOptions(options);
+      }
+
+      return options;
+    } catch (error) {
+      console.error('Failed to load categories:', error);
+      return [];
+    }
+  };
+
+  // Load brands for async select with search
+  const loadBrandOptions = async (inputValue: string): Promise<SelectOption[]> => {
+    try {
+      const params: { search?: string } = {};
+
+      // Add search parameter only if inputValue is provided
+      if (inputValue && inputValue.trim()) {
+        params.search = inputValue.trim();
+      }
+
+      const brandsData = await commonService.getBrandsForDropdown(params);
+
+      const options = brandsData.map((brand: Brand) => ({
+        value: brand.id.toString(),
+        label: brand.name,
+      }));
+
+      // Update brands state
+      setBrands(brandsData);
+
+      // Store default options for initial load
+      if (!inputValue && defaultBrandOptions.length === 0) {
+        setDefaultBrandOptions(options);
+      }
+
+      return options;
+    } catch (error) {
+      console.error('Failed to load brands:', error);
+      return [];
+    }
+  };
+
+  // Load units for async select with search
+  const loadUnitOptions = async (inputValue: string): Promise<SelectOption[]> => {
+    try {
+      const params: { search?: string } = {};
+
+      // Add search parameter only if inputValue is provided
+      if (inputValue && inputValue.trim()) {
+        params.search = inputValue.trim();
+      }
+
+      const unitsData = await commonService.getUnitsForDropdown(params);
+
+      const options = unitsData.map((unit: Unit) => ({
+        value: unit.id.toString(),
+        label: `${unit.name} (${unit.short_name})`,
+      }));
+
+      // Update units state
+      setUnits(unitsData);
+
+      // Store default options for initial load
+      if (!inputValue && defaultUnitOptions.length === 0) {
+        setDefaultUnitOptions(options);
+      }
+
+      return options;
+    } catch (error) {
+      console.error('Failed to load units:', error);
+      return [];
+    }
+  };
+
+  const handleCategoryChange = (option: SelectOption | null) => {
+    setSelectedCategory(option);
+    setFormData(prev => ({
+      ...prev,
+      category_id: option?.value || '',
+    }));
+
+    // Clear error for category field
+    if (errors['category_id']) {
+      setErrors(prev => {
+        const newErrors = { ...prev };
+        delete newErrors['category_id'];
+        return newErrors;
+      });
+    }
+  };
+
+  const handleBrandChange = (option: SelectOption | null) => {
+    setSelectedBrand(option);
+    setFormData(prev => ({
+      ...prev,
+      brand_id: option?.value || '',
+    }));
+
+    // Clear error for brand field
+    if (errors['brand_id']) {
+      setErrors(prev => {
+        const newErrors = { ...prev };
+        delete newErrors['brand_id'];
+        return newErrors;
+      });
+    }
+  };
+
+  const handleUnitChange = (option: SelectOption | null) => {
+    setSelectedUnit(option);
+    setFormData(prev => ({
+      ...prev,
+      unit_id: option?.value || '',
+    }));
+
+    // Clear error for unit field
+    if (errors['unit_id']) {
+      setErrors(prev => {
+        const newErrors = { ...prev };
+        delete newErrors['unit_id'];
+        return newErrors;
+      });
+    }
+  };
 
   const handleInputChange = (
     e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>
@@ -188,8 +341,8 @@ export default function AddProductPage() {
                   value={formData.name}
                   onChange={handleInputChange}
                   className={`w-full px-2.5 py-1 text-sm bg-white dark:bg-gray-700 border ${hasFieldError('name')
-                      ? 'border-red-500 focus:border-red-500'
-                      : 'border-gray-300 dark:border-gray-600 focus:border-indigo-500 dark:focus:border-indigo-400'
+                    ? 'border-red-500 focus:border-red-500'
+                    : 'border-gray-300 dark:border-gray-600 focus:border-indigo-500 dark:focus:border-indigo-400'
                     } rounded-sm text-gray-900 dark:text-gray-100 focus:outline-none`}
                   placeholder="Enter product name"
                 />
@@ -210,8 +363,8 @@ export default function AddProductPage() {
                   value={formData.sku}
                   onChange={handleInputChange}
                   className={`w-full px-2.5 py-1 text-sm bg-white dark:bg-gray-700 border ${hasFieldError('sku')
-                      ? 'border-red-500 focus:border-red-500'
-                      : 'border-gray-300 dark:border-gray-600 focus:border-indigo-500 dark:focus:border-indigo-400'
+                    ? 'border-red-500 focus:border-red-500'
+                    : 'border-gray-300 dark:border-gray-600 focus:border-indigo-500 dark:focus:border-indigo-400'
                     } rounded-sm text-gray-900 dark:text-gray-100 focus:outline-none`}
                   placeholder="e.g., PROD-001"
                 />
@@ -234,8 +387,8 @@ export default function AddProductPage() {
                   value={formData.barcode}
                   onChange={handleInputChange}
                   className={`w-full px-2.5 py-1 text-sm bg-white dark:bg-gray-700 border ${hasFieldError('barcode')
-                      ? 'border-red-500 focus:border-red-500'
-                      : 'border-gray-300 dark:border-gray-600 focus:border-indigo-500 dark:focus:border-indigo-400'
+                    ? 'border-red-500 focus:border-red-500'
+                    : 'border-gray-300 dark:border-gray-600 focus:border-indigo-500 dark:focus:border-indigo-400'
                     } rounded-sm text-gray-900 dark:text-gray-100 focus:outline-none`}
                   placeholder="Enter barcode"
                 />
@@ -256,8 +409,8 @@ export default function AddProductPage() {
                   value={formData.sku_code}
                   onChange={handleInputChange}
                   className={`w-full px-2.5 py-1 text-sm bg-white dark:bg-gray-700 border ${hasFieldError('sku_code')
-                      ? 'border-red-500 focus:border-red-500'
-                      : 'border-gray-300 dark:border-gray-600 focus:border-indigo-500 dark:focus:border-indigo-400'
+                    ? 'border-red-500 focus:border-red-500'
+                    : 'border-gray-300 dark:border-gray-600 focus:border-indigo-500 dark:focus:border-indigo-400'
                     } rounded-sm text-gray-900 dark:text-gray-100 focus:outline-none`}
                   placeholder="Enter SKU code"
                 />
@@ -279,8 +432,8 @@ export default function AddProductPage() {
                 onChange={handleInputChange}
                 rows={2}
                 className={`w-full px-2.5 py-1 text-sm bg-white dark:bg-gray-700 border ${hasFieldError('description')
-                    ? 'border-red-500 focus:border-red-500'
-                    : 'border-gray-300 dark:border-gray-600 focus:border-indigo-500 dark:focus:border-indigo-400'
+                  ? 'border-red-500 focus:border-red-500'
+                  : 'border-gray-300 dark:border-gray-600 focus:border-indigo-500 dark:focus:border-indigo-400'
                   } rounded-sm text-gray-900 dark:text-gray-100 focus:outline-none`}
                 placeholder="Enter product description"
               />
@@ -304,22 +457,14 @@ export default function AddProductPage() {
                 <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-2">
                   Category
                 </label>
-                <select
-                  name="category_id"
-                  value={formData.category_id}
-                  onChange={handleInputChange}
-                  className={`w-full px-2.5 py-1 text-sm bg-white dark:bg-gray-700 border ${hasFieldError('category_id')
-                      ? 'border-red-500 focus:border-red-500'
-                      : 'border-gray-300 dark:border-gray-600 focus:border-indigo-500 dark:focus:border-indigo-400'
-                    } rounded-sm text-gray-900 dark:text-gray-100 focus:outline-none`}
-                >
-                  <option value="">Select Category</option>
-                  {categories.map(category => (
-                    <option key={category.id} value={category.id}>
-                      {category.name}
-                    </option>
-                  ))}
-                </select>
+                <CustomSelect
+                  value={selectedCategory}
+                  onChange={handleCategoryChange}
+                  loadOptions={loadCategoryOptions}
+                  defaultOptions={defaultCategoryOptions.length > 0 ? defaultCategoryOptions : true}
+                  placeholder="Search category..."
+                  isInvalid={hasFieldError('category_id')}
+                />
                 {hasFieldError('category_id') && (
                   <p className="mt-1 text-xs text-red-600 dark:text-red-400">
                     {getFieldError('category_id')}
@@ -331,22 +476,14 @@ export default function AddProductPage() {
                 <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-2">
                   Brand
                 </label>
-                <select
-                  name="brand_id"
-                  value={formData.brand_id}
-                  onChange={handleInputChange}
-                  className={`w-full px-2.5 py-1 text-sm bg-white dark:bg-gray-700 border ${hasFieldError('brand_id')
-                      ? 'border-red-500 focus:border-red-500'
-                      : 'border-gray-300 dark:border-gray-600 focus:border-indigo-500 dark:focus:border-indigo-400'
-                    } rounded-sm text-gray-900 dark:text-gray-100 focus:outline-none`}
-                >
-                  <option value="">Select Brand</option>
-                  {brands.map(brand => (
-                    <option key={brand.id} value={brand.id}>
-                      {brand.name}
-                    </option>
-                  ))}
-                </select>
+                <CustomSelect
+                  value={selectedBrand}
+                  onChange={handleBrandChange}
+                  loadOptions={loadBrandOptions}
+                  defaultOptions={defaultBrandOptions.length > 0 ? defaultBrandOptions : true}
+                  placeholder="Search brand..."
+                  isInvalid={hasFieldError('brand_id')}
+                />
                 {hasFieldError('brand_id') && (
                   <p className="mt-1 text-xs text-red-600 dark:text-red-400">
                     {getFieldError('brand_id')}
@@ -358,22 +495,14 @@ export default function AddProductPage() {
                 <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-2">
                   Unit
                 </label>
-                <select
-                  name="unit_id"
-                  value={formData.unit_id}
-                  onChange={handleInputChange}
-                  className={`w-full px-2.5 py-1 text-sm bg-white dark:bg-gray-700 border ${hasFieldError('unit_id')
-                      ? 'border-red-500 focus:border-red-500'
-                      : 'border-gray-300 dark:border-gray-600 focus:border-indigo-500 dark:focus:border-indigo-400'
-                    } rounded-sm text-gray-900 dark:text-gray-100 focus:outline-none`}
-                >
-                  <option value="">Select Unit</option>
-                  {units.map(unit => (
-                    <option key={unit.id} value={unit.id}>
-                      {unit.name} ({unit.symbol})
-                    </option>
-                  ))}
-                </select>
+                <CustomSelect
+                  value={selectedUnit}
+                  onChange={handleUnitChange}
+                  loadOptions={loadUnitOptions}
+                  defaultOptions={defaultUnitOptions.length > 0 ? defaultUnitOptions : true}
+                  placeholder="Search unit..."
+                  isInvalid={hasFieldError('unit_id')}
+                />
                 {hasFieldError('unit_id') && (
                   <p className="mt-1 text-xs text-red-600 dark:text-red-400">
                     {getFieldError('unit_id')}
@@ -392,8 +521,8 @@ export default function AddProductPage() {
                   value={formData.type}
                   onChange={handleInputChange}
                   className={`w-full px-2.5 py-1 text-sm bg-white dark:bg-gray-700 border ${hasFieldError('type')
-                      ? 'border-red-500 focus:border-red-500'
-                      : 'border-gray-300 dark:border-gray-600 focus:border-indigo-500 dark:focus:border-indigo-400'
+                    ? 'border-red-500 focus:border-red-500'
+                    : 'border-gray-300 dark:border-gray-600 focus:border-indigo-500 dark:focus:border-indigo-400'
                     } rounded-sm text-gray-900 dark:text-gray-100 focus:outline-none`}
                 >
                   <option value="simple">Simple Product</option>
@@ -415,8 +544,8 @@ export default function AddProductPage() {
                   value={formData.status}
                   onChange={handleInputChange}
                   className={`w-full px-2.5 py-1 text-sm bg-white dark:bg-gray-700 border ${hasFieldError('status')
-                      ? 'border-red-500 focus:border-red-500'
-                      : 'border-gray-300 dark:border-gray-600 focus:border-indigo-500 dark:focus:border-indigo-400'
+                    ? 'border-red-500 focus:border-red-500'
+                    : 'border-gray-300 dark:border-gray-600 focus:border-indigo-500 dark:focus:border-indigo-400'
                     } rounded-sm text-gray-900 dark:text-gray-100 focus:outline-none`}
                 >
                   <option value="active">Active</option>
@@ -451,8 +580,8 @@ export default function AddProductPage() {
                   step="0.01"
                   min="0"
                   className={`w-full px-2.5 py-1 text-sm bg-white dark:bg-gray-700 border ${hasFieldError('cost_price')
-                      ? 'border-red-500 focus:border-red-500'
-                      : 'border-gray-300 dark:border-gray-600 focus:border-indigo-500 dark:focus:border-indigo-400'
+                    ? 'border-red-500 focus:border-red-500'
+                    : 'border-gray-300 dark:border-gray-600 focus:border-indigo-500 dark:focus:border-indigo-400'
                     } rounded-sm text-gray-900 dark:text-gray-100 focus:outline-none`}
                   placeholder="0.00"
                 />
@@ -475,8 +604,8 @@ export default function AddProductPage() {
                   step="0.01"
                   min="0"
                   className={`w-full px-2.5 py-1 text-sm bg-white dark:bg-gray-700 border ${hasFieldError('selling_price')
-                      ? 'border-red-500 focus:border-red-500'
-                      : 'border-gray-300 dark:border-gray-600 focus:border-indigo-500 dark:focus:border-indigo-400'
+                    ? 'border-red-500 focus:border-red-500'
+                    : 'border-gray-300 dark:border-gray-600 focus:border-indigo-500 dark:focus:border-indigo-400'
                     } rounded-sm text-gray-900 dark:text-gray-100 focus:outline-none`}
                   placeholder="0.00"
                 />
@@ -499,8 +628,8 @@ export default function AddProductPage() {
                   step="0.01"
                   min="0"
                   className={`w-full px-2.5 py-1 text-sm bg-white dark:bg-gray-700 border ${hasFieldError('mrp')
-                      ? 'border-red-500 focus:border-red-500'
-                      : 'border-gray-300 dark:border-gray-600 focus:border-indigo-500 dark:focus:border-indigo-400'
+                    ? 'border-red-500 focus:border-red-500'
+                    : 'border-gray-300 dark:border-gray-600 focus:border-indigo-500 dark:focus:border-indigo-400'
                     } rounded-sm text-gray-900 dark:text-gray-100 focus:outline-none`}
                   placeholder="0.00"
                 />
@@ -526,8 +655,8 @@ export default function AddProductPage() {
                   min="0"
                   max="100"
                   className={`w-full px-2.5 py-1 text-sm bg-white dark:bg-gray-700 border ${hasFieldError('tax_rate')
-                      ? 'border-red-500 focus:border-red-500'
-                      : 'border-gray-300 dark:border-gray-600 focus:border-indigo-500 dark:focus:border-indigo-400'
+                    ? 'border-red-500 focus:border-red-500'
+                    : 'border-gray-300 dark:border-gray-600 focus:border-indigo-500 dark:focus:border-indigo-400'
                     } rounded-sm text-gray-900 dark:text-gray-100 focus:outline-none`}
                   placeholder="0.00"
                 />
@@ -574,8 +703,8 @@ export default function AddProductPage() {
                   onChange={handleInputChange}
                   min="0"
                   className={`w-full px-2.5 py-1 text-sm bg-white dark:bg-gray-700 border ${hasFieldError('low_stock_threshold')
-                      ? 'border-red-500 focus:border-red-500'
-                      : 'border-gray-300 dark:border-gray-600 focus:border-indigo-500 dark:focus:border-indigo-400'
+                    ? 'border-red-500 focus:border-red-500'
+                    : 'border-gray-300 dark:border-gray-600 focus:border-indigo-500 dark:focus:border-indigo-400'
                     } rounded-sm text-gray-900 dark:text-gray-100 focus:outline-none`}
                   placeholder="10"
                 />
@@ -597,8 +726,8 @@ export default function AddProductPage() {
                   onChange={handleInputChange}
                   min="0"
                   className={`w-full px-2.5 py-1 text-sm bg-white dark:bg-gray-700 border ${hasFieldError('reorder_point')
-                      ? 'border-red-500 focus:border-red-500'
-                      : 'border-gray-300 dark:border-gray-600 focus:border-indigo-500 dark:focus:border-indigo-400'
+                    ? 'border-red-500 focus:border-red-500'
+                    : 'border-gray-300 dark:border-gray-600 focus:border-indigo-500 dark:focus:border-indigo-400'
                     } rounded-sm text-gray-900 dark:text-gray-100 focus:outline-none`}
                   placeholder="Reorder point"
                 />
@@ -709,8 +838,8 @@ export default function AddProductPage() {
                   onChange={handleInputChange}
                   min="0"
                   className={`w-full px-2.5 py-1 text-sm bg-white dark:bg-gray-700 border ${hasFieldError('display_order')
-                      ? 'border-red-500 focus:border-red-500'
-                      : 'border-gray-300 dark:border-gray-600 focus:border-indigo-500 dark:focus:border-indigo-400'
+                    ? 'border-red-500 focus:border-red-500'
+                    : 'border-gray-300 dark:border-gray-600 focus:border-indigo-500 dark:focus:border-indigo-400'
                     } rounded-sm text-gray-900 dark:text-gray-100 focus:outline-none`}
                   placeholder="Display order"
                 />

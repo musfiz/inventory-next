@@ -12,21 +12,6 @@ import type {
  */
 class CategoryService {
   /**
-   * Get categories for dropdown (simplified)
-   * GET /api/v1/categories/dropdown
-   */
-  async getCategoriesForDropdown(params?: {
-    search?: string;
-  }): Promise<Category[]> {
-    const response = await apiClient.get<{
-      data: Category[];
-    }>('/api/v1/categories/dropdown', {
-      params,
-    });
-    return response.data.data;
-  }
-
-  /**
    * Store a new category or update existing category
    * POST /api/v1/categories/store
    */

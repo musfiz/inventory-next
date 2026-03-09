@@ -1,11 +1,11 @@
 'use client';
 
-import { useState, useEffect } from 'react';
-import { useRouter, useSearchParams } from 'next/navigation';
+import { useState } from 'react';
 import { FolderOpen, Plus, Edit, Trash2, Eye, X } from 'lucide-react';
 import { ColumnDef } from '@tanstack/react-table';
 import { notify } from '@/lib/notifications';
 import { categoryService } from '@/services';
+import commonService from '@/services/commonService';
 import { Category } from '@/types/api.types';
 import DataTable from '@/components/ui/datatable';
 import CustomSelect from '@/components/ui/custom-select';
@@ -28,15 +28,15 @@ export default function CategoriesPage() {
 
   const [defaultParentOptions, setDefaultParentOptions] = useState<{ value: string; label: string }[]>([]);
 
-  const loadParentCategoryOptions = async (inputValue: string, callback: (options: { value: string; label: string }[]) => void) => {
+  const loadParentCategoryOptions = async (inputValue: string): Promise<{ value: string; label: string }[]> => {
     try {
-      const params: { search?: string } = {};
-
-      if (inputValue) {
-        params.search = inputValue;
+      const params: { search?: string, only_parent?: boolean } = {};
+      params.only_parent = true;
+      if (inputValue && inputValue.trim()) {
+        params.search = inputValue.trim();
       }
 
-      const categories = await categoryService.getCategoriesForDropdown(params);
+      const categories = await commonService.getCategoriesForDropdown(params);
 
       // Filter out current category when editing
       const filteredCategories = categories.filter(cat =>
@@ -56,10 +56,10 @@ export default function CategoriesPage() {
         setDefaultParentOptions(options);
       }
 
-      callback(options);
+      return options;
     } catch (error) {
       console.error('Failed to load parent categories:', error);
-      callback([]);
+      return [];
     }
   };
 
@@ -69,7 +69,7 @@ export default function CategoriesPage() {
     setFormData({ name: '', description: '', business_type: 'other', is_active: true, parent_id: undefined });
     setFormErrors({});
     // Load default parent category options
-    loadParentCategoryOptions('', () => { });
+    loadParentCategoryOptions('');
     setShowForm(true);
   };
 
@@ -85,7 +85,7 @@ export default function CategoriesPage() {
     });
     setFormErrors({});
     // Load default parent category options
-    loadParentCategoryOptions('', () => { });
+    loadParentCategoryOptions('');
     setShowForm(true);
   };
 

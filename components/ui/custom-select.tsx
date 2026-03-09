@@ -12,7 +12,7 @@ interface CustomSelectProps {
   value?: SelectOption | null;
   onChange: (option: SelectOption | null) => void;
   options?: SelectOption[];
-  loadOptions?: (inputValue: string, callback: (options: SelectOption[]) => void) => void;
+  loadOptions?: (inputValue: string) => Promise<SelectOption[]>;
   placeholder?: string;
   className?: string;
   classNamePrefix?: string;
@@ -32,7 +32,7 @@ const customStyles = (isInvalid?: boolean): StylesConfig<SelectOption, false> =>
         ? 'rgb(99, 102, 241)' // indigo-500
         : 'rgb(209, 213, 219)', // border-gray-300
     borderWidth: '1px',
-    borderRadius: '0.25rem', // rounded-md
+    borderRadius: '0.125rem', // rounded-sm to match tenant page
     boxShadow: state.isFocused ? '0 0 0 1px rgb(99, 102, 241)' : 'none',
     cursor: 'pointer',
     minHeight: '32px',
@@ -68,7 +68,7 @@ const customStyles = (isInvalid?: boolean): StylesConfig<SelectOption, false> =>
     ...provided,
     backgroundColor: '#f9fafb', // gray-50 - light gray background
     border: '1px solid rgb(209, 213, 219)', // border-gray-300
-    borderRadius: '0.25rem',
+    borderRadius: '0.125rem', // rounded-sm
     boxShadow: '0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -2px rgb(0 0 0 / 0.05)',
     zIndex: 9999,
   }),
