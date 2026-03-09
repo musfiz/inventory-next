@@ -13,8 +13,6 @@ interface ProductFormData {
   name: string;
   sku: string;
   description: string;
-  barcode: string;
-  sku_code: string;
   category_id: string;
   brand_id: string;
   unit_id: string;
@@ -55,8 +53,6 @@ export default function AddProductPage() {
     name: '',
     sku: '',
     description: '',
-    barcode: '',
-    sku_code: '',
     category_id: '',
     brand_id: '',
     unit_id: '',
@@ -65,7 +61,7 @@ export default function AddProductPage() {
     cost_price: '',
     selling_price: '',
     mrp: '',
-    is_taxable: true,
+    is_taxable: false,
     tax_rate: '0',
     track_inventory: true,
     allow_backorder: false,
@@ -376,52 +372,6 @@ export default function AddProductPage() {
               </div>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mt-2">
-              <div>
-                <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-2">
-                  Barcode
-                </label>
-                <input
-                  type="text"
-                  name="barcode"
-                  value={formData.barcode}
-                  onChange={handleInputChange}
-                  className={`w-full px-2.5 py-1 text-sm bg-white dark:bg-gray-700 border ${hasFieldError('barcode')
-                    ? 'border-red-500 focus:border-red-500'
-                    : 'border-gray-300 dark:border-gray-600 focus:border-indigo-500 dark:focus:border-indigo-400'
-                    } rounded-sm text-gray-900 dark:text-gray-100 focus:outline-none`}
-                  placeholder="Enter barcode"
-                />
-                {hasFieldError('barcode') && (
-                  <p className="mt-1 text-xs text-red-600 dark:text-red-400">
-                    {getFieldError('barcode')}
-                  </p>
-                )}
-              </div>
-
-              <div>
-                <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-2">
-                  SKU Code
-                </label>
-                <input
-                  type="text"
-                  name="sku_code"
-                  value={formData.sku_code}
-                  onChange={handleInputChange}
-                  className={`w-full px-2.5 py-1 text-sm bg-white dark:bg-gray-700 border ${hasFieldError('sku_code')
-                    ? 'border-red-500 focus:border-red-500'
-                    : 'border-gray-300 dark:border-gray-600 focus:border-indigo-500 dark:focus:border-indigo-400'
-                    } rounded-sm text-gray-900 dark:text-gray-100 focus:outline-none`}
-                  placeholder="Enter SKU code"
-                />
-                {hasFieldError('sku_code') && (
-                  <p className="mt-1 text-xs text-red-600 dark:text-red-400">
-                    {getFieldError('sku_code')}
-                  </p>
-                )}
-              </div>
-            </div>
-
             <div className="mt-2">
               <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-2">
                 Description
@@ -667,7 +617,7 @@ export default function AddProductPage() {
                 )}
               </div>
 
-              <div className="flex items-center">
+              <div className="flex items-center mt-4">
                 <label className="flex items-center gap-2 cursor-pointer">
                   <input
                     type="checkbox"
@@ -739,7 +689,7 @@ export default function AddProductPage() {
               </div>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mt-2">
+            <div className="grid grid-cols-1 md:grid-cols-5 gap-3 mt-2">
               <div className="flex items-center">
                 <label className="flex items-center gap-2 cursor-pointer">
                   <input
@@ -769,9 +719,7 @@ export default function AddProductPage() {
                   </span>
                 </label>
               </div>
-            </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-3 mt-2">
               <div className="flex items-center">
                 <label className="flex items-center gap-2 cursor-pointer">
                   <input
@@ -850,7 +798,7 @@ export default function AddProductPage() {
                 )}
               </div>
 
-              <div className="flex items-center">
+              <div className="flex items-center mt-4">
                 <label className="flex items-center gap-2 cursor-pointer">
                   <input
                     type="checkbox"
