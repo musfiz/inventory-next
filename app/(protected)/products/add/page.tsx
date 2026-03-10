@@ -13,7 +13,6 @@ import { BUSINESS_TYPES } from '@/lib/constants';
 
 interface ProductFormData {
   name: string;
-  sku: string;
   description: string;
   category_id: string;
   brand_id: string;
@@ -22,6 +21,7 @@ interface ProductFormData {
   status: 'active' | 'inactive';
   cost_price: string;
   selling_price: string;
+  dp_price: string;
   mrp: string;
   is_taxable: boolean;
   tax_rate: string;
@@ -61,7 +61,6 @@ export default function AddProductPage() {
 
   const [formData, setFormData] = useState<ProductFormData>({
     name: '',
-    sku: '',
     description: '',
     category_id: '',
     brand_id: '',
@@ -70,6 +69,7 @@ export default function AddProductPage() {
     status: 'active',
     cost_price: '',
     selling_price: '',
+    dp_price: '',
     mrp: '',
     is_taxable: false,
     tax_rate: '0',
@@ -81,7 +81,7 @@ export default function AddProductPage() {
     has_batch: false,
     has_serial: false,
     is_featured: false,
-    display_order: '0',
+    display_order: '1',
     image: '',
   });
 
@@ -329,6 +329,7 @@ export default function AddProductPage() {
         ...formData,
         cost_price: formData.cost_price ? parseFloat(formData.cost_price) : 0,
         selling_price: formData.selling_price ? parseFloat(formData.selling_price) : 0,
+        dp_price: formData.dp_price ? parseFloat(formData.dp_price) : undefined,
         mrp: formData.mrp ? parseFloat(formData.mrp) : undefined,
         tax_rate: formData.tax_rate ? parseFloat(formData.tax_rate) : 0,
         low_stock_threshold: formData.low_stock_threshold ? parseInt(formData.low_stock_threshold) : 10,
@@ -362,7 +363,7 @@ export default function AddProductPage() {
           <div>
             <h1 className="text-base font-bold text-gray-900 dark:text-gray-100 flex items-center gap-2">
               <Package2 className="w-5 h-5 text-indigo-600 dark:text-indigo-400" />
-              Add New Product
+              Add Product
             </h1>
           </div>
         </div>
@@ -401,23 +402,23 @@ export default function AddProductPage() {
 
               <div>
                 <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-2">
-                  SKU <span className="text-red-500">*</span>
+                  Business Type <span className="text-red-500">*</span>
                 </label>
-                <input
-                  type="text"
-                  name="sku"
-                  value={formData.sku}
-                  onChange={handleInputChange}
-                  className={`w-full px-2.5 py-1 text-sm bg-white dark:bg-gray-700 border ${hasFieldError('sku')
-                    ? 'border-red-500 focus:border-red-500'
-                    : 'border-gray-300 dark:border-gray-600 focus:border-indigo-500 dark:focus:border-indigo-400'
-                    } rounded-sm text-gray-900 dark:text-gray-100 focus:outline-none`}
-                  placeholder="e.g., PROD-001"
-                />
-                {hasFieldError('sku') && (
-                  <p className="mt-1 text-xs text-red-600 dark:text-red-400">
-                    {getFieldError('sku')}
-                  </p>
+                {isSuperAdmin ? (
+                  <CustomSelect
+                    value={selectedBusinessType}
+                    onChange={handleBusinessTypeChange}
+                    options={BUSINESS_TYPES.map(bt => ({ value: bt.value, label: bt.label }))}
+                    placeholder="Select business type..."
+                    isInvalid={false}
+                  />
+                ) : (
+                  <input
+                    type="text"
+                    value={selectedBusinessType?.label || ''}
+                    disabled
+                    className="w-full px-2.5 py-1 text-sm bg-gray-100 dark:bg-gray-600 border border-gray-300 dark:border-gray-600 rounded-sm text-gray-700 dark:text-gray-300 cursor-not-allowed"
+                  />
                 )}
               </div>
             </div>
@@ -452,25 +453,6 @@ export default function AddProductPage() {
             <h3 className="text-base font-semibold text-gray-900 dark:text-gray-100 mb-2">
               Categorization
             </h3>
-
-            {/* Business Type Dropdown - Visible only for Super Admin */}
-            {isSuperAdmin && (
-              <div className="mb-3">
-                <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-2">
-                  Business Type <span className="text-red-500">*</span>
-                </label>
-                <CustomSelect
-                  value={selectedBusinessType}
-                  onChange={handleBusinessTypeChange}
-                  options={BUSINESS_TYPES.map(bt => ({ value: bt.value, label: bt.label }))}
-                  placeholder="Select business type..."
-                  isInvalid={false}
-                />
-                <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
-                  Select a business type to filter categories and brands
-                </p>
-              </div>
-            )}
 
             {/* Show message if super admin hasn't selected business type */}
             {isSuperAdmin && !businessType && (
@@ -594,7 +576,7 @@ export default function AddProductPage() {
             <h3 className="text-base font-semibold text-gray-900 dark:text-gray-100 mb-2">
               Pricing & Tax
             </h3>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
               <div>
                 <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-2">
                   Cost Price <span className="text-red-500">*</span>
@@ -621,7 +603,7 @@ export default function AddProductPage() {
 
               <div>
                 <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-2">
-                  Selling Price <span className="text-red-500">*</span>
+                  Selling Price
                 </label>
                 <input
                   type="number"
@@ -639,6 +621,30 @@ export default function AddProductPage() {
                 {hasFieldError('selling_price') && (
                   <p className="mt-1 text-xs text-red-600 dark:text-red-400">
                     {getFieldError('selling_price')}
+                  </p>
+                )}
+              </div>
+
+              <div>
+                <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-2">
+                  DP
+                </label>
+                <input
+                  type="number"
+                  name="dp_price"
+                  value={formData.dp_price}
+                  onChange={handleInputChange}
+                  step="0.01"
+                  min="0"
+                  className={`w-full px-2.5 py-1 text-sm bg-white dark:bg-gray-700 border ${hasFieldError('dp_price')
+                    ? 'border-red-500 focus:border-red-500'
+                    : 'border-gray-300 dark:border-gray-600 focus:border-indigo-500 dark:focus:border-indigo-400'
+                    } rounded-sm text-gray-900 dark:text-gray-100 focus:outline-none`}
+                  placeholder="0.00"
+                />
+                {hasFieldError('dp_price') && (
+                  <p className="mt-1 text-xs text-red-600 dark:text-red-400">
+                    {getFieldError('dp_price')}
                   </p>
                 )}
               </div>
@@ -712,13 +718,13 @@ export default function AddProductPage() {
           </div>
         </div>
 
-        {/* Inventory Management */}
+        {/* Inventory & Display Settings */}
         <div className="bg-white dark:bg-gray-800 rounded-md shadow-sm border border-gray-200 dark:border-gray-700 p-3">
           <div className="mb-2">
             <h3 className="text-base font-semibold text-gray-900 dark:text-gray-100 mb-2">
-              Inventory Management
+              Inventory & Display Settings
             </h3>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
               <div>
                 <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-2">
                   Low Stock Threshold
@@ -764,9 +770,32 @@ export default function AddProductPage() {
                   </p>
                 )}
               </div>
+
+              <div>
+                <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-2">
+                  Display Order
+                </label>
+                <input
+                  type="number"
+                  name="display_order"
+                  value={formData.display_order}
+                  onChange={handleInputChange}
+                  min="0"
+                  className={`w-full px-2.5 py-1 text-sm bg-white dark:bg-gray-700 border ${hasFieldError('display_order')
+                    ? 'border-red-500 focus:border-red-500'
+                    : 'border-gray-300 dark:border-gray-600 focus:border-indigo-500 dark:focus:border-indigo-400'
+                    } rounded-sm text-gray-900 dark:text-gray-100 focus:outline-none`}
+                  placeholder="Display order"
+                />
+                {hasFieldError('display_order') && (
+                  <p className="mt-1 text-xs text-red-600 dark:text-red-400">
+                    {getFieldError('display_order')}
+                  </p>
+                )}
+              </div>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-5 gap-3 mt-2">
+            <div className="grid grid-cols-2 md:grid-cols-6 gap-3 mt-3">
               <div className="flex items-center">
                 <label className="flex items-center gap-2 cursor-pointer">
                   <input
@@ -841,41 +870,8 @@ export default function AddProductPage() {
                   </span>
                 </label>
               </div>
-            </div>
-          </div>
-        </div>
 
-        {/* Display Settings */}
-        <div className="bg-white dark:bg-gray-800 rounded-md shadow-sm border border-gray-200 dark:border-gray-700 p-3">
-          <div className="mb-2">
-            <h3 className="text-base font-semibold text-gray-900 dark:text-gray-100 mb-2">
-              Display Settings
-            </h3>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-              <div>
-                <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-2">
-                  Display Order
-                </label>
-                <input
-                  type="number"
-                  name="display_order"
-                  value={formData.display_order}
-                  onChange={handleInputChange}
-                  min="0"
-                  className={`w-full px-2.5 py-1 text-sm bg-white dark:bg-gray-700 border ${hasFieldError('display_order')
-                    ? 'border-red-500 focus:border-red-500'
-                    : 'border-gray-300 dark:border-gray-600 focus:border-indigo-500 dark:focus:border-indigo-400'
-                    } rounded-sm text-gray-900 dark:text-gray-100 focus:outline-none`}
-                  placeholder="Display order"
-                />
-                {hasFieldError('display_order') && (
-                  <p className="mt-1 text-xs text-red-600 dark:text-red-400">
-                    {getFieldError('display_order')}
-                  </p>
-                )}
-              </div>
-
-              <div className="flex items-center mt-4">
+              <div className="flex items-center">
                 <label className="flex items-center gap-2 cursor-pointer">
                   <input
                     type="checkbox"
