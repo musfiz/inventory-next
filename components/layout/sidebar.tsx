@@ -81,7 +81,8 @@ const navigation: NavigationItem[] = [
     children: [
       { name: 'All Products', href: '/products', icon: List, permission: 'view-product' },
       { name: 'Add Product', href: '/products/add', icon: UserPlus, permission: 'create-product' },
-      { name: 'Product Variations', href: '/products/variations', icon: Tag, permission: 'view-product-variations' },
+      { name: 'Product Variations', href: '/product-variations', icon: List },
+      { name: 'Add Product Variation', href: '/product-variations/add', icon: UserPlus },
       { name: 'Product Images', href: '/products/images', icon: Image, permission: 'view-product-images' },
     ]
   },

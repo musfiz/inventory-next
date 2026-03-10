@@ -17,11 +17,11 @@ interface ProductFormData {
   category_id: string;
   brand_id: string;
   unit_id: string;
-  type: 'simple' | 'variable';
-  status: 'active' | 'inactive';
+  type: 'simple' | 'variable' | 'composite' | 'digital' | 'service';
+  status: 'active' | 'inactive' | 'discontinued' | 'archived';
   cost_price: string;
   selling_price: string;
-  dp_price: string;
+  dp: string;
   mrp: string;
   is_taxable: boolean;
   tax_rate: string;
@@ -69,7 +69,7 @@ export default function AddProductPage() {
     status: 'active',
     cost_price: '',
     selling_price: '',
-    dp_price: '',
+    dp: '',
     mrp: '',
     is_taxable: false,
     tax_rate: '0',
@@ -197,15 +197,12 @@ export default function AddProductPage() {
       const loadData = async () => {
         isLoadingData.current = true;
         try {
-          console.log('🔄 Loading initial dropdown data with business type:', businessType);
-          // Load initial categories, brands, and units in parallel
           await Promise.all([
             loadCategoryOptions(''),
             loadBrandOptions(''),
             loadUnitOptions('')
           ]);
           hasLoadedData.current = true;
-          console.log('✅ Initial dropdown data loaded');
         } catch (error) {
           notify.error('Failed to load form data');
         } finally {
@@ -323,13 +320,28 @@ export default function AddProductPage() {
     setIsLoading(true);
     setErrors({});
 
+    // Client-side validation
+    const validationErrors: Record<string, string[]> = {};
+
+    if (!businessType) {
+      validationErrors.business_type = ['Business type is required'];
+    }
+
+    if (Object.keys(validationErrors).length > 0) {
+      setErrors(validationErrors);
+      setIsLoading(false);
+      notify.error('Please fill in all required fields');
+      return;
+    }
+
     try {
       // Prepare data for submission
       const submitData = {
         ...formData,
+        business_type: businessType, // Add business type
         cost_price: formData.cost_price ? parseFloat(formData.cost_price) : 0,
         selling_price: formData.selling_price ? parseFloat(formData.selling_price) : 0,
-        dp_price: formData.dp_price ? parseFloat(formData.dp_price) : undefined,
+        dp: formData.dp ? parseFloat(formData.dp) : undefined,
         mrp: formData.mrp ? parseFloat(formData.mrp) : undefined,
         tax_rate: formData.tax_rate ? parseFloat(formData.tax_rate) : 0,
         low_stock_threshold: formData.low_stock_threshold ? parseInt(formData.low_stock_threshold) : 10,
@@ -346,7 +358,6 @@ export default function AddProductPage() {
       // Handle validation errors
       if (error.response?.data?.errors) {
         setErrors(error.response.data.errors);
-        notify.error('Please fix the validation errors');
       } else {
         notify.error(error.response?.data?.message || 'Failed to create product');
       }
@@ -370,7 +381,7 @@ export default function AddProductPage() {
       </div>
 
       {/* Form */}
-      <form onSubmit={handleSubmit} className="space-y-1">
+      <form onSubmit={handleSubmit} className="space-y-1" autoComplete="off">
         {/* Basic Information */}
         <div className="bg-white dark:bg-gray-800 rounded-md shadow-sm border border-gray-200 dark:border-gray-700 p-3">
           <div className="mb-2">
@@ -410,7 +421,7 @@ export default function AddProductPage() {
                     onChange={handleBusinessTypeChange}
                     options={BUSINESS_TYPES.map(bt => ({ value: bt.value, label: bt.label }))}
                     placeholder="Select business type..."
-                    isInvalid={false}
+                    isInvalid={hasFieldError('business_type')}
                   />
                 ) : (
                   <input
@@ -419,6 +430,11 @@ export default function AddProductPage() {
                     disabled
                     className="w-full px-2.5 py-1 text-sm bg-gray-100 dark:bg-gray-600 border border-gray-300 dark:border-gray-600 rounded-sm text-gray-700 dark:text-gray-300 cursor-not-allowed"
                   />
+                )}
+                {hasFieldError('business_type') && (
+                  <p className="mt-1 text-xs text-red-600 dark:text-red-400">
+                    {getFieldError('business_type')}
+                  </p>
                 )}
               </div>
             </div>
@@ -464,7 +480,7 @@ export default function AddProductPage() {
             <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
               <div>
                 <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-2">
-                  Category
+                  Category <span className="text-red-500">*</span>
                 </label>
                 <CustomSelect
                   value={selectedCategory}
@@ -483,7 +499,7 @@ export default function AddProductPage() {
 
               <div>
                 <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-2">
-                  Brand
+                  Brand <span className="text-red-500">*</span>
                 </label>
                 <CustomSelect
                   value={selectedBrand}
@@ -579,7 +595,7 @@ export default function AddProductPage() {
             <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
               <div>
                 <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-2">
-                  Cost Price <span className="text-red-500">*</span>
+                  Cost Price
                 </label>
                 <input
                   type="number"
@@ -631,20 +647,20 @@ export default function AddProductPage() {
                 </label>
                 <input
                   type="number"
-                  name="dp_price"
-                  value={formData.dp_price}
+                  name="dp"
+                  value={formData.dp}
                   onChange={handleInputChange}
                   step="0.01"
                   min="0"
-                  className={`w-full px-2.5 py-1 text-sm bg-white dark:bg-gray-700 border ${hasFieldError('dp_price')
+                  className={`w-full px-2.5 py-1 text-sm bg-white dark:bg-gray-700 border ${hasFieldError('dp')
                     ? 'border-red-500 focus:border-red-500'
                     : 'border-gray-300 dark:border-gray-600 focus:border-indigo-500 dark:focus:border-indigo-400'
                     } rounded-sm text-gray-900 dark:text-gray-100 focus:outline-none`}
                   placeholder="0.00"
                 />
-                {hasFieldError('dp_price') && (
+                {hasFieldError('dp') && (
                   <p className="mt-1 text-xs text-red-600 dark:text-red-400">
-                    {getFieldError('dp_price')}
+                    {getFieldError('dp')}
                   </p>
                 )}
               </div>

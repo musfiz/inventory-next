@@ -9,9 +9,12 @@ import { Product } from "@/types/api.types";
 import { productService } from '@/services';
 import { usePermissions } from '@/hooks/use-permissions';
 import { confirm, notify } from '@/lib/notifications';
+import { useAuthStore } from '@/stores/auth-store';
 
 export default function ProductsPage() {
   const router = useRouter();
+  const user = useAuthStore((state) => state.user);
+  const isSuperAdmin = user?.user_type === 'super_admin';
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const { hasPermission, isHydrated } = usePermissions();
 
@@ -92,30 +95,60 @@ export default function ProductsPage() {
         );
       },
     },
+    ...(isSuperAdmin ? [{
+      accessorKey: 'business_type',
+      header: 'Business Type',
+      meta: { width: '15%' },
+      cell: ({ row }: any) => (
+        <span className="px-1.5 py-0.5 text-xs font-medium rounded bg-purple-100 text-purple-800 dark:bg-purple-900/30 dark:text-purple-400 capitalize">
+          {row.original.business_type?.replace('_', ' ') || '-'}
+        </span>
+      ),
+    }] : []),
     {
-      accessorKey: 'sku',
-      header: 'SKU',
+      accessorKey: 'brand.name',
+      header: 'Brand',
       meta: { width: '10%' },
       cell: ({ row }) => (
-        <span className="text-xs text-gray-600 dark:text-gray-400 font-mono">
-          {row.original.sku || '-'}
+        <span className="text-xs text-gray-600 dark:text-gray-400">
+          {row.original.brand?.name || '-'}
         </span>
       ),
     },
     {
-      accessorKey: 'base_price',
-      header: 'Price',
+      accessorKey: 'category.name',
+      header: 'Category',
+      meta: { width: '12%' },
+      cell: ({ row }) => (
+        <span className="text-xs text-gray-600 dark:text-gray-400">
+          {row.original.category?.name || '-'}
+        </span>
+      ),
+    },
+    {
+      accessorKey: 'unit.name',
+      header: 'Unit',
       meta: { width: '8%' },
       cell: ({ row }) => (
-        <span className="text-xs text-gray-900 dark:text-gray-100 font-medium">
-          ${row.original.base_price?.toFixed(2) || '0.00'}
+        <span className="text-xs text-gray-600 dark:text-gray-400">
+          {row.original.unit?.name || '-'}
+        </span>
+      ),
+    },
+    {
+      accessorKey: 'type',
+      header: 'Type',
+      meta: { width: '8%' },
+      cell: ({ row }) => (
+        <span className="px-1.5 py-0.5 text-xs font-medium rounded bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400 capitalize">
+          {row.original.type}
         </span>
       ),
     },
     {
       accessorKey: 'status',
       header: 'Status',
-      meta: { width: '8%' },
+      meta: { width: '10%' },
       cell: ({ row }) => {
         const status = row.original.status;
         const statusColors = {
@@ -134,39 +167,9 @@ export default function ProductsPage() {
       },
     },
     {
-      accessorKey: 'brand.name',
-      header: 'Brand',
-      meta: { width: '10%' },
-      cell: ({ row }) => (
-        <span className="text-xs text-gray-600 dark:text-gray-400">
-          {row.original.brand?.name || '-'}
-        </span>
-      ),
-    },
-    {
-      accessorKey: 'category.name',
-      header: 'Category',
-      meta: { width: '10%' },
-      cell: ({ row }) => (
-        <span className="text-xs text-gray-600 dark:text-gray-400">
-          {row.original.category?.name || '-'}
-        </span>
-      ),
-    },
-    {
-      accessorKey: 'type',
-      header: 'Type',
-      meta: { width: '8%' },
-      cell: ({ row }) => (
-        <span className="px-1.5 py-0.5 text-xs font-medium rounded bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400 capitalize">
-          {row.original.type}
-        </span>
-      ),
-    },
-    {
       id: 'actions',
       header: 'Actions',
-      meta: { width: '20%' },
+      meta: { width: '15%' },
       cell: ({ row }) => (
         <div className="flex items-center gap-1">
           <button
@@ -252,27 +255,12 @@ export default function ProductsPage() {
         {hasPermission('create-products') && (
           <button
             onClick={() => router.push('/products/add')}
-            className="flex items-center gap-2 px-4 py-2 text-sm bg-indigo-600 hover:bg-indigo-700 text-white font-medium rounded-md transition-colors duration-200"
+            className="flex items-center gap-2 px-4 py-2 text-sm bg-indigo-600 hover:bg-indigo-700 text-white font-medium rounded-sm transition-colors duration-200 cursor-pointer"
           >
             <Plus className="w-4 h-4" />
             Add Product
           </button>
         )}
-      </div>
-
-      {/* Filters */}
-      <div className="bg-white dark:bg-gray-800 rounded-md shadow-sm border border-gray-200 dark:border-gray-700 p-2">
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
-          <select
-            value={statusFilter}
-            onChange={(e) => setStatusFilter(e.target.value)}
-            className="px-2 py-1 text-sm border border-gray-300 dark:border-gray-600 rounded focus:ring-1 focus:ring-indigo-500 dark:bg-gray-700 dark:text-gray-100"
-          >
-            <option value="all">All Status</option>
-            <option value="active">Active</option>
-            <option value="inactive">Inactive</option>
-          </select>
-        </div>
       </div>
 
       {/* DataTable */}

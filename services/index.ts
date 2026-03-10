@@ -11,6 +11,7 @@ export { default as attributeService } from './attributeService';
 export { default as permissionService } from './permissionService';
 export { default as userPermissionService } from './userPermissionService';
 export { default as productService } from './productService';
+export { default as productVariationService } from './productVariationService';
 export { default as categoryService } from './categoryService';
 
 // Re-export types for convenience

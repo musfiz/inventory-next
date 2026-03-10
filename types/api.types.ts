@@ -54,6 +54,7 @@ export interface Product {
   id: string;
   uuid?: string;
   tenant_id?: string;
+  business_type?: string;
   sku?: string;
   name: string;
   slug?: string;
@@ -110,17 +111,30 @@ export interface Product {
 export interface ProductVariation {
   id: string;
   product_id: string;
-  name: string;
-  sku?: string;
-  price?: number;
-  cost_price?: number;
-  sale_price?: number;
-  quantity: number;
-  weight?: number;
-  dimensions?: string;
-  attributes: Record<string, any>;
+  sku: string;
+  name?: string;
+  cost_price: number;
+  selling_price: number;
+  dp?: number;
+  mrp?: number;
   is_active: boolean;
-  sort_order?: number;
+  is_default: boolean;
+  display_order: number;
+  custom_fields?: Record<string, any>;
+  product?: Product;
+  variation_attributes?: ProductVariationAttribute[];
+  created_at?: string;
+  updated_at?: string;
+}
+
+export interface ProductVariationAttribute {
+  id: string;
+  variation_id: string;
+  attribute_id: string;
+  attribute_value_id: string;
+  display_order: number;
+  attribute?: Attribute;
+  attribute_value?: AttributeValue;
   created_at?: string;
   updated_at?: string;
 }
@@ -173,48 +187,32 @@ export interface Unit {
 }
 
 export interface CreateProductRequest {
+  // Required fields
   name: string;
+  business_type: string;
+  category_id: string;
+  brand_id: string;
+  cost_price: number;
+  selling_price: number;
+
+  // Optional fields
   description?: string;
-  short_description?: string;
-  sku?: string;
-  gtin?: string;
-  ean?: string;
-  upc?: string;
-  isbn?: string;
-  mpn?: string;
-  manufacturer?: string;
-  manufacturer_sku?: string;
-  category_id?: string;
-  brand_id?: string;
   unit_id?: string;
   type?: 'simple' | 'variable' | 'composite' | 'digital' | 'service';
   status?: 'draft' | 'active' | 'inactive' | 'discontinued' | 'archived';
-  cost_price?: number;
-  base_price?: number;
+  dp_price?: number;
   mrp?: number;
-  compare_at_price?: number;
   tax_rate?: number;
   is_taxable?: boolean;
-  weight?: number;
-  length?: number;
-  width?: number;
-  height?: number;
   track_inventory?: boolean;
-  manage_stock?: boolean;
   allow_backorder?: boolean;
   low_stock_threshold?: number;
   reorder_point?: number;
-  reorder_quantity?: number;
+  has_expiry?: boolean;
+  has_batch?: boolean;
+  has_serial?: boolean;
   is_featured?: boolean;
-  is_new?: boolean;
-  is_bestseller?: boolean;
-  is_on_sale?: boolean;
-  available_from?: string;
-  available_until?: string;
   display_order?: number;
-  meta_title?: string;
-  meta_description?: string;
-  meta_keywords?: string;
   custom_fields?: Record<string, any>;
 }
 
@@ -460,5 +458,36 @@ export interface PaginationMeta {
 
 export interface PaginatedResponse<T> {
   data: T[];
+  meta: PaginationMeta;
+}
+
+// Product Variation Requests
+export interface CreateProductVariationRequest {
+  product_id: string;
+  sku: string;
+  name?: string;
+  cost_price: number;
+  selling_price: number;
+  dp?: number;
+  mrp?: number;
+  is_active?: boolean;
+  is_default?: boolean;
+  display_order?: number;
+  custom_fields?: Record<string, any>;
+  attributes?: VariationAttributeInput[];
+}
+
+export interface UpdateProductVariationRequest extends Partial<CreateProductVariationRequest> {
+  id: string;
+}
+
+export interface VariationAttributeInput {
+  attribute_id: string;
+  attribute_value_id: string;
+  display_order?: number;
+}
+
+export interface ProductVariationListResponse {
+  data: ProductVariation[];
   meta: PaginationMeta;
 }
