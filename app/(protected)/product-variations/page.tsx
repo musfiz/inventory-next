@@ -64,7 +64,7 @@ export default function ProductVariationsPage() {
   };
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-2">
       {/* Header */}
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
@@ -73,35 +73,6 @@ export default function ProductVariationsPage() {
             Product Variations
           </h1>
         </div>
-        <button
-          onClick={() => router.push('/product-variations/add')}
-          className="flex items-center gap-2 px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-md transition-colors"
-        >
-          <Plus className="w-4 h-4" />
-          Add Variation
-        </button>
-      </div>
-
-      {/* Search & Filters */}
-      <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-4">
-        <form onSubmit={handleSearch} className="flex gap-3">
-          <div className="flex-1 relative">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
-            <input
-              type="text"
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              placeholder="Search by SKU or name..."
-              className="w-full pl-10 pr-4 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-indigo-500"
-            />
-          </div>
-          <button
-            type="submit"
-            className="px-4 py-2 bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 text-gray-700 dark:text-gray-300 rounded-md transition-colors"
-          >
-            <Filter className="w-4 h-4" />
-          </button>
-        </form>
       </div>
 
       {/* Variations Table */}

@@ -53,6 +53,20 @@ class CommonService {
     });
     return response.data.data;
   }
+  /**
+  * Get units for dropdown (simplified)
+  * GET /api/v1/dropdown/unit
+  */
+  async getProductsForDropdown(params?: {
+    search?: string;
+  }): Promise<Unit[]> {
+    const response = await apiClient.get<{
+      data: Unit[];
+    }>('/api/v1/dropdown/product', {
+      params,
+    });
+    return response.data.data;
+  }
 }
 
 export default new CommonService();

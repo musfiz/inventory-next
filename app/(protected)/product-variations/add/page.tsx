@@ -1,12 +1,13 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { Package, Save, Plus, X, RefreshCw } from 'lucide-react';
 import { notify } from '@/lib/notifications';
 import productVariationService from '@/services/productVariationService';
 import CustomSelect, { SelectOption } from '@/components/ui/custom-select';
 import type { Product, Attribute, AttributeValue, VariationAttributeInput } from '@/types/api.types';
+import commonService from "@/services/commonService";
 
 interface VariationFormData {
   product_id: string;
@@ -31,7 +32,6 @@ export default function AddProductVariationPage() {
   const router = useRouter();
   const [isLoading, setIsLoading] = useState(false);
   const [errors, setErrors] = useState<Record<string, string[]>>({});
-  const [products, setProducts] = useState<Product[]>([]);
   const [attributes, setAttributes] = useState<Attribute[]>([]);
   const [selectedProduct, setSelectedProduct] = useState<SelectOption | null>(null);
   const [selectedAttributes, setSelectedAttributes] = useState<SelectedAttribute[]>([]);
@@ -39,6 +39,7 @@ export default function AddProductVariationPage() {
   const [selectedAttributeForAdd, setSelectedAttributeForAdd] = useState<SelectOption | null>(null);
   const [selectedValueForAdd, setSelectedValueForAdd] = useState<SelectOption | null>(null);
   const [generatingSku, setGeneratingSku] = useState(false);
+  const [defaultProductOptions, setDefaultProductOptions] = useState<SelectOption[]>([]);
 
   const [formData, setFormData] = useState<VariationFormData>({
     product_id: '',
@@ -52,21 +53,6 @@ export default function AddProductVariationPage() {
     is_default: false,
     display_order: '0',
   });
-
-  // Load products on mount
-  useEffect(() => {
-    loadProducts();
-  }, []);
-
-  // Load attributes when product is selected
-  useEffect(() => {
-    if (selectedProduct) {
-      const product = products.find(p => p.id === selectedProduct.value);
-      if (product?.business_type) {
-        loadAttributes(product.business_type);
-      }
-    }
-  }, [selectedProduct, products]);
 
   // Update available attributes when selected attributes change
   useEffect(() => {
@@ -85,17 +71,7 @@ export default function AddProductVariationPage() {
     }
   }, [selectedAttributes]);
 
-  const loadProducts = async () => {
-    try {
-      const productsData = await productVariationService.getProducts();
-      setProducts(productsData);
-    } catch (error) {
-      console.error('Error loading products:', error);
-      notify.error('Failed to load products');
-    }
-  };
-
-  const loadAttributes = async (businessType: string) => {
+  const loadAttributes = useCallback(async (businessType: string) => {
     try {
       const attributesData = await productVariationService.getAttributes(businessType);
       setAttributes(attributesData);
@@ -103,7 +79,65 @@ export default function AddProductVariationPage() {
       console.error('Error loading attributes:', error);
       notify.error('Failed to load attributes');
     }
-  };
+  }, []);
+
+  const loadProductAndAttributes = useCallback(async () => {
+    if (!selectedProduct?.value) return;
+    
+    try {
+      // Fetch the product details to get business_type
+      const params = { search: selectedProduct.label };
+      const productsData: Product[] = await commonService.getProductsForDropdown(params);
+      const product = productsData.find((p: Product) => p.id === selectedProduct.value);
+      
+      if (product?.business_type) {
+        loadAttributes(product.business_type);
+      }
+    } catch (error) {
+      console.error('Error loading product details:', error);
+    }
+  }, [selectedProduct, loadAttributes]);
+
+  // Load attributes when product is selected
+  useEffect(() => {
+    if (selectedProduct) {
+      loadProductAndAttributes();
+    }
+  }, [selectedProduct, loadProductAndAttributes]);
+
+  // Load products for async select with search
+  const loadProductOptions = useCallback(async (inputValue: string): Promise<SelectOption[]> => {
+    try {
+      const params: { search?: string } = {};
+
+      // Add search parameter only if inputValue is provided
+      if (inputValue && inputValue.trim()) {
+        params.search = inputValue.trim();
+      }
+
+      const productsData = await commonService.getProductsForDropdown(params);
+
+      const options = productsData.map((product: Product) => ({
+        value: product.id,
+        label: product.name,
+      }));
+
+      // Store default options for initial load
+      if (!inputValue && defaultProductOptions.length === 0) {
+        setDefaultProductOptions(options);
+      }
+
+      return options;
+    } catch (error) {
+      console.error('Failed to load products:', error);
+      return [];
+    }
+  }, [defaultProductOptions.length]);
+
+  // Load initial product options on mount
+  useEffect(() => {
+    loadProductOptions('');
+  }, [loadProductOptions]);
 
   const handleProductChange = (option: SelectOption | null) => {
     setSelectedProduct(option);
@@ -245,11 +279,6 @@ export default function AddProductVariationPage() {
     }
   };
 
-  const productOptions: SelectOption[] = products.map(p => ({
-    value: p.id,
-    label: p.name,
-  }));
-
   const attributeOptions: SelectOption[] = availableAttributes.map(a => ({
     value: a.id,
     label: a.name,
@@ -290,8 +319,9 @@ export default function AddProductVariationPage() {
                 <CustomSelect
                   value={selectedProduct}
                   onChange={handleProductChange}
-                  options={productOptions}
-                  placeholder="Select product..."
+                  loadOptions={loadProductOptions}
+                  defaultOptions={defaultProductOptions.length > 0 ? defaultProductOptions : true}
+                  placeholder="Search product..."
                   isInvalid={hasFieldError('product_id')}
                 />
                 {hasFieldError('product_id') && (
@@ -376,9 +406,9 @@ export default function AddProductVariationPage() {
                       type="button"
                       onClick={handleAddAttribute}
                       disabled={!selectedAttributeForAdd || !selectedValueForAdd}
-                      className="w-full px-3 py-1 text-sm bg-indigo-600 hover:bg-indigo-700 disabled:bg-gray-400 text-white rounded-sm transition-colors flex items-center justify-center gap-2"
+                      className="px-2.5 py-1.5 text-xs bg-indigo-600 hover:bg-indigo-700 disabled:bg-gray-400 text-white rounded-sm transition-colors flex items-center justify-center gap-1.5"
                     >
-                      <Plus className="w-3.5 h-3.5" />
+                      <Plus className="w-4 h-5" />
                       Add Attribute
                     </button>
                   </div>
@@ -396,7 +426,7 @@ export default function AddProductVariationPage() {
                 selectedAttributes.map((sa) => (
                   <div
                     key={sa.attribute.id}
-                    className="inline-flex items-center gap-2 px-3 py-1.5 bg-indigo-100 text-indigo-800 dark:bg-indigo-900 dark:text-indigo-200 rounded-full text-sm font-medium"
+                    className="inline-flex items-center gap-2 px-3 py-1.5 bg-teal-100 text-teal-800 dark:bg-teal-900 dark:text-teal-200 rounded-full text-sm font-medium"
                   >
                     <span>
                       {sa.attribute.name}: {sa.value.display_value || sa.value.value}
@@ -417,7 +447,7 @@ export default function AddProductVariationPage() {
             {formData.name && (
               <div className="mt-2 p-2 bg-blue-50 dark:bg-blue-900/20 rounded-sm">
                 <p className="text-xs text-blue-800 dark:text-blue-200">
-                  <strong>Generated Name:</strong> {formData.name}
+                  <strong>Attribute Name:</strong> {formData.name}
                 </p>
               </div>
             )}

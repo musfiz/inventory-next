@@ -234,21 +234,6 @@ export interface UpdateCategoryRequest extends Partial<CreateCategoryRequest> {
   id: string;
 }
 
-export interface CreateProductVariationRequest {
-  product_id: string;
-  name: string;
-  sku?: string;
-  price?: number;
-  cost_price?: number;
-  sale_price?: number;
-  quantity: number;
-  weight?: number;
-  dimensions?: string;
-  attributes: Record<string, any>;
-  is_active?: boolean;
-  sort_order?: number;
-}
-
 export interface UpdateProductVariationRequest extends Partial<CreateProductVariationRequest> {
   id: string;
 }
@@ -307,8 +292,11 @@ export interface Attribute {
   is_system: boolean;
   description?: string;
   sort_order?: number;
+  business_type?: string;
+  is_active?: boolean;
   created_at?: string;
   updated_at?: string;
+  values?: AttributeValue[];
 }
 
 export interface AttributeValue {

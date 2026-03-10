@@ -255,9 +255,9 @@ export default function ProductsPage() {
         {hasPermission('create-products') && (
           <button
             onClick={() => router.push('/products/add')}
-            className="flex items-center gap-2 px-4 py-2 text-sm bg-indigo-600 hover:bg-indigo-700 text-white font-medium rounded-sm transition-colors duration-200 cursor-pointer"
+            className="flex items-center gap-2 px-2 py-1 text-sm bg-indigo-600 hover:bg-indigo-700 text-white font-medium rounded-sm transition-colors duration-200 cursor-pointer"
           >
-            <Plus className="w-4 h-4" />
+            <Plus className="w-6 h-6" />
             Add Product
           </button>
         )}

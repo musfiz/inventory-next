@@ -80,15 +80,6 @@ class ProductVariationService {
   }
 
   /**
-   * Get products for dropdown (only variable products)
-   * GET /api/v1/product-variations/products
-   */
-  async getProducts(): Promise<Product[]> {
-    const response = await apiClient.get<ApiResponse<Product[]>>('/api/v1/product-variations/products');
-    return response.data.data;
-  }
-
-  /**
    * Get attributes for dropdown
    * GET /api/v1/product-variations/attributes
    */

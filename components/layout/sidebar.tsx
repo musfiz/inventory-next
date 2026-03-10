@@ -77,13 +77,13 @@ const navigation: NavigationItem[] = [
   {
     name: 'Product Management',
     icon: Package2,
-    permission: 'view-product',
+    permission: 'view-products',
     children: [
-      { name: 'All Products', href: '/products', icon: List, permission: 'view-product' },
-      { name: 'Add Product', href: '/products/add', icon: UserPlus, permission: 'create-product' },
-      { name: 'Product Variations', href: '/product-variations', icon: List },
-      { name: 'Add Product Variation', href: '/product-variations/add', icon: UserPlus },
-      { name: 'Product Images', href: '/products/images', icon: Image, permission: 'view-product-images' },
+      { name: 'Products', href: '/products', icon: List, permission: 'view-products' },
+      { name: 'Add Product', href: '/products/add', icon: UserPlus, permission: 'create-products' },
+      { name: 'Product Variations', href: '/product-variations', icon: Tag, permission: 'view-product-variations' },
+      { name: 'Add Product Variation', href: '/product-variations/add', icon: UserPlus, permission: 'create-product-variations' },
+      { name: 'Product Image', href: '/products/images', icon: Image, permission: 'view-product-images' },
     ]
   },
   {
