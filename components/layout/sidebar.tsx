@@ -26,7 +26,8 @@ import {
   LucideIcon,
   UserLock,
   ListTodo,
-  Package2
+  Package2,
+  Barcode
 } from 'lucide-react';
 
 interface SidebarProps {
@@ -83,6 +84,7 @@ const navigation: NavigationItem[] = [
       { name: 'Add Product', href: '/products/add', icon: UserPlus, permission: 'create-products' },
       { name: 'Product Variations', href: '/product-variations', icon: Tag, permission: 'view-product-variations' },
       { name: 'Add Product Variation', href: '/product-variations/add', icon: UserPlus, permission: 'create-product-variations' },
+      { name: 'Product Barcodes', href: '/product-barcodes', icon: Barcode, permission: 'view-products' },
       { name: 'Product Image', href: '/products/images', icon: Image, permission: 'view-product-images' },
     ]
   },

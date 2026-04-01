@@ -13,6 +13,7 @@ export { default as userPermissionService } from './userPermissionService';
 export { default as productService } from './productService';
 export { default as productVariationService } from './productVariationService';
 export { default as categoryService } from './categoryService';
+export { default as barcodeService } from './barcodeService';
 
 // Re-export types for convenience
 export type {
