@@ -27,7 +27,13 @@ import {
   UserLock,
   ListTodo,
   Package2,
-  Barcode
+  Barcode,
+  Warehouse,
+  ShoppingCart,
+  DollarSign,
+  CirclePile,
+  CircleDollarSign,
+  ListMinus
 } from 'lucide-react';
 
 interface SidebarProps {
@@ -89,6 +95,30 @@ const navigation: NavigationItem[] = [
     ]
   },
   {
+    name: 'Stock Management',
+    icon: CirclePile,
+    permission: 'view-stocks',
+    children: [
+      { name: 'Warehouses', href: '/warehouses', icon: Warehouse, permission: 'view-warehouses' },
+    ]
+  },
+  {
+    name: 'Purchase Management',
+    icon: ListMinus,
+    permission: 'view-purchases',
+    children: [
+      { name: 'Product Purchase', href: '/purchases', icon: ShoppingCart, permission: 'view-purchases' },
+    ]
+  },
+  {
+    name: 'Sales Management',
+    icon: CircleDollarSign,
+    permission: 'view-sales',
+    children: [
+      { name: 'POS Sale', href: '/pos-sales', icon: DollarSign, permission: 'view-pos-sales' },
+    ]
+  },
+  {
     name: 'Settings',
     icon: Settings,
     children: [
@@ -106,24 +136,6 @@ const navigation: NavigationItem[] = [
       }
     ]
   },
-  {
-    name: 'File Manager',
-    icon: Folder,
-    children: [
-      { name: 'All Files', href: '/files', icon: FileText, permission: 'view-files' },
-      {
-        name: 'Media',
-        icon: Folder,
-        children: [
-          { name: 'Images', href: '/files/media/images', icon: Image, permission: 'view-files' },
-          { name: 'Videos', href: '/files/media/videos', icon: Video, permission: 'view-files' },
-          { name: 'Audio', href: '/files/media/audio', icon: Music, permission: 'view-files' },
-        ]
-      },
-      { name: 'Documents', href: '/files/documents', icon: FileText, permission: 'view-files' },
-    ]
-  },
-  { name: 'Analytics', href: '/analytics', icon: TrendingUp, permission: 'view-analytics' },
 ];
 
 function NavItem({ item, sidebarOpen, pathname, setMobileMenuOpen, depth = 0, isLast = false, itemPath = '', openItems, setOpenItems }: {
