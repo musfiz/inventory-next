@@ -71,11 +71,38 @@ class ProductVariationService {
   /**
    * Generate unique SKU
    * GET /api/v1/product-variations/generate-sku
+   * @param productId Optional product ID to base SKU on product name
+   * @param productName Optional product name to use directly
+   * @param attributeValues Optional array of attribute value texts to include in SKU generation
    */
-  async generateSku(productId?: string): Promise<string> {
-    const response = await apiClient.get<ApiResponse<{ sku: string }>>('/api/v1/product-variations/generate-sku', {
-      params: productId ? { product_id: productId } : {},
-    });
+  async generateSku(
+    productId?: string,
+    productName?: string,
+    attributeValues?: string[]
+  ): Promise<string> {
+    // Build query string manually for array structure
+    let url = '/api/v1/product-variations/generate-sku';
+    const queryParams: string[] = [];
+    
+    if (productId) {
+      queryParams.push(`product_id=${encodeURIComponent(productId)}`);
+    }
+    
+    if (productName) {
+      queryParams.push(`product_name=${encodeURIComponent(productName)}`);
+    }
+    
+    if (attributeValues && attributeValues.length > 0) {
+      attributeValues.forEach((value, index) => {
+        queryParams.push(`attribute_values[${index}]=${encodeURIComponent(value)}`);
+      });
+    }
+    
+    if (queryParams.length > 0) {
+      url += '?' + queryParams.join('&');
+    }
+
+    const response = await apiClient.get<ApiResponse<{ sku: string }>>(url);
     return response.data.data.sku;
   }
 
@@ -84,9 +111,7 @@ class ProductVariationService {
    * GET /api/v1/product-variations/attributes
    */
   async getAttributes(businessType?: string): Promise<Attribute[]> {
-    const response = await apiClient.get<ApiResponse<Attribute[]>>('/api/v1/product-variations/attributes', {
-      params: businessType ? { business_type: businessType } : {},
-    });
+    const response = await apiClient.get<ApiResponse<Attribute[]>>('/api/v1/product-variations/attributes');
     return response.data.data;
   }
 }

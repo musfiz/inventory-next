@@ -285,14 +285,9 @@ export interface Unit {
 export interface Attribute {
   id: string;
   name: string;
-  type: 'text' | 'select' | 'number' | 'date' | 'boolean' | 'color' | 'size';
-  data_type: 'string' | 'integer' | 'decimal' | 'date' | 'boolean';
-  measurement_unit?: string;
-  is_global: boolean;
-  is_system: boolean;
+  type: 'select' | 'text' | 'number' | 'color';
   description?: string;
   sort_order?: number;
-  business_type?: string;
   is_active?: boolean;
   created_at?: string;
   updated_at?: string;

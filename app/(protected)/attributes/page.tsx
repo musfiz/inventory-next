@@ -15,13 +15,10 @@ export default function AttributesPage() {
   const [currentAttribute, setCurrentAttribute] = useState<Attribute | null>(null);
   const [formData, setFormData] = useState({
     name: '',
-    type: 'text' as 'text' | 'select' | 'number' | 'date' | 'boolean' | 'color' | 'size',
-    data_type: 'string' as 'string' | 'integer' | 'decimal' | 'date' | 'boolean',
-    measurement_unit: '',
-    is_global: true,
-    is_system: false,
+    type: 'select' as 'select' | 'text' | 'number' | 'color',
     description: '',
     sort_order: undefined as number | undefined,
+    is_active: true,
   });
   const [formErrors, setFormErrors] = useState<{ [key: string]: string }>({});
   const [refreshKey, setRefreshKey] = useState(0);
@@ -31,13 +28,10 @@ export default function AttributesPage() {
     setCurrentAttribute(null);
     setFormData({
       name: '',
-      type: 'text',
-      data_type: 'string',
-      measurement_unit: '',
-      is_global: true,
-      is_system: false,
+      type: 'select',
       description: '',
-      sort_order: undefined
+      sort_order: undefined,
+      is_active: true,
     });
     setFormErrors({});
     setShowForm(true);
@@ -50,12 +44,9 @@ export default function AttributesPage() {
     setFormData({
       name: attribute.name,
       type: attribute.type,
-      data_type: attribute.data_type,
-      measurement_unit: attribute.measurement_unit || '',
-      is_global: attribute.is_global,
-      is_system: attribute.is_system,
       description: attribute.description || '',
-      sort_order: attribute.sort_order || 1
+      sort_order: attribute.sort_order || 0,
+      is_active: attribute.is_active !== undefined ? attribute.is_active : true,
     });
     setFormErrors({});
     setShowForm(true);
@@ -68,9 +59,6 @@ export default function AttributesPage() {
     }
     if (!formData.type) {
       errors.type = 'Attribute type is required';
-    }
-    if (!formData.data_type) {
-      errors.data_type = 'Data type is required';
     }
     setFormErrors(errors);
     return Object.keys(errors).length === 0;
@@ -89,12 +77,9 @@ export default function AttributesPage() {
         id: isEditing && currentAttribute?.id ? currentAttribute.id : undefined,
         name: formData.name,
         type: formData.type,
-        data_type: formData.data_type,
-        measurement_unit: formData.measurement_unit || undefined,
-        is_global: formData.is_global,
-        is_system: formData.is_system,
-        description: formData.description,
+        description: formData.description || undefined,
         sort_order: formData.sort_order || undefined,
+        is_active: formData.is_active,
       });
 
       notify.success(isEditing ? 'Attribute updated successfully' : 'Attribute added successfully');
@@ -117,9 +102,8 @@ export default function AttributesPage() {
       html: `Are you sure you want to delete <strong>${attribute.name}</strong>?<br><br>
             <div style="color: #6b7280; font-size: 13px; line-height: 1.5;">
               <strong>Type:</strong> ${attribute.type}<br>
-              <strong>Data Type:</strong> ${attribute.data_type}<br>
-              <strong>Is Global:</strong> ${attribute.is_global ? 'Yes' : 'No'}<br>
-              <strong>Is System:</strong> ${attribute.is_system ? 'Yes' : 'No'}
+              <strong>Status:</strong> ${attribute.is_active ? 'Active' : 'Inactive'}<br>
+              <strong>Sort Order:</strong> ${attribute.sort_order || 0}
             </div><br>
             <em style="color: #dc2626; font-size: 12px;">This action cannot be undone and will permanently delete the attribute.</em>`,
       confirmButtonText: 'Delete',
@@ -140,46 +124,11 @@ export default function AttributesPage() {
   };
 
   const typeOptions = [
-    { value: 'text', label: 'Text' },
     { value: 'select', label: 'Select' },
+    { value: 'text', label: 'Text' },
     { value: 'number', label: 'Number' },
-    { value: 'date', label: 'Date' },
-    { value: 'boolean', label: 'Boolean' },
     { value: 'color', label: 'Color' },
-    { value: 'size', label: 'Size' },
   ];
-
-  const dataTypeOptions = [
-    { value: 'string', label: 'String' },
-    { value: 'integer', label: 'Integer' },
-    { value: 'decimal', label: 'Decimal' },
-    { value: 'date', label: 'Date' },
-    { value: 'boolean', label: 'Boolean' },
-  ];
-
-  const getGlobalBadge = (isGlobal: boolean) => {
-    return isGlobal ? (
-      <span className="px-1.5 py-0.5 text-xs font-medium rounded bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400">
-        Yes
-      </span>
-    ) : (
-      <span className="px-1.5 py-0.5 text-xs font-medium rounded bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400">
-        No
-      </span>
-    );
-  };
-
-  const getSystemBadge = (isSystem: boolean) => {
-    return isSystem ? (
-      <span className="px-1.5 py-0.5 text-xs font-medium rounded bg-purple-100 text-purple-800 dark:bg-purple-900/30 dark:text-purple-400">
-        Yes
-      </span>
-    ) : (
-      <span className="px-1.5 py-0.5 text-xs font-medium rounded bg-gray-100 text-gray-800 dark:bg-gray-900/30 dark:text-gray-400">
-        No
-      </span>
-    );
-  };
 
   const columns: ColumnDef<Attribute>[] = [
     {
@@ -220,7 +169,7 @@ export default function AttributesPage() {
     {
       accessorKey: 'type',
       header: 'Type',
-      meta: { width: '6%' },
+      meta: { width: '8%' },
       cell: ({ row }) => (
         <span className="text-xs text-gray-600 dark:text-gray-400 capitalize">
           {row.original.type}
@@ -228,34 +177,39 @@ export default function AttributesPage() {
       ),
     },
     {
-      accessorKey: 'data_type',
-      header: 'Data Type',
-      meta: { width: '8%' },
+      accessorKey: 'sort_order',
+      header: 'Sort Order',
+      meta: { width: '6%' },
       cell: ({ row }) => (
-        <span className="text-xs text-gray-600 dark:text-gray-400 capitalize">
-          {row.original.data_type}
+        <span className="text-xs text-gray-600 dark:text-gray-400">
+          {row.original.sort_order || 0}
         </span>
       ),
     },
     {
-      accessorKey: 'is_global',
-      header: 'Is Global',
+      accessorKey: 'is_active',
+      header: 'Status',
       meta: { width: '7%' },
-      cell: ({ row }) => getGlobalBadge(row.original.is_global),
-    },
-    {
-      accessorKey: 'is_system',
-      header: 'Is System',
-      meta: { width: '7%' },
-      cell: ({ row }) => getSystemBadge(row.original.is_system),
+      cell: ({ row }) => {
+        const isActive = row.original.is_active;
+        return isActive ? (
+          <span className="px-1.5 py-0.5 text-xs font-medium rounded bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400">
+            Active
+          </span>
+        ) : (
+          <span className="px-1.5 py-0.5 text-xs font-medium rounded bg-gray-100 text-gray-800 dark:bg-gray-900/30 dark:text-gray-400">
+            Inactive
+          </span>
+        );
+      },
     },
     {
       accessorKey: 'description',
       header: 'Description',
-      meta: { width: '15%' },
+      meta: { width: '20%' },
       cell: ({ row }) => {
         const description = row.original.description;
-        const maxLength = 30;
+        const maxLength = 40;
         const truncatedDesc = description && description.length > maxLength ? description.substring(0, maxLength) + '...' : description;
 
         return (
@@ -333,9 +287,9 @@ export default function AttributesPage() {
             {isEditing ? 'Edit Attribute' : 'New Attribute'}
           </h2>
           <form onSubmit={handleFormSubmit} className="grid grid-cols-1 md:grid-cols-2 gap-1.5">
-            <div className="md:col-span-2 grid grid-cols-1 md:grid-cols-3 gap-1">
+            <div className="md:col-span-2 grid grid-cols-1 md:grid-cols-2 gap-1">
               <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-0.5">Name</label>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-0.5">Name <span className="text-red-500">*</span></label>
                 <input
                   type="text"
                   placeholder="Enter attribute name"
@@ -351,7 +305,7 @@ export default function AttributesPage() {
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-0.5">Type</label>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-0.5">Type <span className="text-red-500">*</span></label>
                 <select
                   value={formData.type}
                   onChange={e => setFormData({ ...formData, type: e.target.value as any })}
@@ -365,92 +319,51 @@ export default function AttributesPage() {
                   <p className="text-red-600 text-xs mt-1">{formErrors.type}</p>
                 )}
               </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-0.5">Data Type</label>
-                <select
-                  value={formData.data_type}
-                  onChange={e => setFormData({ ...formData, data_type: e.target.value as any })}
-                  className="w-full px-2 py-1.5 text-sm border border-gray-300 dark:border-gray-600 rounded-sm focus:outline-none focus:ring-1 focus:ring-indigo-500 dark:focus:ring-indigo-400 focus:border-transparent dark:bg-gray-700 dark:text-gray-100"
-                >
-                  {dataTypeOptions.map(option => (
-                    <option key={option.value} value={option.value}>{option.label}</option>
-                  ))}
-                </select>
-                {formErrors.data_type && (
-                  <p className="text-red-600 text-xs mt-1">{formErrors.data_type}</p>
-                )}
-              </div>
             </div>
-            <div className="md:col-span-2 grid grid-cols-1 md:grid-cols-4 gap-4">
+
+            <div className="md:col-span-2 grid grid-cols-1 md:grid-cols-2 gap-1">
               <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-0.5">Measurement Unit</label>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-0.5">Sort Order</label>
                 <input
-                  type="text"
-                  placeholder="e.g., kg, cm, %"
-                  value={formData.measurement_unit}
-                  onChange={e => setFormData({ ...formData, measurement_unit: e.target.value })}
-                  className={`w-full px-2 py-1.5 text-sm border rounded-sm focus:outline-none focus:ring-1 focus:ring-indigo-500 dark:focus:ring-indigo-400 focus:border-transparent dark:bg-gray-700 dark:text-gray-100 ${formErrors.measurement_unit ? 'border-red-500' : 'border-gray-300 dark:border-gray-600'
+                  type="number"
+                  placeholder="0"
+                  value={formData.sort_order || ''}
+                  onChange={e => setFormData({ ...formData, sort_order: parseInt(e.target.value) || 0 })}
+                  className={`w-full px-2 py-1.5 text-sm border rounded-sm focus:outline-none focus:ring-1 focus:ring-indigo-500 dark:focus:ring-indigo-400 focus:border-transparent dark:bg-gray-700 dark:text-gray-100 ${formErrors.sort_order ? 'border-red-500' : 'border-gray-300 dark:border-gray-600'
                     }`}
+                  min="0"
                 />
-                {formErrors.measurement_unit && (
-                  <p className="text-red-600 text-xs mt-1">{formErrors.measurement_unit}</p>
+                {formErrors.sort_order && (
+                  <p className="text-red-600 text-xs mt-1">{formErrors.sort_order}</p>
                 )}
               </div>
 
-              {isEditing && (
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-0.5">Sort Order</label>
+              <div className="flex items-end">
+                <label className="flex items-center gap-2 mb-1">
                   <input
-                    type="number"
-                    placeholder="0"
-                    value={formData.sort_order}
-                    onChange={e => setFormData({ ...formData, sort_order: parseInt(e.target.value) || 0 })}
-                    className={`w-full px-2 py-1.5 text-sm border rounded-sm focus:outline-none focus:ring-1 focus:ring-indigo-500 dark:focus:ring-indigo-400 focus:border-transparent dark:bg-gray-700 dark:text-gray-100 ${formErrors.sort_order ? 'border-red-500' : 'border-gray-300 dark:border-gray-600'
-                      }`}
-                    min="0"
+                    type="checkbox"
+                    checked={formData.is_active}
+                    onChange={e => setFormData({ ...formData, is_active: e.target.checked })}
+                    className="rounded border-gray-300 dark:border-gray-600 text-indigo-600 focus:ring-indigo-500 dark:focus:ring-indigo-400 dark:bg-gray-700"
                   />
-                  {formErrors.sort_order && (
-                    <p className="text-red-600 text-xs mt-1">{formErrors.sort_order}</p>
-                  )}
-                </div>
-              )}
-
-              <div className="md:col-span-2">
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-0.5">Description</label>
-                <input
-                  placeholder="Enter attribute description"
-                  value={formData.description}
-                  onChange={e => setFormData({ ...formData, description: e.target.value })}
-                  className={`w-full px-2 py-1.5 text-sm border rounded-sm focus:outline-none focus:ring-1 focus:ring-indigo-500 dark:focus:ring-indigo-400 focus:border-transparent dark:bg-gray-700 dark:text-gray-100 ${formErrors.description ? 'border-red-500' : 'border-gray-300 dark:border-gray-600'
-                    }`}
-                />
-                {formErrors.description && (
-                  <p className="text-red-600 text-xs mt-1">{formErrors.description}</p>
-                )}
+                  <span className="text-sm font-medium text-gray-700 dark:text-gray-300">Is Active</span>
+                </label>
               </div>
-
             </div>
-            <div className="md:col-span-2 grid grid-cols-2 md:grid-cols-4 gap-5">
-              <label className="flex items-center gap-2">
-                <input
-                  type="checkbox"
-                  checked={formData.is_global}
-                  onChange={e => setFormData({ ...formData, is_global: e.target.checked })}
-                  className="rounded border-gray-300 dark:border-gray-600 text-indigo-600 focus:ring-indigo-500 dark:focus:ring-indigo-400 dark:bg-gray-700"
-                />
-                <span className="text-sm font-medium text-gray-700 dark:text-gray-300">Is global</span>
-              </label>
 
-              <label className="flex items-center gap-2">
-                <input
-                  type="checkbox"
-                  checked={formData.is_system}
-                  onChange={e => setFormData({ ...formData, is_system: e.target.checked })}
-                  className="rounded border-gray-300 dark:border-gray-600 text-indigo-600 focus:ring-indigo-500 dark:focus:ring-indigo-400 dark:bg-gray-700"
-                />
-                <span className="text-sm font-medium text-gray-700 dark:text-gray-300">Is System</span>
-              </label>
+            <div className="md:col-span-2">
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-0.5">Description</label>
+              <textarea
+                rows={2}
+                placeholder="Enter attribute description (optional)"
+                value={formData.description}
+                onChange={e => setFormData({ ...formData, description: e.target.value })}
+                className={`w-full px-2 py-1.5 text-sm border rounded-sm focus:outline-none focus:ring-1 focus:ring-indigo-500 dark:focus:ring-indigo-400 focus:border-transparent dark:bg-gray-700 dark:text-gray-100 ${formErrors.description ? 'border-red-500' : 'border-gray-300 dark:border-gray-600'
+                  }`}
+              />
+              {formErrors.description && (
+                <p className="text-red-600 text-xs mt-1">{formErrors.description}</p>
+              )}
             </div>
 
             <div className="flex gap-2 md:col-span-2 mt-1.5">

@@ -13,13 +13,10 @@ class AttributeService {
   async storeAttribute(data: {
     id?: string;
     name: string;
-    type: string;
-    data_type: string;
-    measurement_unit?: string;
-    is_global: boolean;
-    is_system: boolean;
+    type: 'select' | 'text' | 'number' | 'color';
+    description?: string;
     sort_order?: number;
-    description: string;
+    is_active?: boolean;
   }): Promise<Attribute> {
     const response = await apiClient.post<ApiResponse<Attribute>>(
       '/api/v1/attribute/store',

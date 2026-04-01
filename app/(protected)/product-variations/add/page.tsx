@@ -56,6 +56,8 @@ export default function AddProductVariationPage() {
     display_order: '0', // Will be set automatically by backend
   });
 
+  const [statusValue, setStatusValue] = useState<string>('1'); // 1 = Active, 0 = Inactive
+
   // Auto-generate variation name from attributes
   useEffect(() => {
     if (selectedAttributes.length > 0) {
@@ -67,12 +69,11 @@ export default function AddProductVariationPage() {
     }
   }, [selectedAttributes]);
 
-  const loadAttributes = useCallback(async (businessType: string) => {
+  const loadAttributes = useCallback(async () => {
     try {
-      const attributesData = await productVariationService.getAttributes(businessType);
+      const attributesData = await productVariationService.getAttributes();
       setAttributes(attributesData);
     } catch (error) {
-      console.error('Error loading attributes:', error);
       notify.error('Failed to load attributes');
     }
   }, []);
@@ -88,7 +89,7 @@ export default function AddProductVariationPage() {
 
       if (product?.business_type) {
         setBusinessType(product.business_type);
-        await loadAttributes(product.business_type);
+        await loadAttributes();
       }
     } catch (error) {
       console.error('Error loading product details:', error);
@@ -100,14 +101,9 @@ export default function AddProductVariationPage() {
     try {
       const attributesData = await attributeService.searchAttributes(inputValue || undefined, 10);
 
-      // Filter by business type if set
-      const filteredAttributes = businessType
-        ? attributesData.filter(attr => !attr.business_type || attr.business_type === businessType)
-        : attributesData;
-
       // Filter out already selected attributes
       const usedAttributeIds = selectedAttributes.map(sa => sa.attribute.id);
-      const availableAttrs = filteredAttributes.filter(attr => !usedAttributeIds.includes(attr.id));
+      const availableAttrs = attributesData.filter(attr => !usedAttributeIds.includes(attr.id));
 
       const options = availableAttrs.map((attribute: Attribute) => ({
         value: attribute.id,
@@ -177,18 +173,43 @@ export default function AddProductVariationPage() {
     });
   };
 
+  /**
+   * Generate SKU based on product name and selected attributes
+   * Format: PRODUCT-INITIALS-ATTRIBUTE1-INITIALS-NUMBERS
+   * Example: Ceiling Fan with Royal Blue and 48 Inch -> CF-RB-48
+   */
   const handleGenerateSku = async () => {
+    if (!formData.product_id) {
+      notify.error('Please select a product first');
+      return;
+    }
+
     setGeneratingSku(true);
     try {
-      const sku = await productVariationService.generateSku(formData.product_id || undefined);
+      // Get product name from selected product
+      const productName = selectedProduct?.label || '';
+      
+      // Get attribute values as text array (display_value or value)
+      // Filter out any undefined/empty values to ensure string[]
+      const attributeValues = selectedAttributes
+        .map(sa => sa.value.value || sa.value.display_value || '')
+        .filter(val => val.trim() !== '');
+
+      // Generate SKU with product name and attribute values as text
+      const sku = await productVariationService.generateSku(
+        formData.product_id,
+        productName,
+        attributeValues.length > 0 ? attributeValues : undefined
+      );
+      
       setFormData(prev => ({ ...prev, sku }));
       setErrors(prev => {
         const newErrors = { ...prev };
         delete newErrors['sku'];
         return newErrors;
       });
-    } catch (error) {
-      notify.error('Failed to generate SKU');
+    } catch (error: any) {
+      notify.error(error.response?.data?.message || 'Failed to generate SKU');
     } finally {
       setGeneratingSku(false);
     }
@@ -328,7 +349,7 @@ export default function AddProductVariationPage() {
         selling_price: parseFloat(formData.selling_price) || 0,
         dp: formData.dp ? parseFloat(formData.dp) : undefined,
         mrp: formData.mrp ? parseFloat(formData.mrp) : undefined,
-        is_active: formData.is_active,
+        is_active: statusValue === '1',
         is_default: formData.is_default,
         // display_order will be set automatically by backend (last row + 1)
         attributes: attributes.length > 0 ? attributes : undefined,
@@ -338,8 +359,6 @@ export default function AddProductVariationPage() {
       notify.success('Product variation created successfully!');
       router.push('/product-variations');
     } catch (error: any) {
-      console.error('Error creating variation:', error);
-
       if (error.response?.data?.errors) {
         setErrors(error.response.data.errors);
       } else {
@@ -415,53 +434,22 @@ export default function AddProductVariationPage() {
 
               <div>
                 <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-2">
-                  SKU <span className="text-red-500">*</span>
+                  Status <span className="text-red-500">*</span>
                 </label>
-                <div className="flex gap-2">
-                  <input
-                    type="text"
-                    name="sku"
-                    value={formData.sku}
-                    onChange={handleInputChange}
-                    className={`flex-1 px-2.5 py-1 text-sm bg-white dark:bg-gray-700 border ${hasFieldError('sku')
-                      ? 'border-red-500 focus:border-red-500'
-                      : 'border-gray-300 dark:border-gray-600 focus:border-indigo-500 dark:focus:border-indigo-400'
-                      } rounded-sm text-gray-900 dark:text-gray-100 focus:outline-none`}
-                    placeholder="SKU"
-                  />
-                  <button
-                    type="button"
-                    onClick={handleGenerateSku}
-                    disabled={generatingSku}
-                    className="px-2.5 py-1 bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 text-gray-700 dark:text-gray-300 rounded-sm transition-colors disabled:opacity-50 text-sm"
-                    title="Generate SKU"
-                  >
-                    <RefreshCw className={`w-3.5 h-3.5 ${generatingSku ? 'animate-spin' : ''}`} />
-                  </button>
-                </div>
-                {hasFieldError('sku') && (
-                  <p className="mt-1 text-xs text-red-600 dark:text-red-400">
-                    {getFieldError('sku')}
-                  </p>
-                )}
+                <select
+                  name="status"
+                  value={statusValue}
+                  onChange={(e) => setStatusValue(e.target.value)}
+                  className="w-full px-2.5 py-1 text-sm bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 focus:border-indigo-500 dark:focus:border-indigo-400 rounded-sm text-gray-900 dark:text-gray-100 focus:outline-none"
+                >
+                  <option value="1">Active</option>
+                  <option value="0">Inactive</option>
+                </select>
               </div>
             </div>
 
             {/* Status & Options */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mt-3">
-              <div className="flex items-center">
-                <input
-                  type="checkbox"
-                  name="is_active"
-                  checked={formData.is_active}
-                  onChange={handleInputChange}
-                  className="w-4 h-4 text-indigo-600 border-gray-300 rounded focus:ring-indigo-500"
-                />
-                <label className="ml-2 text-xs text-gray-700 dark:text-gray-300">
-                  Active
-                </label>
-              </div>
-
               <div className="flex items-center">
                 <input
                   type="checkbox"
@@ -564,9 +552,53 @@ export default function AddProductVariationPage() {
               </div>
             )}
           </div>
+        </div>
 
-          {/* Pricing */}
-          <div className="bg-white dark:bg-gray-800 rounded-md shadow-sm border border-gray-200 dark:border-gray-700 p-3">
+        {/* SKU Section - Moved after Attributes */}
+        <div className="bg-white dark:bg-gray-800 rounded-md shadow-sm border border-gray-200 dark:border-gray-700 p-3">
+          <div className="mb-2">
+            <h3 className="text-base font-semibold text-gray-900 dark:text-gray-100 mb-2">
+              SKU Information
+            </h3>
+            <div className="grid grid-cols-1 gap-3">
+              <div>
+                <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-2">
+                  SKU <span className="text-red-500">*</span>
+                </label>
+                <div className="flex gap-2">
+                  <input
+                    type="text"
+                    name="sku"
+                    value={formData.sku}
+                    onChange={handleInputChange}
+                    className={`flex-1 px-2.5 py-1 text-sm bg-white dark:bg-gray-700 border ${hasFieldError('sku')
+                      ? 'border-red-500 focus:border-red-500'
+                      : 'border-gray-300 dark:border-gray-600 focus:border-indigo-500 dark:focus:border-indigo-400'
+                      } rounded-sm text-gray-900 dark:text-gray-100 focus:outline-none`}
+                    placeholder="Enter SKU or generate one"
+                  />
+                  <button
+                    type="button"
+                    onClick={handleGenerateSku}
+                    disabled={generatingSku}
+                    className="px-2.5 py-1 bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 text-gray-700 dark:text-gray-300 rounded-sm transition-colors disabled:opacity-50 text-sm  cursor-pointer"
+                    title="Generate SKU"
+                  >
+                    <RefreshCw className={`w-3.5 h-3.5 ${generatingSku ? 'animate-spin' : ''}`} />
+                  </button>
+                </div>
+                {hasFieldError('sku') && (
+                  <p className="mt-1 text-xs text-red-600 dark:text-red-400">
+                    {getFieldError('sku')}
+                  </p>
+                )}
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Pricing */}
+        <div className="bg-white dark:bg-gray-800 rounded-md shadow-sm border border-gray-200 dark:border-gray-700 p-3">
             <div className="mb-2">
               <h3 className="text-base font-semibold text-gray-900 dark:text-gray-100 mb-2">
                 Pricing
@@ -655,25 +687,24 @@ export default function AddProductVariationPage() {
             </div>
           </div>
 
-          {/* Action Buttons */}
-          <div className="flex justify-start gap-2 pt-2">
+        {/* Action Buttons */}
+        <div className="flex justify-start gap-2 pt-2">
 
-            <button
-              type="submit"
-              disabled={isLoading}
-              className="flex items-center gap-2 px-5 py-1.5 text-sm bg-indigo-600 hover:bg-indigo-700 disabled:bg-gray-400 text-white rounded-sm transition-colors"
-            >
-              <Save className="w-3.5 h-3.5" />
-              {isLoading ? 'Saving...' : 'Save Variation'}
-            </button>
-            <button
-              type="button"
-              onClick={() => router.back()}
-              className="px-4 py-1.5 text-sm border border-gray-300 dark:border-gray-600 rounded-sm text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
-            >
-              Cancel
-            </button>
-          </div>
+          <button
+            type="submit"
+            disabled={isLoading}
+            className="flex items-center gap-2 px-5 py-1.5 text-sm bg-indigo-600 hover:bg-indigo-700 disabled:bg-gray-400 text-white rounded-sm transition-colors cursor-pointer"
+          >
+            <Save className="w-3.5 h-3.5" />
+            {isLoading ? 'Saving...' : 'Save Variation'}
+          </button>
+          <button
+            type="button"
+            onClick={() => router.back()}
+            className="px-4 py-1.5 text-sm border border-gray-300 dark:border-gray-600 rounded-sm text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors cursor-pointer"
+          >
+            Cancel
+          </button>
         </div>
       </form>
     </div>

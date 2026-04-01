@@ -59,10 +59,12 @@ const customStyles = (isInvalid?: boolean): StylesConfig<SelectOption, false> =>
   singleValue: (provided) => ({
     ...provided,
     color: 'var(--tw-text-gray-100)',
+    fontSize: '0.875rem', // text-sm to match other inputs
   }),
   placeholder: (provided) => ({
     ...provided,
     color: 'var(--tw-text-gray-400)',
+    fontSize: '0.875rem', // text-sm to match other inputs
   }),
   menu: (provided) => ({
     ...provided,
@@ -81,6 +83,8 @@ const customStyles = (isInvalid?: boolean): StylesConfig<SelectOption, false> =>
         : 'transparent', // transparent for default state on light background
     color: state.isSelected ? 'white' : '#374151', // gray-700 for better contrast on light background
     cursor: 'pointer',
+    fontSize: '0.875rem', // text-sm to match other inputs
+    padding: '8px 12px',
     '&:hover': {
       backgroundColor: state.isSelected ? 'rgb(99, 102, 241)' : '#e5e7eb', // gray-200
     },
@@ -88,6 +92,7 @@ const customStyles = (isInvalid?: boolean): StylesConfig<SelectOption, false> =>
   input: (provided) => ({
     ...provided,
     color: 'var(--tw-text-gray-100)',
+    fontSize: '0.875rem', // text-sm to match other inputs
   }),
 });
 
