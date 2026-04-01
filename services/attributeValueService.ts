@@ -42,6 +42,17 @@ class AttributeValueService {
     const response = await apiClient.get<ApiResponse<AttributeValue>>(`/api/v1/attribute-value/${id}`);
     return response.data.data;
   }
+
+  /**
+   * Get all attribute values for a specific attribute
+   * GET /api/v1/attribute-value
+   */
+  async getAttributeValues(attributeId: string): Promise<AttributeValue[]> {
+    const response = await apiClient.get<ApiResponse<AttributeValue[]>>('/api/v1/attribute-value', {
+      params: { attribute_id: attributeId },
+    });
+    return response.data.data;
+  }
 }
 
 // Create singleton instance

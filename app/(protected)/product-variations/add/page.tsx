@@ -5,6 +5,8 @@ import { useRouter } from 'next/navigation';
 import { Package, Save, Plus, X, RefreshCw } from 'lucide-react';
 import { notify } from '@/lib/notifications';
 import productVariationService from '@/services/productVariationService';
+import attributeService from '@/services/attributeService';
+import attributeValueService from '@/services/attributeValueService';
 import CustomSelect, { SelectOption } from '@/components/ui/custom-select';
 import type { Product, Attribute, AttributeValue, VariationAttributeInput } from '@/types/api.types';
 import commonService from "@/services/commonService";
@@ -35,11 +37,11 @@ export default function AddProductVariationPage() {
   const [attributes, setAttributes] = useState<Attribute[]>([]);
   const [selectedProduct, setSelectedProduct] = useState<SelectOption | null>(null);
   const [selectedAttributes, setSelectedAttributes] = useState<SelectedAttribute[]>([]);
-  const [availableAttributes, setAvailableAttributes] = useState<Attribute[]>([]);
   const [selectedAttributeForAdd, setSelectedAttributeForAdd] = useState<SelectOption | null>(null);
   const [selectedValueForAdd, setSelectedValueForAdd] = useState<SelectOption | null>(null);
   const [generatingSku, setGeneratingSku] = useState(false);
   const [defaultProductOptions, setDefaultProductOptions] = useState<SelectOption[]>([]);
+  const [businessType, setBusinessType] = useState<string>('');
 
   const [formData, setFormData] = useState<VariationFormData>({
     product_id: '',
@@ -51,14 +53,8 @@ export default function AddProductVariationPage() {
     mrp: '',
     is_active: true,
     is_default: false,
-    display_order: '0',
+    display_order: '0', // Will be set automatically by backend
   });
-
-  // Update available attributes when selected attributes change
-  useEffect(() => {
-    const usedAttributeIds = selectedAttributes.map(sa => sa.attribute.id);
-    setAvailableAttributes(attributes.filter(attr => !usedAttributeIds.includes(attr.id)));
-  }, [selectedAttributes, attributes]);
 
   // Auto-generate variation name from attributes
   useEffect(() => {
@@ -83,27 +79,47 @@ export default function AddProductVariationPage() {
 
   const loadProductAndAttributes = useCallback(async () => {
     if (!selectedProduct?.value) return;
-    
+
     try {
       // Fetch the product details to get business_type
       const params = { search: selectedProduct.label };
       const productsData: Product[] = await commonService.getProductsForDropdown(params);
       const product = productsData.find((p: Product) => p.id === selectedProduct.value);
-      
+
       if (product?.business_type) {
-        loadAttributes(product.business_type);
+        setBusinessType(product.business_type);
+        await loadAttributes(product.business_type);
       }
     } catch (error) {
       console.error('Error loading product details:', error);
     }
   }, [selectedProduct, loadAttributes]);
 
-  // Load attributes when product is selected
-  useEffect(() => {
-    if (selectedProduct) {
-      loadProductAndAttributes();
+  // Load attributes for async select with search
+  const loadAttributeOptions = useCallback(async (inputValue: string): Promise<SelectOption[]> => {
+    try {
+      const attributesData = await attributeService.searchAttributes(inputValue || undefined, 10);
+
+      // Filter by business type if set
+      const filteredAttributes = businessType
+        ? attributesData.filter(attr => !attr.business_type || attr.business_type === businessType)
+        : attributesData;
+
+      // Filter out already selected attributes
+      const usedAttributeIds = selectedAttributes.map(sa => sa.attribute.id);
+      const availableAttrs = filteredAttributes.filter(attr => !usedAttributeIds.includes(attr.id));
+
+      const options = availableAttrs.map((attribute: Attribute) => ({
+        value: attribute.id,
+        label: attribute.name,
+      }));
+
+      return options;
+    } catch (error) {
+      console.error('Failed to load attributes:', error);
+      return [];
     }
-  }, [selectedProduct, loadProductAndAttributes]);
+  }, [businessType, selectedAttributes]);
 
   // Load products for async select with search
   const loadProductOptions = useCallback(async (inputValue: string): Promise<SelectOption[]> => {
@@ -122,22 +138,29 @@ export default function AddProductVariationPage() {
         label: product.name,
       }));
 
-      // Store default options for initial load
-      if (!inputValue && defaultProductOptions.length === 0) {
-        setDefaultProductOptions(options);
-      }
-
       return options;
     } catch (error) {
       console.error('Failed to load products:', error);
       return [];
     }
-  }, [defaultProductOptions.length]);
+  }, []);
 
-  // Load initial product options on mount
+  // Load default product options on mount
   useEffect(() => {
-    loadProductOptions('');
+    const loadDefaultProducts = async () => {
+      const options = await loadProductOptions('');
+      setDefaultProductOptions(options);
+    };
+
+    loadDefaultProducts();
   }, [loadProductOptions]);
+
+  // Load product details and attributes when product is selected
+  useEffect(() => {
+    if (selectedProduct) {
+      loadProductAndAttributes();
+    }
+  }, [selectedProduct, loadProductAndAttributes]);
 
   const handleProductChange = (option: SelectOption | null) => {
     setSelectedProduct(option);
@@ -197,10 +220,58 @@ export default function AddProductVariationPage() {
       },
     ]);
 
-    // Reset selection
-    setSelectedAttributeForAdd(null);
+    // Reset selections to blank state
     setSelectedValueForAdd(null);
+    setSelectedAttributeForAdd(null);
   };
+
+  // Handle attribute selection change: reset value and load attribute values
+  useEffect(() => {
+    // Reset value when attribute changes
+    setSelectedValueForAdd(null);
+
+    // Load attribute values if an attribute is selected
+    const loadAttributeValues = async () => {
+      if (!selectedAttributeForAdd?.value) return;
+
+      try {
+        // Fetch attribute values
+        const attributeValues = await attributeValueService.getAttributeValues(selectedAttributeForAdd.value);
+
+        // Update or create attribute in state with values
+        setAttributes(prev => {
+          // Check if we already have this attribute with values
+          const existingIndex = prev.findIndex(a => a.id === selectedAttributeForAdd.value);
+
+          if (existingIndex >= 0) {
+            // Skip if already has values
+            if (prev[existingIndex].values && prev[existingIndex].values!.length > 0) {
+              return prev;
+            }
+            // Update existing attribute with values
+            const updated = [...prev];
+            updated[existingIndex] = {
+              ...updated[existingIndex],
+              values: attributeValues,
+            };
+            return updated;
+          } else {
+            // Create minimal attribute object with values
+            return [...prev, {
+              id: selectedAttributeForAdd.value,
+              name: selectedAttributeForAdd.label,
+              values: attributeValues,
+            } as Attribute];
+          }
+        });
+      } catch (error) {
+        console.error('Error loading attribute values:', error);
+        notify.error('Failed to load attribute values');
+      }
+    };
+
+    loadAttributeValues();
+  }, [selectedAttributeForAdd]);
 
   const handleRemoveAttribute = (attributeId: string) => {
     setSelectedAttributes(prev =>
@@ -259,7 +330,7 @@ export default function AddProductVariationPage() {
         mrp: formData.mrp ? parseFloat(formData.mrp) : undefined,
         is_active: formData.is_active,
         is_default: formData.is_default,
-        display_order: parseInt(formData.display_order) || 0,
+        // display_order will be set automatically by backend (last row + 1)
         attributes: attributes.length > 0 ? attributes : undefined,
       };
 
@@ -279,12 +350,23 @@ export default function AddProductVariationPage() {
     }
   };
 
-  const attributeOptions: SelectOption[] = availableAttributes.map(a => ({
-    value: a.id,
-    label: a.name,
-  }));
+  // Find selected attribute from both loaded attributes and the selectedAttributeForAdd
+  const getSelectedAttribute = (): Attribute | undefined => {
+    if (!selectedAttributeForAdd?.value) return undefined;
 
-  const selectedAttribute = attributes.find(a => a.id === selectedAttributeForAdd?.value);
+    // First try to find in already loaded attributes
+    let attr = attributes.find(a => a.id === selectedAttributeForAdd.value);
+
+    // If not found, check in selected attributes
+    if (!attr) {
+      attr = selectedAttributes.find(sa => sa.attribute.id === selectedAttributeForAdd.value)?.attribute;
+    }
+
+    return attr;
+  };
+
+  const selectedAttribute = getSelectedAttribute();
+
   const valueOptions: SelectOption[] = selectedAttribute?.values?.map(v => ({
     value: v.id,
     label: v.display_value || v.value,
@@ -364,6 +446,35 @@ export default function AddProductVariationPage() {
                 )}
               </div>
             </div>
+
+            {/* Status & Options */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mt-3">
+              <div className="flex items-center">
+                <input
+                  type="checkbox"
+                  name="is_active"
+                  checked={formData.is_active}
+                  onChange={handleInputChange}
+                  className="w-4 h-4 text-indigo-600 border-gray-300 rounded focus:ring-indigo-500"
+                />
+                <label className="ml-2 text-xs text-gray-700 dark:text-gray-300">
+                  Active
+                </label>
+              </div>
+
+              <div className="flex items-center">
+                <input
+                  type="checkbox"
+                  name="is_default"
+                  checked={formData.is_default}
+                  onChange={handleInputChange}
+                  className="w-4 h-4 text-indigo-600 border-gray-300 rounded focus:ring-indigo-500"
+                />
+                <label className="ml-2 text-xs text-gray-700 dark:text-gray-300">
+                  Set as Default
+                </label>
+              </div>
+            </div>
           </div>
         </div>
 
@@ -375,7 +486,7 @@ export default function AddProductVariationPage() {
             </h3>
 
             {/* Add Attribute Controls */}
-            {selectedProduct && availableAttributes.length > 0 && (
+            {selectedProduct && (
               <div className="mb-3 p-2.5 bg-gray-50 dark:bg-gray-900 rounded-sm">
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
                   <div>
@@ -385,8 +496,9 @@ export default function AddProductVariationPage() {
                     <CustomSelect
                       value={selectedAttributeForAdd}
                       onChange={setSelectedAttributeForAdd}
-                      options={attributeOptions}
-                      placeholder="Select attribute..."
+                      loadOptions={loadAttributeOptions}
+                      defaultOptions={true}
+                      placeholder="Search attributes..."
                     />
                   </div>
                   <div>
@@ -397,7 +509,7 @@ export default function AddProductVariationPage() {
                       value={selectedValueForAdd}
                       onChange={setSelectedValueForAdd}
                       options={valueOptions}
-                      placeholder="Select value..."
+                      placeholder={!selectedAttributeForAdd ? "Select attribute first..." : valueOptions.length === 0 ? "Loading values..." : "Select value..."}
                       isDisabled={!selectedAttributeForAdd}
                     />
                   </div>
@@ -426,7 +538,7 @@ export default function AddProductVariationPage() {
                 selectedAttributes.map((sa) => (
                   <div
                     key={sa.attribute.id}
-                    className="inline-flex items-center gap-2 px-3 py-1.5 bg-teal-100 text-teal-800 dark:bg-teal-900 dark:text-teal-200 rounded-full text-sm font-medium"
+                    className="inline-flex items-center gap-2 px-2 py-1 bg-teal-100 text-teal-800 dark:bg-teal-900 dark:text-teal-200 rounded-full text-xs font-medium"
                   >
                     <span>
                       {sa.attribute.name}: {sa.value.display_value || sa.value.value}
@@ -470,7 +582,7 @@ export default function AddProductVariationPage() {
                     value={formData.cost_price}
                     onChange={handleInputChange}
                     step="0.01"
-                    min="0"
+                    min="0.01"
                     className={`w-full px-2.5 py-1 text-sm bg-white dark:bg-gray-700 border ${hasFieldError('cost_price')
                       ? 'border-red-500 focus:border-red-500'
                       : 'border-gray-300 dark:border-gray-600 focus:border-indigo-500 dark:focus:border-indigo-400'
@@ -494,7 +606,7 @@ export default function AddProductVariationPage() {
                     value={formData.selling_price}
                     onChange={handleInputChange}
                     step="0.01"
-                    min="0"
+                    min="0.01"
                     className={`w-full px-2.5 py-1 text-sm bg-white dark:bg-gray-700 border ${hasFieldError('selling_price')
                       ? 'border-red-500 focus:border-red-500'
                       : 'border-gray-300 dark:border-gray-600 focus:border-indigo-500 dark:focus:border-indigo-400'
@@ -543,65 +655,9 @@ export default function AddProductVariationPage() {
             </div>
           </div>
 
-          {/* Status & Options */}
-          <div className="bg-white dark:bg-gray-800 rounded-md shadow-sm border border-gray-200 dark:border-gray-700 p-3">
-            <div className="mb-2">
-              <h3 className="text-base font-semibold text-gray-900 dark:text-gray-100 mb-2">
-                Status & Options
-              </h3>
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-                <div className="flex items-center">
-                  <input
-                    type="checkbox"
-                    name="is_active"
-                    checked={formData.is_active}
-                    onChange={handleInputChange}
-                    className="w-4 h-4 text-indigo-600 border-gray-300 rounded focus:ring-indigo-500"
-                  />
-                  <label className="ml-2 text-xs text-gray-700 dark:text-gray-300">
-                    Active
-                  </label>
-                </div>
-
-                <div className="flex items-center">
-                  <input
-                    type="checkbox"
-                    name="is_default"
-                    checked={formData.is_default}
-                    onChange={handleInputChange}
-                    className="w-4 h-4 text-indigo-600 border-gray-300 rounded focus:ring-indigo-500"
-                  />
-                  <label className="ml-2 text-xs text-gray-700 dark:text-gray-300">
-                    Set as Default
-                  </label>
-                </div>
-
-                <div>
-                  <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-2">
-                    Display Order
-                  </label>
-                  <input
-                    type="number"
-                    name="display_order"
-                    value={formData.display_order}
-                    onChange={handleInputChange}
-                    min="0"
-                    className="w-full px-2.5 py-1 text-sm bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-sm text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                  />
-                </div>
-              </div>
-            </div>
-          </div>
-
           {/* Action Buttons */}
-          <div className="flex justify-end gap-2 pt-2">
-            <button
-              type="button"
-              onClick={() => router.back()}
-              className="px-4 py-1.5 text-sm border border-gray-300 dark:border-gray-600 rounded-sm text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
-            >
-              Cancel
-            </button>
+          <div className="flex justify-start gap-2 pt-2">
+
             <button
               type="submit"
               disabled={isLoading}
@@ -609,6 +665,13 @@ export default function AddProductVariationPage() {
             >
               <Save className="w-3.5 h-3.5" />
               {isLoading ? 'Saving...' : 'Save Variation'}
+            </button>
+            <button
+              type="button"
+              onClick={() => router.back()}
+              className="px-4 py-1.5 text-sm border border-gray-300 dark:border-gray-600 rounded-sm text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
+            >
+              Cancel
             </button>
           </div>
         </div>
