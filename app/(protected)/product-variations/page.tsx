@@ -43,8 +43,8 @@ export default function ProductVariationsPage() {
       cell: ({ row }) => {
         const productName = row.original.product?.name || '-';
         const maxLength = 30;
-        const truncatedName = productName.length > maxLength 
-          ? productName.substring(0, maxLength) + '...' 
+        const truncatedName = productName.length > maxLength
+          ? productName.substring(0, maxLength) + '...'
           : productName;
 
         return (
@@ -61,8 +61,8 @@ export default function ProductVariationsPage() {
       cell: ({ row }) => {
         const name = row.original.name || '-';
         const maxLength = 25;
-        const truncatedName = name.length > maxLength 
-          ? name.substring(0, maxLength) + '...' 
+        const truncatedName = name.length > maxLength
+          ? name.substring(0, maxLength) + '...'
           : name;
 
         return (
@@ -102,7 +102,7 @@ export default function ProductVariationsPage() {
     {
       accessorKey: 'selling_price',
       header: 'Selling Price',
-      meta: { width: '10%' },
+      meta: { width: '12%' },
       cell: ({ row }) => (
         <span className="text-xs text-right text-gray-700 dark:text-gray-300">
           ৳ {Number(row.original.selling_price).toFixed(2)}
@@ -115,11 +115,10 @@ export default function ProductVariationsPage() {
       meta: { width: '8%' },
       cell: ({ row }) => (
         <span
-          className={`px-1.5 py-0.5 text-xs font-medium rounded ${
-            row.original.is_active
+          className={`px-1.5 py-0.5 text-xs font-medium rounded ${row.original.is_active
               ? 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400'
               : 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400'
-          }`}
+            }`}
         >
           {row.original.is_active ? 'Active' : 'Inactive'}
         </span>
