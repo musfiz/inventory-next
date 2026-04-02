@@ -69,17 +69,18 @@ class CommonService {
     return response.data.data;
   }
 
+
   /**
-  * Get warehouses for dropdown (simplified)
-  * GET /api/v1/warehouses/dropdown
+  * Get warehouses by tenant for dropdown (common endpoint)
+  * GET /api/v1/dropdown/warehouse-by-tenant
   */
-  async getWarehousesForDropdown(params?: {
+  async getWarehousesByTenant(params?: {
     search?: string;
     tenant_id?: string;
   }): Promise<any[]> {
     const response = await apiClient.get<{
       data: any[];
-    }>('/api/v1/warehouses/dropdown', {
+    }>('/api/v1/dropdown/warehouse-by-tenant', {
       params,
     });
     return response.data.data;
