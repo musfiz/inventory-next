@@ -14,6 +14,8 @@ export { default as productService } from './productService';
 export { default as productVariationService } from './productVariationService';
 export { default as categoryService } from './categoryService';
 export { default as barcodeService } from './barcodeService';
+export { default as warehouseService } from './warehouseService';
+export { default as commonService } from './commonService';
 
 // Re-export types for convenience
 export type {

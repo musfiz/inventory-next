@@ -1,9 +1,9 @@
 'use client';
 
 import { useState } from 'react';
-import { Barcode as BarcodeIcon, Plus, Edit, Trash2, X } from 'lucide-react';
+import { Barcode as BarcodeIcon, Plus, Trash2, X } from 'lucide-react';
 import { ColumnDef } from '@tanstack/react-table';
-import { notify } from '@/lib/notifications';
+import { notify, confirm } from '@/lib/notifications';
 import { barcodeService } from '@/services';
 import commonService from '@/services/commonService';
 import { ProductBarcode } from '@/services/barcodeService';
@@ -18,8 +18,6 @@ const BARCODE_TYPES = [
 
 export default function ProductBarcodesPage() {
   const [showForm, setShowForm] = useState(false);
-  const [isEditing, setIsEditing] = useState(false);
-  const [currentBarcode, setCurrentBarcode] = useState<ProductBarcode | null>(null);
   const [formData, setFormData] = useState({
     product_id: '' as string | undefined,
     type: 'EAN13' as 'EAN13' | 'CODE128' | 'QR',
@@ -60,8 +58,6 @@ export default function ProductBarcodesPage() {
 
 
   const handleAddBarcode = () => {
-    setIsEditing(false);
-    setCurrentBarcode(null);
     setFormData({
       product_id: undefined,
       type: 'EAN13',
@@ -69,22 +65,6 @@ export default function ProductBarcodesPage() {
     setFormErrors({});
     setSelectedProduct(null);
     // Load default product options
-    loadProductOptions('');
-    setShowForm(true);
-  };
-
-  const handleEditBarcode = (barcode: ProductBarcode) => {
-    setIsEditing(true);
-    setCurrentBarcode(barcode);
-    setFormData({
-      product_id: barcode.product_id,
-      type: barcode.type,
-    });
-    setFormErrors({});
-    if (barcode.product) {
-      setSelectedProduct({ value: barcode.product.id, label: barcode.product.name });
-    }
-    // Load default options
     loadProductOptions('');
     setShowForm(true);
   };
@@ -104,9 +84,16 @@ export default function ProductBarcodesPage() {
   const handleGenerateBarcodes = async () => {
     if (!validateForm()) return;
 
-    if (!confirm(`Generate barcodes for all variations of this product?`)) {
-      return;
-    }
+    const result = await confirm({
+      title: 'Generate Barcodes',
+      html: `Are you sure you want to generate barcodes for <strong>all variations</strong> of this product?<br><br>
+            <em style="color: #6b7280; font-size: 12px;">This will create barcodes for each product variation.</em>`,
+      confirmButtonText: 'Generate',
+      cancelButtonText: 'Cancel',
+      icon: 'question',
+    });
+
+    if (!result.isConfirmed) return;
 
     setIsGenerating(true);
     try {
@@ -116,7 +103,7 @@ export default function ProductBarcodesPage() {
       };
 
       await barcodeService.generateBulkBarcodes(submitData);
-      notify.success('Barcodes generated successfully for all product variations');
+      notify.success('Barcodes generated successfully');
       setShowForm(false);
       setRefreshKey(prev => prev + 1);
     } catch (error: unknown) {
@@ -136,9 +123,21 @@ export default function ProductBarcodesPage() {
   };
 
   const handleDelete = async (barcode: ProductBarcode) => {
-    if (!confirm(`Are you sure you want to delete barcode "${barcode.barcode}"?`)) {
-      return;
-    }
+    const result = await confirm({
+      title: 'Delete Barcode',
+      html: `Are you sure you want to delete barcode <strong>${barcode.barcode}</strong>?<br><br>
+            <div style="color: #6b7280; font-size: 13px; line-height: 1.5;">
+              <strong>Product:</strong> ${barcode.product?.name || 'N/A'}<br>
+              <strong>Variation:</strong> ${barcode.variation?.name || 'N/A'}<br>
+              <strong>Type:</strong> ${barcode.type}
+            </div><br>
+            <em style="color: #dc2626; font-size: 12px;">This action cannot be undone.</em>`,
+      confirmButtonText: 'Delete',
+      cancelButtonText: 'Cancel',
+      icon: 'warning',
+    });
+
+    if (!result.isConfirmed) return;
 
     try {
       await barcodeService.deleteBarcode(barcode.id);
@@ -211,13 +210,6 @@ export default function ProductBarcodesPage() {
       header: 'Actions',
       cell: ({ row }) => (
         <div className="flex items-center gap-2">
-          <button
-            onClick={() => handleEditBarcode(row.original)}
-            className="p-1 text-green-600 hover:text-green-800 dark:text-green-400 dark:hover:text-green-300"
-            title="Edit"
-          >
-            <Edit className="w-4 h-4" />
-          </button>
           <button
             onClick={() => handleDelete(row.original)}
             className="p-1 text-red-600 hover:text-red-800 dark:text-red-400 dark:hover:text-red-300"

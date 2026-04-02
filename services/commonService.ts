@@ -2,7 +2,8 @@ import apiClient from '@/lib/api/axios';
 import type {
   Category,
   Brand,
-  Unit
+  Unit,
+  Tenant
 } from '@/types/api.types';
 
 class CommonService {
@@ -63,6 +64,37 @@ class CommonService {
     const response = await apiClient.get<{
       data: Unit[];
     }>('/api/v1/dropdown/product', {
+      params,
+    });
+    return response.data.data;
+  }
+
+  /**
+  * Get warehouses for dropdown (simplified)
+  * GET /api/v1/warehouses/dropdown
+  */
+  async getWarehousesForDropdown(params?: {
+    search?: string;
+    tenant_id?: string;
+  }): Promise<any[]> {
+    const response = await apiClient.get<{
+      data: any[];
+    }>('/api/v1/warehouses/dropdown', {
+      params,
+    });
+    return response.data.data;
+  }
+
+  /**
+  * Get tenants for dropdown (simplified) - Super admin only
+  * GET /api/v1/dropdown/tenant
+  */
+  async getTenantsForDropdown(params?: {
+    search?: string;
+  }): Promise<Tenant[]> {
+    const response = await apiClient.get<{
+      data: Tenant[];
+    }>('/api/v1/dropdown/tenant', {
       params,
     });
     return response.data.data;

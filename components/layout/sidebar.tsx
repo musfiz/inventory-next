@@ -33,7 +33,8 @@ import {
   DollarSign,
   CirclePile,
   CircleDollarSign,
-  ListMinus
+  ListMinus,
+  Container
 } from 'lucide-react';
 
 interface SidebarProps {
@@ -99,7 +100,8 @@ const navigation: NavigationItem[] = [
     icon: CirclePile,
     permission: 'view-stocks',
     children: [
-      { name: 'Warehouses', href: '/warehouses', icon: Warehouse, permission: 'view-warehouses' },
+      { name: 'Warehouses', href: '/warehouse', icon: Warehouse, permission: 'view-warehouses' },
+      { name: 'Bins', href: '/bins', icon: Container, permission: 'view-bins' },
     ]
   },
   {
