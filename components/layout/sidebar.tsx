@@ -100,6 +100,8 @@ const navigation: NavigationItem[] = [
     icon: CirclePile,
     permission: 'view-stocks',
     children: [
+      { name: 'Stock List', href: '/stock', icon: List, permission: 'view-stocks' },
+      { name: 'Add Stock', href: '/stock/add', icon: UserPlus, permission: 'create-stocks' },
       { name: 'Warehouses', href: '/warehouse', icon: Warehouse, permission: 'view-warehouses' },
       { name: 'Bins', href: '/bins', icon: Container, permission: 'view-bins' },
     ]
