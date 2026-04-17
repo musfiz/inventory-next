@@ -69,7 +69,6 @@ class CommonService {
     return response.data.data;
   }
 
-
   /**
   * Get warehouses by tenant for dropdown (common endpoint)
   * GET /api/v1/dropdown/warehouse-by-tenant
@@ -96,6 +95,20 @@ class CommonService {
     const response = await apiClient.get<{
       data: Tenant[];
     }>('/api/v1/dropdown/tenant', {
+      params,
+    });
+    return response.data.data;
+  }
+
+
+  /**
+   * Get product variations for a product
+   * GET /api/v1/product/{id}/variant
+   */
+  async getVariationsByProduct(productId: string, params?: { search?: string }): Promise<any[]> {
+    const response = await apiClient.get<{
+      data: any[];
+    }>(`/api/v1/product/${productId}/variant`, {
       params,
     });
     return response.data.data;

@@ -78,57 +78,6 @@ class ProductService {
   }
 
   /**
-   * Get product variations
-   * GET /api/v1/products/{productId}/variations
-   */
-  async getProductVariations(productId: string, params?: {
-    page?: number;
-    per_page?: number;
-  }): Promise<ProductVariationListResponse> {
-    const response = await apiClient.get<ApiResponse<ProductVariationListResponse>>(
-      `/api/v1/products/${productId}/variations`,
-      { params }
-    );
-    return response.data.data;
-  }
-
-  /**
-   * Create product variation
-   * POST /api/v1/products/{productId}/variations
-   */
-  async createProductVariation(productId: string, data: CreateProductVariationRequest): Promise<ProductVariation> {
-    const response = await apiClient.post<ApiResponse<{ variation: ProductVariation }>>(
-      `/api/v1/products/${productId}/variations`,
-      data
-    );
-    return response.data.data.variation;
-  }
-
-  /**
-   * Update product variation
-   * PUT /api/v1/products/{productId}/variations/{variationId}
-   */
-  async updateProductVariation(
-    productId: string,
-    variationId: string,
-    data: UpdateProductVariationRequest
-  ): Promise<ProductVariation> {
-    const response = await apiClient.put<ApiResponse<{ variation: ProductVariation }>>(
-      `/api/v1/products/${productId}/variations/${variationId}`,
-      data
-    );
-    return response.data.data.variation;
-  }
-
-  /**
-   * Delete product variation
-   * DELETE /api/v1/products/{productId}/variations/{variationId}
-   */
-  async deleteProductVariation(productId: string, variationId: string): Promise<void> {
-    await apiClient.delete(`/api/v1/products/${productId}/variations/${variationId}`);
-  }
-
-  /**
    * Get product images
    * GET /api/v1/products/{productId}/images
    */
@@ -181,69 +130,6 @@ class ProductService {
    */
   async setPrimaryImage(productId: string, imageId: string): Promise<void> {
     await apiClient.patch(`/api/v1/products/${productId}/images/${imageId}/primary`);
-  }
-
-  /**
-   * Get all brands
-   * GET /api/v1/brands
-   */
-  async getBrands(params?: {
-    page?: number;
-    per_page?: number;
-    search?: string;
-    is_active?: boolean;
-  }): Promise<{ data: Brand[]; meta: any }> {
-    const response = await apiClient.get<ApiResponse<{ data: Brand[]; meta: any }>>('/api/v1/brands', {
-      params,
-    });
-    return response.data.data;
-  }
-
-  /**
-   * Get all categories
-   * GET /api/v1/categories
-   */
-  async getCategories(params?: {
-    page?: number;
-    per_page?: number;
-    search?: string;
-    is_active?: boolean;
-  }): Promise<{ data: Category[]; meta: any }> {
-    const response = await apiClient.get<ApiResponse<{ data: Category[]; meta: any }>>('/api/v1/categories', {
-      params,
-    });
-    return response.data.data;
-  }
-
-  /**
-   * Get all units
-   * GET /api/v1/units
-   */
-  async getUnits(params?: {
-    page?: number;
-    per_page?: number;
-    search?: string;
-    is_active?: boolean;
-  }): Promise<{ data: Unit[]; meta: any }> {
-    const response = await apiClient.get<ApiResponse<{ data: Unit[]; meta: any }>>('/api/v1/units', {
-      params,
-    });
-    return response.data.data;
-  }
-
-  /**
-   * Search products
-   * GET /api/v1/products/search
-   */
-  async searchProducts(query: string, params?: {
-    limit?: number;
-    category_id?: string;
-    brand_id?: string;
-  }): Promise<Product[]> {
-    const response = await apiClient.get<ApiResponse<{ products: Product[] }>>('/api/v1/products/search', {
-      params: { q: query, ...params },
-    });
-    return response.data.data.products;
   }
 }
 

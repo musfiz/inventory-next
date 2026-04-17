@@ -8,17 +8,11 @@ import {
   LayoutDashboard,
   Users,
   Settings,
-  TrendingUp,
   List,
   UserPlus,
   Shield,
-  Bell,
   ChevronDown,
-  Folder,
-  FileText,
   Image,
-  Video,
-  Music,
   Building2,
   Package,
   Tag,
@@ -34,7 +28,8 @@ import {
   CirclePile,
   CircleDollarSign,
   ListMinus,
-  Container
+  Container,
+  LayersPlus
 } from 'lucide-react';
 
 interface SidebarProps {
@@ -101,7 +96,7 @@ const navigation: NavigationItem[] = [
     permission: 'view-stocks',
     children: [
       { name: 'Stock List', href: '/stock', icon: List, permission: 'view-stocks' },
-      { name: 'Add Stock', href: '/stock/add', icon: UserPlus, permission: 'create-stocks' },
+      { name: 'Add Stock', href: '/stock/add', icon: LayersPlus, permission: 'create-stocks' },
       { name: 'Warehouses', href: '/warehouse', icon: Warehouse, permission: 'view-warehouses' },
       { name: 'Bins', href: '/bins', icon: Container, permission: 'view-bins' },
     ]

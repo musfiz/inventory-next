@@ -1,10 +1,9 @@
 'use client';
 
 import { useState } from 'react';
-import { Package2, Plus } from 'lucide-react';
+import { Package2 } from 'lucide-react';
 import { ColumnDef } from '@tanstack/react-table';
 import DataTable from '@/components/ui/datatable';
-import { stockService } from '@/services';
 
 export default function StockListPage() {
   const [refreshKey, setRefreshKey] = useState(0);
