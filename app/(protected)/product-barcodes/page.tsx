@@ -25,11 +25,15 @@ export default function ProductBarcodesPage() {
   const [formErrors, setFormErrors] = useState<{ [key: string]: string }>({});
   const [refreshKey, setRefreshKey] = useState(0);
 
-  const [defaultProductOptions, setDefaultProductOptions] = useState<{ value: string; label: string }[]>([]);
+  const [defaultProductOptions, setDefaultProductOptions] = useState<
+    { value: string; label: string }[]
+  >([]);
   const [selectedProduct, setSelectedProduct] = useState<any>(null);
   const [isGenerating, setIsGenerating] = useState(false);
 
-  const loadProductOptions = async (inputValue: string): Promise<{ value: string; label: string }[]> => {
+  const loadProductOptions = async (
+    inputValue: string
+  ): Promise<{ value: string; label: string }[]> => {
     try {
       const params: { search?: string } = {};
       if (inputValue && inputValue.trim()) {
@@ -40,7 +44,7 @@ export default function ProductBarcodesPage() {
 
       const options = products.map((prod: any) => ({
         value: prod.id,
-        label: prod.name
+        label: prod.name,
       }));
 
       // Store default options for initial load
@@ -54,8 +58,6 @@ export default function ProductBarcodesPage() {
       return [];
     }
   };
-
-
 
   const handleAddBarcode = () => {
     setFormData({
@@ -107,7 +109,9 @@ export default function ProductBarcodesPage() {
       setShowForm(false);
       setRefreshKey(prev => prev + 1);
     } catch (error: unknown) {
-      const axiosError = error as { response?: { data?: { errors?: Record<string, string[]>; message?: string } } };
+      const axiosError = error as {
+        response?: { data?: { errors?: Record<string, string[]>; message?: string } };
+      };
       if (axiosError.response?.data?.errors) {
         const transformedErrors: { [key: string]: string } = {};
         Object.entries(axiosError.response.data.errors).forEach(([key, messages]) => {
@@ -149,15 +153,15 @@ export default function ProductBarcodesPage() {
     }
   };
 
-
-
   const columns: ColumnDef<ProductBarcode>[] = [
     {
       id: 'serial',
       header: 'SL',
       cell: ({ row, table }) => (
         <span className="text-gray-600 dark:text-gray-400">
-          {(table.getState().pagination.pageIndex * table.getState().pagination.pageSize) + row.index + 1}
+          {table.getState().pagination.pageIndex * table.getState().pagination.pageSize +
+            row.index +
+            1}
         </span>
       ),
     },
@@ -187,8 +191,12 @@ export default function ProductBarcodesPage() {
         <div className="flex flex-col">
           {row.original.variation ? (
             <>
-              <span className="text-gray-900 dark:text-gray-100">{row.original.variation.name}</span>
-              <span className="text-xs text-gray-500 dark:text-gray-400">SKU: {row.original.variation.sku}</span>
+              <span className="text-gray-900 dark:text-gray-100">
+                {row.original.variation.name}
+              </span>
+              <span className="text-xs text-gray-500 dark:text-gray-400">
+                SKU: {row.original.variation.sku}
+              </span>
             </>
           ) : (
             <span className="text-gray-500 dark:text-gray-400">-</span>
@@ -257,10 +265,12 @@ export default function ProductBarcodesPage() {
           <div className="grid grid-cols-1 md:grid-cols-2 gap-1.5">
             <div className="md:col-span-2 grid grid-cols-1 md:grid-cols-2 gap-1">
               <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-0.5">Product *</label>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-0.5">
+                  Product *
+                </label>
                 <CustomSelect
                   value={selectedProduct}
-                  onChange={(option) => {
+                  onChange={option => {
                     setFormData({
                       ...formData,
                       product_id: option?.value || undefined,
@@ -278,18 +288,23 @@ export default function ProductBarcodesPage() {
                 )}
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-0.5">Barcode Type *</label>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-0.5">
+                  Barcode Type *
+                </label>
                 <CustomSelect
                   value={BARCODE_TYPES.find(type => type.value === formData.type) || null}
-                  onChange={(option) => setFormData({ ...formData, type: (option?.value as typeof formData.type) || 'EAN13' })}
+                  onChange={option =>
+                    setFormData({
+                      ...formData,
+                      type: (option?.value as typeof formData.type) || 'EAN13',
+                    })
+                  }
                   options={[...BARCODE_TYPES]}
                   placeholder="Select barcode type"
                   className="text-sm"
                   isInvalid={!!formErrors.type}
                 />
-                {formErrors.type && (
-                  <p className="text-red-600 text-xs mt-1">{formErrors.type}</p>
-                )}
+                {formErrors.type && <p className="text-red-600 text-xs mt-1">{formErrors.type}</p>}
               </div>
             </div>
             <div className="flex gap-2 md:col-span-2 mt-1.5">

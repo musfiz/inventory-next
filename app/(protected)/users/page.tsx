@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation';
 import { Eye, Edit, Trash2, Rows4, UserCheck } from 'lucide-react';
 import { ColumnDef } from '@tanstack/react-table';
 import DataTable from '@/components/ui/datatable';
-import { User } from "@/types";
+import { User } from '@/types';
 import { useAuthStore } from '@/stores/auth-store';
 import { usePermissions } from '@/hooks/use-permissions';
 import { confirm, notify, success } from '@/lib/notifications';
@@ -13,14 +13,12 @@ import { confirm, notify, success } from '@/lib/notifications';
 export default function UsersPage() {
   const router = useRouter();
   const [switchingUser, setSwitchingUser] = useState<string | null>(null);
-  const currentUser = useAuthStore((state) => state.user);
-  const switchUser = useAuthStore((state) => state.switchUser);
+  const currentUser = useAuthStore(state => state.user);
+  const switchUser = useAuthStore(state => state.switchUser);
   const { hasPermission, isHydrated } = usePermissions();
 
   // Check permissions only after store is hydrated
-  useEffect(() => {
-
-  }, [hasPermission, isHydrated, router]);
+  useEffect(() => {}, [hasPermission, isHydrated, router]);
 
   // Check if current user is super admin
   const isSuperAdmin = currentUser?.user_type === 'super_admin';
@@ -131,10 +129,11 @@ export default function UsersPage() {
           </button>
           {isSuperAdmin && row.original.user_type !== 'super_admin' && (
             <button
-              className={`p-1 rounded transition-colors ${switchingUser === row.original.id
-                ? 'text-gray-400 cursor-not-allowed'
-                : 'text-orange-600 hover:text-orange-900 dark:text-orange-400 dark:hover:text-orange-300 hover:bg-orange-50 dark:hover:bg-orange-900/20 cursor-pointer'
-                }`}
+              className={`p-1 rounded transition-colors ${
+                switchingUser === row.original.id
+                  ? 'text-gray-400 cursor-not-allowed'
+                  : 'text-orange-600 hover:text-orange-900 dark:text-orange-400 dark:hover:text-orange-300 hover:bg-orange-50 dark:hover:bg-orange-900/20 cursor-pointer'
+              }`}
               title={switchingUser === row.original.id ? 'Switching...' : 'Switch to User'}
               disabled={switchingUser === row.original.id}
               onClick={async () => {

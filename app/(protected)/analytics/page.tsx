@@ -11,7 +11,9 @@ export default function AnalyticsPage() {
       <div className="grid grid-cols-1 gap-6">
         {/* Traffic Chart */}
         <div className="bg-white dark:bg-gray-800 shadow dark:shadow-gray-900/50 rounded-lg p-6 border border-transparent dark:border-gray-700">
-          <h3 className="text-lg font-medium text-gray-900 dark:text-gray-100 mb-4">Traffic Overview</h3>
+          <h3 className="text-lg font-medium text-gray-900 dark:text-gray-100 mb-4">
+            Traffic Overview
+          </h3>
           <div className="h-64 flex items-center justify-center bg-gray-50 dark:bg-gray-900/50 rounded">
             <p className="text-gray-500 dark:text-gray-400">Chart Component Placeholder</p>
           </div>
@@ -20,7 +22,9 @@ export default function AnalyticsPage() {
         {/* User Engagement */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           <div className="bg-white dark:bg-gray-800 shadow dark:shadow-gray-900/50 rounded-lg p-6 border border-transparent dark:border-gray-700">
-            <h3 className="text-lg font-medium text-gray-900 dark:text-gray-100 mb-4">User Engagement</h3>
+            <h3 className="text-lg font-medium text-gray-900 dark:text-gray-100 mb-4">
+              User Engagement
+            </h3>
             <div className="space-y-4">
               <div>
                 <div className="flex justify-between text-sm mb-1">
@@ -28,7 +32,10 @@ export default function AnalyticsPage() {
                   <span className="font-medium text-gray-900 dark:text-gray-100">12,345</span>
                 </div>
                 <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2">
-                  <div className="bg-indigo-600 dark:bg-indigo-500 h-2 rounded-full" style={{ width: '75%' }} />
+                  <div
+                    className="bg-indigo-600 dark:bg-indigo-500 h-2 rounded-full"
+                    style={{ width: '75%' }}
+                  />
                 </div>
               </div>
               <div>
@@ -37,7 +44,10 @@ export default function AnalyticsPage() {
                   <span className="font-medium text-gray-900 dark:text-gray-100">8,432</span>
                 </div>
                 <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2">
-                  <div className="bg-green-600 dark:bg-green-500 h-2 rounded-full" style={{ width: '60%' }} />
+                  <div
+                    className="bg-green-600 dark:bg-green-500 h-2 rounded-full"
+                    style={{ width: '60%' }}
+                  />
                 </div>
               </div>
               <div>
@@ -63,7 +73,9 @@ export default function AnalyticsPage() {
               ].map((item, index) => (
                 <div key={index} className="flex justify-between items-center">
                   <span className="text-sm text-gray-700 dark:text-gray-300">{item.page}</span>
-                  <span className="text-sm font-medium text-gray-900 dark:text-gray-100">{item.views.toLocaleString()}</span>
+                  <span className="text-sm font-medium text-gray-900 dark:text-gray-100">
+                    {item.views.toLocaleString()}
+                  </span>
                 </div>
               ))}
             </div>

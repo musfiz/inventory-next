@@ -43,9 +43,10 @@ export default function ProductVariationsPage() {
       cell: ({ row }) => {
         const productName = row.original.product?.name || '-';
         const maxLength = 30;
-        const truncatedName = productName.length > maxLength
-          ? productName.substring(0, maxLength) + '...'
-          : productName;
+        const truncatedName =
+          productName.length > maxLength
+            ? productName.substring(0, maxLength) + '...'
+            : productName;
 
         return (
           <div className="text-xs text-gray-700 dark:text-gray-300" title={productName}>
@@ -61,9 +62,7 @@ export default function ProductVariationsPage() {
       cell: ({ row }) => {
         const name = row.original.name || '-';
         const maxLength = 25;
-        const truncatedName = name.length > maxLength
-          ? name.substring(0, maxLength) + '...'
-          : name;
+        const truncatedName = name.length > maxLength ? name.substring(0, maxLength) + '...' : name;
 
         return (
           <div className="text-xs text-gray-700 dark:text-gray-300" title={name}>
@@ -78,7 +77,7 @@ export default function ProductVariationsPage() {
       meta: { width: '18%' },
       cell: ({ row }) => (
         <div className="flex flex-wrap gap-1">
-          {row.original.variation_attributes?.map((attr) => (
+          {row.original.variation_attributes?.map(attr => (
             <span
               key={attr.id}
               className="inline-flex items-center px-1.5 py-0.5 rounded-full text-xs font-medium bg-indigo-100 text-indigo-800 dark:bg-indigo-900 dark:text-indigo-200"
@@ -115,10 +114,11 @@ export default function ProductVariationsPage() {
       meta: { width: '8%' },
       cell: ({ row }) => (
         <span
-          className={`px-1.5 py-0.5 text-xs font-medium rounded ${row.original.is_active
+          className={`px-1.5 py-0.5 text-xs font-medium rounded ${
+            row.original.is_active
               ? 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400'
               : 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400'
-            }`}
+          }`}
         >
           {row.original.is_active ? 'Active' : 'Inactive'}
         </span>

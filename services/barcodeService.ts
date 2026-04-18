@@ -40,7 +40,10 @@ class BarcodeService {
     type: 'EAN13' | 'CODE128' | 'QR';
     is_primary?: boolean;
   }): Promise<ProductBarcode> {
-    const response = await apiClient.post<ApiResponse<ProductBarcode>>('/api/v1/product-barcodes/store', data);
+    const response = await apiClient.post<ApiResponse<ProductBarcode>>(
+      '/api/v1/product-barcodes/store',
+      data
+    );
     return response.data.data;
   }
 
@@ -60,7 +63,10 @@ class BarcodeService {
     product_id: string;
     type: 'EAN13' | 'CODE128' | 'QR';
   }): Promise<{ generated: number; message: string }> {
-    const response = await apiClient.post<ApiResponse<{ generated: number; message: string }>>('/api/v1/product-barcodes/generate-bulk', data);
+    const response = await apiClient.post<ApiResponse<{ generated: number; message: string }>>(
+      '/api/v1/product-barcodes/generate-bulk',
+      data
+    );
     return response.data.data;
   }
 }

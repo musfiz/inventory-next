@@ -45,18 +45,24 @@ export default function StockAddPage() {
 
   const loadWarehouseOptions = async (input: string) => {
     const tenant_id = isSuperAdmin ? selectedTenant?.value : authUser?.tenant_id;
-    const list = await commonService.getWarehousesByTenant({ search: input, tenant_id }).catch(() => []);
+    const list = await commonService
+      .getWarehousesByTenant({ search: input, tenant_id })
+      .catch(() => []);
     return (list || []).map((w: any) => ({ value: w.id, label: `${w.name} (${w.code})` }));
   };
 
-  const authUser = useAuthStore((s) => s.user);
+  const authUser = useAuthStore(s => s.user);
 
   // Prefetch warehouse options: for tenant users load their warehouses, for superadmin load when tenant selected
   useEffect(() => {
     const prefetch = async () => {
       if (!isSuperAdmin && authUser?.tenant_id) {
-        const list = await commonService.getWarehousesByTenant({ tenant_id: authUser.tenant_id }).catch(() => []);
-        setDefaultWarehouseOptions((list || []).map((w: any) => ({ value: w.id, label: `${w.name} (${w.code})` })));
+        const list = await commonService
+          .getWarehousesByTenant({ tenant_id: authUser.tenant_id })
+          .catch(() => []);
+        setDefaultWarehouseOptions(
+          (list || []).map((w: any) => ({ value: w.id, label: `${w.name} (${w.code})` }))
+        );
       }
     };
     prefetch();
@@ -75,8 +81,12 @@ export default function StockAddPage() {
   useEffect(() => {
     const prefetchForTenant = async () => {
       if (isSuperAdmin && selectedTenant?.value) {
-        const list = await commonService.getWarehousesByTenant({ tenant_id: selectedTenant.value }).catch(() => []);
-        setDefaultWarehouseOptions((list || []).map((w: any) => ({ value: w.id, label: `${w.name} (${w.code})` })));
+        const list = await commonService
+          .getWarehousesByTenant({ tenant_id: selectedTenant.value })
+          .catch(() => []);
+        setDefaultWarehouseOptions(
+          (list || []).map((w: any) => ({ value: w.id, label: `${w.name} (${w.code})` }))
+        );
       } else if (isSuperAdmin && !selectedTenant) {
         setDefaultWarehouseOptions([]);
       }
@@ -89,9 +99,20 @@ export default function StockAddPage() {
     const load = async () => {
       if (!selectedProduct) return;
       try {
-        const items = await commonService.getVariationsByProduct(selectedProduct.value).catch(() => []);
+        const items = await commonService
+          .getVariationsByProduct(selectedProduct.value)
+          .catch(() => []);
         setVariations(items || []);
-        setStocks((items || []).map((v: any) => ({ variation_id: v.id, quantity: v.stock?.quantity ?? 0, reserved_quantity: v.stock?.reserved_quantity ?? 0, min_quantity: v.stock?.min_quantity ?? null, max_quantity: v.stock?.max_quantity ?? null, reorder_point: v.stock?.reorder_point ?? null })));
+        setStocks(
+          (items || []).map((v: any) => ({
+            variation_id: v.id,
+            quantity: v.stock?.quantity ?? 0,
+            reserved_quantity: v.stock?.reserved_quantity ?? 0,
+            min_quantity: v.stock?.min_quantity ?? null,
+            max_quantity: v.stock?.max_quantity ?? null,
+            reorder_point: v.stock?.reorder_point ?? null,
+          }))
+        );
       } catch (err) {
         console.error('Failed to load variations', err);
         setVariations([]);
@@ -111,10 +132,19 @@ export default function StockAddPage() {
     e.preventDefault();
     // validation
     const errors: { [key: string]: string } = {};
-    if (isSuperAdmin && !selectedTenant) { errors.tenant_id = 'Tenant is required'; }
-    if (!selectedWarehouse) { errors.warehouse_id = 'Warehouse is required'; }
-    if (!selectedProduct) { errors.product_id = 'Product is required'; }
-    if (Object.keys(errors).length > 0) { setFormErrors(errors); return; }
+    if (isSuperAdmin && !selectedTenant) {
+      errors.tenant_id = 'Tenant is required';
+    }
+    if (!selectedWarehouse) {
+      errors.warehouse_id = 'Warehouse is required';
+    }
+    if (!selectedProduct) {
+      errors.product_id = 'Product is required';
+    }
+    if (Object.keys(errors).length > 0) {
+      setFormErrors(errors);
+      return;
+    }
 
     try {
       const payload = {
@@ -126,9 +156,18 @@ export default function StockAddPage() {
           quantity: s.quantity || 0,
           reserved_quantity: s.reserved_quantity || 0,
           // If min_quantity is empty/null/undefined, default to 1
-          min_quantity: (s.min_quantity === undefined || s.min_quantity === null || s.min_quantity === '') ? 1 : Number(s.min_quantity),
-          max_quantity: (s.max_quantity === undefined || s.max_quantity === null || s.max_quantity === '') ? null : Number(s.max_quantity),
-          reorder_point: (s.reorder_point === undefined || s.reorder_point === null || s.reorder_point === '') ? null : Number(s.reorder_point),
+          min_quantity:
+            s.min_quantity === undefined || s.min_quantity === null || s.min_quantity === ''
+              ? 1
+              : Number(s.min_quantity),
+          max_quantity:
+            s.max_quantity === undefined || s.max_quantity === null || s.max_quantity === ''
+              ? null
+              : Number(s.max_quantity),
+          reorder_point:
+            s.reorder_point === undefined || s.reorder_point === null || s.reorder_point === ''
+              ? null
+              : Number(s.reorder_point),
         })),
       };
 
@@ -145,7 +184,9 @@ export default function StockAddPage() {
       // If validation errors from backend
       if (err?.response?.data?.errors) {
         const transformed: { [k: string]: string } = {};
-        Object.entries(err.response.data.errors).forEach(([k, v]: any) => { transformed[k] = Array.isArray(v) ? v.join(', ') : v; });
+        Object.entries(err.response.data.errors).forEach(([k, v]: any) => {
+          transformed[k] = Array.isArray(v) ? v.join(', ') : v;
+        });
         setFormErrors(transformed);
       } else {
         notify.error(err?.response?.data?.message || 'Failed to save stocks');
@@ -163,7 +204,9 @@ export default function StockAddPage() {
         {isSuperAdmin && (
           <div className="grid grid-cols-1 md:grid-cols-3 gap-1.5">
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Tenant <span className="text-red-500">*</span></label>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Tenant <span className="text-red-500">*</span>
+              </label>
               <CustomSelect
                 value={selectedTenant}
                 onChange={(o: any) => {
@@ -191,7 +234,9 @@ export default function StockAddPage() {
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Warehouse <span className="text-red-500">*</span></label>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Warehouse <span className="text-red-500">*</span>
+            </label>
             <CustomSelect
               value={selectedWarehouse}
               onChange={(o: any) => {
@@ -213,7 +258,9 @@ export default function StockAddPage() {
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Product <span className="text-red-500">*</span></label>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Product <span className="text-red-500">*</span>
+            </label>
             <div className="flex gap-2">
               <div className="flex-1">
                 <CustomSelect
@@ -243,7 +290,9 @@ export default function StockAddPage() {
                   className="px-3 py-1.5 bg-gray-500 hover:bg-gray-600 text-white text-sm font-medium rounded-sm transition-colors flex items-center gap-1"
                   title="Clear Product"
                 >
-                  <span><RefreshCcw className="w-5 h-5 cursor-pointer" /></span>
+                  <span>
+                    <RefreshCcw className="w-5 h-5 cursor-pointer" />
+                  </span>
                 </button>
               )}
             </div>
@@ -269,23 +318,50 @@ export default function StockAddPage() {
                 <table className="w-full text-sm">
                   <thead className="bg-gray-100 dark:bg-gray-700 sticky top-0 z-10">
                     <tr>
-                      <th className="px-3 py-2 text-left text-xs font-semibold text-gray-700 dark:text-gray-300 border-b border-gray-300 dark:border-gray-600 w-12">#</th>
-                      <th className="px-3 py-2 text-left text-xs font-semibold text-gray-700 dark:text-gray-300 border-b border-gray-300 dark:border-gray-600 min-w-[200px]">Variation (SKU / Name)</th>
-                      <th className="px-3 py-2 text-left text-xs font-semibold text-gray-700 dark:text-gray-300 border-b border-gray-300 dark:border-gray-600 w-32">Quantity</th>
-                      <th className="px-3 py-2 text-left text-xs font-semibold text-gray-700 dark:text-gray-300 border-b border-gray-300 dark:border-gray-600 w-32">Reserved</th>
-                      <th className="px-3 py-2 text-left text-xs font-semibold text-gray-700 dark:text-gray-300 border-b border-gray-300 dark:border-gray-600 w-28">Min Qty</th>
-                      <th className="px-3 py-2 text-left text-xs font-semibold text-gray-700 dark:text-gray-300 border-b border-gray-300 dark:border-gray-600 w-28">Max Qty</th>
-                      <th className="px-3 py-2 text-left text-xs font-semibold text-gray-700 dark:text-gray-300 border-b border-gray-300 dark:border-gray-600 w-28">Reorder Point</th>
+                      <th className="px-3 py-2 text-left text-xs font-semibold text-gray-700 dark:text-gray-300 border-b border-gray-300 dark:border-gray-600 w-12">
+                        #
+                      </th>
+                      <th className="px-3 py-2 text-left text-xs font-semibold text-gray-700 dark:text-gray-300 border-b border-gray-300 dark:border-gray-600 min-w-[200px]">
+                        Variation (SKU / Name)
+                      </th>
+                      <th className="px-3 py-2 text-left text-xs font-semibold text-gray-700 dark:text-gray-300 border-b border-gray-300 dark:border-gray-600 w-32">
+                        Quantity
+                      </th>
+                      <th className="px-3 py-2 text-left text-xs font-semibold text-gray-700 dark:text-gray-300 border-b border-gray-300 dark:border-gray-600 w-32">
+                        Reserved
+                      </th>
+                      <th className="px-3 py-2 text-left text-xs font-semibold text-gray-700 dark:text-gray-300 border-b border-gray-300 dark:border-gray-600 w-28">
+                        Min Qty
+                      </th>
+                      <th className="px-3 py-2 text-left text-xs font-semibold text-gray-700 dark:text-gray-300 border-b border-gray-300 dark:border-gray-600 w-28">
+                        Max Qty
+                      </th>
+                      <th className="px-3 py-2 text-left text-xs font-semibold text-gray-700 dark:text-gray-300 border-b border-gray-300 dark:border-gray-600 w-28">
+                        Reorder Point
+                      </th>
                     </tr>
                   </thead>
                   <tbody className="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
                     {variations.map((v, idx) => (
-                      <tr key={v.id} className="hover:bg-gray-50 dark:hover:bg-gray-750 transition-colors">
-                        <td className="px-2 py-1 text-gray-600 dark:text-gray-400 font-medium">{idx + 1}</td>
+                      <tr
+                        key={v.id}
+                        className="hover:bg-gray-50 dark:hover:bg-gray-750 transition-colors"
+                      >
+                        <td className="px-2 py-1 text-gray-600 dark:text-gray-400 font-medium">
+                          {idx + 1}
+                        </td>
                         <td className="px-3 py-1">
                           <div className="flex flex-col">
-                            {v.sku && <span className="font-mono text-sm font-medium text-gray-900 dark:text-gray-100">{v.sku}</span>}
-                            {v.name && <span className="text-xs text-gray-500 dark:text-gray-400">{v.name}</span>}
+                            {v.sku && (
+                              <span className="font-mono text-sm font-medium text-gray-900 dark:text-gray-100">
+                                {v.sku}
+                              </span>
+                            )}
+                            {v.name && (
+                              <span className="text-xs text-gray-500 dark:text-gray-400">
+                                {v.name}
+                              </span>
+                            )}
                           </div>
                         </td>
                         <td className="px-3 py-1">
@@ -302,7 +378,9 @@ export default function StockAddPage() {
                           <input
                             type="number"
                             value={stocks[idx]?.reserved_quantity ?? 0}
-                            onChange={e => handleStockChange(idx, 'reserved_quantity', e.target.value)}
+                            onChange={e =>
+                              handleStockChange(idx, 'reserved_quantity', e.target.value)
+                            }
                             onFocus={e => e.target.select()}
                             className="w-full px-2.5 py-1.5 text-sm border border-gray-300 dark:border-gray-600 rounded-sm focus:outline-none focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400 focus:border-transparent dark:bg-gray-700 dark:text-gray-100 transition-all"
                             placeholder="0"
@@ -345,13 +423,17 @@ export default function StockAddPage() {
               </div>
             </div>
             <div className="mt-2 text-xs text-gray-500 dark:text-gray-400">
-              <span className="font-medium">Note:</span> Scroll within the table to view all variations. All values are auto-selected on focus for quick editing.
+              <span className="font-medium">Note:</span> Scroll within the table to view all
+              variations. All values are auto-selected on focus for quick editing.
             </div>
           </div>
         )}
 
         <div className="flex gap-2">
-          <button type="submit" className="px-3 py-1.5 bg-blue-600 text-white text-sm font-medium rounded-sm hover:bg-blue-700 transition-colors flex items-center gap-2 cursor-pointer">
+          <button
+            type="submit"
+            className="px-3 py-1.5 bg-blue-600 text-white text-sm font-medium rounded-sm hover:bg-blue-700 transition-colors flex items-center gap-2 cursor-pointer"
+          >
             <SaveAll className="w-4 h-4" />
             Save Stocks
           </button>

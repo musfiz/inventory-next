@@ -33,7 +33,11 @@ class NotificationService {
   };
 
   // Success notification
-  success(title: string, text?: string, options?: Partial<Omit<NotificationOptions, 'icon' | 'title' | 'text'>>) {
+  success(
+    title: string,
+    text?: string,
+    options?: Partial<Omit<NotificationOptions, 'icon' | 'title' | 'text'>>
+  ) {
     return Swal.fire({
       ...this.defaultOptions,
       ...options,
@@ -44,7 +48,11 @@ class NotificationService {
   }
 
   // Error notification
-  error(title: string, text?: string, options?: Partial<Omit<NotificationOptions, 'icon' | 'title' | 'text'>>) {
+  error(
+    title: string,
+    text?: string,
+    options?: Partial<Omit<NotificationOptions, 'icon' | 'title' | 'text'>>
+  ) {
     return Swal.fire({
       ...this.defaultOptions,
       ...options,
@@ -57,7 +65,11 @@ class NotificationService {
   }
 
   // Warning notification
-  warning(title: string, text?: string, options?: Partial<Omit<NotificationOptions, 'icon' | 'title' | 'text'>>) {
+  warning(
+    title: string,
+    text?: string,
+    options?: Partial<Omit<NotificationOptions, 'icon' | 'title' | 'text'>>
+  ) {
     return Swal.fire({
       ...this.defaultOptions,
       ...options,
@@ -70,7 +82,11 @@ class NotificationService {
   }
 
   // Info notification
-  info(title: string, text?: string, options?: Partial<Omit<NotificationOptions, 'icon' | 'title' | 'text'>>) {
+  info(
+    title: string,
+    text?: string,
+    options?: Partial<Omit<NotificationOptions, 'icon' | 'title' | 'text'>>
+  ) {
     return Swal.fire({
       ...this.defaultOptions,
       ...options,
@@ -81,7 +97,9 @@ class NotificationService {
   }
 
   // Confirmation dialog
-  confirm(options: NotificationOptions & { confirmButtonText?: string; cancelButtonText?: string }) {
+  confirm(
+    options: NotificationOptions & { confirmButtonText?: string; cancelButtonText?: string }
+  ) {
     return Swal.fire({
       ...this.defaultOptions,
       ...options,
@@ -147,34 +165,64 @@ export const toast = notifications.toast.bind(notifications);
 export const notify = {
   // User switch notifications
   switchUserError: () =>
-    notifications.toast({ title: 'Error', text: 'Failed to switch user. Please try again.', icon: 'error', timer: 3000 }),
+    notifications.toast({
+      title: 'Error',
+      text: 'Failed to switch user. Please try again.',
+      icon: 'error',
+      timer: 3000,
+    }),
 
   switchBackSuccess: () =>
     notifications.toast({
       title: 'Success',
       text: 'Successfully switched back to admin account. The page will reload.',
       icon: 'success',
-      timer: 3000
+      timer: 3000,
     }),
 
   switchBackError: () =>
-    notifications.toast({ title: 'Error', text: 'Failed to switch back to admin. Please try again.', icon: 'error', timer: 3000 }),
+    notifications.toast({
+      title: 'Error',
+      text: 'Failed to switch back to admin. Please try again.',
+      icon: 'error',
+      timer: 3000,
+    }),
 
   // Generic notifications
   success: (message: string) =>
     notifications.toast({ title: 'Success', text: message, icon: 'success', timer: 3000 }),
 
   saved: () =>
-    notifications.toast({ title: 'Saved', text: 'Changes have been saved successfully.', icon: 'success', timer: 3000 }),
+    notifications.toast({
+      title: 'Saved',
+      text: 'Changes have been saved successfully.',
+      icon: 'success',
+      timer: 3000,
+    }),
 
   deleted: () =>
-    notifications.toast({ title: 'Deleted', text: 'Item has been deleted successfully.', icon: 'success', timer: 3000 }),
+    notifications.toast({
+      title: 'Deleted',
+      text: 'Item has been deleted successfully.',
+      icon: 'success',
+      timer: 3000,
+    }),
 
   updated: () =>
-    notifications.toast({ title: 'Updated', text: 'Changes have been updated successfully.', icon: 'success', timer: 3000 }),
+    notifications.toast({
+      title: 'Updated',
+      text: 'Changes have been updated successfully.',
+      icon: 'success',
+      timer: 3000,
+    }),
 
   error: (message?: string) =>
-    notifications.toast({ title: 'Error', text: message || 'An error occurred. Please try again.', icon: 'error', timer: 3000 }),
+    notifications.toast({
+      title: 'Error',
+      text: message || 'An error occurred. Please try again.',
+      icon: 'error',
+      timer: 3000,
+    }),
 };
 
 /*

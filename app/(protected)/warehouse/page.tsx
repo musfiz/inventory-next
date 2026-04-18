@@ -35,18 +35,22 @@ export default function WarehousePage() {
   const [formErrors, setFormErrors] = useState<{ [key: string]: string }>({});
   const [refreshKey, setRefreshKey] = useState(0);
 
-  const [defaultTenantOptions, setDefaultTenantOptions] = useState<{ value: string; label: string }[]>([]);
+  const [defaultTenantOptions, setDefaultTenantOptions] = useState<
+    { value: string; label: string }[]
+  >([]);
   const [selectedTenant, setSelectedTenant] = useState<any>(null);
 
   // Load tenant options for super admin
-  const loadTenantOptions = async (inputValue: string): Promise<{ value: string; label: string }[]> => {
+  const loadTenantOptions = async (
+    inputValue: string
+  ): Promise<{ value: string; label: string }[]> => {
     try {
       if (!isSuperAdmin) return [];
 
       const tenants = await commonService.getTenantsForDropdown({ search: inputValue });
       const options = tenants.map(tenant => ({
         value: tenant.id,
-        label: tenant.business_name
+        label: tenant.business_name,
       }));
 
       // Store default options for initial load
@@ -124,24 +128,24 @@ export default function WarehousePage() {
 
   const validateForm = () => {
     const errors: { [key: string]: string } = {};
-    
+
     // Validate tenant for super admin
     if (isSuperAdmin && !formData.tenant_id) {
       errors.tenant_id = 'Tenant selection required';
     }
-    
+
     if (!formData.code.trim()) {
       errors.code = 'Warehouse code is required';
     }
-    
+
     if (!formData.name.trim()) {
       errors.name = 'Warehouse name is required';
     }
-    
+
     if (formData.email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email)) {
       errors.email = 'Please enter a valid email address';
     }
-    
+
     setFormErrors(errors);
     return Object.keys(errors).length === 0;
   };
@@ -180,11 +184,15 @@ export default function WarehousePage() {
       }
 
       await warehouseService.storeWarehouse(submitData);
-      notify.success(isEditing ? 'Warehouse updated successfully' : 'Warehouse created successfully');
+      notify.success(
+        isEditing ? 'Warehouse updated successfully' : 'Warehouse created successfully'
+      );
       setShowForm(false);
       setRefreshKey(prev => prev + 1);
     } catch (error: unknown) {
-      const axiosError = error as { response?: { data?: { errors?: Record<string, string[]>; message?: string } } };
+      const axiosError = error as {
+        response?: { data?: { errors?: Record<string, string[]>; message?: string } };
+      };
       if (axiosError.response?.data?.errors) {
         const transformedErrors: { [key: string]: string } = {};
         Object.entries(axiosError.response.data.errors).forEach(([key, messages]) => {
@@ -230,7 +238,9 @@ export default function WarehousePage() {
       header: 'SL',
       cell: ({ row, table }) => (
         <span className="text-gray-600 dark:text-gray-400">
-          {(table.getState().pagination.pageIndex * table.getState().pagination.pageSize) + row.index + 1}
+          {table.getState().pagination.pageIndex * table.getState().pagination.pageSize +
+            row.index +
+            1}
         </span>
       ),
     },
@@ -256,27 +266,37 @@ export default function WarehousePage() {
         <div>
           <div className="font-medium text-gray-900 dark:text-gray-100">{row.original.name}</div>
           {row.original.contact_person && (
-            <div className="text-xs text-gray-500 dark:text-gray-400">Contact: {row.original.contact_person}</div>
+            <div className="text-xs text-gray-500 dark:text-gray-400">
+              Contact: {row.original.contact_person}
+            </div>
           )}
         </div>
       ),
     },
-    ...(isSuperAdmin ? [{
-      id: 'tenant',
-      header: 'Tenant',
-      cell: ({ row }: { row: any }) => (
-        <span className="px-2 py-1 text-xs rounded-full bg-purple-100 text-purple-800 dark:bg-purple-900/30 dark:text-purple-400">
-          {row.original.tenant?.business_name || '-'}
-        </span>
-      ),
-    }] : []),
+    ...(isSuperAdmin
+      ? [
+          {
+            id: 'tenant',
+            header: 'Tenant',
+            cell: ({ row }: { row: any }) => (
+              <span className="px-2 py-1 text-xs rounded-full bg-purple-100 text-purple-800 dark:bg-purple-900/30 dark:text-purple-400">
+                {row.original.tenant?.business_name || '-'}
+              </span>
+            ),
+          },
+        ]
+      : []),
     {
       id: 'location',
       header: 'Location',
       cell: ({ row }) => (
         <div className="flex items-center gap-1 text-sm text-gray-600 dark:text-gray-400">
           <MapPin className="w-3 h-3" />
-          <span>{row.original.city ? `${row.original.city}, ${row.original.country}` : row.original.country}</span>
+          <span>
+            {row.original.city
+              ? `${row.original.city}, ${row.original.country}`
+              : row.original.country}
+          </span>
         </div>
       ),
     },
@@ -285,8 +305,12 @@ export default function WarehousePage() {
       header: 'Contact',
       cell: ({ row }) => (
         <div className="text-sm">
-          {row.original.phone && <div className="text-gray-600 dark:text-gray-400">{row.original.phone}</div>}
-          {row.original.email && <div className="text-gray-500 dark:text-gray-500 text-xs">{row.original.email}</div>}
+          {row.original.phone && (
+            <div className="text-gray-600 dark:text-gray-400">{row.original.phone}</div>
+          )}
+          {row.original.email && (
+            <div className="text-gray-500 dark:text-gray-500 text-xs">{row.original.email}</div>
+          )}
           {!row.original.phone && !row.original.email && <span className="text-gray-400">-</span>}
         </div>
       ),
@@ -314,10 +338,11 @@ export default function WarehousePage() {
       header: 'Status',
       cell: ({ row }) => (
         <span
-          className={`px-2 py-1 text-xs rounded-full ${row.original.is_active
-            ? 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400'
-            : 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400'
-            }`}
+          className={`px-2 py-1 text-xs rounded-full ${
+            row.original.is_active
+              ? 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400'
+              : 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400'
+          }`}
         >
           {row.original.is_active ? 'Active' : 'Inactive'}
         </span>
@@ -386,7 +411,7 @@ export default function WarehousePage() {
                 <div>
                   <CustomSelect
                     value={selectedTenant}
-                    onChange={(option) => {
+                    onChange={option => {
                       setFormData({ ...formData, tenant_id: option?.value || undefined });
                       setSelectedTenant(option);
                       // Clear tenant error when selection is made
@@ -426,12 +451,11 @@ export default function WarehousePage() {
                       setFormErrors(rest);
                     }
                   }}
-                  className={`w-full px-2 py-1.25 text-sm border rounded-sm focus:outline-none focus:ring-1 focus:ring-blue-500 dark:focus:ring-blue-400 focus:border-transparent dark:bg-gray-700 dark:text-gray-100 ${formErrors.name ? 'border-red-500' : 'border-gray-300 dark:border-gray-600'
-                    }`}
+                  className={`w-full px-2 py-1.25 text-sm border rounded-sm focus:outline-none focus:ring-1 focus:ring-blue-500 dark:focus:ring-blue-400 focus:border-transparent dark:bg-gray-700 dark:text-gray-100 ${
+                    formErrors.name ? 'border-red-500' : 'border-gray-300 dark:border-gray-600'
+                  }`}
                 />
-                {formErrors.name && (
-                  <p className="text-red-600 text-xs mt-1">{formErrors.name}</p>
-                )}
+                {formErrors.name && <p className="text-red-600 text-xs mt-1">{formErrors.name}</p>}
               </div>
 
               <div>
@@ -450,16 +474,17 @@ export default function WarehousePage() {
                       setFormErrors(rest);
                     }
                   }}
-                  className={`w-full px-2 py-1.25 text-sm border rounded-sm focus:outline-none focus:ring-1 focus:ring-blue-500 dark:focus:ring-blue-400 focus:border-transparent dark:bg-gray-700 dark:text-gray-100 ${formErrors.code ? 'border-red-500' : 'border-gray-300 dark:border-gray-600'
-                    }`}
+                  className={`w-full px-2 py-1.25 text-sm border rounded-sm focus:outline-none focus:ring-1 focus:ring-blue-500 dark:focus:ring-blue-400 focus:border-transparent dark:bg-gray-700 dark:text-gray-100 ${
+                    formErrors.code ? 'border-red-500' : 'border-gray-300 dark:border-gray-600'
+                  }`}
                 />
-                {formErrors.code && (
-                  <p className="text-red-600 text-xs mt-1">{formErrors.code}</p>
-                )}
+                {formErrors.code && <p className="text-red-600 text-xs mt-1">{formErrors.code}</p>}
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-0.5">Contact Person</label>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-0.5">
+                  Contact Person
+                </label>
                 <input
                   type="text"
                   placeholder="John Doe"
@@ -473,7 +498,9 @@ export default function WarehousePage() {
             {/* Contact Information */}
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-1.5">
               <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-0.5">Phone</label>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-0.5">
+                  Phone
+                </label>
                 <input
                   type="text"
                   placeholder="+880 1234567890"
@@ -484,7 +511,9 @@ export default function WarehousePage() {
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-0.5">Email</label>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-0.5">
+                  Email
+                </label>
                 <input
                   type="email"
                   placeholder="warehouse@example.com"
@@ -492,13 +521,18 @@ export default function WarehousePage() {
                   onChange={e => {
                     setFormData({ ...formData, email: e.target.value });
                     // Clear email error when valid email is entered
-                    if (e.target.value && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(e.target.value) && formErrors.email) {
+                    if (
+                      e.target.value &&
+                      /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(e.target.value) &&
+                      formErrors.email
+                    ) {
                       const { email, ...rest } = formErrors;
                       setFormErrors(rest);
                     }
                   }}
-                  className={`w-full px-2 py-1.25 text-sm border rounded-sm focus:outline-none focus:ring-1 focus:ring-blue-500 dark:focus:ring-blue-400 focus:border-transparent dark:bg-gray-700 dark:text-gray-100 ${formErrors.email ? 'border-red-500' : 'border-gray-300 dark:border-gray-600'
-                    }`}
+                  className={`w-full px-2 py-1.25 text-sm border rounded-sm focus:outline-none focus:ring-1 focus:ring-blue-500 dark:focus:ring-blue-400 focus:border-transparent dark:bg-gray-700 dark:text-gray-100 ${
+                    formErrors.email ? 'border-red-500' : 'border-gray-300 dark:border-gray-600'
+                  }`}
                 />
                 {formErrors.email && (
                   <p className="text-red-600 text-xs mt-1">{formErrors.email}</p>
@@ -506,7 +540,9 @@ export default function WarehousePage() {
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-0.5">City</label>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-0.5">
+                  City
+                </label>
                 <input
                   type="text"
                   placeholder="Dhaka"
@@ -517,7 +553,9 @@ export default function WarehousePage() {
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-0.5">State/Province</label>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-0.5">
+                  State/Province
+                </label>
                 <input
                   type="text"
                   placeholder="Dhaka Division"
@@ -531,7 +569,9 @@ export default function WarehousePage() {
             {/* Address and Location */}
             <div className="grid grid-cols-1 md:grid-cols-3 gap-1.5">
               <div className="md:col-span-2">
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-0.5">Address</label>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-0.5">
+                  Address
+                </label>
                 <input
                   type="text"
                   placeholder="Street address, building, floor"
@@ -543,7 +583,9 @@ export default function WarehousePage() {
 
               <div className="grid grid-cols-2 gap-1.5">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-0.5">Country</label>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-0.5">
+                    Country
+                  </label>
                   <input
                     type="text"
                     placeholder="Bangladesh"
@@ -554,7 +596,9 @@ export default function WarehousePage() {
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-0.5">Postal Code</label>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-0.5">
+                    Postal Code
+                  </label>
                   <input
                     type="text"
                     placeholder="1207"
@@ -585,7 +629,9 @@ export default function WarehousePage() {
                   onChange={e => setFormData({ ...formData, is_default: e.target.checked })}
                   className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500 dark:focus:ring-blue-600 dark:ring-offset-gray-800 focus:ring-2 cursor-pointer"
                 />
-                <span className="text-sm font-medium text-gray-700 dark:text-gray-300">Set as Default</span>
+                <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                  Set as Default
+                </span>
               </label>
 
               <label className="flex items-center gap-2 cursor-pointer">
@@ -595,17 +641,23 @@ export default function WarehousePage() {
                   onChange={e => setFormData({ ...formData, is_sales_location: e.target.checked })}
                   className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500 dark:focus:ring-blue-600 dark:ring-offset-gray-800 focus:ring-2 cursor-pointer"
                 />
-                <span className="text-sm font-medium text-gray-700 dark:text-gray-300">Sales Location</span>
+                <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                  Sales Location
+                </span>
               </label>
 
               <label className="flex items-center gap-2 cursor-pointer">
                 <input
                   type="checkbox"
                   checked={formData.is_purchase_location}
-                  onChange={e => setFormData({ ...formData, is_purchase_location: e.target.checked })}
+                  onChange={e =>
+                    setFormData({ ...formData, is_purchase_location: e.target.checked })
+                  }
                   className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500 dark:focus:ring-blue-600 dark:ring-offset-gray-800 focus:ring-2 cursor-pointer"
                 />
-                <span className="text-sm font-medium text-gray-700 dark:text-gray-300">Purchase Location</span>
+                <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                  Purchase Location
+                </span>
               </label>
             </div>
 

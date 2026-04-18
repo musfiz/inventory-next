@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react';
 import { Eye, Edit, Trash2, Package, Plus, X } from 'lucide-react';
 import { ColumnDef } from '@tanstack/react-table';
 import DataTable from '@/components/ui/datatable';
-import { Unit } from "@/types";
+import { Unit } from '@/types';
 import { notify, confirm } from '@/lib/notifications';
 import unitService from '@/services/unitService';
 import { formatDate } from '@/lib/utils/date';
@@ -16,7 +16,7 @@ export default function UnitsPage() {
   const [formData, setFormData] = useState({
     name: '',
     short_name: '',
-    is_active: true
+    is_active: true,
   });
   const [formErrors, setFormErrors] = useState<{ [key: string]: string }>({});
   const [refreshKey, setRefreshKey] = useState(0);
@@ -36,7 +36,7 @@ export default function UnitsPage() {
     setFormData({
       name: unit.name,
       short_name: unit.short_name,
-      is_active: unit.is_active
+      is_active: unit.is_active,
     });
     setFormErrors({});
     setShowForm(true);
@@ -66,7 +66,7 @@ export default function UnitsPage() {
         id: isEditing && currentUnit?.id ? currentUnit.id : undefined,
         name: formData.name,
         short_name: formData.short_name,
-        is_active: formData.is_active
+        is_active: formData.is_active,
       });
 
       notify.success(isEditing ? 'Unit updated successfully' : 'Unit added successfully');
@@ -162,9 +162,7 @@ export default function UnitsPage() {
       header: 'Short Name',
       meta: { width: '15%' },
       cell: ({ row }) => (
-        <span className="text-xs text-gray-600 dark:text-gray-400">
-          {row.original.short_name}
-        </span>
+        <span className="text-xs text-gray-600 dark:text-gray-400">{row.original.short_name}</span>
       ),
     },
     {
@@ -243,29 +241,35 @@ export default function UnitsPage() {
           <form onSubmit={handleFormSubmit} className="grid grid-cols-1 md:grid-cols-2 gap-1.5">
             <div className="md:col-span-2 grid grid-cols-1 md:grid-cols-3 gap-1">
               <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-0.5">Name</label>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-0.5">
+                  Name
+                </label>
                 <input
                   type="text"
                   placeholder="Enter unit name"
                   value={formData.name}
                   onChange={e => setFormData({ ...formData, name: e.target.value })}
-                  className={`w-full px-2 py-1.5 text-sm border rounded-sm focus:outline-none focus:ring-1 focus:ring-indigo-500 dark:focus:ring-indigo-400 focus:border-transparent dark:bg-gray-700 dark:text-gray-100 ${formErrors.name ? 'border-red-500' : 'border-gray-300 dark:border-gray-600'
-                    }`}
+                  className={`w-full px-2 py-1.5 text-sm border rounded-sm focus:outline-none focus:ring-1 focus:ring-indigo-500 dark:focus:ring-indigo-400 focus:border-transparent dark:bg-gray-700 dark:text-gray-100 ${
+                    formErrors.name ? 'border-red-500' : 'border-gray-300 dark:border-gray-600'
+                  }`}
                   required
                 />
-                {formErrors.name && (
-                  <p className="text-red-600 text-xs mt-1">{formErrors.name}</p>
-                )}
+                {formErrors.name && <p className="text-red-600 text-xs mt-1">{formErrors.name}</p>}
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-0.5">Short Name</label>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-0.5">
+                  Short Name
+                </label>
                 <input
                   type="text"
                   placeholder="e.g., kg, pcs, liter"
                   value={formData.short_name}
                   onChange={e => setFormData({ ...formData, short_name: e.target.value })}
-                  className={`w-full px-2 py-1.5 text-sm border rounded-sm focus:outline-none focus:ring-1 focus:ring-indigo-500 dark:focus:ring-indigo-400 focus:border-transparent dark:bg-gray-700 dark:text-gray-100 ${formErrors.short_name ? 'border-red-500' : 'border-gray-300 dark:border-gray-600'
-                    }`}
+                  className={`w-full px-2 py-1.5 text-sm border rounded-sm focus:outline-none focus:ring-1 focus:ring-indigo-500 dark:focus:ring-indigo-400 focus:border-transparent dark:bg-gray-700 dark:text-gray-100 ${
+                    formErrors.short_name
+                      ? 'border-red-500'
+                      : 'border-gray-300 dark:border-gray-600'
+                  }`}
                   required
                 />
                 {formErrors.short_name && (
@@ -273,10 +277,14 @@ export default function UnitsPage() {
                 )}
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-0.5">Status</label>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-0.5">
+                  Status
+                </label>
                 <select
                   value={formData.is_active ? 'active' : 'inactive'}
-                  onChange={e => setFormData({ ...formData, is_active: e.target.value === 'active' })}
+                  onChange={e =>
+                    setFormData({ ...formData, is_active: e.target.value === 'active' })
+                  }
                   className="w-full px-2 py-1.5 text-sm border border-gray-300 dark:border-gray-600 rounded-sm focus:outline-none focus:ring-1 focus:ring-indigo-500 dark:focus:ring-indigo-400 focus:border-transparent dark:bg-gray-700 dark:text-gray-100"
                 >
                   <option value="active">Active</option>

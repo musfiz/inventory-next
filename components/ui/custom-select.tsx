@@ -45,28 +45,28 @@ const customStyles = (isInvalid?: boolean): StylesConfig<SelectOption, false> =>
           : 'rgb(156, 163, 175)', // border-gray-400
     },
   }),
-  valueContainer: (provided) => ({
+  valueContainer: provided => ({
     ...provided,
     height: '32px',
     padding: '0 8px',
     display: 'flex',
     alignItems: 'center',
   }),
-  indicatorsContainer: (provided) => ({
+  indicatorsContainer: provided => ({
     ...provided,
     height: '32px',
   }),
-  singleValue: (provided) => ({
+  singleValue: provided => ({
     ...provided,
     color: 'var(--tw-text-gray-100)',
     fontSize: '0.875rem', // text-sm to match other inputs
   }),
-  placeholder: (provided) => ({
+  placeholder: provided => ({
     ...provided,
     color: 'var(--tw-text-gray-400)',
     fontSize: '0.875rem', // text-sm to match other inputs
   }),
-  menu: (provided) => ({
+  menu: provided => ({
     ...provided,
     backgroundColor: '#f9fafb', // gray-50 - light gray background
     border: '1px solid rgb(209, 213, 219)', // border-gray-300
@@ -89,14 +89,14 @@ const customStyles = (isInvalid?: boolean): StylesConfig<SelectOption, false> =>
       backgroundColor: state.isSelected ? 'rgb(99, 102, 241)' : '#e5e7eb', // gray-200
     },
   }),
-  input: (provided) => ({
+  input: provided => ({
     ...provided,
     color: 'var(--tw-text-gray-100)',
     fontSize: '0.875rem', // text-sm to match other inputs
   }),
 });
 
-const customTheme: ThemeConfig = (theme) => ({
+const customTheme: ThemeConfig = theme => ({
   ...theme,
   colors: {
     ...theme.colors,
@@ -112,9 +112,9 @@ export default function CustomSelect({
   onChange,
   options,
   loadOptions,
-  placeholder = "Select...",
-  className = "text-sm",
-  classNamePrefix = "react-select",
+  placeholder = 'Select...',
+  className = 'text-sm',
+  classNamePrefix = 'react-select',
   isDisabled = false,
   isLoading = false,
   defaultOptions = false,

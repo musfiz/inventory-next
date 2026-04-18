@@ -22,7 +22,12 @@ class StockService {
     return response.data.data;
   }
 
-  async storeStocks(data: { tenant_id?: string; warehouse_id: string; product_id: string; stocks: StockEntry[] }) {
+  async storeStocks(data: {
+    tenant_id?: string;
+    warehouse_id: string;
+    product_id: string;
+    stocks: StockEntry[];
+  }) {
     const response = await apiClient.post<ApiResponse<any>>('/api/v1/stocks/store', data);
     return response.data.data;
   }

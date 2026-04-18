@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import { Eye, Edit, Trash2, Rows4 } from 'lucide-react';
 import { ColumnDef } from '@tanstack/react-table';
-import DataTable from "@/components/ui/datatable";
+import DataTable from '@/components/ui/datatable';
 
 interface Tenant {
   id: number;

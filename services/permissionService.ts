@@ -1,10 +1,5 @@
 import apiClient from '@/lib/api/axios';
-import {
-  Permission,
-  CreatePermissionRequest,
-  UpdatePermissionRequest,
-  Module
-} from '@/types';
+import { Permission, CreatePermissionRequest, UpdatePermissionRequest, Module } from '@/types';
 
 class PermissionService {
   private baseUrl = '/api/v1/permissions';

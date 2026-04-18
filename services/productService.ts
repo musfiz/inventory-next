@@ -1,20 +1,13 @@
 import apiClient from '@/lib/api/axios';
 import type {
   Product,
-  ProductVariation,
   ProductImage,
   CreateProductRequest,
   UpdateProductRequest,
-  CreateProductVariationRequest,
-  UpdateProductVariationRequest,
   CreateProductImageRequest,
   ProductListResponse,
-  ProductVariationListResponse,
   ProductImageListResponse,
   ApiResponse,
-  Brand,
-  Category,
-  Unit,
 } from '@/types/api.types';
 
 /**
@@ -47,7 +40,9 @@ class ProductService {
    * GET /api/v1/products/{id}
    */
   async getProduct(id: string): Promise<Product> {
-    const response = await apiClient.get<ApiResponse<{ product: Product }>>(`/api/v1/products/${id}`);
+    const response = await apiClient.get<ApiResponse<{ product: Product }>>(
+      `/api/v1/products/${id}`
+    );
     return response.data.data.product;
   }
 
@@ -56,7 +51,10 @@ class ProductService {
    * POST /api/v1/products
    */
   async createProduct(data: CreateProductRequest): Promise<Product> {
-    const response = await apiClient.post<ApiResponse<{ product: Product }>>('/api/v1/products', data);
+    const response = await apiClient.post<ApiResponse<{ product: Product }>>(
+      '/api/v1/products',
+      data
+    );
     return response.data.data.product;
   }
 
@@ -65,7 +63,10 @@ class ProductService {
    * PUT /api/v1/products/{id}
    */
   async updateProduct(data: UpdateProductRequest): Promise<Product> {
-    const response = await apiClient.put<ApiResponse<{ product: Product }>>(`/api/v1/products/${data.id}`, data);
+    const response = await apiClient.put<ApiResponse<{ product: Product }>>(
+      `/api/v1/products/${data.id}`,
+      data
+    );
     return response.data.data.product;
   }
 
@@ -81,10 +82,13 @@ class ProductService {
    * Get product images
    * GET /api/v1/products/{productId}/images
    */
-  async getProductImages(productId: string, params?: {
-    page?: number;
-    per_page?: number;
-  }): Promise<ProductImageListResponse> {
+  async getProductImages(
+    productId: string,
+    params?: {
+      page?: number;
+      per_page?: number;
+    }
+  ): Promise<ProductImageListResponse> {
     const response = await apiClient.get<ApiResponse<ProductImageListResponse>>(
       `/api/v1/products/${productId}/images`,
       { params }
@@ -96,7 +100,10 @@ class ProductService {
    * Upload product image
    * POST /api/v1/products/{productId}/images
    */
-  async uploadProductImage(productId: string, data: CreateProductImageRequest): Promise<ProductImage> {
+  async uploadProductImage(
+    productId: string,
+    data: CreateProductImageRequest
+  ): Promise<ProductImage> {
     const formData = new FormData();
     formData.append('image', data.image);
     if (data.variation_id) formData.append('variation_id', data.variation_id);

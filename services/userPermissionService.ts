@@ -31,7 +31,9 @@ class UserPermissionService {
    * Get all permissions grouped by module
    */
   async getPermissionsByModule(): Promise<UserPermissionModule[]> {
-    const response = await apiClient.get<ApiResponse<UserPermissionModule[]>>('/api/v1/user-permissions/modules');
+    const response = await apiClient.get<ApiResponse<UserPermissionModule[]>>(
+      '/api/v1/user-permissions/modules'
+    );
     return response.data.data;
   }
 
@@ -39,7 +41,9 @@ class UserPermissionService {
    * Get all active users for selection
    */
   async getUsersForSelection(): Promise<UserSelection[]> {
-    const response = await apiClient.get<ApiResponse<UserSelection[]>>('/api/v1/user-permissions/users');
+    const response = await apiClient.get<ApiResponse<UserSelection[]>>(
+      '/api/v1/user-permissions/users'
+    );
     return response.data.data;
   }
 
@@ -47,7 +51,9 @@ class UserPermissionService {
    * Get user's assigned permissions
    */
   async getUserPermissions(userId: string): Promise<UserPermissionData> {
-    const response = await apiClient.get<ApiResponse<UserPermissionData>>(`/api/v1/user-permissions/${userId}`);
+    const response = await apiClient.get<ApiResponse<UserPermissionData>>(
+      `/api/v1/user-permissions/${userId}`
+    );
     return response.data.data;
   }
 
@@ -55,10 +61,13 @@ class UserPermissionService {
    * Assign permissions to a user
    */
   async assignPermissions(userId: string, permissions: string[]): Promise<UserPermissionData> {
-    const response = await apiClient.post<ApiResponse<UserPermissionData>>('/api/v1/user-permissions/assign', {
-      user_id: userId,
-      permissions
-    });
+    const response = await apiClient.post<ApiResponse<UserPermissionData>>(
+      '/api/v1/user-permissions/assign',
+      {
+        user_id: userId,
+        permissions,
+      }
+    );
     return response.data.data;
   }
 }

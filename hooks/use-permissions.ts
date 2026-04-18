@@ -3,13 +3,13 @@ import { useAuthStore } from '@/stores/auth-store';
 
 /**
  * Permission hook for checking user permissions
- * 
+ *
  * Provides utilities for checking user permissions and roles.
  * Super admins automatically have all permissions.
- * 
+ *
  * @example
  * const { hasPermission, hasAnyPermission, isSuperAdmin } = usePermissions();
- * 
+ *
  * if (hasPermission('create-users')) {
  *   // Show create user button
  * }
@@ -26,18 +26,19 @@ export const usePermissions = () => {
    * @returns true if user has permission or is super admin
    */
   const hasPermission = useMemo(
-    () => (permission: string): boolean => {
-      // Wait for store to be hydrated
-      if (!hydrated) return false;
-      
-      if (!user) return false;
-      
-      // Super admin has all permissions
-      if (isSuperAdmin) return true;
+    () =>
+      (permission: string): boolean => {
+        // Wait for store to be hydrated
+        if (!hydrated) return false;
 
-      // Check if user has the specific permission
-      return user.permissions?.includes(permission) ?? false;
-    },
+        if (!user) return false;
+
+        // Super admin has all permissions
+        if (isSuperAdmin) return true;
+
+        // Check if user has the specific permission
+        return user.permissions?.includes(permission) ?? false;
+      },
     [user, isSuperAdmin, hydrated]
   );
 
@@ -47,19 +48,20 @@ export const usePermissions = () => {
    * @returns true if user has at least one of the permissions or is super admin
    */
   const hasAnyPermission = useMemo(
-    () => (permissions: string[]): boolean => {
-      // Wait for store to be hydrated
-      if (!hydrated) return false;
-      
-      if (!user) return false;
-      if (!permissions || permissions.length === 0) return false;
-      
-      // Super admin has all permissions
-      if (isSuperAdmin) return true;
+    () =>
+      (permissions: string[]): boolean => {
+        // Wait for store to be hydrated
+        if (!hydrated) return false;
 
-      // Check if user has any of the permissions
-      return permissions.some(permission => user.permissions?.includes(permission) ?? false);
-    },
+        if (!user) return false;
+        if (!permissions || permissions.length === 0) return false;
+
+        // Super admin has all permissions
+        if (isSuperAdmin) return true;
+
+        // Check if user has any of the permissions
+        return permissions.some(permission => user.permissions?.includes(permission) ?? false);
+      },
     [user, isSuperAdmin, hydrated]
   );
 
@@ -69,19 +71,20 @@ export const usePermissions = () => {
    * @returns true if user has all permissions or is super admin
    */
   const hasAllPermissions = useMemo(
-    () => (permissions: string[]): boolean => {
-      // Wait for store to be hydrated
-      if (!hydrated) return false;
-      
-      if (!user) return false;
-      if (!permissions || permissions.length === 0) return true;
-      
-      // Super admin has all permissions
-      if (isSuperAdmin) return true;
+    () =>
+      (permissions: string[]): boolean => {
+        // Wait for store to be hydrated
+        if (!hydrated) return false;
 
-      // Check if user has all permissions
-      return permissions.every(permission => user.permissions?.includes(permission) ?? false);
-    },
+        if (!user) return false;
+        if (!permissions || permissions.length === 0) return true;
+
+        // Super admin has all permissions
+        if (isSuperAdmin) return true;
+
+        // Check if user has all permissions
+        return permissions.every(permission => user.permissions?.includes(permission) ?? false);
+      },
     [user, isSuperAdmin, hydrated]
   );
 

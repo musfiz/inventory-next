@@ -18,6 +18,7 @@ export { default as warehouseService } from './warehouseService';
 export { default as commonService } from './commonService';
 export { default as binService } from './binService';
 export { default as stockService } from './stockService';
+export { default as supplierService } from './supplierService';
 
 // Re-export types for convenience
 export type {

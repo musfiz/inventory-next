@@ -5,7 +5,7 @@ import { Eye, Edit, Trash2, Building2, Plus, X } from 'lucide-react';
 import { ColumnDef } from '@tanstack/react-table';
 import DataTable from '@/components/ui/datatable';
 import CustomSelect from '@/components/ui/custom-select';
-import { Brand } from "@/types";
+import { Brand } from '@/types';
 import { notify, confirm } from '@/lib/notifications';
 import brandService from '@/services/brandService';
 import { formatDate } from '@/lib/utils/date';
@@ -183,8 +183,9 @@ export default function BrandsPage() {
                 src={fullLogoUrl}
                 alt={row.original.name}
                 className="w-10 h-10 object-contain rounded border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-700"
-                onError={(e) => {
-                  (e.target as HTMLImageElement).src = 'data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 width=%2740%27 height=%2740%27%3E%3Crect width=%2740%27 height=%2740%27 fill=%27%23f3f4f6%27/%3E%3Ctext x=%2750%25%27 y=%2750%25%27 dominant-baseline=%27middle%27 text-anchor=%27middle%27 fill=%27%239ca3af%27 font-size=%2712%27%3ENo Logo%3C/text%3E%3C/svg%3E';
+                onError={e => {
+                  (e.target as HTMLImageElement).src =
+                    'data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 width=%2740%27 height=%2740%27%3E%3Crect width=%2740%27 height=%2740%27 fill=%27%23f3f4f6%27/%3E%3Ctext x=%2750%25%27 y=%2750%25%27 dominant-baseline=%27middle%27 text-anchor=%27middle%27 fill=%27%239ca3af%27 font-size=%2712%27%3ENo Logo%3C/text%3E%3C/svg%3E';
                 }}
               />
             ) : (
@@ -223,7 +224,10 @@ export default function BrandsPage() {
       meta: { width: '22%' },
       cell: ({ row }) => (
         <div className="flex items-center">
-          <div className="text-xs text-gray-600 dark:text-gray-400 truncate max-w-xs" title={row.original.description}>
+          <div
+            className="text-xs text-gray-600 dark:text-gray-400 truncate max-w-xs"
+            title={row.original.description}
+          >
             {row.original.description || 'No description'}
           </div>
         </div>
@@ -258,9 +262,7 @@ export default function BrandsPage() {
       header: 'Status',
       meta: { width: '8%' },
       cell: ({ row }) => (
-        <div className="flex items-center">
-          {getStatusBadge(row.original.is_active)}
-        </div>
+        <div className="flex items-center">{getStatusBadge(row.original.is_active)}</div>
       ),
     },
     {
@@ -324,7 +326,7 @@ export default function BrandsPage() {
               <CustomSelect
                 className={'w-64 text-xs'}
                 value={businessTypeOptions.find(t => t.value === businessTypeFilter) || null}
-                onChange={(option) => setBusinessTypeFilter(option?.value || '')}
+                onChange={option => setBusinessTypeFilter(option?.value || '')}
                 options={[{ value: '', label: 'All Business Types' }, ...businessTypeOptions]}
                 placeholder="Filter by business type"
               />
@@ -342,28 +344,37 @@ export default function BrandsPage() {
           {formErrors.business_type && (
             <p className="text-red-600 text-sm mb-2">{formErrors.business_type}</p>
           )}
-          <form onSubmit={handleFormSubmit} className="grid grid-cols-1 md:grid-cols-2 gap-1.5" encType="multipart/form-data">
+          <form
+            onSubmit={handleFormSubmit}
+            className="grid grid-cols-1 md:grid-cols-2 gap-1.5"
+            encType="multipart/form-data"
+          >
             <div className="md:col-span-2 grid grid-cols-1 md:grid-cols-2 gap-1">
               <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-0.5">Name</label>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-0.5">
+                  Name
+                </label>
                 <input
                   type="text"
                   placeholder="Enter brand name"
                   value={formData.name}
                   onChange={e => setFormData({ ...formData, name: e.target.value })}
-                  className={`w-full px-2 py-1.5 text-sm border rounded-sm focus:outline-none focus:ring-1 focus:ring-indigo-500 dark:focus:ring-indigo-400 focus:border-transparent dark:bg-gray-700 dark:text-gray-100 ${formErrors.name ? 'border-red-500' : 'border-gray-300 dark:border-gray-600'
-                    }`}
+                  className={`w-full px-2 py-1.5 text-sm border rounded-sm focus:outline-none focus:ring-1 focus:ring-indigo-500 dark:focus:ring-indigo-400 focus:border-transparent dark:bg-gray-700 dark:text-gray-100 ${
+                    formErrors.name ? 'border-red-500' : 'border-gray-300 dark:border-gray-600'
+                  }`}
                   required
                 />
-                {formErrors.name && (
-                  <p className="text-red-600 text-xs mt-1">{formErrors.name}</p>
-                )}
+                {formErrors.name && <p className="text-red-600 text-xs mt-1">{formErrors.name}</p>}
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-0.5">Status</label>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-0.5">
+                  Status
+                </label>
                 <select
                   value={formData.is_active ? 'active' : 'inactive'}
-                  onChange={e => setFormData({ ...formData, is_active: e.target.value === 'active' })}
+                  onChange={e =>
+                    setFormData({ ...formData, is_active: e.target.value === 'active' })
+                  }
                   className="w-full px-2 py-1.5 text-sm border border-gray-300 dark:border-gray-600 rounded-sm focus:outline-none focus:ring-1 focus:ring-indigo-500 dark:focus:ring-indigo-400 focus:border-transparent dark:bg-gray-700 dark:text-gray-100"
                 >
                   <option value="active">Active</option>
@@ -373,7 +384,9 @@ export default function BrandsPage() {
             </div>
             <div className="md:col-span-2 grid grid-cols-1 md:grid-cols-2 gap-1">
               <div className="flex flex-col justify-end">
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Logo</label>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                  Logo
+                </label>
                 <div className="flex items-center gap-3 h-20">
                   <label className="flex flex-col items-center justify-center w-full h-20 border-2 border-dashed border-gray-300 dark:border-gray-600 rounded-sm cursor-pointer hover:border-indigo-500 transition-colors bg-gray-50 dark:bg-gray-700">
                     <input
@@ -388,28 +401,51 @@ export default function BrandsPage() {
                       className="hidden"
                     />
                     <span className="flex flex-col items-center">
-                      <svg className="w-6 h-6 text-gray-400 mb-0.5" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M7 16V4a1 1 0 011-1h8a1 1 0 011 1v12m-4 4h-4a1 1 0 01-1-1v-1m6 2a2 2 0 002-2v-1a2 2 0 00-2-2h-4a2 2 0 00-2 2v1a2 2 0 002 2h4z" /></svg>
-                      <span className="text-xs text-gray-500 dark:text-gray-400">Click to upload image</span>
+                      <svg
+                        className="w-6 h-6 text-gray-400 mb-0.5"
+                        fill="none"
+                        stroke="currentColor"
+                        strokeWidth="2"
+                        viewBox="0 0 24 24"
+                      >
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          d="M7 16V4a1 1 0 011-1h8a1 1 0 011 1v12m-4 4h-4a1 1 0 01-1-1v-1m6 2a2 2 0 002-2v-1a2 2 0 00-2-2h-4a2 2 0 00-2 2v1a2 2 0 002 2h4z"
+                        />
+                      </svg>
+                      <span className="text-xs text-gray-500 dark:text-gray-400">
+                        Click to upload image
+                      </span>
                     </span>
                   </label>
                   {(formData.logo_url || (isEditing && currentBrand?.logo_url)) && (
                     <div className="flex flex-col items-center">
                       <img
-                        src={formData.logo_url ? URL.createObjectURL(formData.logo_url) : `${process.env.NEXT_PUBLIC_BACKEND_URL}/${currentBrand?.logo_url}` || ''}
+                        src={
+                          formData.logo_url
+                            ? URL.createObjectURL(formData.logo_url)
+                            : `${process.env.NEXT_PUBLIC_BACKEND_URL}/${currentBrand?.logo_url}` ||
+                              ''
+                        }
                         alt="Logo Preview"
                         className="w-16 h-16 object-contain rounded border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-700 p-1"
-                        onError={(e) => {
+                        onError={e => {
                           (e.target as HTMLImageElement).style.display = 'none';
                         }}
                       />
-                      <span className="text-xs text-gray-500 mt-0.5">{formData.logo_url ? 'New' : 'Current'}</span>
+                      <span className="text-xs text-gray-500 mt-0.5">
+                        {formData.logo_url ? 'New' : 'Current'}
+                      </span>
                     </div>
                   )}
                 </div>
               </div>
               <div className="flex flex-col gap-1">
                 <div className="flex flex-row justify-between items-center">
-                  <span className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-0.5 text-right">Description</span>
+                  <span className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-0.5 text-right">
+                    Description
+                  </span>
                 </div>
                 <textarea
                   placeholder="Describe the brand and its unique attributes"

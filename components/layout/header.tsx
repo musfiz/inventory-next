@@ -14,7 +14,7 @@ import {
   AlertTriangle,
   Sun,
   Moon,
-  ArrowLeftRight
+  ArrowLeftRight,
 } from 'lucide-react';
 import { useTheme } from '@/contexts/ThemeContext';
 import { useAuth } from '@/hooks/use-auth';
@@ -48,9 +48,9 @@ export default function Header({
   const router = useRouter();
   const { theme, toggleTheme } = useTheme();
   const { logout } = useAuth();
-  const isSwitchedUser = useAuthStore((state) => state.isSwitchedUser);
-  const originalSuperAdmin = useAuthStore((state) => state.originalSuperAdmin);
-  const switchBack = useAuthStore((state) => state.switchBack);
+  const isSwitchedUser = useAuthStore(state => state.isSwitchedUser);
+  const originalSuperAdmin = useAuthStore(state => state.originalSuperAdmin);
+  const switchBack = useAuthStore(state => state.switchBack);
 
   useEffect(() => {
     setMounted(true);
@@ -75,7 +75,10 @@ export default function Header({
   };
 
   return (
-    <header className="bg-white dark:bg-gray-900 shadow-sm dark:shadow-gray-800 min-h-14 h-24 flex-0 sticky top-0 z-20 border-b border-gray-200 dark:border-gray-800" style={{ height: '6rem' }}>
+    <header
+      className="bg-white dark:bg-gray-900 shadow-sm dark:shadow-gray-800 min-h-14 h-24 flex-0 sticky top-0 z-20 border-b border-gray-200 dark:border-gray-800"
+      style={{ height: '6rem' }}
+    >
       <div className="h-full sm:px-4 lg:px-4 flex items-center justify-between gap-2">
         <div className="flex items-center gap-2">
           {/* Mobile menu button */}
@@ -103,7 +106,7 @@ export default function Header({
               <input
                 type="text"
                 value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
+                onChange={e => setSearchQuery(e.target.value)}
                 placeholder="Search..."
                 className="w-64 sm:w-80 lg:w-96 pl-10 pr-24 py-2 border border-gray-200 dark:border-gray-700 rounded-lg focus:outline-none focus:border-indigo-400 dark:focus:border-indigo-500 focus:shadow-lg focus:shadow-indigo-100 dark:focus:shadow-indigo-900/20 text-sm transition-all placeholder:text-gray-400 dark:placeholder:text-gray-500 text-gray-900 dark:text-gray-100 bg-white dark:bg-gray-800 caret-gray-900 dark:caret-gray-100"
               />
@@ -149,13 +152,12 @@ export default function Header({
             {/* Notification Dropdown Menu */}
             {notificationOpen && (
               <>
-                <div
-                  className="fixed inset-0 z-10"
-                  onClick={() => setNotificationOpen(false)}
-                />
+                <div className="fixed inset-0 z-10" onClick={() => setNotificationOpen(false)} />
                 <div className="absolute right-0 mt-2 w-80 bg-white dark:bg-gray-800 rounded-lg shadow-lg border border-gray-200 dark:border-gray-700 z-20 max-h-96 overflow-hidden flex flex-col">
                   <div className="px-4 py-3 border-b border-gray-200 dark:border-gray-700 flex items-center justify-between">
-                    <h3 className="text-sm font-semibold text-gray-900 dark:text-gray-100">Notifications</h3>
+                    <h3 className="text-sm font-semibold text-gray-900 dark:text-gray-100">
+                      Notifications
+                    </h3>
                     <button className="text-xs text-indigo-600 hover:text-indigo-700 font-medium cursor-pointer">
                       Mark all read
                     </button>
@@ -171,9 +173,15 @@ export default function Header({
                             </div>
                           </div>
                           <div className="flex-1 min-w-0">
-                            <p className="text-sm text-gray-900 dark:text-gray-100">New user registered</p>
-                            <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">John Doe joined the platform</p>
-                            <p className="text-xs text-gray-400 dark:text-gray-500 mt-1">2 hours ago</p>
+                            <p className="text-sm text-gray-900 dark:text-gray-100">
+                              New user registered
+                            </p>
+                            <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
+                              John Doe joined the platform
+                            </p>
+                            <p className="text-xs text-gray-400 dark:text-gray-500 mt-1">
+                              2 hours ago
+                            </p>
                           </div>
                           <div className="shrink-0">
                             <span className="h-2 w-2 bg-indigo-500 dark:bg-indigo-400 rounded-full block"></span>
@@ -188,9 +196,15 @@ export default function Header({
                             </div>
                           </div>
                           <div className="flex-1 min-w-0">
-                            <p className="text-sm text-gray-900 dark:text-gray-100">System backup completed</p>
-                            <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">All data backed up successfully</p>
-                            <p className="text-xs text-gray-400 dark:text-gray-500 mt-1">5 hours ago</p>
+                            <p className="text-sm text-gray-900 dark:text-gray-100">
+                              System backup completed
+                            </p>
+                            <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
+                              All data backed up successfully
+                            </p>
+                            <p className="text-xs text-gray-400 dark:text-gray-500 mt-1">
+                              5 hours ago
+                            </p>
                           </div>
                         </div>
                       </div>
@@ -202,9 +216,15 @@ export default function Header({
                             </div>
                           </div>
                           <div className="flex-1 min-w-0">
-                            <p className="text-sm text-gray-900 dark:text-gray-100">High memory usage</p>
-                            <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">Server memory at 85%</p>
-                            <p className="text-xs text-gray-400 dark:text-gray-500 mt-1">1 day ago</p>
+                            <p className="text-sm text-gray-900 dark:text-gray-100">
+                              High memory usage
+                            </p>
+                            <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
+                              Server memory at 85%
+                            </p>
+                            <p className="text-xs text-gray-400 dark:text-gray-500 mt-1">
+                              1 day ago
+                            </p>
                           </div>
                         </div>
                       </div>
@@ -230,7 +250,9 @@ export default function Header({
                 {user?.name?.charAt(0).toUpperCase() || 'A'}
               </div>
               <div className="hidden sm:block text-left">
-                <p className="text-sm font-medium text-gray-900 dark:text-gray-100">{user?.name || 'No User'}</p>
+                <p className="text-sm font-medium text-gray-900 dark:text-gray-100">
+                  {user?.name || 'No User'}
+                </p>
               </div>
               <ChevronDown className="hidden sm:block h-4 w-4 text-gray-500 dark:text-gray-400" />
             </button>
@@ -238,14 +260,15 @@ export default function Header({
             {/* Dropdown Menu */}
             {dropdownOpen && (
               <>
-                <div
-                  className="fixed inset-0 z-10"
-                  onClick={() => setDropdownOpen(false)}
-                />
+                <div className="fixed inset-0 z-10" onClick={() => setDropdownOpen(false)} />
                 <div className="absolute right-0 mt-2 w-56 bg-white dark:bg-gray-800 rounded-lg shadow-lg border border-gray-200 dark:border-gray-700 py-1 z-20">
                   <div className="px-4 py-3 border-b border-gray-200 dark:border-gray-700">
-                    <p className="text-sm font-medium text-gray-900 dark:text-gray-100">{user?.name || 'No Name'}</p>
-                    <p className="text-xs text-gray-500 dark:text-gray-400">{user?.email || 'No Email'}</p>
+                    <p className="text-sm font-medium text-gray-900 dark:text-gray-100">
+                      {user?.name || 'No Name'}
+                    </p>
+                    <p className="text-xs text-gray-500 dark:text-gray-400">
+                      {user?.email || 'No Email'}
+                    </p>
                     {isSwitchedUser && originalSuperAdmin && (
                       <div className="mt-2 px-2 py-1 bg-orange-100 dark:bg-orange-900/30 rounded text-xs text-orange-800 dark:text-orange-300">
                         Switched from: {originalSuperAdmin.name}
@@ -257,10 +280,11 @@ export default function Header({
                       <button
                         onClick={handleSwitchBack}
                         disabled={switchingBack}
-                        className={`flex items-center gap-3 px-4 py-2.5 text-sm transition-colors cursor-pointer w-full text-left ${switchingBack
-                          ? 'text-gray-400 dark:text-gray-600 cursor-not-allowed'
-                          : 'text-orange-600 dark:text-orange-400 hover:bg-orange-50 dark:hover:bg-orange-900/20'
-                          }`}
+                        className={`flex items-center gap-3 px-4 py-2.5 text-sm transition-colors cursor-pointer w-full text-left ${
+                          switchingBack
+                            ? 'text-gray-400 dark:text-gray-600 cursor-not-allowed'
+                            : 'text-orange-600 dark:text-orange-400 hover:bg-orange-50 dark:hover:bg-orange-900/20'
+                        }`}
                       >
                         {switchingBack ? (
                           <>

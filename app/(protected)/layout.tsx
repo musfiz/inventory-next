@@ -6,20 +6,16 @@ import { usePathname, useRouter } from 'next/navigation';
 import { User } from 'lucide-react';
 import { notify } from '@/lib/notifications';
 import { useAuth } from '@/hooks/use-auth';
-import Header from "@/components/layout/header";
-import Sidebar from "@/components/layout/sidebar";
-import Loading from "@/app/loading";
+import Header from '@/components/layout/header';
+import Sidebar from '@/components/layout/sidebar';
+import Loading from '@/app/loading';
 
-export default function AdminLayout({
-  children,
-}: {
-  children: React.ReactNode;
-}) {
+export default function AdminLayout({ children }: { children: React.ReactNode }) {
   const { user: authUser, isRedirecting } = useAuth({ middleware: 'auth' });
-  const user = useAuthStore((state) => state.user);
-  const isSwitchedUser = useAuthStore((state) => state.isSwitchedUser);
-  const originalSuperAdmin = useAuthStore((state) => state.originalSuperAdmin);
-  const switchBack = useAuthStore((state) => state.switchBack);
+  const user = useAuthStore(state => state.user);
+  const isSwitchedUser = useAuthStore(state => state.isSwitchedUser);
+  const originalSuperAdmin = useAuthStore(state => state.originalSuperAdmin);
+  const switchBack = useAuthStore(state => state.switchBack);
   const pathname = usePathname();
   const router = useRouter();
   const [sidebarOpen, setSidebarOpen] = useState(true);
@@ -36,7 +32,6 @@ export default function AdminLayout({
     }, 500);
     return () => clearTimeout(timer);
   }, [pathname]);
-
 
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
@@ -82,10 +77,11 @@ export default function AdminLayout({
             </div>
             <button
               onClick={handleSwitchBackToAdmin}
-              className={`flex items-center gap-2 px-2 py-1 rounded-sm text-sm font-medium transition-all cursor-pointer ${switchingBack
-                ? 'bg-orange-700 cursor-not-allowed opacity-75'
-                : 'bg-white text-orange-600 hover:bg-purple-50 shadow-sm'
-                }`}
+              className={`flex items-center gap-2 px-2 py-1 rounded-sm text-sm font-medium transition-all cursor-pointer ${
+                switchingBack
+                  ? 'bg-orange-700 cursor-not-allowed opacity-75'
+                  : 'bg-white text-orange-600 hover:bg-purple-50 shadow-sm'
+              }`}
             >
               {switchingBack ? (
                 <>
@@ -103,16 +99,19 @@ export default function AdminLayout({
         </div>
       )}
 
-      <div className={`min-h-screen bg-gray-100 dark:bg-gray-900 flex h-screen overflow-hidden relative ${isSwitchedUser ? 'border-5 border-red-500 pt-[0.67cm]' : ''}`}>
+      <div
+        className={`min-h-screen bg-gray-100 dark:bg-gray-900 flex h-screen overflow-hidden relative ${isSwitchedUser ? 'border-5 border-red-500 pt-[0.67cm]' : ''}`}
+      >
         {/* Route Loading Progress Bar */}
         {isRouteLoading && (
           <div className="fixed top-0 left-0 right-0 h-1 bg-gray-200 dark:bg-gray-700 z-100 overflow-hidden">
-            <div className="h-full bg-linear-to-r from-indigo-500 via-purple-500 to-pink-500 animate-[loading_1s_ease-in-out_infinite]"
+            <div
+              className="h-full bg-linear-to-r from-indigo-500 via-purple-500 to-pink-500 animate-[loading_1s_ease-in-out_infinite]"
               style={{
                 width: '50%',
-                animation: 'loading 1s ease-in-out infinite'
-              }}>
-            </div>
+                animation: 'loading 1s ease-in-out infinite',
+              }}
+            ></div>
           </div>
         )}
 
@@ -136,13 +135,10 @@ export default function AdminLayout({
 
           {/* Page Content - Scrollable */}
           <main className="flex-1 overflow-y-auto py-2 px-2 sm:px-4 lg:px-4">
-            <Suspense fallback={<Loading />}>
-              {children}
-            </Suspense>
+            <Suspense fallback={<Loading />}>{children}</Suspense>
           </main>
         </div>
       </div>
     </div>
   );
 }
-

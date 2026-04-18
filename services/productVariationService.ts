@@ -27,9 +27,12 @@ class ProductVariationService {
     sort_by?: string;
     sort_order?: 'asc' | 'desc';
   }): Promise<ProductVariationListResponse> {
-    const response = await apiClient.get<ApiResponse<ProductVariationListResponse>>('/api/v1/product-variations', {
-      params,
-    });
+    const response = await apiClient.get<ApiResponse<ProductVariationListResponse>>(
+      '/api/v1/product-variations',
+      {
+        params,
+      }
+    );
     return response.data.data;
   }
 
@@ -38,7 +41,9 @@ class ProductVariationService {
    * GET /api/v1/product-variations/{id}
    */
   async getVariation(id: string): Promise<ProductVariation> {
-    const response = await apiClient.get<ApiResponse<{ variation: ProductVariation }>>(`/api/v1/product-variations/${id}`);
+    const response = await apiClient.get<ApiResponse<{ variation: ProductVariation }>>(
+      `/api/v1/product-variations/${id}`
+    );
     return response.data.data.variation;
   }
 
@@ -47,7 +52,10 @@ class ProductVariationService {
    * POST /api/v1/product-variations
    */
   async createVariation(data: CreateProductVariationRequest): Promise<ProductVariation> {
-    const response = await apiClient.post<ApiResponse<{ variation: ProductVariation }>>('/api/v1/product-variations', data);
+    const response = await apiClient.post<ApiResponse<{ variation: ProductVariation }>>(
+      '/api/v1/product-variations',
+      data
+    );
     return response.data.data.variation;
   }
 
@@ -56,7 +64,10 @@ class ProductVariationService {
    * PUT /api/v1/product-variations/{id}
    */
   async updateVariation(data: UpdateProductVariationRequest): Promise<ProductVariation> {
-    const response = await apiClient.put<ApiResponse<{ variation: ProductVariation }>>(`/api/v1/product-variations/${data.id}`, data);
+    const response = await apiClient.put<ApiResponse<{ variation: ProductVariation }>>(
+      `/api/v1/product-variations/${data.id}`,
+      data
+    );
     return response.data.data.variation;
   }
 
@@ -83,21 +94,21 @@ class ProductVariationService {
     // Build query string manually for array structure
     let url = '/api/v1/product-variations/generate-sku';
     const queryParams: string[] = [];
-    
+
     if (productId) {
       queryParams.push(`product_id=${encodeURIComponent(productId)}`);
     }
-    
+
     if (productName) {
       queryParams.push(`product_name=${encodeURIComponent(productName)}`);
     }
-    
+
     if (attributeValues && attributeValues.length > 0) {
       attributeValues.forEach((value, index) => {
         queryParams.push(`attribute_values[${index}]=${encodeURIComponent(value)}`);
       });
     }
-    
+
     if (queryParams.length > 0) {
       url += '?' + queryParams.join('&');
     }
@@ -111,7 +122,9 @@ class ProductVariationService {
    * GET /api/v1/product-variations/attributes
    */
   async getAttributes(businessType?: string): Promise<Attribute[]> {
-    const response = await apiClient.get<ApiResponse<Attribute[]>>('/api/v1/product-variations/attributes');
+    const response = await apiClient.get<ApiResponse<Attribute[]>>(
+      '/api/v1/product-variations/attributes'
+    );
     return response.data.data;
   }
 }

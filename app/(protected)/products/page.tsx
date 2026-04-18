@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation';
 import { Eye, Edit, Trash2, Rows4, Package2, Plus, Image } from 'lucide-react';
 import { ColumnDef } from '@tanstack/react-table';
 import DataTable from '@/components/ui/datatable';
-import { Product } from "@/types/api.types";
+import { Product } from '@/types/api.types';
 import { productService } from '@/services';
 import { usePermissions } from '@/hooks/use-permissions';
 import { confirm, notify } from '@/lib/notifications';
@@ -13,7 +13,7 @@ import { useAuthStore } from '@/stores/auth-store';
 
 export default function ProductsPage() {
   const router = useRouter();
-  const user = useAuthStore((state) => state.user);
+  const user = useAuthStore(state => state.user);
   const isSuperAdmin = user?.user_type === 'super_admin';
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const { hasPermission, isHydrated } = usePermissions();
@@ -95,16 +95,20 @@ export default function ProductsPage() {
         );
       },
     },
-    ...(isSuperAdmin ? [{
-      accessorKey: 'business_type',
-      header: 'Business Type',
-      meta: { width: '15%' },
-      cell: ({ row }: any) => (
-        <span className="px-1.5 py-0.5 text-xs font-medium rounded bg-purple-100 text-purple-800 dark:bg-purple-900/30 dark:text-purple-400 capitalize">
-          {row.original.business_type?.replace('_', ' ') || '-'}
-        </span>
-      ),
-    }] : []),
+    ...(isSuperAdmin
+      ? [
+          {
+            accessorKey: 'business_type',
+            header: 'Business Type',
+            meta: { width: '15%' },
+            cell: ({ row }: any) => (
+              <span className="px-1.5 py-0.5 text-xs font-medium rounded bg-purple-100 text-purple-800 dark:bg-purple-900/30 dark:text-purple-400 capitalize">
+                {row.original.business_type?.replace('_', ' ') || '-'}
+              </span>
+            ),
+          },
+        ]
+      : []),
     {
       accessorKey: 'brand.name',
       header: 'Brand',
@@ -160,7 +164,9 @@ export default function ProductsPage() {
         };
 
         return (
-          <span className={`px-1.5 py-0.5 text-xs font-medium rounded capitalize ${statusColors[status as keyof typeof statusColors] || statusColors.draft}`}>
+          <span
+            className={`px-1.5 py-0.5 text-xs font-medium rounded capitalize ${statusColors[status as keyof typeof statusColors] || statusColors.draft}`}
+          >
             {status}
           </span>
         );

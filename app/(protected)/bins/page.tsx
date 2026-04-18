@@ -30,20 +30,26 @@ export default function BinPage() {
   const [formErrors, setFormErrors] = useState<{ [key: string]: string }>({});
   const [refreshKey, setRefreshKey] = useState(0);
 
-  const [defaultTenantOptions, setDefaultTenantOptions] = useState<{ value: string; label: string }[]>([]);
+  const [defaultTenantOptions, setDefaultTenantOptions] = useState<
+    { value: string; label: string }[]
+  >([]);
   const [selectedTenant, setSelectedTenant] = useState<any>(null);
-  const [defaultWarehouseOptions, setDefaultWarehouseOptions] = useState<{ value: string; label: string }[]>([]);
+  const [defaultWarehouseOptions, setDefaultWarehouseOptions] = useState<
+    { value: string; label: string }[]
+  >([]);
   const [selectedWarehouse, setSelectedWarehouse] = useState<any>(null);
 
   // Load tenant options for super admin
-  const loadTenantOptions = async (inputValue: string): Promise<{ value: string; label: string }[]> => {
+  const loadTenantOptions = async (
+    inputValue: string
+  ): Promise<{ value: string; label: string }[]> => {
     try {
       if (!isSuperAdmin) return [];
 
       const tenants = await commonService.getTenantsForDropdown({ search: inputValue });
       const options = tenants.map(tenant => ({
         value: tenant.id,
-        label: tenant.business_name
+        label: tenant.business_name,
       }));
 
       // Store default options for initial load
@@ -59,11 +65,14 @@ export default function BinPage() {
   };
 
   // Load warehouse options
-  const loadWarehouseOptions = async (inputValue: string, tenantId?: string): Promise<{ value: string; label: string }[]> => {
+  const loadWarehouseOptions = async (
+    inputValue: string,
+    tenantId?: string
+  ): Promise<{ value: string; label: string }[]> => {
     try {
       // Use provided tenantId or fall back to formData.tenant_id
       const effectiveTenantId = tenantId !== undefined ? tenantId : formData.tenant_id;
-      
+
       // For super admin, don't load warehouses until tenant is selected
       if (isSuperAdmin && !effectiveTenantId) {
         return [];
@@ -72,11 +81,11 @@ export default function BinPage() {
       // Use the new warehouse-by-tenant endpoint for better filtering
       const warehouses = await commonService.getWarehousesByTenant({
         search: inputValue,
-        tenant_id: isSuperAdmin ? effectiveTenantId : undefined
+        tenant_id: isSuperAdmin ? effectiveTenantId : undefined,
       });
       const options = warehouses.map(warehouse => ({
         value: warehouse.id,
-        label: `${warehouse.code} - ${warehouse.name}`
+        label: `${warehouse.code} - ${warehouse.name}`,
       }));
 
       // Store default options for initial load
@@ -146,7 +155,10 @@ export default function BinPage() {
     }
     // Set selected warehouse
     if (bin.warehouse) {
-      setSelectedWarehouse({ value: bin.warehouse.id, label: `${bin.warehouse.code} - ${bin.warehouse.name}` });
+      setSelectedWarehouse({
+        value: bin.warehouse.id,
+        label: `${bin.warehouse.code} - ${bin.warehouse.name}`,
+      });
     }
     // Load warehouse options
     loadWarehouseOptions('');
@@ -180,7 +192,9 @@ export default function BinPage() {
         shelf: formData.shelf || undefined,
         bin_type: formData.bin_type || 'storage',
         capacity: formData.capacity ? parseFloat(formData.capacity) : undefined,
-        current_occupancy: formData.current_occupancy ? parseFloat(formData.current_occupancy) : undefined,
+        current_occupancy: formData.current_occupancy
+          ? parseFloat(formData.current_occupancy)
+          : undefined,
         is_active: formData.is_active,
       };
 
@@ -202,8 +216,10 @@ export default function BinPage() {
       setRefreshKey(prev => prev + 1);
     } catch (error: unknown) {
       console.error('Bin save error:', error);
-      const axiosError = error as { response?: { data?: { errors?: Record<string, string[] | string>; message?: string } } };
-      
+      const axiosError = error as {
+        response?: { data?: { errors?: Record<string, string[] | string>; message?: string } };
+      };
+
       if (axiosError.response?.data?.errors) {
         const transformedErrors: { [key: string]: string } = {};
         Object.entries(axiosError.response.data.errors).forEach(([key, messages]) => {
@@ -260,7 +276,9 @@ export default function BinPage() {
       header: 'SL',
       cell: ({ row, table }) => (
         <span className="text-gray-600 dark:text-gray-400">
-          {(table.getState().pagination.pageIndex * table.getState().pagination.pageSize) + row.index + 1}
+          {table.getState().pagination.pageIndex * table.getState().pagination.pageSize +
+            row.index +
+            1}
         </span>
       ),
     },
@@ -274,21 +292,27 @@ export default function BinPage() {
         </div>
       ),
     },
-    ...(isSuperAdmin ? [{
-      id: 'tenant',
-      header: 'Tenant',
-      cell: ({ row }: { row: any }) => (
-        <span className="px-2 py-1 text-xs rounded-full bg-purple-100 text-purple-800 dark:bg-purple-900/30 dark:text-purple-400">
-          {row.original.tenant?.business_name || '-'}
-        </span>
-      ),
-    }] : []),
+    ...(isSuperAdmin
+      ? [
+          {
+            id: 'tenant',
+            header: 'Tenant',
+            cell: ({ row }: { row: any }) => (
+              <span className="px-2 py-1 text-xs rounded-full bg-purple-100 text-purple-800 dark:bg-purple-900/30 dark:text-purple-400">
+                {row.original.tenant?.business_name || '-'}
+              </span>
+            ),
+          },
+        ]
+      : []),
     {
       id: 'warehouse',
       header: 'Warehouse',
       cell: ({ row }) => (
         <div className="text-sm">
-          <div className="font-medium text-gray-900 dark:text-gray-100">{row.original.warehouse?.name}</div>
+          <div className="font-medium text-gray-900 dark:text-gray-100">
+            {row.original.warehouse?.name}
+          </div>
           <div className="text-gray-500 dark:text-gray-400">{row.original.warehouse?.code}</div>
         </div>
       ),
@@ -331,10 +355,11 @@ export default function BinPage() {
       header: 'Status',
       cell: ({ row }) => (
         <span
-          className={`px-2 py-1 text-xs rounded-full ${row.original.is_active
-            ? 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400'
-            : 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400'
-            }`}
+          className={`px-2 py-1 text-xs rounded-full ${
+            row.original.is_active
+              ? 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400'
+              : 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400'
+          }`}
         >
           {row.original.is_active ? 'Active' : 'Inactive'}
         </span>
@@ -406,23 +431,23 @@ export default function BinPage() {
                   </label>
                   <CustomSelect
                     value={selectedTenant}
-                    onChange={(option) => {
+                    onChange={option => {
                       const newTenantId = option?.value || undefined;
-                      setFormData({ 
-                        ...formData, 
+                      setFormData({
+                        ...formData,
                         tenant_id: newTenantId,
-                        warehouse_id: '' // Clear warehouse when tenant changes
+                        warehouse_id: '', // Clear warehouse when tenant changes
                       });
                       setSelectedTenant(option);
                       setSelectedWarehouse(null); // Clear warehouse selection
                       setDefaultWarehouseOptions([]); // Clear warehouse options
-                      
+
                       // Clear tenant error when selection is made
                       if (option?.value && formErrors.tenant_id) {
                         const { tenant_id, ...rest } = formErrors;
                         setFormErrors(rest);
                       }
-                      
+
                       // Load warehouse options for the new tenant
                       // Pass the new tenant ID directly to avoid state timing issues
                       if (newTenantId) {
@@ -450,13 +475,15 @@ export default function BinPage() {
                 </label>
                 <CustomSelect
                   value={selectedWarehouse}
-                  onChange={(option) => {
+                  onChange={option => {
                     setFormData({ ...formData, warehouse_id: option?.value || '' });
                     setSelectedWarehouse(option);
                   }}
                   loadOptions={loadWarehouseOptions}
                   defaultOptions={defaultWarehouseOptions}
-                  placeholder={isSuperAdmin && !formData.tenant_id ? "Select tenant first" : "Select warehouse"}
+                  placeholder={
+                    isSuperAdmin && !formData.tenant_id ? 'Select tenant first' : 'Select warehouse'
+                  }
                   isDisabled={isSuperAdmin && !formData.tenant_id}
                   className="text-sm"
                   isInvalid={!!formErrors.warehouse_id}
@@ -475,12 +502,11 @@ export default function BinPage() {
                   placeholder="Main Storage Bin 01"
                   value={formData.name}
                   onChange={e => setFormData({ ...formData, name: e.target.value })}
-                  className={`w-full px-2 py-1.25 text-sm border rounded-sm focus:outline-none focus:ring-1 focus:ring-blue-500 dark:focus:ring-blue-400 focus:border-transparent dark:bg-gray-700 dark:text-gray-100 ${formErrors.name ? 'border-red-500' : 'border-gray-300 dark:border-gray-600'
-                    }`}
+                  className={`w-full px-2 py-1.25 text-sm border rounded-sm focus:outline-none focus:ring-1 focus:ring-blue-500 dark:focus:ring-blue-400 focus:border-transparent dark:bg-gray-700 dark:text-gray-100 ${
+                    formErrors.name ? 'border-red-500' : 'border-gray-300 dark:border-gray-600'
+                  }`}
                 />
-                {formErrors.name && (
-                  <p className="text-red-600 text-xs mt-1">{formErrors.name}</p>
-                )}
+                {formErrors.name && <p className="text-red-600 text-xs mt-1">{formErrors.name}</p>}
               </div>
 
               <div>
@@ -490,8 +516,9 @@ export default function BinPage() {
                 <select
                   value={formData.bin_type}
                   onChange={e => setFormData({ ...formData, bin_type: e.target.value })}
-                  className={`w-full px-2 py-1.25 text-sm border rounded-sm focus:outline-none focus:ring-1 focus:ring-blue-500 dark:focus:ring-blue-400 focus:border-transparent dark:bg-gray-700 dark:text-gray-100 ${formErrors.bin_type ? 'border-red-500' : 'border-gray-300 dark:border-gray-600'
-                    }`}
+                  className={`w-full px-2 py-1.25 text-sm border rounded-sm focus:outline-none focus:ring-1 focus:ring-blue-500 dark:focus:ring-blue-400 focus:border-transparent dark:bg-gray-700 dark:text-gray-100 ${
+                    formErrors.bin_type ? 'border-red-500' : 'border-gray-300 dark:border-gray-600'
+                  }`}
                 >
                   <option value="storage">Storage</option>
                   <option value="picking">Picking</option>
@@ -508,7 +535,9 @@ export default function BinPage() {
             {/* Location Information */}
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-1.5">
               <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-0.5">Aisle</label>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-0.5">
+                  Aisle
+                </label>
                 <input
                   type="text"
                   placeholder="A"
@@ -519,7 +548,9 @@ export default function BinPage() {
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-0.5">Rack</label>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-0.5">
+                  Rack
+                </label>
                 <input
                   type="text"
                   placeholder="1"
@@ -530,7 +561,9 @@ export default function BinPage() {
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-0.5">Shelf</label>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-0.5">
+                  Shelf
+                </label>
                 <input
                   type="text"
                   placeholder="1"
@@ -544,15 +577,18 @@ export default function BinPage() {
             {/* Capacity Information */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-1.5">
               <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-0.5">Capacity</label>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-0.5">
+                  Capacity
+                </label>
                 <input
                   type="number"
                   step="0.01"
                   placeholder="500.00"
                   value={formData.capacity}
                   onChange={e => setFormData({ ...formData, capacity: e.target.value })}
-                  className={`w-full px-2 py-1.25 text-sm border rounded-sm focus:outline-none focus:ring-1 focus:ring-blue-500 dark:focus:ring-blue-400 focus:border-transparent dark:bg-gray-700 dark:text-gray-100 ${formErrors.capacity ? 'border-red-500' : 'border-gray-300 dark:border-gray-600'
-                    }`}
+                  className={`w-full px-2 py-1.25 text-sm border rounded-sm focus:outline-none focus:ring-1 focus:ring-blue-500 dark:focus:ring-blue-400 focus:border-transparent dark:bg-gray-700 dark:text-gray-100 ${
+                    formErrors.capacity ? 'border-red-500' : 'border-gray-300 dark:border-gray-600'
+                  }`}
                 />
                 {formErrors.capacity && (
                   <p className="text-red-600 text-xs mt-1">{formErrors.capacity}</p>
@@ -560,15 +596,20 @@ export default function BinPage() {
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-0.5">Current Occupancy</label>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-0.5">
+                  Current Occupancy
+                </label>
                 <input
                   type="number"
                   step="0.01"
                   placeholder="0.00"
                   value={formData.current_occupancy}
                   onChange={e => setFormData({ ...formData, current_occupancy: e.target.value })}
-                  className={`w-full px-2 py-1.25 text-sm border rounded-sm focus:outline-none focus:ring-1 focus:ring-blue-500 dark:focus:ring-blue-400 focus:border-transparent dark:bg-gray-700 dark:text-gray-100 ${formErrors.current_occupancy ? 'border-red-500' : 'border-gray-300 dark:border-gray-600'
-                    }`}
+                  className={`w-full px-2 py-1.25 text-sm border rounded-sm focus:outline-none focus:ring-1 focus:ring-blue-500 dark:focus:ring-blue-400 focus:border-transparent dark:bg-gray-700 dark:text-gray-100 ${
+                    formErrors.current_occupancy
+                      ? 'border-red-500'
+                      : 'border-gray-300 dark:border-gray-600'
+                  }`}
                 />
                 {formErrors.current_occupancy && (
                   <p className="text-red-600 text-xs mt-1">{formErrors.current_occupancy}</p>

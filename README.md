@@ -129,6 +129,7 @@ Open [http://localhost:3000](http://localhost:3000) (or use `npm run dev -- -p 9
 ### Demo Credentials
 
 Contact your backend administrator for credentials. Example:
+
 - **Email**: admin@example.com
 - **Password**: admin123
 
@@ -189,12 +190,14 @@ All API calls use a centralized Axios instance with:
 ### API Endpoints
 
 #### Authentication
+
 - `POST /sanctum/csrf-cookie` - Initialize CSRF protection
 - `POST /api/v1/login` - User login
 - `POST /api/v1/logout` - User logout
 - `GET /api/v1/user/profile` - Get authenticated user
 
 #### Resources
+
 - `GET /api/v1/users` - List users (paginated)
 - `GET /api/v1/brands` - List brands (paginated)
 - `GET /api/v1/tenants` - List tenants (super admin only)
@@ -229,22 +232,28 @@ interface AuthState {
 Located in `app/(auth)/actions.ts`:
 
 ### `clearAuthCookies()`
+
 Deletes HTTP-only cookies that client-side JavaScript cannot access:
+
 - `laravel_session`
 - `inventory_session`
 - `XSRF-TOKEN`
 - `remember_web`
 
 ### `hasSessionCookies()`
+
 Checks if valid session cookies exist.
 
 ### `getAllCookies()`
+
 Debug utility to list all cookies.
 
 ## Components
 
 ### DataTable
+
 Reusable table component with:
+
 - Server-side pagination
 - Sorting
 - Column configuration
@@ -252,14 +261,18 @@ Reusable table component with:
 - Loading states
 
 ### Sidebar
+
 Dynamic navigation with:
+
 - Role-based menu filtering
 - Active route highlighting
 - Mobile responsive drawer
 - User switching indicator
 
 ### Header
+
 Top bar with:
+
 - Search functionality
 - User menu dropdown
 - Logout button
@@ -269,11 +282,13 @@ Top bar with:
 ## Role-Based Access Control
 
 ### User Types
+
 - `super_admin` - Full system access including tenant management
 - `admin` - Organization management
 - `user` - Limited access
 
 ### Implementation
+
 ```typescript
 // Sidebar filters menu items
 if (item.name === 'Tenant Management' && user?.user_type !== 'super_admin') {
@@ -297,6 +312,7 @@ if (item.name === 'Tenant Management' && user?.user_type !== 'super_admin') {
 ## Production Considerations
 
 ✅ **Current Implementation:**
+
 - Laravel Sanctum authentication
 - HTTP-only cookies
 - CSRF protection
@@ -305,6 +321,7 @@ if (item.name === 'Tenant Management' && user?.user_type !== 'super_admin') {
 - Cookie cleanup on logout
 
 🔄 **Future Enhancements:**
+
 - Database integration documentation
 - Email verification flow
 - Password reset functionality
@@ -331,18 +348,22 @@ This project follows Next.js App Router best practices:
 ## Development Tips
 
 ### Running on Custom Port
+
 ```bash
 npm run dev -- -p 9000
 ```
 
 ### Clearing Auth State
+
 If stuck in auth loop:
+
 1. Open DevTools → Application → Storage
 2. Delete `auth-storage` from localStorage
 3. Clear all cookies
 4. Refresh page
 
 ### Debugging Auth Issues
+
 1. Check Network tab for API calls
 2. Verify cookies are set (Application → Cookies)
 3. Check Zustand DevTools for state

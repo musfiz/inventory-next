@@ -13,7 +13,11 @@ export default function StockListPage() {
       id: 'serial',
       header: 'SL',
       cell: ({ row, table }) => (
-        <span className="text-gray-600">{(table.getState().pagination.pageIndex * table.getState().pagination.pageSize) + row.index + 1}</span>
+        <span className="text-gray-600">
+          {table.getState().pagination.pageIndex * table.getState().pagination.pageSize +
+            row.index +
+            1}
+        </span>
       ),
     },
     {
@@ -24,7 +28,11 @@ export default function StockListPage() {
     {
       id: 'variation',
       header: 'Variation',
-      cell: ({ row }) => <div className="text-sm text-gray-600">{row.original.variation?.sku || row.original.variation?.name || '-'}</div>,
+      cell: ({ row }) => (
+        <div className="text-sm text-gray-600">
+          {row.original.variation?.sku || row.original.variation?.name || '-'}
+        </div>
+      ),
     },
     {
       id: 'warehouse',
@@ -44,7 +52,9 @@ export default function StockListPage() {
     {
       id: 'available',
       header: 'Available',
-      cell: ({ row }) => <div>{(row.original.quantity ?? 0) - (row.original.reserved_quantity ?? 0)}</div>,
+      cell: ({ row }) => (
+        <div>{(row.original.quantity ?? 0) - (row.original.reserved_quantity ?? 0)}</div>
+      ),
     },
   ];
 
@@ -55,7 +65,10 @@ export default function StockListPage() {
   return (
     <div className="space-y-2">
       <div className="flex items-center justify-between">
-        <h1 className="text-xl font-bold flex items-center gap-2"> <Package2 className="w-5 h-5 text-blue-600" /> Stocks</h1>
+        <h1 className="text-xl font-bold flex items-center gap-2">
+          {' '}
+          <Package2 className="w-5 h-5 text-blue-600" /> Stocks
+        </h1>
       </div>
 
       <DataTable

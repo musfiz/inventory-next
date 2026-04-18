@@ -16,10 +16,7 @@ class UnitService {
     short_name: string;
     is_active: boolean;
   }): Promise<Unit> {
-    const response = await apiClient.post<ApiResponse<Unit>>(
-      '/api/v1/unit/store',
-      data
-    );
+    const response = await apiClient.post<ApiResponse<Unit>>('/api/v1/unit/store', data);
 
     return response.data.data;
   }

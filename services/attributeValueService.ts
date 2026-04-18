@@ -39,7 +39,9 @@ class AttributeValueService {
    * GET /api/v1/attribute-value/{id}
    */
   async getAttributeValue(id: string): Promise<AttributeValue> {
-    const response = await apiClient.get<ApiResponse<AttributeValue>>(`/api/v1/attribute-value/${id}`);
+    const response = await apiClient.get<ApiResponse<AttributeValue>>(
+      `/api/v1/attribute-value/${id}`
+    );
     return response.data.data;
   }
 

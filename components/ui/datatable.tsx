@@ -26,7 +26,9 @@ import {
 export interface ServerDataTableProps<T = any> {
   columns: ColumnDef<T>[];
   apiEndpoint?: string;
-  fetchData?: (params: any) => Promise<{ data: T[]; total: number; page: number; per_page: number }>;
+  fetchData?: (
+    params: any
+  ) => Promise<{ data: T[]; total: number; page: number; per_page: number }>;
   pageSize?: number;
   enableSearch?: boolean;
   searchPlaceholder?: string;
@@ -93,7 +95,9 @@ export default function DataTable<T extends Record<string, any>>({
           }
         });
         const fullEndpoint = `${baseApiPath}${apiEndpoint.startsWith('/') ? '' : '/'}${apiEndpoint}`;
-        const response = await apiClient.get(`${fullEndpoint}${fullEndpoint.includes('?') ? '&' : '?'}${queryParams.toString()}`);
+        const response = await apiClient.get(
+          `${fullEndpoint}${fullEndpoint.includes('?') ? '&' : '?'}${queryParams.toString()}`
+        );
         result = response.data;
       } else {
         throw new Error('Either apiEndpoint or fetchData must be provided');
@@ -137,7 +141,7 @@ export default function DataTable<T extends Record<string, any>>({
 
     // If search or endpoint changed, reset to page 1
     if ((searchChanged || endpointChanged) && pagination.page !== 1) {
-      setPagination((prev) => ({ ...prev, page: 1 }));
+      setPagination(prev => ({ ...prev, page: 1 }));
       return; // Don't fetch yet, let the page change trigger the fetch
     }
 
@@ -165,7 +169,7 @@ export default function DataTable<T extends Record<string, any>>({
   });
 
   const goToPage = (page: number) => {
-    setPagination((prev) => ({
+    setPagination(prev => ({
       ...prev,
       page: Math.max(1, Math.min(page, prev.totalPages)),
     }));
@@ -181,7 +185,7 @@ export default function DataTable<T extends Record<string, any>>({
             <input
               type="text"
               value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
+              onChange={e => setSearchQuery(e.target.value)}
               placeholder={searchPlaceholder}
               className="w-full pl-8 pr-8 py-1 text-sm border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 placeholder-gray-400 dark:placeholder-gray-500 focus:outline-none focus:ring-1 focus:ring-indigo-500 dark:focus:ring-indigo-400 focus:border-transparent"
             />
@@ -202,15 +206,15 @@ export default function DataTable<T extends Record<string, any>>({
         <div className="overflow-x-auto overflow-y-auto max-h-[calc(100vh-200px)]">
           <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
             <thead className="bg-gray-50 dark:bg-gray-900/50 sticky top-0 z-10">
-              {table.getHeaderGroups().map((headerGroup) => (
+              {table.getHeaderGroups().map(headerGroup => (
                 <tr key={headerGroup.id}>
-                  {headerGroup.headers.map((header) => (
+                  {headerGroup.headers.map(header => (
                     <th
                       key={header.id}
                       className="px-3 py-2 text-left text-xs font-bold text-gray-700 dark:text-gray-300 uppercase tracking-wide"
                       style={{
                         width: (header.column.columnDef as any).meta?.width || 'auto',
-                        minWidth: (header.column.columnDef as any).meta?.width || 'auto'
+                        minWidth: (header.column.columnDef as any).meta?.width || 'auto',
                       }}
                     >
                       {header.isPlaceholder ? null : (
@@ -222,18 +226,15 @@ export default function DataTable<T extends Record<string, any>>({
                           }
                           onClick={header.column.getToggleSortingHandler()}
                         >
-                          {flexRender(
-                            header.column.columnDef.header,
-                            header.getContext()
-                          )}
+                          {flexRender(header.column.columnDef.header, header.getContext())}
                           {header.column.getCanSort() && (
                             <span className="text-gray-400 dark:text-gray-500 group-hover:text-gray-600 dark:group-hover:text-gray-300">
                               {{
                                 asc: <ArrowUp className="h-3 w-3" />,
                                 desc: <ArrowDown className="h-3 w-3" />,
                               }[header.column.getIsSorted() as string] ?? (
-                                  <ArrowUpDown className="h-3 w-3" />
-                                )}
+                                <ArrowUpDown className="h-3 w-3" />
+                              )}
                             </span>
                           )}
                         </div>
@@ -246,10 +247,7 @@ export default function DataTable<T extends Record<string, any>>({
             <tbody className="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
               {loading ? (
                 <tr>
-                  <td
-                    colSpan={columns.length}
-                    className="px-3 py-8 text-center"
-                  >
+                  <td colSpan={columns.length} className="px-3 py-8 text-center">
                     <div className="flex items-center justify-center gap-2 text-gray-500 dark:text-gray-400 text-sm">
                       <Loader2 className="h-4 w-4 animate-spin" />
                       <span>Loading...</span>
@@ -257,24 +255,21 @@ export default function DataTable<T extends Record<string, any>>({
                   </td>
                 </tr>
               ) : table.getRowModel().rows.length > 0 ? (
-                table.getRowModel().rows.map((row) => (
+                table.getRowModel().rows.map(row => (
                   <tr
                     key={row.id}
                     className="hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors"
                   >
-                    {row.getVisibleCells().map((cell) => (
+                    {row.getVisibleCells().map(cell => (
                       <td
                         key={cell.id}
                         className="px-3 py-2 text-left align-middle whitespace-nowrap text-xs text-gray-900 dark:text-gray-100"
                         style={{
                           width: (cell.column.columnDef as any).meta?.width || 'auto',
-                          minWidth: (cell.column.columnDef as any).meta?.width || 'auto'
+                          minWidth: (cell.column.columnDef as any).meta?.width || 'auto',
                         }}
                       >
-                        {flexRender(
-                          cell.column.columnDef.cell,
-                          cell.getContext()
-                        )}
+                        {flexRender(cell.column.columnDef.cell, cell.getContext())}
                       </td>
                     ))}
                   </tr>
@@ -304,13 +299,9 @@ export default function DataTable<T extends Record<string, any>>({
                 </span>{' '}
                 to{' '}
                 <span className="font-medium">
-                  {Math.min(
-                    pagination.page * pagination.pageSize,
-                    pagination.total
-                  )}
+                  {Math.min(pagination.page * pagination.pageSize, pagination.total)}
                 </span>{' '}
-                of <span className="font-medium">{pagination.total}</span>{' '}
-                results
+                of <span className="font-medium">{pagination.total}</span> results
               </div>
 
               <div className="flex items-center gap-1">
@@ -330,32 +321,27 @@ export default function DataTable<T extends Record<string, any>>({
                 </button>
 
                 <div className="flex items-center gap-0.5">
-                  {Array.from(
-                    { length: pagination.totalPages },
-                    (_, i) => i + 1
-                  )
-                    .filter((page) => {
+                  {Array.from({ length: pagination.totalPages }, (_, i) => i + 1)
+                    .filter(page => {
                       return (
                         page === 1 ||
                         page === pagination.totalPages ||
-                        (page >= pagination.page - 1 &&
-                          page <= pagination.page + 1)
+                        (page >= pagination.page - 1 && page <= pagination.page + 1)
                       );
                     })
                     .map((page, index, array) => (
                       <div key={page} className="flex items-center">
                         {index > 0 && array[index - 1] !== page - 1 && (
-                          <span className="px-1 text-xs text-gray-500 dark:text-gray-400">
-                            ...
-                          </span>
+                          <span className="px-1 text-xs text-gray-500 dark:text-gray-400">...</span>
                         )}
                         <button
                           onClick={() => goToPage(page)}
                           disabled={loading}
-                          className={`min-w-6 px-2 py-0.5 rounded text-xs font-medium transition-colors cursor-pointer ${pagination.page === page
-                            ? 'bg-indigo-600 text-white'
-                            : 'text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700'
-                            }`}
+                          className={`min-w-6 px-2 py-0.5 rounded text-xs font-medium transition-colors cursor-pointer ${
+                            pagination.page === page
+                              ? 'bg-indigo-600 text-white'
+                              : 'text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700'
+                          }`}
                         >
                           {page}
                         </button>
@@ -365,18 +351,14 @@ export default function DataTable<T extends Record<string, any>>({
 
                 <button
                   onClick={() => goToPage(pagination.page + 1)}
-                  disabled={
-                    pagination.page === pagination.totalPages || loading
-                  }
+                  disabled={pagination.page === pagination.totalPages || loading}
                   className="p-1 rounded text-gray-600 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors cursor-pointer"
                 >
                   <ChevronRight className="h-3.5 w-3.5" />
                 </button>
                 <button
                   onClick={() => goToPage(pagination.totalPages)}
-                  disabled={
-                    pagination.page === pagination.totalPages || loading
-                  }
+                  disabled={pagination.page === pagination.totalPages || loading}
                   className="p-1 rounded text-gray-600 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors cursor-pointer"
                 >
                   <ChevronsRight className="h-3.5 w-3.5" />

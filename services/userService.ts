@@ -36,10 +36,9 @@ class UserService {
    * GET /api/v1/users
    */
   async getUsers(params?: UserListParams): Promise<UserListResponse> {
-    const response = await apiClient.get<ApiResponse<UserListResponse>>(
-      '/api/v1/users',
-      { params }
-    );
+    const response = await apiClient.get<ApiResponse<UserListResponse>>('/api/v1/users', {
+      params,
+    });
     return response.data.data;
   }
 
@@ -48,9 +47,7 @@ class UserService {
    * GET /api/v1/users/:id
    */
   async getUserById(userId: string): Promise<User> {
-    const response = await apiClient.get<ApiResponse<{ user: User }>>(
-      `/api/v1/users/${userId}`
-    );
+    const response = await apiClient.get<ApiResponse<{ user: User }>>(`/api/v1/users/${userId}`);
     return response.data.data.user;
   }
 
@@ -59,10 +56,7 @@ class UserService {
    * POST /api/v1/users
    */
   async createUser(data: CreateUserRequest): Promise<User> {
-    const response = await apiClient.post<ApiResponse<{ user: User }>>(
-      '/api/v1/users',
-      data
-    );
+    const response = await apiClient.post<ApiResponse<{ user: User }>>('/api/v1/users', data);
     return response.data.data.user;
   }
 
@@ -147,10 +141,7 @@ class UserService {
    * Bulk update users
    * POST /api/v1/users/bulk-update
    */
-  async bulkUpdateUsers(
-    userIds: string[],
-    updates: Partial<UpdateUserRequest>
-  ): Promise<void> {
+  async bulkUpdateUsers(userIds: string[], updates: Partial<UpdateUserRequest>): Promise<void> {
     await apiClient.post('/api/v1/users/bulk-update', {
       user_ids: userIds,
       updates,
@@ -178,11 +169,13 @@ class UserService {
     switched_from: { id: string; name: string; email: string };
     is_switched_user: boolean;
   }> {
-    const response = await apiClient.post<ApiResponse<{
-      user: User;
-      switched_from: { id: string; name: string; email: string };
-      is_switched_user: boolean;
-    }>>(`/api/v1/switch-user/${userId}`);
+    const response = await apiClient.post<
+      ApiResponse<{
+        user: User;
+        switched_from: { id: string; name: string; email: string };
+        is_switched_user: boolean;
+      }>
+    >(`/api/v1/switch-user/${userId}`);
     return response.data.data;
   }
 
@@ -195,11 +188,13 @@ class UserService {
     switched_back_from: { id: string; name: string; email: string };
     is_switched_back: boolean;
   }> {
-    const response = await apiClient.post<ApiResponse<{
-      user: User;
-      switched_back_from: { id: string; name: string; email: string };
-      is_switched_back: boolean;
-    }>>('/api/v1/switch-back');
+    const response = await apiClient.post<
+      ApiResponse<{
+        user: User;
+        switched_back_from: { id: string; name: string; email: string };
+        is_switched_back: boolean;
+      }>
+    >('/api/v1/switch-back');
     return response.data.data;
   }
 }

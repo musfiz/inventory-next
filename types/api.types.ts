@@ -169,7 +169,25 @@ export interface Category {
   name: string;
   description?: string;
   parent_id?: string;
-  business_type?: 'pharmacy' | 'electric' | 'electronics' | 'fashion' | 'furniture' | 'bookshop' | 'departmental' | 'computer' | 'clothing' | 'footwear' | 'cosmetics' | 'stationery' | 'grocery' | 'hardware' | 'restaurant' | 'cafe' | 'supermarket' | 'other';
+  business_type?:
+    | 'pharmacy'
+    | 'electric'
+    | 'electronics'
+    | 'fashion'
+    | 'furniture'
+    | 'bookshop'
+    | 'departmental'
+    | 'computer'
+    | 'clothing'
+    | 'footwear'
+    | 'cosmetics'
+    | 'stationery'
+    | 'grocery'
+    | 'hardware'
+    | 'restaurant'
+    | 'cafe'
+    | 'supermarket'
+    | 'other';
   parent?: Category;
   children?: Category[];
   is_active: boolean;
@@ -224,7 +242,25 @@ export interface CreateCategoryRequest {
   name: string;
   description?: string;
   parent_id?: string;
-  business_type?: 'pharmacy' | 'electric' | 'electronics' | 'fashion' | 'furniture' | 'bookshop' | 'departmental' | 'computer' | 'clothing' | 'footwear' | 'cosmetics' | 'stationery' | 'grocery' | 'hardware' | 'restaurant' | 'cafe' | 'supermarket' | 'other';
+  business_type?:
+    | 'pharmacy'
+    | 'electric'
+    | 'electronics'
+    | 'fashion'
+    | 'furniture'
+    | 'bookshop'
+    | 'departmental'
+    | 'computer'
+    | 'clothing'
+    | 'footwear'
+    | 'cosmetics'
+    | 'stationery'
+    | 'grocery'
+    | 'hardware'
+    | 'restaurant'
+    | 'cafe'
+    | 'supermarket'
+    | 'other';
   image_url?: string;
   sort_order?: number;
   is_active?: boolean;
@@ -265,7 +301,25 @@ export interface ProductImageListResponse {
 export interface Brand {
   id: string;
   name: string;
-  business_type?: 'pharmacy' | 'electric' | 'electronics' | 'fashion' | 'furniture' | 'bookshop' | 'departmental' | 'computer' | 'clothing' | 'footwear' | 'cosmetics' | 'stationery' | 'grocery' | 'hardware' | 'restaurant' | 'cafe' | 'supermarket' | 'other';
+  business_type?:
+    | 'pharmacy'
+    | 'electric'
+    | 'electronics'
+    | 'fashion'
+    | 'furniture'
+    | 'bookshop'
+    | 'departmental'
+    | 'computer'
+    | 'clothing'
+    | 'footwear'
+    | 'cosmetics'
+    | 'stationery'
+    | 'grocery'
+    | 'hardware'
+    | 'restaurant'
+    | 'cafe'
+    | 'supermarket'
+    | 'other';
   description?: string;
   logo_url?: string;
   is_active: boolean;

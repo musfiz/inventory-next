@@ -1,5 +1,5 @@
-@import "tailwindcss";
-@import "sweetalert2/dist/sweetalert2.min.css";
+@import 'tailwindcss';
+@import 'sweetalert2/dist/sweetalert2.min.css';
 
 @variant dark (&:where(.dark, .dark *));
 
@@ -7,6 +7,12 @@
   --font-sans: var(--font-noto-sans);
 }
 
+@layer base {
+  button:not(:disabled),
+  [role='button']:not(:disabled) {
+    @apply cursor-pointer;
+  }
+}
 /* Custom animations */
 @keyframes blob {
   0% {
@@ -110,6 +116,30 @@
 
 .swal2-toast-custom .swal2-timer-progress-bar {
   @apply bg-indigo-600;
+}
+
+/* Custom animation for popup appearance */
+@keyframes swal2-popup-show {
+  0% {
+    opacity: 0;
+    transform: scale(0.9) translateY(-10px);
+  }
+
+  100% {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
+}
+
+/* Loading bar animation */
+@keyframes loading {
+  0% {
+    transform: translateX(-100%);
+  }
+
+  100% {
+    transform: translateX(400%);
+  }
 }
 
 /* Custom animation for popup appearance */

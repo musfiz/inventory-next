@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react';
 import { Eye, Edit, Trash2, Plus, Key, ListChecks, X } from 'lucide-react';
 import { ColumnDef } from '@tanstack/react-table';
 import DataTable from '@/components/ui/datatable';
-import { Permission, Module } from "@/types/permission.types";
+import { Permission, Module } from '@/types/permission.types';
 import { confirm, notify } from '@/lib/notifications';
 import permissionService from '@/services/permissionService';
 
@@ -34,7 +34,7 @@ export default function PermissionsPage() {
     setCurrentPermission(null);
     setFormData({
       name: '',
-      module_id: ''
+      module_id: '',
     });
     setFormErrors({});
     setShowForm(true);
@@ -45,7 +45,7 @@ export default function PermissionsPage() {
     setCurrentPermission(permission);
     setFormData({
       name: permission.name,
-      module_id: permission.module_id || ''
+      module_id: permission.module_id || '',
     });
     setFormErrors({});
     setShowForm(true);
@@ -79,11 +79,14 @@ export default function PermissionsPage() {
       setShowForm(false);
       setRefreshKey(prev => prev + 1);
     } catch (error: unknown) {
-      const errorData = (error as { response?: { data?: { errors?: Record<string, string>; message?: string } } })?.response?.data;
+      const errorData = (
+        error as { response?: { data?: { errors?: Record<string, string>; message?: string } } }
+      )?.response?.data;
       if (errorData?.errors) {
         setFormErrors(errorData.errors);
       } else {
-        const errorMessage = errorData?.message || (error as Error)?.message || 'Failed to save permission';
+        const errorMessage =
+          errorData?.message || (error as Error)?.message || 'Failed to save permission';
         notify.error(errorMessage);
       }
     }
@@ -95,7 +98,7 @@ export default function PermissionsPage() {
   const [currentPermission, setCurrentPermission] = useState<Permission | null>(null);
   const [formData, setFormData] = useState({
     name: '',
-    module_id: ''
+    module_id: '',
   });
   const [formErrors, setFormErrors] = useState<{ [key: string]: string }>({});
   const [refreshKey, setRefreshKey] = useState(0);
@@ -224,13 +227,12 @@ export default function PermissionsPage() {
                 placeholder="e.g., create-users, view-reports"
                 value={formData.name}
                 onChange={e => setFormData({ ...formData, name: e.target.value })}
-                className={`w-full px-3 py-1 text-sm border rounded-md focus:outline-none focus:ring-1 focus:ring-indigo-500 dark:focus:ring-indigo-400 focus:border-transparent dark:bg-gray-700 dark:text-gray-100 ${formErrors.name ? 'border-red-500' : 'border-gray-300 dark:border-gray-600'
-                  }`}
+                className={`w-full px-3 py-1 text-sm border rounded-md focus:outline-none focus:ring-1 focus:ring-indigo-500 dark:focus:ring-indigo-400 focus:border-transparent dark:bg-gray-700 dark:text-gray-100 ${
+                  formErrors.name ? 'border-red-500' : 'border-gray-300 dark:border-gray-600'
+                }`}
                 required
               />
-              {formErrors.name && (
-                <p className="text-red-600 text-xs mt-1">{formErrors.name}</p>
-              )}
+              {formErrors.name && <p className="text-red-600 text-xs mt-1">{formErrors.name}</p>}
             </div>
 
             <div>
@@ -240,12 +242,13 @@ export default function PermissionsPage() {
               <select
                 value={formData.module_id}
                 onChange={e => setFormData({ ...formData, module_id: e.target.value })}
-                className={`w-full px-3 py-1 text-sm border rounded-md focus:outline-none focus:ring-1 focus:ring-indigo-500 dark:focus:ring-indigo-400 focus:border-transparent dark:bg-gray-700 dark:text-gray-100 ${formErrors.module_id ? 'border-red-500' : 'border-gray-300 dark:border-gray-600'
-                  }`}
+                className={`w-full px-3 py-1 text-sm border rounded-md focus:outline-none focus:ring-1 focus:ring-indigo-500 dark:focus:ring-indigo-400 focus:border-transparent dark:bg-gray-700 dark:text-gray-100 ${
+                  formErrors.module_id ? 'border-red-500' : 'border-gray-300 dark:border-gray-600'
+                }`}
                 disabled={loadingModules}
               >
                 <option value="">Select Module (Optional)</option>
-                {modules.map((module) => (
+                {modules.map(module => (
                   <option key={module.id} value={module.id}>
                     {module.name}
                   </option>

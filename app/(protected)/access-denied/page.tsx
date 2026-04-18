@@ -15,9 +15,7 @@ export default function AccessDeniedPage() {
         </div>
 
         {/* Title */}
-        <h1 className="text-3xl font-bold text-gray-900 dark:text-gray-100 mb-3">
-          Access Denied
-        </h1>
+        <h1 className="text-3xl font-bold text-gray-900 dark:text-gray-100 mb-3">Access Denied</h1>
 
         {/* Message */}
         <p className="text-gray-600 dark:text-gray-400 mb-2">
@@ -38,9 +36,7 @@ export default function AccessDeniedPage() {
 
         {/* Additional Info */}
         <div className="mt-8 pt-8 border-t border-gray-200 dark:border-gray-700">
-          <p className="text-xs text-gray-500 dark:text-gray-500">
-            Error Code: 403 - Forbidden
-          </p>
+          <p className="text-xs text-gray-500 dark:text-gray-500">Error Code: 403 - Forbidden</p>
         </div>
       </div>
     </div>

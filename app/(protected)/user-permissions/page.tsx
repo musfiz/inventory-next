@@ -4,7 +4,10 @@ import { useState, useEffect, useMemo } from 'react';
 import { Shield, Search, Save, UserCheck, Check, X } from 'lucide-react';
 import CustomSelect from '@/components/ui/custom-select';
 import { notify } from '@/lib/notifications';
-import userPermissionService, { UserPermissionModule, UserSelection } from '@/services/userPermissionService';
+import userPermissionService, {
+  UserPermissionModule,
+  UserSelection,
+} from '@/services/userPermissionService';
 import { usePermissions } from '@/hooks/use-permissions';
 
 export default function UserPermissionsPage() {
@@ -72,9 +75,10 @@ export default function UserPermissionsPage() {
     // Filter by search query
     if (searchQuery.trim()) {
       const query = searchQuery.toLowerCase();
-      filtered = filtered.filter(m =>
-        m.module.toLowerCase().includes(query) ||
-        m.permissions.some(p => p.name.toLowerCase().includes(query))
+      filtered = filtered.filter(
+        m =>
+          m.module.toLowerCase().includes(query) ||
+          m.permissions.some(p => p.name.toLowerCase().includes(query))
       );
     }
 
@@ -148,7 +152,10 @@ export default function UserPermissionsPage() {
 
     setSaving(true);
     try {
-      await userPermissionService.assignPermissions(selectedUserId, Array.from(selectedPermissions));
+      await userPermissionService.assignPermissions(
+        selectedUserId,
+        Array.from(selectedPermissions)
+      );
       notify.success('Permissions assigned successfully');
     } catch (error) {
       notify.error('Failed to assign permissions');
@@ -187,21 +194,23 @@ export default function UserPermissionsPage() {
               Select User *
             </label>
             <CustomSelect
-              value={filteredUsers.find(user => user.id === selectedUserId) ? {
-                value: filteredUsers.find(user => user.id === selectedUserId)!.id,
-                label: `${filteredUsers.find(user => user.id === selectedUserId)!.name} (${filteredUsers.find(user => user.id === selectedUserId)!.user_type})`
-              } : null}
-              onChange={(option) => handleUserChange(option?.value || '')}
+              value={
+                filteredUsers.find(user => user.id === selectedUserId)
+                  ? {
+                      value: filteredUsers.find(user => user.id === selectedUserId)!.id,
+                      label: `${filteredUsers.find(user => user.id === selectedUserId)!.name} (${filteredUsers.find(user => user.id === selectedUserId)!.user_type})`,
+                    }
+                  : null
+              }
+              onChange={option => handleUserChange(option?.value || '')}
               options={filteredUsers.map(user => ({
                 value: user.id,
-                label: `${user.name} (${user.user_type})`
+                label: `${user.name} (${user.user_type})`,
               }))}
               placeholder="Select a user"
               isInvalid={!!formErrors.user}
             />
-            {formErrors.user && (
-              <p className="text-red-600 text-xs mt-1">{formErrors.user}</p>
-            )}
+            {formErrors.user && <p className="text-red-600 text-xs mt-1">{formErrors.user}</p>}
           </div>
 
           {/* Module Filter - spans 2 columns */}
@@ -211,7 +220,7 @@ export default function UserPermissionsPage() {
             </label>
             <select
               value={selectedModule}
-              onChange={(e) => setSelectedModule(e.target.value)}
+              onChange={e => setSelectedModule(e.target.value)}
               className="w-full px-3 py-1.5 text-sm border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:focus:ring-indigo-400 dark:bg-gray-700 dark:text-gray-100 h-8"
             >
               <option value="all">All Modules</option>
@@ -234,7 +243,7 @@ export default function UserPermissionsPage() {
                 type="text"
                 placeholder="Search by module or permission..."
                 value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
+                onChange={e => setSearchQuery(e.target.value)}
                 className="w-full pl-10 pr-3 py-1.5 text-sm border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:focus:ring-indigo-400 dark:bg-gray-700 dark:text-gray-100 h-8"
               />
             </div>
@@ -299,7 +308,7 @@ export default function UserPermissionsPage() {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
-                  {filteredModules.map((module) => (
+                  {filteredModules.map(module => (
                     <tr key={module.module} className="hover:bg-gray-50 dark:hover:bg-gray-700/50">
                       <td className="px-4 py-3">
                         <div className="flex items-center">
@@ -330,10 +339,10 @@ export default function UserPermissionsPage() {
                         <input
                           type="checkbox"
                           checked={isModuleFullyChecked(module)}
-                          ref={(el) => {
+                          ref={el => {
                             if (el) el.indeterminate = isModulePartiallyChecked(module);
                           }}
-                          onChange={(e) => toggleAllModulePermissions(module, e.target.checked)}
+                          onChange={e => toggleAllModulePermissions(module, e.target.checked)}
                           className="w-4 h-4 text-indigo-600 bg-gray-100 border-gray-300 rounded focus:ring-indigo-500 dark:focus:ring-indigo-600 dark:ring-offset-gray-800 focus:ring-2 dark:bg-gray-700 dark:border-gray-600 cursor-pointer"
                         />
                       </td>

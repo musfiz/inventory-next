@@ -33,12 +33,9 @@ class TenantService {
    * GET /api/v1/tenants
    */
   async getTenants(page: number = 1, perPage: number = 10): Promise<TenantListResponse> {
-    const response = await apiClient.get<ApiResponse<TenantListResponse>>(
-      '/api/v1/tenants',
-      {
-        params: { page, per_page: perPage },
-      }
-    );
+    const response = await apiClient.get<ApiResponse<TenantListResponse>>('/api/v1/tenants', {
+      params: { page, per_page: perPage },
+    });
     return response.data.data;
   }
 
@@ -46,7 +43,7 @@ class TenantService {
    * Search tenants (Super Admin only)
    * GET /api/v1/tenant/search
    */
-  async searchTenants(name:string = ''): Promise<Tenant[]> {
+  async searchTenants(name: string = ''): Promise<Tenant[]> {
     const response = await apiClient.get('/api/v1/tenant/search');
     // Handle both response formats: direct array or {success, message, data}
     const data = response.data.data || response.data;
@@ -81,9 +78,7 @@ class TenantService {
    * GET /api/v1/tenant/current
    */
   async getCurrentTenant(): Promise<Tenant> {
-    const response = await apiClient.get<ApiResponse<{ tenant: Tenant }>>(
-      '/api/v1/tenant/current'
-    );
+    const response = await apiClient.get<ApiResponse<{ tenant: Tenant }>>('/api/v1/tenant/current');
     return response.data.data.tenant;
   }
 
@@ -127,9 +122,7 @@ class TenantService {
    * GET /api/v1/tenants/:id/stats
    */
   async getTenantStats(tenantId: string): Promise<any> {
-    const response = await apiClient.get<ApiResponse<any>>(
-      `/api/v1/tenants/${tenantId}/stats`
-    );
+    const response = await apiClient.get<ApiResponse<any>>(`/api/v1/tenants/${tenantId}/stats`);
     return response.data.data;
   }
 }

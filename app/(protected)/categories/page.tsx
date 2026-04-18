@@ -19,18 +19,40 @@ export default function CategoriesPage() {
   const [formData, setFormData] = useState({
     name: '',
     description: '',
-    business_type: 'other' as 'pharmacy' | 'electric' | 'electronics' | 'fashion' | 'furniture' | 'bookshop' | 'departmental' | 'computer' | 'clothing' | 'footwear' | 'cosmetics' | 'stationery' | 'grocery' | 'hardware' | 'restaurant' | 'cafe' | 'supermarket' | 'other',
+    business_type: 'other' as
+      | 'pharmacy'
+      | 'electric'
+      | 'electronics'
+      | 'fashion'
+      | 'furniture'
+      | 'bookshop'
+      | 'departmental'
+      | 'computer'
+      | 'clothing'
+      | 'footwear'
+      | 'cosmetics'
+      | 'stationery'
+      | 'grocery'
+      | 'hardware'
+      | 'restaurant'
+      | 'cafe'
+      | 'supermarket'
+      | 'other',
     is_active: true,
     parent_id: undefined as string | undefined,
   });
   const [formErrors, setFormErrors] = useState<{ [key: string]: string }>({});
   const [refreshKey, setRefreshKey] = useState(0);
 
-  const [defaultParentOptions, setDefaultParentOptions] = useState<{ value: string; label: string }[]>([]);
+  const [defaultParentOptions, setDefaultParentOptions] = useState<
+    { value: string; label: string }[]
+  >([]);
 
-  const loadParentCategoryOptions = async (inputValue: string): Promise<{ value: string; label: string }[]> => {
+  const loadParentCategoryOptions = async (
+    inputValue: string
+  ): Promise<{ value: string; label: string }[]> => {
     try {
-      const params: { search?: string, only_parent?: boolean } = {};
+      const params: { search?: string; only_parent?: boolean } = {};
       params.only_parent = true;
       if (inputValue && inputValue.trim()) {
         params.search = inputValue.trim();
@@ -39,13 +61,13 @@ export default function CategoriesPage() {
       const categories = await commonService.getCategoriesForDropdown(params);
 
       // Filter out current category when editing
-      const filteredCategories = categories.filter(cat =>
-        !isEditing || cat.id !== currentCategory?.id
+      const filteredCategories = categories.filter(
+        cat => !isEditing || cat.id !== currentCategory?.id
       );
 
       const options = filteredCategories.map(cat => ({
         value: cat.id,
-        label: cat.name
+        label: cat.name,
       }));
 
       // Update parent categories state
@@ -66,7 +88,13 @@ export default function CategoriesPage() {
   const handleAddCategory = () => {
     setIsEditing(false);
     setCurrentCategory(null);
-    setFormData({ name: '', description: '', business_type: 'other', is_active: true, parent_id: undefined });
+    setFormData({
+      name: '',
+      description: '',
+      business_type: 'other',
+      is_active: true,
+      parent_id: undefined,
+    });
     setFormErrors({});
     // Load default parent category options
     loadParentCategoryOptions('');
@@ -113,7 +141,9 @@ export default function CategoriesPage() {
       setShowForm(false);
       setRefreshKey(prev => prev + 1);
     } catch (error: unknown) {
-      const axiosError = error as { response?: { data?: { errors?: Record<string, string[]>; message?: string } } };
+      const axiosError = error as {
+        response?: { data?: { errors?: Record<string, string[]>; message?: string } };
+      };
       if (axiosError.response?.data?.errors) {
         const transformedErrors: { [key: string]: string } = {};
         Object.entries(axiosError.response.data.errors).forEach(([key, messages]) => {
@@ -147,7 +177,9 @@ export default function CategoriesPage() {
       header: 'SL',
       cell: ({ row, table }) => (
         <span className="text-gray-600 dark:text-gray-400">
-          {(table.getState().pagination.pageIndex * table.getState().pagination.pageSize) + row.index + 1}
+          {table.getState().pagination.pageIndex * table.getState().pagination.pageSize +
+            row.index +
+            1}
         </span>
       ),
     },
@@ -188,9 +220,7 @@ export default function CategoriesPage() {
       accessorKey: 'description',
       header: 'Description',
       cell: ({ row }) => (
-        <span className="text-gray-600 dark:text-gray-400">
-          {row.original.description || '-'}
-        </span>
+        <span className="text-gray-600 dark:text-gray-400">{row.original.description || '-'}</span>
       ),
     },
     {
@@ -198,10 +228,11 @@ export default function CategoriesPage() {
       header: 'Status',
       cell: ({ row }) => (
         <span
-          className={`px-2 py-1 text-xs rounded-full ${row.original.is_active
-            ? 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400'
-            : 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400'
-            }`}
+          className={`px-2 py-1 text-xs rounded-full ${
+            row.original.is_active
+              ? 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400'
+              : 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400'
+          }`}
         >
           {row.original.is_active ? 'Active' : 'Inactive'}
         </span>
@@ -266,35 +297,55 @@ export default function CategoriesPage() {
           <form onSubmit={handleFormSubmit} className="grid grid-cols-1 md:grid-cols-2 gap-1.5">
             <div className="md:col-span-2 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-1">
               <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-0.5">Name</label>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-0.5">
+                  Name
+                </label>
                 <input
                   type="text"
                   placeholder="Enter category name"
                   value={formData.name}
                   onChange={e => setFormData({ ...formData, name: e.target.value })}
-                  className={`w-full px-2 py-1.25 text-sm border rounded-sm focus:outline-none focus:ring-1 focus:ring-blue-500 dark:focus:ring-blue-400 focus:border-transparent dark:bg-gray-700 dark:text-gray-100 ${formErrors.name ? 'border-red-500' : 'border-gray-300 dark:border-gray-600'
-                    }`}
+                  className={`w-full px-2 py-1.25 text-sm border rounded-sm focus:outline-none focus:ring-1 focus:ring-blue-500 dark:focus:ring-blue-400 focus:border-transparent dark:bg-gray-700 dark:text-gray-100 ${
+                    formErrors.name ? 'border-red-500' : 'border-gray-300 dark:border-gray-600'
+                  }`}
                   required
                 />
-                {formErrors.name && (
-                  <p className="text-red-600 text-xs mt-1">{formErrors.name}</p>
-                )}
+                {formErrors.name && <p className="text-red-600 text-xs mt-1">{formErrors.name}</p>}
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-0.5">Business Type</label>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-0.5">
+                  Business Type
+                </label>
                 <CustomSelect
                   value={BUSINESS_TYPES.find(type => type.value === formData.business_type) || null}
-                  onChange={(option) => setFormData({ ...formData, business_type: (option?.value as typeof formData.business_type) || 'other' })}
+                  onChange={option =>
+                    setFormData({
+                      ...formData,
+                      business_type: (option?.value as typeof formData.business_type) || 'other',
+                    })
+                  }
                   options={[...BUSINESS_TYPES]}
                   placeholder="Select business type"
                   className="text-sm"
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-0.5">Parent Category</label>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-0.5">
+                  Parent Category
+                </label>
                 <CustomSelect
-                  value={formData.parent_id ? { value: formData.parent_id, label: parentCategories.find(cat => cat.id === formData.parent_id)?.name || '' } : null}
-                  onChange={(option) => setFormData({ ...formData, parent_id: option?.value || undefined })}
+                  value={
+                    formData.parent_id
+                      ? {
+                          value: formData.parent_id,
+                          label:
+                            parentCategories.find(cat => cat.id === formData.parent_id)?.name || '',
+                        }
+                      : null
+                  }
+                  onChange={option =>
+                    setFormData({ ...formData, parent_id: option?.value || undefined })
+                  }
                   loadOptions={loadParentCategoryOptions}
                   defaultOptions={defaultParentOptions}
                   placeholder="Select parent (optional)"
@@ -302,10 +353,14 @@ export default function CategoriesPage() {
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-0.5">Status</label>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-0.5">
+                  Status
+                </label>
                 <select
                   value={formData.is_active ? 'active' : 'inactive'}
-                  onChange={e => setFormData({ ...formData, is_active: e.target.value === 'active' })}
+                  onChange={e =>
+                    setFormData({ ...formData, is_active: e.target.value === 'active' })
+                  }
                   className="w-full px-2 py-1.25 text-sm border border-gray-300 dark:border-gray-600 rounded-sm focus:outline-none focus:ring-1 focus:ring-blue-500 dark:focus:ring-blue-400 focus:border-transparent dark:bg-gray-700 dark:text-gray-100"
                 >
                   <option value="active">Active</option>
@@ -315,7 +370,9 @@ export default function CategoriesPage() {
             </div>
             <div className="md:col-span-2 grid grid-cols-1 md:grid-cols-2 gap-1">
               <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-0.5">Description</label>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-0.5">
+                  Description
+                </label>
                 <textarea
                   placeholder="Describe the category"
                   value={formData.description}

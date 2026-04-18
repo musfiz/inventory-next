@@ -3,7 +3,7 @@
 import { useAuthStore } from '@/stores/auth-store';
 
 export default function AdminDashboard() {
-  const user = useAuthStore((state) => state.user);
+  const user = useAuthStore(state => state.user);
 
   const stats = [
     { name: 'Total Users', value: '1,234', change: '+12%', changeType: 'positive' },
@@ -23,7 +23,7 @@ export default function AdminDashboard() {
 
       {/* Stats Grid */}
       <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-4 mb-8">
-        {stats.map((item) => (
+        {stats.map(item => (
           <div
             key={item.name}
             className="bg-white dark:bg-gray-800 overflow-hidden shadow dark:shadow-gray-900/50 rounded-lg border border-transparent dark:border-gray-700"
@@ -41,10 +41,11 @@ export default function AdminDashboard() {
               </div>
               <div className="mt-4">
                 <span
-                  className={`inline-flex items-center text-sm font-semibold ${item.changeType === 'positive'
-                    ? 'text-green-600 dark:text-green-400'
-                    : 'text-red-600 dark:text-red-400'
-                    }`}
+                  className={`inline-flex items-center text-sm font-semibold ${
+                    item.changeType === 'positive'
+                      ? 'text-green-600 dark:text-green-400'
+                      : 'text-red-600 dark:text-red-400'
+                  }`}
                 >
                   {item.change}
                 </span>

@@ -8,8 +8,13 @@ import productVariationService from '@/services/productVariationService';
 import attributeService from '@/services/attributeService';
 import attributeValueService from '@/services/attributeValueService';
 import CustomSelect, { SelectOption } from '@/components/ui/custom-select';
-import type { Product, Attribute, AttributeValue, VariationAttributeInput } from '@/types/api.types';
-import commonService from "@/services/commonService";
+import type {
+  Product,
+  Attribute,
+  AttributeValue,
+  VariationAttributeInput,
+} from '@/types/api.types';
+import commonService from '@/services/commonService';
 
 interface VariationFormData {
   product_id: string;
@@ -97,25 +102,28 @@ export default function AddProductVariationPage() {
   }, [selectedProduct, loadAttributes]);
 
   // Load attributes for async select with search
-  const loadAttributeOptions = useCallback(async (inputValue: string): Promise<SelectOption[]> => {
-    try {
-      const attributesData = await attributeService.searchAttributes(inputValue || undefined, 10);
+  const loadAttributeOptions = useCallback(
+    async (inputValue: string): Promise<SelectOption[]> => {
+      try {
+        const attributesData = await attributeService.searchAttributes(inputValue || undefined, 10);
 
-      // Filter out already selected attributes
-      const usedAttributeIds = selectedAttributes.map(sa => sa.attribute.id);
-      const availableAttrs = attributesData.filter(attr => !usedAttributeIds.includes(attr.id));
+        // Filter out already selected attributes
+        const usedAttributeIds = selectedAttributes.map(sa => sa.attribute.id);
+        const availableAttrs = attributesData.filter(attr => !usedAttributeIds.includes(attr.id));
 
-      const options = availableAttrs.map((attribute: Attribute) => ({
-        value: attribute.id,
-        label: attribute.name,
-      }));
+        const options = availableAttrs.map((attribute: Attribute) => ({
+          value: attribute.id,
+          label: attribute.name,
+        }));
 
-      return options;
-    } catch (error) {
-      console.error('Failed to load attributes:', error);
-      return [];
-    }
-  }, [businessType, selectedAttributes]);
+        return options;
+      } catch (error) {
+        console.error('Failed to load attributes:', error);
+        return [];
+      }
+    },
+    [businessType, selectedAttributes]
+  );
 
   // Load products for async select with search
   const loadProductOptions = useCallback(async (inputValue: string): Promise<SelectOption[]> => {
@@ -188,7 +196,7 @@ export default function AddProductVariationPage() {
     try {
       // Get product name from selected product
       const productName = selectedProduct?.label || '';
-      
+
       // Get attribute values as text array (display_value or value)
       // Filter out any undefined/empty values to ensure string[]
       const attributeValues = selectedAttributes
@@ -201,7 +209,7 @@ export default function AddProductVariationPage() {
         productName,
         attributeValues.length > 0 ? attributeValues : undefined
       );
-      
+
       setFormData(prev => ({ ...prev, sku }));
       setErrors(prev => {
         const newErrors = { ...prev };
@@ -257,7 +265,9 @@ export default function AddProductVariationPage() {
 
       try {
         // Fetch attribute values
-        const attributeValues = await attributeValueService.getAttributeValues(selectedAttributeForAdd.value);
+        const attributeValues = await attributeValueService.getAttributeValues(
+          selectedAttributeForAdd.value
+        );
 
         // Update or create attribute in state with values
         setAttributes(prev => {
@@ -278,11 +288,14 @@ export default function AddProductVariationPage() {
             return updated;
           } else {
             // Create minimal attribute object with values
-            return [...prev, {
-              id: selectedAttributeForAdd.value,
-              name: selectedAttributeForAdd.label,
-              values: attributeValues,
-            } as Attribute];
+            return [
+              ...prev,
+              {
+                id: selectedAttributeForAdd.value,
+                name: selectedAttributeForAdd.label,
+                values: attributeValues,
+              } as Attribute,
+            ];
           }
         });
       } catch (error) {
@@ -378,7 +391,9 @@ export default function AddProductVariationPage() {
 
     // If not found, check in selected attributes
     if (!attr) {
-      attr = selectedAttributes.find(sa => sa.attribute.id === selectedAttributeForAdd.value)?.attribute;
+      attr = selectedAttributes.find(
+        sa => sa.attribute.id === selectedAttributeForAdd.value
+      )?.attribute;
     }
 
     return attr;
@@ -386,10 +401,11 @@ export default function AddProductVariationPage() {
 
   const selectedAttribute = getSelectedAttribute();
 
-  const valueOptions: SelectOption[] = selectedAttribute?.values?.map(v => ({
-    value: v.id,
-    label: v.display_value || v.value,
-  })) || [];
+  const valueOptions: SelectOption[] =
+    selectedAttribute?.values?.map(v => ({
+      value: v.id,
+      label: v.display_value || v.value,
+    })) || [];
 
   return (
     <div className="space-y-2">
@@ -439,7 +455,7 @@ export default function AddProductVariationPage() {
                 <select
                   name="status"
                   value={statusValue}
-                  onChange={(e) => setStatusValue(e.target.value)}
+                  onChange={e => setStatusValue(e.target.value)}
                   className="w-full px-2.5 py-1 text-sm bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 focus:border-indigo-500 dark:focus:border-indigo-400 rounded-sm text-gray-900 dark:text-gray-100 focus:outline-none"
                 >
                   <option value="1">Active</option>
@@ -497,7 +513,13 @@ export default function AddProductVariationPage() {
                       value={selectedValueForAdd}
                       onChange={setSelectedValueForAdd}
                       options={valueOptions}
-                      placeholder={!selectedAttributeForAdd ? "Select attribute first..." : valueOptions.length === 0 ? "Loading values..." : "Select value..."}
+                      placeholder={
+                        !selectedAttributeForAdd
+                          ? 'Select attribute first...'
+                          : valueOptions.length === 0
+                            ? 'Loading values...'
+                            : 'Select value...'
+                      }
                       isDisabled={!selectedAttributeForAdd}
                     />
                   </div>
@@ -523,7 +545,7 @@ export default function AddProductVariationPage() {
                   No attributes added yet
                 </p>
               ) : (
-                selectedAttributes.map((sa) => (
+                selectedAttributes.map(sa => (
                   <div
                     key={sa.attribute.id}
                     className="inline-flex items-center gap-2 px-2 py-1 bg-teal-100 text-teal-800 dark:bg-teal-900 dark:text-teal-200 rounded-full text-xs font-medium"
@@ -571,10 +593,11 @@ export default function AddProductVariationPage() {
                     name="sku"
                     value={formData.sku}
                     onChange={handleInputChange}
-                    className={`flex-1 px-2.5 py-1 text-sm bg-white dark:bg-gray-700 border ${hasFieldError('sku')
-                      ? 'border-red-500 focus:border-red-500'
-                      : 'border-gray-300 dark:border-gray-600 focus:border-indigo-500 dark:focus:border-indigo-400'
-                      } rounded-sm text-gray-900 dark:text-gray-100 focus:outline-none`}
+                    className={`flex-1 px-2.5 py-1 text-sm bg-white dark:bg-gray-700 border ${
+                      hasFieldError('sku')
+                        ? 'border-red-500 focus:border-red-500'
+                        : 'border-gray-300 dark:border-gray-600 focus:border-indigo-500 dark:focus:border-indigo-400'
+                    } rounded-sm text-gray-900 dark:text-gray-100 focus:outline-none`}
                     placeholder="Enter SKU or generate one"
                   />
                   <button
@@ -599,97 +622,98 @@ export default function AddProductVariationPage() {
 
         {/* Pricing */}
         <div className="bg-white dark:bg-gray-800 rounded-md shadow-sm border border-gray-200 dark:border-gray-700 p-3">
-            <div className="mb-2">
-              <h3 className="text-base font-semibold text-gray-900 dark:text-gray-100 mb-2">
-                Pricing
-              </h3>
-              <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
-                <div>
-                  <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-2">
-                    Cost Price <span className="text-red-500">*</span>
-                  </label>
-                  <input
-                    type="number"
-                    name="cost_price"
-                    value={formData.cost_price}
-                    onChange={handleInputChange}
-                    step="0.01"
-                    min="0.01"
-                    className={`w-full px-2.5 py-1 text-sm bg-white dark:bg-gray-700 border ${hasFieldError('cost_price')
+          <div className="mb-2">
+            <h3 className="text-base font-semibold text-gray-900 dark:text-gray-100 mb-2">
+              Pricing
+            </h3>
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
+              <div>
+                <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-2">
+                  Cost Price <span className="text-red-500">*</span>
+                </label>
+                <input
+                  type="number"
+                  name="cost_price"
+                  value={formData.cost_price}
+                  onChange={handleInputChange}
+                  step="0.01"
+                  min="0.01"
+                  className={`w-full px-2.5 py-1 text-sm bg-white dark:bg-gray-700 border ${
+                    hasFieldError('cost_price')
                       ? 'border-red-500 focus:border-red-500'
                       : 'border-gray-300 dark:border-gray-600 focus:border-indigo-500 dark:focus:border-indigo-400'
-                      } rounded-sm text-gray-900 dark:text-gray-100 focus:outline-none`}
-                    placeholder="0.00"
-                  />
-                  {hasFieldError('cost_price') && (
-                    <p className="mt-1 text-xs text-red-600 dark:text-red-400">
-                      {getFieldError('cost_price')}
-                    </p>
-                  )}
-                </div>
+                  } rounded-sm text-gray-900 dark:text-gray-100 focus:outline-none`}
+                  placeholder="0.00"
+                />
+                {hasFieldError('cost_price') && (
+                  <p className="mt-1 text-xs text-red-600 dark:text-red-400">
+                    {getFieldError('cost_price')}
+                  </p>
+                )}
+              </div>
 
-                <div>
-                  <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-2">
-                    Selling Price <span className="text-red-500">*</span>
-                  </label>
-                  <input
-                    type="number"
-                    name="selling_price"
-                    value={formData.selling_price}
-                    onChange={handleInputChange}
-                    step="0.01"
-                    min="0.01"
-                    className={`w-full px-2.5 py-1 text-sm bg-white dark:bg-gray-700 border ${hasFieldError('selling_price')
+              <div>
+                <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-2">
+                  Selling Price <span className="text-red-500">*</span>
+                </label>
+                <input
+                  type="number"
+                  name="selling_price"
+                  value={formData.selling_price}
+                  onChange={handleInputChange}
+                  step="0.01"
+                  min="0.01"
+                  className={`w-full px-2.5 py-1 text-sm bg-white dark:bg-gray-700 border ${
+                    hasFieldError('selling_price')
                       ? 'border-red-500 focus:border-red-500'
                       : 'border-gray-300 dark:border-gray-600 focus:border-indigo-500 dark:focus:border-indigo-400'
-                      } rounded-sm text-gray-900 dark:text-gray-100 focus:outline-none`}
-                    placeholder="0.00"
-                  />
-                  {hasFieldError('selling_price') && (
-                    <p className="mt-1 text-xs text-red-600 dark:text-red-400">
-                      {getFieldError('selling_price')}
-                    </p>
-                  )}
-                </div>
+                  } rounded-sm text-gray-900 dark:text-gray-100 focus:outline-none`}
+                  placeholder="0.00"
+                />
+                {hasFieldError('selling_price') && (
+                  <p className="mt-1 text-xs text-red-600 dark:text-red-400">
+                    {getFieldError('selling_price')}
+                  </p>
+                )}
+              </div>
 
-                <div>
-                  <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-2">
-                    DP
-                  </label>
-                  <input
-                    type="number"
-                    name="dp"
-                    value={formData.dp}
-                    onChange={handleInputChange}
-                    step="0.01"
-                    min="0"
-                    className="w-full px-2.5 py-1 text-sm bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-sm text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                    placeholder="0.00"
-                  />
-                </div>
+              <div>
+                <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-2">
+                  DP
+                </label>
+                <input
+                  type="number"
+                  name="dp"
+                  value={formData.dp}
+                  onChange={handleInputChange}
+                  step="0.01"
+                  min="0"
+                  className="w-full px-2.5 py-1 text-sm bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-sm text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                  placeholder="0.00"
+                />
+              </div>
 
-                <div>
-                  <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-2">
-                    MRP
-                  </label>
-                  <input
-                    type="number"
-                    name="mrp"
-                    value={formData.mrp}
-                    onChange={handleInputChange}
-                    step="0.01"
-                    min="0"
-                    className="w-full px-2.5 py-1 text-sm bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-sm text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                    placeholder="0.00"
-                  />
-                </div>
+              <div>
+                <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-2">
+                  MRP
+                </label>
+                <input
+                  type="number"
+                  name="mrp"
+                  value={formData.mrp}
+                  onChange={handleInputChange}
+                  step="0.01"
+                  min="0"
+                  className="w-full px-2.5 py-1 text-sm bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-sm text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                  placeholder="0.00"
+                />
               </div>
             </div>
           </div>
+        </div>
 
         {/* Action Buttons */}
         <div className="flex justify-start gap-2 pt-2">
-
           <button
             type="submit"
             disabled={isLoading}

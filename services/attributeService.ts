@@ -18,10 +18,7 @@ class AttributeService {
     sort_order?: number;
     is_active?: boolean;
   }): Promise<Attribute> {
-    const response = await apiClient.post<ApiResponse<Attribute>>(
-      '/api/v1/attribute/store',
-      data
-    );
+    const response = await apiClient.post<ApiResponse<Attribute>>('/api/v1/attribute/store', data);
 
     return response.data.data;
   }

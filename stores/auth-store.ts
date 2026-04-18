@@ -27,11 +27,11 @@ export const useAuthStore = create<AuthState>()(
       hydrated: false,
       isSwitchedUser: false,
       originalSuperAdmin: null,
-      login: (user) => set({ user }),
+      login: user => set({ user }),
       logout: () => set({ user: null, isSwitchedUser: false, originalSuperAdmin: null }),
-      setUser: (user) => set({ user }),
-      setLoading: (loading) => set({ loading }),
-      setHydrated: (hydrated) => set({ hydrated }),
+      setUser: user => set({ user }),
+      setLoading: loading => set({ loading }),
+      setHydrated: hydrated => set({ hydrated }),
       clearAuth: () => set({ user: null, isSwitchedUser: false, originalSuperAdmin: null }),
       switchUser: async (userId: string) => {
         try {
@@ -39,7 +39,7 @@ export const useAuthStore = create<AuthState>()(
           set({
             user: response.user,
             isSwitchedUser: true,
-            originalSuperAdmin: response.switched_from
+            originalSuperAdmin: response.switched_from,
           });
           return true;
         } catch (error) {
@@ -53,7 +53,7 @@ export const useAuthStore = create<AuthState>()(
           set({
             user: response.user,
             isSwitchedUser: false,
-            originalSuperAdmin: null
+            originalSuperAdmin: null,
           });
           return true;
         } catch (error) {
@@ -64,7 +64,7 @@ export const useAuthStore = create<AuthState>()(
     }),
     {
       name: 'auth-storage',
-      onRehydrateStorage: () => (state) => {
+      onRehydrateStorage: () => state => {
         if (state) {
           state.setHydrated(true);
         }

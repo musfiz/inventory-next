@@ -4,7 +4,7 @@ import { useState } from 'react';
 import { Edit, Trash2, Tag, Plus, X } from 'lucide-react';
 import { ColumnDef } from '@tanstack/react-table';
 import DataTable from '@/components/ui/datatable';
-import { Attribute } from "@/types";
+import { Attribute } from '@/types';
 import { notify, confirm } from '@/lib/notifications';
 import attributeService from '@/services/attributeService';
 import { formatDate } from '@/lib/utils/date';
@@ -210,7 +210,10 @@ export default function AttributesPage() {
       cell: ({ row }) => {
         const description = row.original.description;
         const maxLength = 40;
-        const truncatedDesc = description && description.length > maxLength ? description.substring(0, maxLength) + '...' : description;
+        const truncatedDesc =
+          description && description.length > maxLength
+            ? description.substring(0, maxLength) + '...'
+            : description;
 
         return (
           <span className="text-xs text-gray-600 dark:text-gray-400" title={description}>
@@ -289,48 +292,58 @@ export default function AttributesPage() {
           <form onSubmit={handleFormSubmit} className="grid grid-cols-1 md:grid-cols-2 gap-1.5">
             <div className="md:col-span-2 grid grid-cols-1 md:grid-cols-2 gap-1">
               <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-0.5">Name <span className="text-red-500">*</span></label>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-0.5">
+                  Name <span className="text-red-500">*</span>
+                </label>
                 <input
                   type="text"
                   placeholder="Enter attribute name"
                   value={formData.name}
                   onChange={e => setFormData({ ...formData, name: e.target.value })}
-                  className={`w-full px-2 py-1.5 text-sm border rounded-sm focus:outline-none focus:ring-1 focus:ring-indigo-500 dark:focus:ring-indigo-400 focus:border-transparent dark:bg-gray-700 dark:text-gray-100 ${formErrors.name ? 'border-red-500' : 'border-gray-300 dark:border-gray-600'
-                    }`}
+                  className={`w-full px-2 py-1.5 text-sm border rounded-sm focus:outline-none focus:ring-1 focus:ring-indigo-500 dark:focus:ring-indigo-400 focus:border-transparent dark:bg-gray-700 dark:text-gray-100 ${
+                    formErrors.name ? 'border-red-500' : 'border-gray-300 dark:border-gray-600'
+                  }`}
                   required
                 />
-                {formErrors.name && (
-                  <p className="text-red-600 text-xs mt-1">{formErrors.name}</p>
-                )}
+                {formErrors.name && <p className="text-red-600 text-xs mt-1">{formErrors.name}</p>}
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-0.5">Type <span className="text-red-500">*</span></label>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-0.5">
+                  Type <span className="text-red-500">*</span>
+                </label>
                 <select
                   value={formData.type}
                   onChange={e => setFormData({ ...formData, type: e.target.value as any })}
                   className="w-full px-2 py-1.5 text-sm border border-gray-300 dark:border-gray-600 rounded-sm focus:outline-none focus:ring-1 focus:ring-indigo-500 dark:focus:ring-indigo-400 focus:border-transparent dark:bg-gray-700 dark:text-gray-100"
                 >
                   {typeOptions.map(option => (
-                    <option key={option.value} value={option.value}>{option.label}</option>
+                    <option key={option.value} value={option.value}>
+                      {option.label}
+                    </option>
                   ))}
                 </select>
-                {formErrors.type && (
-                  <p className="text-red-600 text-xs mt-1">{formErrors.type}</p>
-                )}
+                {formErrors.type && <p className="text-red-600 text-xs mt-1">{formErrors.type}</p>}
               </div>
             </div>
 
             <div className="md:col-span-2 grid grid-cols-1 md:grid-cols-2 gap-1">
               <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-0.5">Sort Order</label>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-0.5">
+                  Sort Order
+                </label>
                 <input
                   type="number"
                   placeholder="0"
                   value={formData.sort_order || ''}
-                  onChange={e => setFormData({ ...formData, sort_order: parseInt(e.target.value) || 0 })}
-                  className={`w-full px-2 py-1.5 text-sm border rounded-sm focus:outline-none focus:ring-1 focus:ring-indigo-500 dark:focus:ring-indigo-400 focus:border-transparent dark:bg-gray-700 dark:text-gray-100 ${formErrors.sort_order ? 'border-red-500' : 'border-gray-300 dark:border-gray-600'
-                    }`}
+                  onChange={e =>
+                    setFormData({ ...formData, sort_order: parseInt(e.target.value) || 0 })
+                  }
+                  className={`w-full px-2 py-1.5 text-sm border rounded-sm focus:outline-none focus:ring-1 focus:ring-indigo-500 dark:focus:ring-indigo-400 focus:border-transparent dark:bg-gray-700 dark:text-gray-100 ${
+                    formErrors.sort_order
+                      ? 'border-red-500'
+                      : 'border-gray-300 dark:border-gray-600'
+                  }`}
                   min="0"
                 />
                 {formErrors.sort_order && (
@@ -346,20 +359,25 @@ export default function AttributesPage() {
                     onChange={e => setFormData({ ...formData, is_active: e.target.checked })}
                     className="rounded border-gray-300 dark:border-gray-600 text-indigo-600 focus:ring-indigo-500 dark:focus:ring-indigo-400 dark:bg-gray-700"
                   />
-                  <span className="text-sm font-medium text-gray-700 dark:text-gray-300">Is Active</span>
+                  <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                    Is Active
+                  </span>
                 </label>
               </div>
             </div>
 
             <div className="md:col-span-2">
-              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-0.5">Description</label>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-0.5">
+                Description
+              </label>
               <textarea
                 rows={2}
                 placeholder="Enter attribute description (optional)"
                 value={formData.description}
                 onChange={e => setFormData({ ...formData, description: e.target.value })}
-                className={`w-full px-2 py-1.5 text-sm border rounded-sm focus:outline-none focus:ring-1 focus:ring-indigo-500 dark:focus:ring-indigo-400 focus:border-transparent dark:bg-gray-700 dark:text-gray-100 ${formErrors.description ? 'border-red-500' : 'border-gray-300 dark:border-gray-600'
-                  }`}
+                className={`w-full px-2 py-1.5 text-sm border rounded-sm focus:outline-none focus:ring-1 focus:ring-indigo-500 dark:focus:ring-indigo-400 focus:border-transparent dark:bg-gray-700 dark:text-gray-100 ${
+                  formErrors.description ? 'border-red-500' : 'border-gray-300 dark:border-gray-600'
+                }`}
               />
               {formErrors.description && (
                 <p className="text-red-600 text-xs mt-1">{formErrors.description}</p>
@@ -383,10 +401,9 @@ export default function AttributesPage() {
                 Cancel
               </button>
             </div>
-          </form >
-        </div >
-      )
-      }
+          </form>
+        </div>
+      )}
 
       {/* DataTable */}
       <DataTable
@@ -397,6 +414,6 @@ export default function AttributesPage() {
         enableSearch={true}
         searchPlaceholder="Search by attribute name, type..."
       />
-    </div >
+    </div>
   );
 }

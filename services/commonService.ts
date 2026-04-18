@@ -1,16 +1,11 @@
 import apiClient from '@/lib/api/axios';
-import type {
-  Category,
-  Brand,
-  Unit,
-  Tenant
-} from '@/types/api.types';
+import type { Category, Brand, Unit, Tenant } from '@/types/api.types';
 
 class CommonService {
   /**
-  * Get categories for dropdown (simplified)
-  * GET /api/v1/dropdown/category
-  */
+   * Get categories for dropdown (simplified)
+   * GET /api/v1/dropdown/category
+   */
   async getCategoriesForDropdown(params?: {
     search?: string;
     only_parent?: boolean;
@@ -25,9 +20,9 @@ class CommonService {
   }
 
   /**
-  * Get brands for dropdown (simplified)
-  * GET /api/v1/dropdown/brand
-  */
+   * Get brands for dropdown (simplified)
+   * GET /api/v1/dropdown/brand
+   */
   async getBrandsForDropdown(params?: {
     search?: string;
     business_type?: string;
@@ -41,12 +36,10 @@ class CommonService {
   }
 
   /**
-  * Get units for dropdown (simplified)
-  * GET /api/v1/dropdown/unit
-  */
-  async getUnitsForDropdown(params?: {
-    search?: string;
-  }): Promise<Unit[]> {
+   * Get units for dropdown (simplified)
+   * GET /api/v1/dropdown/unit
+   */
+  async getUnitsForDropdown(params?: { search?: string }): Promise<Unit[]> {
     const response = await apiClient.get<{
       data: Unit[];
     }>('/api/v1/dropdown/unit', {
@@ -55,12 +48,10 @@ class CommonService {
     return response.data.data;
   }
   /**
-  * Get units for dropdown (simplified)
-  * GET /api/v1/dropdown/unit
-  */
-  async getProductsForDropdown(params?: {
-    search?: string;
-  }): Promise<Unit[]> {
+   * Get units for dropdown (simplified)
+   * GET /api/v1/dropdown/unit
+   */
+  async getProductsForDropdown(params?: { search?: string }): Promise<Unit[]> {
     const response = await apiClient.get<{
       data: Unit[];
     }>('/api/v1/dropdown/product', {
@@ -70,13 +61,10 @@ class CommonService {
   }
 
   /**
-  * Get warehouses by tenant for dropdown (common endpoint)
-  * GET /api/v1/dropdown/warehouse-by-tenant
-  */
-  async getWarehousesByTenant(params?: {
-    search?: string;
-    tenant_id?: string;
-  }): Promise<any[]> {
+   * Get warehouses by tenant for dropdown (common endpoint)
+   * GET /api/v1/dropdown/warehouse-by-tenant
+   */
+  async getWarehousesByTenant(params?: { search?: string; tenant_id?: string }): Promise<any[]> {
     const response = await apiClient.get<{
       data: any[];
     }>('/api/v1/dropdown/warehouse-by-tenant', {
@@ -86,12 +74,10 @@ class CommonService {
   }
 
   /**
-  * Get tenants for dropdown (simplified) - Super admin only
-  * GET /api/v1/dropdown/tenant
-  */
-  async getTenantsForDropdown(params?: {
-    search?: string;
-  }): Promise<Tenant[]> {
+   * Get tenants for dropdown (simplified) - Super admin only
+   * GET /api/v1/dropdown/tenant
+   */
+  async getTenantsForDropdown(params?: { search?: string }): Promise<Tenant[]> {
     const response = await apiClient.get<{
       data: Tenant[];
     }>('/api/v1/dropdown/tenant', {
@@ -99,7 +85,6 @@ class CommonService {
     });
     return response.data.data;
   }
-
 
   /**
    * Get product variations for a product

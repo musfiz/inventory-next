@@ -31,10 +31,7 @@ class BrandService {
     }
 
     // Let axios automatically set Content-Type for FormData with proper boundary
-    const response = await apiClient.post<ApiResponse<Brand>>(
-      '/api/v1/brand/store',
-      formData
-    );
+    const response = await apiClient.post<ApiResponse<Brand>>('/api/v1/brand/store', formData);
 
     return response.data.data;
   }

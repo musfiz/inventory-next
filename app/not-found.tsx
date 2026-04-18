@@ -20,12 +20,10 @@ export default function NotFound() {
 
         {/* Error Message */}
         <div className="mb-8 space-y-3">
-          <h2 className="text-3xl font-bold text-gray-900 dark:text-gray-100">
-            Page Not Found
-          </h2>
+          <h2 className="text-3xl font-bold text-gray-900 dark:text-gray-100">Page Not Found</h2>
           <p className="text-lg text-gray-600 dark:text-gray-400 max-w-md mx-auto">
-            The page you&apos;re looking for doesn&apos;t exist or has been moved.
-            Please check the URL or navigate back to safety.
+            The page you&apos;re looking for doesn&apos;t exist or has been moved. Please check the
+            URL or navigate back to safety.
           </p>
         </div>
 
@@ -59,8 +57,7 @@ export default function NotFound() {
         {/* Additional Info */}
         <div className="mt-12 pt-8 border-t border-gray-300 dark:border-gray-700">
           <p className="text-sm text-gray-500 dark:text-gray-500">
-            Error Code: <span className="font-mono font-semibold">404</span> |
-            Resource Not Found
+            Error Code: <span className="font-mono font-semibold">404</span> | Resource Not Found
           </p>
         </div>
 

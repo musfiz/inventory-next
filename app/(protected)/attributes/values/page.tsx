@@ -5,7 +5,7 @@ import { Edit, Trash2, Tag, Plus, X } from 'lucide-react';
 import { ColumnDef } from '@tanstack/react-table';
 import DataTable from '@/components/ui/datatable';
 import CustomSelect, { SelectOption } from '@/components/ui/custom-select';
-import { AttributeValue, Attribute } from "@/types";
+import { AttributeValue, Attribute } from '@/types';
 import { notify, confirm } from '@/lib/notifications';
 import attributeValueService from '@/services/attributeValueService';
 import attributeService from '@/services/attributeService';
@@ -48,7 +48,7 @@ export default function AttributeValuesPage() {
       const attrs = await attributeService.searchAttributes(inputValue, 20); // Load more for search
       const options = attrs.map(attr => ({
         value: attr.id,
-        label: attr.name
+        label: attr.name,
       }));
       return options;
     } catch (error) {
@@ -64,7 +64,7 @@ export default function AttributeValuesPage() {
       value: '',
       display_value: '',
       hex_code: '',
-      sort_order: undefined
+      sort_order: undefined,
     });
     setFormErrors({});
     setShowForm(true);
@@ -79,7 +79,7 @@ export default function AttributeValuesPage() {
       value: attributeValue.value,
       display_value: attributeValue.display_value || '',
       hex_code: attributeValue.hex_code || '',
-      sort_order: attributeValue.sort_order || 0
+      sort_order: attributeValue.sort_order || 0,
     });
     setFormErrors({});
     setShowForm(true);
@@ -118,7 +118,9 @@ export default function AttributeValuesPage() {
         sort_order: formData.sort_order || undefined,
       });
 
-      notify.success(isEditing ? 'Attribute value updated successfully' : 'Attribute value added successfully');
+      notify.success(
+        isEditing ? 'Attribute value updated successfully' : 'Attribute value added successfully'
+      );
       setShowForm(false);
       setRefreshKey(prev => prev + 1);
     } catch (error: any) {
@@ -126,7 +128,8 @@ export default function AttributeValuesPage() {
       if (errorData?.errors) {
         setFormErrors(errorData.errors);
       } else {
-        const errorMessage = errorData?.message || error?.message || 'Failed to save attribute value';
+        const errorMessage =
+          errorData?.message || error?.message || 'Failed to save attribute value';
         notify.error(errorMessage);
       }
     }
@@ -191,7 +194,8 @@ export default function AttributeValuesPage() {
       cell: ({ row }) => {
         const value = row.original.value;
         const maxLength = 25;
-        const truncatedValue = value.length > maxLength ? value.substring(0, maxLength) + '...' : value;
+        const truncatedValue =
+          value.length > maxLength ? value.substring(0, maxLength) + '...' : value;
 
         return (
           <div className="flex items-center gap-2">
@@ -305,19 +309,29 @@ export default function AttributeValuesPage() {
           <form onSubmit={handleFormSubmit} className="grid grid-cols-1 md:grid-cols-2 gap-1.5">
             <div className="md:col-span-2 grid grid-cols-1 md:grid-cols-2 gap-1">
               <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-0.5">Attribute Name</label>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-0.5">
+                  Attribute Name
+                </label>
                 <CustomSelect
-                  value={attributes.find(attr => attr.id === formData.attribute_id) ? {
-                    value: attributes.find(attr => attr.id === formData.attribute_id)!.id,
-                    label: attributes.find(attr => attr.id === formData.attribute_id)!.name
-                  } : null}
-                  onChange={(option) => setFormData({ ...formData, attribute_id: option?.value || '' })}
+                  value={
+                    attributes.find(attr => attr.id === formData.attribute_id)
+                      ? {
+                          value: attributes.find(attr => attr.id === formData.attribute_id)!.id,
+                          label: attributes.find(attr => attr.id === formData.attribute_id)!.name,
+                        }
+                      : null
+                  }
+                  onChange={option =>
+                    setFormData({ ...formData, attribute_id: option?.value || '' })
+                  }
                   loadOptions={loadAttributeOptions}
                   defaultOptions={attributes.map(attr => ({
                     value: attr.id,
-                    label: attr.name
+                    label: attr.name,
                   }))}
-                  placeholder={loadingAttributes ? 'Loading attributes...' : 'Select or search attribute'}
+                  placeholder={
+                    loadingAttributes ? 'Loading attributes...' : 'Select or search attribute'
+                  }
                   isDisabled={loadingAttributes}
                   isLoading={loadingAttributes}
                   isInvalid={!!formErrors.attribute_id}
@@ -328,14 +342,17 @@ export default function AttributeValuesPage() {
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-0.5">Value</label>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-0.5">
+                  Value
+                </label>
                 <input
                   type="text"
                   placeholder="Enter value"
                   value={formData.value}
                   onChange={e => setFormData({ ...formData, value: e.target.value })}
-                  className={`w-full px-2 py-1.5 text-sm border rounded-sm focus:outline-none focus:ring-1 focus:ring-indigo-500 dark:focus:ring-indigo-400 focus:border-transparent dark:bg-gray-700 dark:text-gray-100 ${formErrors.value ? 'border-red-500' : 'border-gray-300 dark:border-gray-600'
-                    }`}
+                  className={`w-full px-2 py-1.5 text-sm border rounded-sm focus:outline-none focus:ring-1 focus:ring-indigo-500 dark:focus:ring-indigo-400 focus:border-transparent dark:bg-gray-700 dark:text-gray-100 ${
+                    formErrors.value ? 'border-red-500' : 'border-gray-300 dark:border-gray-600'
+                  }`}
                   required
                 />
                 {formErrors.value && (
@@ -345,14 +362,19 @@ export default function AttributeValuesPage() {
             </div>
             <div className="md:col-span-2 grid grid-cols-1 md:grid-cols-3 gap-1">
               <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-0.5">Display Value</label>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-0.5">
+                  Display Value
+                </label>
                 <input
                   type="text"
                   placeholder="Optional display value"
                   value={formData.display_value}
                   onChange={e => setFormData({ ...formData, display_value: e.target.value })}
-                  className={`w-full px-2 py-1.5 text-sm border rounded-sm focus:outline-none focus:ring-1 focus:ring-indigo-500 dark:focus:ring-indigo-400 focus:border-transparent dark:bg-gray-700 dark:text-gray-100 ${formErrors.display_value ? 'border-red-500' : 'border-gray-300 dark:border-gray-600'
-                    }`}
+                  className={`w-full px-2 py-1.5 text-sm border rounded-sm focus:outline-none focus:ring-1 focus:ring-indigo-500 dark:focus:ring-indigo-400 focus:border-transparent dark:bg-gray-700 dark:text-gray-100 ${
+                    formErrors.display_value
+                      ? 'border-red-500'
+                      : 'border-gray-300 dark:border-gray-600'
+                  }`}
                 />
                 {formErrors.display_value && (
                   <p className="text-red-600 text-xs mt-1">{formErrors.display_value}</p>
@@ -360,14 +382,17 @@ export default function AttributeValuesPage() {
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-0.5">Hex Code</label>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-0.5">
+                  Hex Code
+                </label>
                 <input
                   type="text"
                   placeholder="#RRGGBB"
                   value={formData.hex_code}
                   onChange={e => setFormData({ ...formData, hex_code: e.target.value })}
-                  className={`w-full px-2 py-1.5 text-sm border rounded-sm focus:outline-none focus:ring-1 focus:ring-indigo-500 dark:focus:ring-indigo-400 focus:border-transparent dark:bg-gray-700 dark:text-gray-100 ${formErrors.hex_code ? 'border-red-500' : 'border-gray-300 dark:border-gray-600'
-                    }`}
+                  className={`w-full px-2 py-1.5 text-sm border rounded-sm focus:outline-none focus:ring-1 focus:ring-indigo-500 dark:focus:ring-indigo-400 focus:border-transparent dark:bg-gray-700 dark:text-gray-100 ${
+                    formErrors.hex_code ? 'border-red-500' : 'border-gray-300 dark:border-gray-600'
+                  }`}
                 />
                 {formErrors.hex_code && (
                   <p className="text-red-600 text-xs mt-1">{formErrors.hex_code}</p>
@@ -376,14 +401,21 @@ export default function AttributeValuesPage() {
 
               {isEditing && (
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-0.5">Sort Order</label>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-0.5">
+                    Sort Order
+                  </label>
                   <input
                     type="number"
                     placeholder="0"
                     value={formData.sort_order}
-                    onChange={e => setFormData({ ...formData, sort_order: parseInt(e.target.value) || 0 })}
-                    className={`w-full px-2 py-1.5 text-sm border rounded-sm focus:outline-none focus:ring-1 focus:ring-indigo-500 dark:focus:ring-indigo-400 focus:border-transparent dark:bg-gray-700 dark:text-gray-100 ${formErrors.sort_order ? 'border-red-500' : 'border-gray-300 dark:border-gray-600'
-                      }`}
+                    onChange={e =>
+                      setFormData({ ...formData, sort_order: parseInt(e.target.value) || 0 })
+                    }
+                    className={`w-full px-2 py-1.5 text-sm border rounded-sm focus:outline-none focus:ring-1 focus:ring-indigo-500 dark:focus:ring-indigo-400 focus:border-transparent dark:bg-gray-700 dark:text-gray-100 ${
+                      formErrors.sort_order
+                        ? 'border-red-500'
+                        : 'border-gray-300 dark:border-gray-600'
+                    }`}
                     min="0"
                   />
                   {formErrors.sort_order && (
