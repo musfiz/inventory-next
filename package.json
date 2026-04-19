@@ -9,11 +9,13 @@
     "lint": "eslint"
   },
   "dependencies": {
+    "@floating-ui/dom": "^1.7.6",
     "@tanstack/react-table": "^8.21.3",
     "axios": "^1.13.2",
     "lucide-react": "^0.562.0",
     "next": "^16.1.6",
     "react": "19.2.3",
+    "react-datepicker": "^9.1.0",
     "react-dom": "19.2.3",
     "react-select": "^5.10.2",
     "sweetalert2": "^11.26.17",

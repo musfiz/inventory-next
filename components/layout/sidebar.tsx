@@ -30,6 +30,7 @@ import {
   ListMinus,
   Container,
   LayersPlus,
+  SquarePlus,
 } from 'lucide-react';
 
 interface SidebarProps {
@@ -128,10 +129,16 @@ const navigation: NavigationItem[] = [
     children: [
       { name: 'Supplier List', href: '/suppliers', icon: List, permission: 'view-suppliers' },
       {
-        name: 'Product Purchase',
-        href: '/purchases',
+        name: 'Purchase Orders',
+        href: '/purchase-orders',
         icon: ShoppingCart,
         permission: 'view-purchases',
+      },
+      {
+        name: 'Add Purchase Orders',
+        href: '/purchase-orders/add',
+        icon: SquarePlus,
+        permission: 'create-purchases',
       },
     ],
   },

@@ -20,6 +20,7 @@ interface CustomSelectProps {
   isLoading?: boolean;
   defaultOptions?: boolean | SelectOption[];
   isInvalid?: boolean;
+  autoFocus?: boolean;
 }
 
 const customStyles = (isInvalid?: boolean): StylesConfig<SelectOption, false> => ({
@@ -119,6 +120,7 @@ export default function CustomSelect({
   isLoading = false,
   defaultOptions = false,
   isInvalid = false,
+  autoFocus = false,
 }: CustomSelectProps) {
   const styles = customStyles(isInvalid);
 
@@ -130,6 +132,7 @@ export default function CustomSelect({
         onChange={onChange}
         loadOptions={loadOptions}
         defaultOptions={defaultOptions}
+        autoFocus={autoFocus}
         placeholder={placeholder}
         className={className}
         classNamePrefix={classNamePrefix}
@@ -139,6 +142,8 @@ export default function CustomSelect({
         isLoading={isLoading}
         cacheOptions
         defaultMenuIsOpen={false}
+        menuPortalTarget={typeof document !== 'undefined' ? document.body : undefined}
+        menuPosition="fixed"
       />
     );
   }
@@ -148,6 +153,7 @@ export default function CustomSelect({
     <Select
       value={value}
       onChange={onChange}
+      autoFocus={autoFocus}
       options={options || []}
       placeholder={placeholder}
       className={className}
@@ -156,6 +162,8 @@ export default function CustomSelect({
       theme={customTheme}
       isDisabled={isDisabled}
       isLoading={isLoading}
+      menuPortalTarget={typeof document !== 'undefined' ? document.body : undefined}
+      menuPosition="fixed"
     />
   );
 }
