@@ -6,7 +6,13 @@ import CustomSelect from '@/components/ui/custom-select';
 import CustomDatePicker from '@/components/ui/date-picker';
 import { notify, confirm } from '@/lib/notifications';
 import purchaseOrderService from '@/services/purchaseOrderService';
-import { supplierService, warehouseService, productService, productVariationService, commonService } from '@/services';
+import {
+  supplierService,
+  warehouseService,
+  productService,
+  productVariationService,
+  commonService,
+} from '@/services';
 
 export default function AddPurchasePage() {
   const [formData, setFormData] = useState<any>({
@@ -37,15 +43,52 @@ export default function AddPurchasePage() {
     // Clear variation when product changes
     handleItemChange(index, 'variation_id', undefined);
     handleItemChange(index, 'variation_name', undefined);
-    
+
     if (!productId) return;
     try {
       const p: any = await productService.getProduct(String(productId));
+      // Set product cost and selling prices
       if (p?.cost_price !== undefined) {
-        handleItemChange(index, 'unit_cost', p.cost_price);
+        handleItemChange(index, 'cost_price', p.cost_price);
+      }
+      if (p?.base_price !== undefined) {
+        handleItemChange(index, 'price', p.base_price);
       }
       if (p?.sku) {
         handleItemChange(index, 'sku', p.sku);
+      }
+      // preload variations for this product so variation dropdown shows immediately
+      try {
+        const resVar: any = await productVariationService.getVariations({
+          product_id: productId,
+          per_page: 50,
+        });
+        const listVar = resVar?.data || resVar || [];
+        const variations = (Array.isArray(listVar) ? listVar : listVar.data || []).map(
+          (v: any) => ({ value: v.id, label: v.name || v.sku || v.id })
+        );
+        // store variations list on the item so the variation select can show defaultOptions
+        handleItemChange(index, 'variationOptions', variations);
+        // if there's exactly one variation, auto-select it
+        if (variations.length === 1) {
+          const single = variations[0];
+          handleItemChange(index, 'variation_id', single.value);
+          handleItemChange(index, 'variation_name', single.label);
+          // populate cost and selling price from variation details
+          try {
+            const vDetail: any = await productVariationService.getVariation(String(single.value));
+            if (vDetail?.cost_price !== undefined) {
+              handleItemChange(index, 'cost_price', vDetail.cost_price);
+            }
+            if (vDetail?.selling_price !== undefined) {
+              handleItemChange(index, 'price', vDetail.selling_price);
+            }
+          } catch (err) {
+            // ignore
+          }
+        }
+      } catch (err) {
+        // ignore variation preload errors
       }
     } catch (err) {
       // ignore
@@ -53,14 +96,22 @@ export default function AddPurchasePage() {
   };
 
   // Fetch variation details and set unit cost when variation selected
-  const onVariationSelect = async (index: number, variationId?: string, variationLabel?: string) => {
+  const onVariationSelect = async (
+    index: number,
+    variationId?: string,
+    variationLabel?: string
+  ) => {
     handleItemChange(index, 'variation_id', variationId);
     handleItemChange(index, 'variation_name', variationLabel || '');
     if (!variationId) return;
     try {
       const v: any = await productVariationService.getVariation(String(variationId));
+      // Set variation cost and selling prices
       if (v?.cost_price !== undefined) {
-        handleItemChange(index, 'unit_cost', v.cost_price);
+        handleItemChange(index, 'cost_price', v.cost_price);
+      }
+      if (v?.selling_price !== undefined) {
+        handleItemChange(index, 'price', v.selling_price);
       }
     } catch (err) {
       // ignore
@@ -70,7 +121,7 @@ export default function AddPurchasePage() {
   const computeTotal = () => {
     return items.reduce((sum, it) => {
       const q = Number(it.quantity_ordered) || 0;
-      const u = Number(it.unit_cost) || 0;
+      const u = Number(it.price) || 0; // use selling price for total
       return sum + q * u;
     }, 0);
   };
@@ -135,7 +186,10 @@ export default function AddPurchasePage() {
   const loadSuppliers = async (input = '') => {
     try {
       const list: any = await supplierService.getSuppliers({ search: input });
-      return (list || []).map((s: any) => ({ value: s.id, label: s.name || s.company_name || s.id }));
+      return (list || []).map((s: any) => ({
+        value: s.id,
+        label: s.name || s.company_name || s.id,
+      }));
     } catch (err) {
       return [];
     }
@@ -154,11 +208,35 @@ export default function AddPurchasePage() {
     try {
       const res: any = await productService.getProducts({ search: input, per_page: 10 });
       const list = res?.data || res || [];
-      return (Array.isArray(list) ? list : list.data || []).map((p: any) => ({ value: p.id, label: p.name || p.sku || p.id }));
+      return (Array.isArray(list) ? list : list.data || []).map((p: any) => ({
+        value: p.id,
+        label: p.name || p.sku || p.id,
+      }));
     } catch (err) {
       return [];
     }
   };
+
+  // preload some product options so dropdown shows on focus
+  useEffect(() => {
+    let mounted = true;
+    (async () => {
+      try {
+        const res: any = await productService.getProducts({ per_page: 20 });
+        const list = res?.data || res || [];
+        const items = (Array.isArray(list) ? list : list.data || []).map((p: any) => ({
+          value: p.id,
+          label: p.name || p.sku || p.id,
+        }));
+        if (mounted) setProductOptionsDefault(items);
+      } catch (err) {
+        // ignore
+      }
+    })();
+    return () => {
+      mounted = false;
+    };
+  }, []);
 
   const validate = () => {
     const e: Record<string, string[]> = {};
@@ -169,12 +247,29 @@ export default function AddPurchasePage() {
     if (!formData.order_date) e.order_date = ['Order date is required'];
     if (items.length === 0) e.items = ['At least one item is required'];
     items.forEach((it, idx) => {
-      if (!it.product_id) e[`items.${idx}.product_id`] = [`Product required for item ${idx + 1}`];
+      if (!it.product_id) e[`items.${idx}.product_id`] = [``];
       if (!it.quantity_ordered || Number(it.quantity_ordered) <= 0)
         e[`items.${idx}.quantity_ordered`] = [
           `Quantity must be greater than 0 for item ${idx + 1}`,
         ];
     });
+    // detect duplicate product+variation combinations
+    const seen: Record<string, number[]> = {};
+    items.forEach((it, idx) => {
+      const key = `${it.product_id || ''}:${it.variation_id || ''}`;
+      if (!seen[key]) seen[key] = [];
+      seen[key].push(idx);
+    });
+    const duplicateGroups = Object.values(seen).filter(a => a.length > 1);
+    if (duplicateGroups.length > 0) {
+      e.items = ['Duplicate items detected. Please remove or merge duplicates.'];
+      // mark each duplicated item with an empty message so only the field border shows
+      duplicateGroups.forEach(group => {
+        group.forEach(i => {
+          e[`items.${i}.product_id`] = e[`items.${i}.product_id`] || [''];
+        });
+      });
+    }
     setErrors(e);
     return Object.keys(e).length === 0;
   };
@@ -189,14 +284,16 @@ export default function AddPurchasePage() {
         const key = `${it.product_id || ''}:${it.variation_id || ''}`;
         const found = acc.find(a => a.__key === key);
         if (found) {
-          found.quantity_ordered = Number(found.quantity_ordered || 0) + Number(it.quantity_ordered || 0);
+          found.quantity_ordered =
+            Number(found.quantity_ordered || 0) + Number(it.quantity_ordered || 0);
         } else {
           acc.push({
             __key: key,
             product_id: it.product_id,
             variation_id: it.variation_id,
             quantity_ordered: Number(it.quantity_ordered || 0),
-            unit_cost: parseFloat(String(it.unit_cost) || '0'),
+            cost_price: parseFloat(String(it.cost_price) || '0'),
+            price: parseFloat(String(it.price) || '0'),
           });
         }
         return acc;
@@ -222,7 +319,6 @@ export default function AddPurchasePage() {
       const respErrors = err?.response?.data?.errors;
       if (respErrors) {
         setErrors(respErrors);
-        notify.error('Please fix the validation errors below');
         // scroll to form and focus first relevant field
         setTimeout(() => {
           formRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -254,17 +350,12 @@ export default function AddPurchasePage() {
         </div>
       </div>
 
-      <form ref={formRef} onSubmit={handleSubmit} className="bg-white dark:bg-gray-800 rounded-md p-4 space-y-3">
-        {Object.keys(errors).length > 0 && (
-          <div className="p-2 bg-red-50 border border-red-200 text-red-700 rounded">
-            <div className="font-medium text-sm">Validation errors</div>
-            <ul className="text-xs mt-1">
-              {Object.entries(errors).slice(0, 6).map(([k, v]) => (
-                <li key={k}>{v?.[0] || k}</li>
-              ))}
-            </ul>
-          </div>
-        )}
+      <form
+        ref={formRef}
+        onSubmit={handleSubmit}
+        className="bg-white dark:bg-gray-800 rounded-md p-4 space-y-3"
+      >
+        {/* validation alert removed from header per request */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
           <div>
             <label className="block text-sm">PO Number</label>
@@ -290,6 +381,7 @@ export default function AddPurchasePage() {
               }}
               defaultOptions={supplierOptionsDefault}
               placeholder="Select supplier"
+              isInvalid={hasFieldError('supplier_id')}
             />
             {hasFieldError('supplier_id') && (
               <p className="text-red-600 text-xs mt-1">{getFieldError('supplier_id')}</p>
@@ -306,6 +398,7 @@ export default function AddPurchasePage() {
               }}
               defaultOptions={warehouseOptionsDefault}
               placeholder="Select warehouse"
+              isInvalid={hasFieldError('warehouse_id')}
             />
             {hasFieldError('warehouse_id') && (
               <p className="text-red-600 text-xs mt-1">{getFieldError('warehouse_id')}</p>
@@ -336,10 +429,10 @@ export default function AddPurchasePage() {
 
           <div>
             <label className="block text-sm">Status</label>
-              <select
-                value={formData.status}
-                onChange={e => handleInputChange('status', e.target.value)}
-                className="w-full px-2 py-1.25 text-sm border border-gray-300 dark:border-gray-600 rounded-sm focus:outline-none focus:ring-1 focus:ring-blue-500 dark:focus:ring-blue-400 focus:border-transparent dark:bg-gray-700 dark:text-gray-100"
+            <select
+              value={formData.status}
+              onChange={e => handleInputChange('status', e.target.value)}
+              className="w-full px-2 py-1.25 text-sm border border-gray-300 dark:border-gray-600 rounded-sm focus:outline-none focus:ring-1 focus:ring-blue-500 dark:focus:ring-blue-400 focus:border-transparent dark:bg-gray-700 dark:text-gray-100"
             >
               <option value="draft">Draft</option>
               <option value="pending">Pending</option>
@@ -354,92 +447,132 @@ export default function AddPurchasePage() {
           {hasFieldError('items') && (
             <p className="text-red-600 text-xs mb-2">{getFieldError('items')}</p>
           )}
-          
+
           {/* Invoice-style table header */}
           <div className="border border-gray-300 dark:border-gray-600 rounded-md overflow-hidden">
             <div className="bg-gray-50 dark:bg-gray-700 border-b border-gray-300 dark:border-gray-600">
-              <div className="grid grid-cols-12 gap-2 px-3 py-2 text-xs font-semibold text-gray-700 dark:text-gray-200">
+              <div className="grid grid-cols-12 gap-2 px-3 py-2 text-xs font-semibold text-gray-700 dark:text-gray-200 text-center">
                 <div className="col-span-3">Product</div>
-                <div className="col-span-3">Variation</div>
-                <div className="col-span-2">Qty</div>
-                <div className="col-span-2">Unit Price</div>
-                <div className="col-span-1 text-right">Line Total</div>
+                <div className="col-span-2">Variation</div>
+                <div className="col-span-1">Qty</div>
+                <div className="col-span-2">Cost Price</div>
+                <div className="col-span-2">Price</div>
+                <div className="col-span-1 text-right">Total</div>
                 <div className="col-span-1 text-center">Action</div>
               </div>
             </div>
-            
+
             {/* Scrollable items body */}
-            <div className="max-h-96 overflow-auto">
+            <div className="max-h-95 overflow-auto">
               {items.length === 0 && (
                 <div className="p-6 text-center text-sm text-gray-500 dark:text-gray-400">
                   No items added. Click "Add Item" to begin.
                 </div>
               )}
               {items.map((it, idx) => (
-                <div key={idx} className="border-b border-gray-200 dark:border-gray-700 last:border-b-0 hover:bg-gray-50 dark:hover:bg-gray-700/50">
+                <div
+                  key={idx}
+                  className="border-b border-gray-200 dark:border-gray-700 last:border-b-0 hover:bg-gray-50 dark:hover:bg-gray-700/50"
+                >
                   <div className="grid grid-cols-12 gap-2 px-3 py-3 items-center">
                     <div className="col-span-3">
                       <CustomSelect
                         loadOptions={loadProducts}
-                        value={it.product_id ? { value: it.product_id, label: it.product_name || '' } : null}
+                        value={
+                          it.product_id
+                            ? { value: it.product_id, label: it.product_name || '' }
+                            : null
+                        }
                         onChange={(o: any) => onProductSelect(idx, o?.value, o?.label)}
                         defaultOptions={productOptionsDefault}
                         placeholder="Select product"
+                        isInvalid={!!errors[`items.${idx}.product_id`]}
                       />
-                      {errors[`items.${idx}.product_id`] && (
-                        <p className="text-red-600 text-xs mt-1">{errors[`items.${idx}.product_id`][0]}</p>
+                      {getFieldError(`items.${idx}.product_id`) && (
+                        <p className="text-red-600 text-xs mt-1">
+                          {getFieldError(`items.${idx}.product_id`)}
+                        </p>
                       )}
                     </div>
-                    
-                    <div className="col-span-3">
+
+                    <div className="col-span-2">
                       <CustomSelect
                         loadOptions={async (input: string) => {
                           if (!it.product_id) return [];
                           try {
-                            const res: any = await productVariationService.getVariations({ product_id: it.product_id, search: input });
+                            const res: any = await productVariationService.getVariations({
+                              product_id: it.product_id,
+                              search: input,
+                            });
                             const list = res?.data ?? res ?? [];
-                            const variations = Array.isArray(list) ? list : (list.data || list);
-                            return (variations || []).map((v: any) => ({ value: v.id, label: v.name || v.sku || v.id }));
+                            const variations = Array.isArray(list) ? list : list.data || list;
+                            return (variations || []).map((v: any) => ({
+                              value: v.id,
+                              label: v.name || v.sku || v.id,
+                            }));
                           } catch (err) {
                             return [];
                           }
                         }}
-                        value={it.variation_id ? { value: it.variation_id, label: it.variation_name || '' } : null}
+                        value={
+                          it.variation_id
+                            ? { value: it.variation_id, label: it.variation_name || '' }
+                            : null
+                        }
                         onChange={(o: any) => onVariationSelect(idx, o?.value, o?.label)}
+                        defaultOptions={it.variationOptions || []}
                         placeholder="Variation"
                         isDisabled={!it.product_id}
+                        isInvalid={!!errors[`items.${idx}.variation_id`]}
                       />
                     </div>
-                    
-                    <div className="col-span-2">
+
+                    <div className="col-span-1">
                       <input
                         type="number"
-                        step="0.0001"
+                        step="1"
                         value={it.quantity_ordered}
                         onChange={e => handleItemChange(idx, 'quantity_ordered', e.target.value)}
-                        className="w-full px-2 py-1.25 text-sm border border-gray-300 dark:border-gray-600 rounded-sm focus:outline-none focus:ring-1 focus:ring-blue-500 dark:focus:ring-blue-400 focus:border-transparent dark:bg-gray-700 dark:text-gray-100"
+                        onFocus={e => (e.target as HTMLInputElement).select()}
+                        className={`w-full px-2 py-1.25 text-sm text-right font-semibold rounded-sm border focus:outline-none focus:ring-1 focus:ring-blue-500 dark:focus:ring-blue-400 focus:border-transparent dark:bg-gray-700 dark:text-gray-100 ${errors[`items.${idx}.quantity_ordered`] ? 'border-red-500' : 'border-gray-300 dark:border-gray-600'}`}
                         placeholder="0"
                       />
-                      {errors[`items.${idx}.quantity_ordered`] && (
-                        <p className="text-red-600 text-xs mt-1">{errors[`items.${idx}.quantity_ordered`][0]}</p>
+                      {getFieldError(`items.${idx}.quantity_ordered`) && (
+                        <p className="text-red-600 text-xs mt-1">
+                          {getFieldError(`items.${idx}.quantity_ordered`)}
+                        </p>
                       )}
                     </div>
-                    
+
                     <div className="col-span-2">
                       <input
                         type="number"
                         step="0.01"
-                        value={it.unit_cost}
-                        onChange={e => handleItemChange(idx, 'unit_cost', e.target.value)}
-                        className="w-full px-2 py-1.25 text-sm border border-gray-300 dark:border-gray-600 rounded-sm focus:outline-none focus:ring-1 focus:ring-blue-500 dark:focus:ring-blue-400 focus:border-transparent dark:bg-gray-700 dark:text-gray-100"
+                        value={it.cost_price}
+                        readOnly
+                        aria-disabled="true"
+                        tabIndex={0}
+                        onFocus={e => (e.target as HTMLInputElement).select()}
+                        className={`w-full px-2 py-1.25 text-sm text-right font-semibold rounded-sm border focus:outline-none focus:ring-1 focus:ring-blue-500 dark:focus:ring-blue-400 focus:border-transparent bg-gray-200 dark:bg-gray-800 dark:text-gray-100 cursor-not-allowed ${errors[`items.${idx}.cost_price`] ? 'border-red-500' : 'border-gray-300 dark:border-gray-600'}`}
                         placeholder="0.00"
                       />
                     </div>
-                    
-                    <div className="col-span-1 text-right text-sm font-medium dark:text-gray-200">
-                      {((Number(it.quantity_ordered) || 0) * (Number(it.unit_cost) || 0)).toFixed(2)}
+                    <div className="col-span-2">
+                      <input
+                        type="number"
+                        step="0.01"
+                        value={it.price}
+                        onChange={e => handleItemChange(idx, 'price', e.target.value)}
+                        onFocus={e => (e.target as HTMLInputElement).select()}
+                        className={`w-full px-2 py-1.25 text-sm text-right font-semibold rounded-sm border focus:outline-none focus:ring-1 focus:ring-blue-500 dark:focus:ring-blue-400 focus:border-transparent dark:bg-gray-700 dark:text-gray-100 ${errors[`items.${idx}.price`] ? 'border-red-500' : 'border-gray-300 dark:border-gray-600'}`}
+                        placeholder="0.00"
+                      />
                     </div>
-                    
+
+                    <div className="col-span-1 text-right font-semibold text-sm font-medium dark:text-gray-200">
+                      {((Number(it.quantity_ordered) || 0) * (Number(it.price) || 0)).toFixed(2)}
+                    </div>
+
                     <div className="col-span-1 text-center">
                       <button
                         type="button"
@@ -454,7 +587,7 @@ export default function AddPurchasePage() {
                 </div>
               ))}
             </div>
-            
+
             {/* Invoice summary section */}
             {items.length > 0 && (
               <div className="bg-gray-50 dark:bg-gray-800 border-t-2 border-gray-300 dark:border-gray-600">
@@ -463,11 +596,15 @@ export default function AddPurchasePage() {
                     <div className="w-64">
                       <div className="flex justify-between py-2 text-sm">
                         <span className="text-gray-600 dark:text-gray-400">Subtotal:</span>
-                        <span className="font-medium dark:text-gray-200">{computeTotal().toFixed(2)}</span>
+                        <span className="font-medium dark:text-gray-200">
+                          {computeTotal().toFixed(2)}
+                        </span>
                       </div>
                       <div className="flex justify-between py-2 border-t border-gray-300 dark:border-gray-600 text-base font-bold">
                         <span className="dark:text-gray-200">Total:</span>
-                        <span className="text-blue-600 dark:text-blue-400">{computeTotal().toFixed(2)}</span>
+                        <span className="text-blue-600 dark:text-blue-400">
+                          {computeTotal().toFixed(2)}
+                        </span>
                       </div>
                     </div>
                   </div>
