@@ -4,11 +4,10 @@ import { useEffect, useState, useCallback, useRef } from 'react';
 import { Plus, Edit, X, Minus } from 'lucide-react';
 import CustomSelect from '@/components/ui/custom-select';
 import CustomDatePicker from '@/components/ui/date-picker';
-import { notify, confirm } from '@/lib/notifications';
+import { notify } from '@/lib/notifications';
 import purchaseOrderService from '@/services/purchaseOrderService';
 import {
   supplierService,
-  warehouseService,
   productService,
   productVariationService,
   commonService,
@@ -81,10 +80,7 @@ export default function AddPurchasePage() {
     if (!productId) return;
     try {
       const p: any = await productService.getProduct(String(productId));
-      // Set product cost and selling prices
-      if (p?.cost_price !== undefined) {
-        handleItemChange(index, 'cost_price', p.cost_price);
-      }
+      // Set product selling price
       if (p?.base_price !== undefined) {
         handleItemChange(index, 'price', p.base_price);
       }
@@ -108,12 +104,9 @@ export default function AddPurchasePage() {
           const single = variations[0];
           handleItemChange(index, 'variation_id', single.value);
           handleItemChange(index, 'variation_name', single.label);
-          // populate cost and selling price from variation details
+          // populate selling price from variation details
           try {
             const vDetail: any = await productVariationService.getVariation(String(single.value));
-            if (vDetail?.cost_price !== undefined) {
-              handleItemChange(index, 'cost_price', vDetail.cost_price);
-            }
             if (vDetail?.selling_price !== undefined) {
               handleItemChange(index, 'price', vDetail.selling_price);
             }
@@ -140,10 +133,7 @@ export default function AddPurchasePage() {
     if (!variationId) return;
     try {
       const v: any = await productVariationService.getVariation(String(variationId));
-      // Set variation cost and selling prices
-      if (v?.cost_price !== undefined) {
-        handleItemChange(index, 'cost_price', v.cost_price);
-      }
+      // Set variation selling price
       if (v?.selling_price !== undefined) {
         handleItemChange(index, 'price', v.selling_price);
       }
@@ -165,9 +155,9 @@ export default function AddPurchasePage() {
     const disc = Number(discount) || 0;
     const discountAmount = discountType === 'percent' ? (subtotal * (disc / 100)) : disc;
     const vatPercent = Number(vat) || 0;
-    const vatAmount = subtotal * (vatPercent / 100);
+    const vatAmount = (subtotal - discountAmount) * (vatPercent / 100);
     const shippingAmount = Number(shipping) || 0;
-    return Math.max(0, subtotal - discountAmount - vatAmount + shippingAmount);
+    return subtotal - discountAmount + vatAmount + shippingAmount;
   };
 
   // Precompute values for display
@@ -175,9 +165,9 @@ export default function AddPurchasePage() {
   const discValue = Number(discount) || 0;
   const discountAmountValue = discountType === 'percent' ? subtotalValue * (discValue / 100) : discValue;
   const vatPercentValue = Number(vat) || 0;
-  const vatAmountValue = subtotalValue * (vatPercentValue / 100);
+  const vatAmountValue = (subtotalValue - discountAmountValue) * (vatPercentValue / 100);
   const shippingAmountValue = Number(shipping) || 0;
-  const grandTotalValue = Math.max(0, subtotalValue - discountAmountValue - vatAmountValue + shippingAmountValue);
+  const grandTotalValue = subtotalValue - discountAmountValue + vatAmountValue + shippingAmountValue;
 
   const handleItemChange = (index: number, key: string, value: any) => {
     setItems(prev => prev.map((it, i) => (i === index ? { ...it, [key]: value } : it)));
@@ -700,7 +690,7 @@ export default function AddPurchasePage() {
                         value={it.quantity_ordered}
                         onChange={e => handleItemChange(idx, 'quantity_ordered', e.target.value)}
                         onFocus={e => (e.target as HTMLInputElement).select()}
-                        className={`w-full px-2 py-1.25 text-sm text-right font-semibold rounded-sm border focus:outline-none focus:ring-1 focus:ring-blue-500 dark:focus:ring-blue-400 focus:border-transparent dark:bg-gray-700 dark:text-gray-100 ${errors[`items.${idx}.quantity_ordered`] ? 'border-red-500' : 'border-gray-300 dark:border-gray-600'}`}
+                        className={`w-full px-2 py-1.25 text-sm text-right font-semibold rounded-sm border focus:outline-none focus:ring-1 focus:ring-blue-500 dark:focus:ring-blue-400 focus:border-transparent dark:bg-gray-700 dark:text-gray-100 [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none ${errors[`items.${idx}.quantity_ordered`] ? 'border-red-500' : 'border-gray-300 dark:border-gray-600'}`}
                         placeholder="0"
                       />
                       {getFieldError(`items.${idx}.quantity_ordered`) && (
@@ -717,13 +707,13 @@ export default function AddPurchasePage() {
                         value={it.price}
                         onChange={e => handleItemChange(idx, 'price', e.target.value)}
                         onFocus={e => (e.target as HTMLInputElement).select()}
-                        className={`w-full px-2 py-1.25 text-sm text-right font-semibold rounded-sm border focus:outline-none focus:ring-1 focus:ring-blue-500 dark:focus:ring-blue-400 focus:border-transparent dark:bg-gray-700 dark:text-gray-100 ${errors[`items.${idx}.price`] ? 'border-red-500' : 'border-gray-300 dark:border-gray-600'}`}
+                        className={`w-full px-2 py-1.25 text-sm text-right font-semibold rounded-sm border focus:outline-none focus:ring-1 focus:ring-blue-500 dark:focus:ring-blue-400 focus:border-transparent dark:bg-gray-700 dark:text-gray-100 [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none ${errors[`items.${idx}.price`] ? 'border-red-500' : 'border-gray-300 dark:border-gray-600'}`}
                         placeholder="0.00"
                       />
                     </div>
 
                     <div className="col-span-2 text-right text-sm font-medium dark:text-gray-200">
-                      {((Number(it.quantity_ordered) || 0) * (Number(it.price) || 0)).toFixed(2)}
+                      {((Number(it.quantity_ordered) || 0) * (Number(it.price) || 0)).toFixed(0)}
                     </div>
 
                     <div className="col-span-1 text-center">
@@ -797,7 +787,7 @@ export default function AddPurchasePage() {
                       <div className="space-y-2">
                         <div className="flex justify-between text-sm">
                           <span className="text-gray-600 dark:text-gray-400">Subtotal:</span>
-                          <span className="font-medium dark:text-gray-200">{subtotalValue.toFixed(2)}</span>
+                          <span className="font-medium dark:text-gray-200">{subtotalValue.toFixed(0)}</span>
                         </div>
 
                         <div className="flex items-center justify-between gap-2 text-sm">
@@ -808,7 +798,7 @@ export default function AddPurchasePage() {
                             value={discount as any}
                             onChange={e => setDiscount(e.target.value)}
                             onFocus={e => (e.target as HTMLInputElement).select()}
-                            className="w-28 px-2 py-1 text-sm border rounded-sm dark:bg-gray-700 dark:text-gray-100 border-gray-300 dark:border-gray-600 text-right"
+                            className="w-28 px-2 py-1 text-sm border rounded-sm dark:bg-gray-700 dark:text-gray-100 border-gray-300 dark:border-gray-600 text-right focus:outline-none focus:ring-1 focus:ring-blue-500 dark:focus:ring-blue-400 focus:border-transparent [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
                           />
                         </div>
 
@@ -821,7 +811,7 @@ export default function AddPurchasePage() {
                             value={vat as any}
                             onChange={e => setVat(e.target.value)}
                             onFocus={e => (e.target as HTMLInputElement).select()}
-                            className="w-28 px-2 py-1 text-sm border rounded-sm dark:bg-gray-700 dark:text-gray-100 border-gray-300 dark:border-gray-600 text-right"
+                            className="w-28 px-2 py-1 text-sm border rounded-sm dark:bg-gray-700 dark:text-gray-100 border-gray-300 dark:border-gray-600 text-right focus:outline-none focus:ring-1 focus:ring-blue-500 dark:focus:ring-blue-400 focus:border-transparent [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
                           />
                         </div>
 
@@ -834,7 +824,7 @@ export default function AddPurchasePage() {
                             value={shipping as any}
                             onChange={e => setShipping(e.target.value)}
                             onFocus={e => (e.target as HTMLInputElement).select()}
-                            className="w-28 px-2 py-1 text-sm border rounded-sm dark:bg-gray-700 dark:text-gray-100 border-gray-300 dark:border-gray-600 text-right"
+                            className="w-28 px-2 py-1 text-sm border rounded-sm dark:bg-gray-700 dark:text-gray-100 border-gray-300 dark:border-gray-600 text-right focus:outline-none focus:ring-1 focus:ring-blue-500 dark:focus:ring-blue-400 focus:border-transparent [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
                           />
                         </div>
 
@@ -842,7 +832,7 @@ export default function AddPurchasePage() {
 
                         <div className="flex justify-between py-2 border-t border-gray-300 dark:border-gray-600 text-base font-bold">
                           <span className="dark:text-gray-200">Total:</span>
-                          <span className="text-blue-600 dark:text-blue-400">{grandTotalValue.toFixed(2)}</span>
+                          <span className="text-blue-600 dark:text-blue-400">{grandTotalValue.toFixed(0)}</span>
                         </div>
                       </div>
                     </div>

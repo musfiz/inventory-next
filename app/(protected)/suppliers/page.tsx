@@ -275,6 +275,7 @@ export default function SupplierListPage() {
                     setFormErrors(rest);
                   }
                 }}
+                placeholder="Enter supplier name"
                 className={`w-full px-2 py-1.25 text-sm border rounded-sm focus:outline-none focus:ring-1 focus:ring-blue-500 dark:focus:ring-blue-400 focus:border-transparent dark:bg-gray-700 dark:text-gray-100 ${formErrors.name ? 'border-red-500' : 'border-gray-300'}`}
               />
               {formErrors.name && <p className="text-red-600 text-xs mt-1">{formErrors.name}</p>}
@@ -292,6 +293,7 @@ export default function SupplierListPage() {
                     setFormErrors(rest);
                   }
                 }}
+                placeholder="Enter phone number"
                 className={`w-full px-2 py-1.25 text-sm border rounded-sm focus:outline-none focus:ring-1 focus:ring-blue-500 dark:focus:ring-blue-400 focus:border-transparent dark:bg-gray-700 dark:text-gray-100 ${formErrors.phone ? 'border-red-500' : 'border-gray-300'}`}
               />
               {formErrors.phone && <p className="text-red-600 text-xs mt-1">{formErrors.phone}</p>}
@@ -302,6 +304,7 @@ export default function SupplierListPage() {
                 type="text"
                 value={formData.contact_person}
                 onChange={e => setFormData({ ...formData, contact_person: e.target.value })}
+                placeholder="Enter contact person name"
                 className={`w-full px-2 py-1.25 text-sm border rounded-sm focus:outline-none focus:ring-1 focus:ring-blue-500 dark:focus:ring-blue-400 focus:border-transparent dark:bg-gray-700 dark:text-gray-100 ${formErrors.contact_person ? 'border-red-500' : 'border-gray-300'}`}
               />
             </div>
@@ -314,6 +317,7 @@ export default function SupplierListPage() {
                 type="text"
                 value={formData.company_name}
                 onChange={e => setFormData({ ...formData, company_name: e.target.value })}
+                placeholder="Enter company name"
                 className={`w-full px-2 py-1.25 text-sm border rounded-sm focus:outline-none focus:ring-1 focus:ring-blue-500 dark:focus:ring-blue-400 focus:border-transparent dark:bg-gray-700 dark:text-gray-100 ${formErrors.company_name ? 'border-red-500' : 'border-gray-300'}`}
               />
             </div>
@@ -324,6 +328,7 @@ export default function SupplierListPage() {
                 type="email"
                 value={formData.email}
                 onChange={e => setFormData({ ...formData, email: e.target.value })}
+                placeholder="Enter email address"
                 className={`w-full px-2 py-1.25 text-sm border rounded-sm focus:outline-none focus:ring-1 focus:ring-blue-500 dark:focus:ring-blue-400 focus:border-transparent dark:bg-gray-700 dark:text-gray-100 ${formErrors.email ? 'border-red-500' : 'border-gray-300'}`}
               />
             </div>
@@ -333,6 +338,7 @@ export default function SupplierListPage() {
                 type="text"
                 value={formData.website}
                 onChange={e => setFormData({ ...formData, website: e.target.value })}
+                placeholder="Enter website URL"
                 className={`w-full px-2 py-1.25 text-sm border rounded-sm focus:outline-none focus:ring-1 focus:ring-blue-500 dark:focus:ring-blue-400 focus:border-transparent dark:bg-gray-700 dark:text-gray-100 ${formErrors.website ? 'border-red-500' : 'border-gray-300'}`}
               />
             </div>
@@ -345,6 +351,7 @@ export default function SupplierListPage() {
                 type="text"
                 value={formData.city}
                 onChange={e => setFormData({ ...formData, city: e.target.value })}
+                placeholder="Enter city"
                 className={`w-full px-2 py-1.25 text-sm border rounded-sm focus:outline-none focus:ring-1 focus:ring-blue-500 dark:focus:ring-blue-400 focus:border-transparent dark:bg-gray-700 dark:text-gray-100 ${formErrors.city ? 'border-red-500' : 'border-gray-300'}`}
               />
             </div>
@@ -354,6 +361,7 @@ export default function SupplierListPage() {
                 type="text"
                 value={formData.state}
                 onChange={e => setFormData({ ...formData, state: e.target.value })}
+                placeholder="Enter state"
                 className={`w-full px-2 py-1.25 text-sm border rounded-sm focus:outline-none focus:ring-1 focus:ring-blue-500 dark:focus:ring-blue-400 focus:border-transparent dark:bg-gray-700 dark:text-gray-100 ${formErrors.state ? 'border-red-500' : 'border-gray-300'}`}
               />
             </div>
@@ -363,6 +371,7 @@ export default function SupplierListPage() {
                 type="text"
                 value={formData.postal_code}
                 onChange={e => setFormData({ ...formData, postal_code: e.target.value })}
+                placeholder="Enter postal code"
                 className={`w-full px-2 py-1.25 text-sm border rounded-sm focus:outline-none focus:ring-1 focus:ring-blue-500 dark:focus:ring-blue-400 focus:border-transparent dark:bg-gray-700 dark:text-gray-100 ${formErrors.postal_code ? 'border-red-500' : 'border-gray-300'}`}
               />
             </div>
@@ -375,6 +384,7 @@ export default function SupplierListPage() {
                 type="text"
                 value={formData.vat_number}
                 onChange={e => setFormData({ ...formData, vat_number: e.target.value })}
+                placeholder="Enter VAT number"
                 className={`w-full px-2 py-1.25 text-sm border rounded-sm focus:outline-none focus:ring-1 focus:ring-blue-500 dark:focus:ring-blue-400 focus:border-transparent dark:bg-gray-700 dark:text-gray-100 ${formErrors.vat_number ? 'border-red-500' : 'border-gray-300'}`}
               />
             </div>
@@ -384,6 +394,7 @@ export default function SupplierListPage() {
                 type="text"
                 value={formData.tin_number}
                 onChange={e => setFormData({ ...formData, tin_number: e.target.value })}
+                placeholder="Enter TIN number"
                 className={`w-full px-2 py-1.25 text-sm border rounded-sm focus:outline-none focus:ring-1 focus:ring-blue-500 dark:focus:ring-blue-400 focus:border-transparent dark:bg-gray-700 dark:text-gray-100 ${formErrors.tin_number ? 'border-red-500' : 'border-gray-300'}`}
               />
             </div>
@@ -393,6 +404,7 @@ export default function SupplierListPage() {
                 type="text"
                 value={formData.trade_license}
                 onChange={e => setFormData({ ...formData, trade_license: e.target.value })}
+                placeholder="Enter trade license number"
                 className={`w-full px-2 py-1.25 text-sm border rounded-sm focus:outline-none focus:ring-1 focus:ring-blue-500 dark:focus:ring-blue-400 focus:border-transparent dark:bg-gray-700 dark:text-gray-100 ${formErrors.trade_license ? 'border-red-500' : 'border-gray-300'}`}
               />
             </div>
@@ -405,6 +417,7 @@ export default function SupplierListPage() {
                 type="text"
                 value={formData.payment_terms}
                 onChange={e => setFormData({ ...formData, payment_terms: e.target.value })}
+                placeholder="Enter payment terms"
                 className={`w-full px-2 py-1.25 text-sm border rounded-sm focus:outline-none focus:ring-1 focus:ring-blue-500 dark:focus:ring-blue-400 focus:border-transparent dark:bg-gray-700 dark:text-gray-100 ${formErrors.payment_terms ? 'border-red-500' : 'border-gray-300'}`}
               />
             </div>
@@ -415,6 +428,7 @@ export default function SupplierListPage() {
                 step="0.01"
                 value={formData.credit_limit}
                 onChange={e => setFormData({ ...formData, credit_limit: e.target.value })}
+                placeholder="Enter credit limit"
                 className={`w-full px-2 py-1.25 text-sm border rounded-sm focus:outline-none focus:ring-1 focus:ring-blue-500 dark:focus:ring-blue-400 focus:border-transparent dark:bg-gray-700 dark:text-gray-100 ${formErrors.credit_limit ? 'border-red-500' : 'border-gray-300'}`}
               />
             </div>
