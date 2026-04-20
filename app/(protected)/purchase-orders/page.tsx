@@ -2,23 +2,24 @@
 
 import { useEffect, useState } from 'react';
 import { ColumnDef } from '@tanstack/react-table';
-import { List, Plus, Edit, Trash2, Eye } from 'lucide-react';
+import { List, Plus, Edit, Trash2, Eye, Printer } from 'lucide-react';
 import DataTable from '@/components/ui/datatable';
 import { notify, confirm } from '@/lib/notifications';
 import purchaseOrderService from '@/services/purchaseOrderService';
+import { useRouter } from 'next/navigation';
 
 export default function PurchaseOrdersPage() {
+  const router = useRouter();
+  const formatDate = (val?: string | null) => {
+    if (!val) return '-';
+    const d = new Date(val);
+    if (isNaN(d.getTime())) return '-';
+    const dd = String(d.getDate()).padStart(2, '0');
+    const mm = String(d.getMonth() + 1).padStart(2, '0');
+    const yyyy = d.getFullYear();
+    return `${dd}/${mm}/${yyyy}`;
+  };
   const [refreshKey, setRefreshKey] = useState(0);
-  const [showForm, setShowForm] = useState(false);
-  const [isEditing, setIsEditing] = useState(false);
-  const [formData, setFormData] = useState<any>({
-    po_number: '',
-    supplier_id: undefined,
-    warehouse_id: undefined,
-    order_date: '',
-    expected_delivery_date: '',
-    status: 'draft',
-  });
   const [showDetails, setShowDetails] = useState(false);
   const [detailItems, setDetailItems] = useState<any[]>([]);
   const [detailLoading, setDetailLoading] = useState(false);
@@ -37,9 +38,7 @@ export default function PurchaseOrdersPage() {
   };
 
   const handleEdit = (row: any) => {
-    setIsEditing(true);
-    setFormData({ ...row });
-    setShowForm(true);
+    router.push(`/purchase-orders/add?edit=${row.id}`);
   };
 
   const handleDelete = async (row: any) => {
@@ -83,8 +82,40 @@ export default function PurchaseOrdersPage() {
       header: 'Warehouse',
       cell: ({ row }) => row.original.warehouse?.name || '-',
     },
-    { accessorKey: 'order_date', header: 'Order Date' },
-    { accessorKey: 'status', header: 'Status' },
+    {
+      accessorKey: 'order_date',
+      header: 'Order Date',
+      cell: ({ row }) => formatDate(row.original.order_date),
+    },
+    {
+      accessorKey: 'expected_delivery_date',
+      header: 'Expected Delivery',
+      cell: ({ row }) => formatDate(row.original.expected_delivery_date),
+    },
+    {
+      accessorKey: 'status',
+      header: 'Status',
+      cell: ({ row }) => {
+        const s = row.original.status || '';
+        const map: Record<string, string> = {
+          draft: 'bg-gray-100 text-gray-800',
+          pending: 'bg-yellow-100 text-yellow-800',
+          approved: 'bg-green-100 text-green-800',
+          ordered: 'bg-blue-100 text-blue-800',
+          partial: 'bg-orange-100 text-orange-800',
+          received: 'bg-teal-100 text-teal-800',
+          completed: 'bg-green-200 text-green-900',
+          cancelled: 'bg-red-100 text-red-800',
+        };
+        const cls = map[s] || 'bg-gray-100 text-gray-800';
+        const label = String(s).replace(/_/g, ' ');
+        return (
+          <span className={`px-2 py-0.5 rounded text-xs font-medium ${cls}`}>
+            {label.charAt(0).toUpperCase() + label.slice(1)}
+          </span>
+        );
+      },
+    },
     { accessorKey: 'total_amount', header: 'Total' },
     {
       id: 'actions',
@@ -107,6 +138,13 @@ export default function PurchaseOrdersPage() {
             <Edit className="w-4 h-4" />
           </button>
           <button
+            title="Print"
+            onClick={() => window.open(`/purchase-orders/print/${row.original.id}`, '_blank')}
+            className="p-1 text-gray-600 hover:text-gray-800 cursor-pointer"
+          >
+            <Printer className="w-4 h-4" />
+          </button>
+          <button
             title="Delete"
             onClick={() => handleDelete(row.original)}
             className="p-1 text-red-600 hover:text-red-800 cursor-pointer"
@@ -127,70 +165,14 @@ export default function PurchaseOrdersPage() {
           <List className="w-5 h-5 text-blue-600" /> Purchase Orders
         </h1>
         <button
-          onClick={() => {
-            setShowForm(true);
-            setIsEditing(false);
-            setFormData({
-              po_number: '',
-              supplier_id: undefined,
-              warehouse_id: undefined,
-              order_date: '',
-              expected_delivery_date: '',
-              status: 'draft',
-            });
-          }}
+          onClick={() => router.push('/purchase-orders/add')}
           className="flex items-center gap-2 px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium rounded-sm transition-colors duration-200"
         >
           <Plus className="w-4 h-4" /> Add Purchase
         </button>
       </div>
 
-      {showForm && (
-        <form
-          onSubmit={e => {
-            e.preventDefault();
-            /* minimal stub - implement store flow if needed */ setShowForm(false);
-            setRefreshKey(k => k + 1);
-            notify.success(isEditing ? 'Updated' : 'Created');
-          }}
-          className="bg-white dark:bg-gray-800 rounded-md p-3 space-y-3"
-        >
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
-            <div>
-              <label className="block text-sm">PO Number</label>
-              <input
-                value={formData.po_number}
-                onChange={e => setFormData({ ...formData, po_number: e.target.value })}
-                className="w-full px-2 py-1 text-sm border rounded-sm"
-              />
-            </div>
-            <div>
-              <label className="block text-sm">Order Date</label>
-              <input
-                type="date"
-                value={formData.order_date}
-                onChange={e => setFormData({ ...formData, order_date: e.target.value })}
-                className="w-full px-2 py-1 text-sm border rounded-sm"
-              />
-            </div>
-            <div className="flex items-end gap-2">
-              <button
-                type="submit"
-                className="px-3 py-1.5 bg-blue-600 text-white text-sm rounded-sm"
-              >
-                {isEditing ? 'Update' : 'Save'}
-              </button>
-              <button
-                type="button"
-                onClick={() => setShowForm(false)}
-                className="px-3 py-1.5 bg-gray-600 text-white text-sm rounded-sm"
-              >
-                Cancel
-              </button>
-            </div>
-          </div>
-        </form>
-      )}
+      {/* Inline add/edit form removed — Add button navigates to separate add page */}
 
       <DataTable
         key={refreshKey}

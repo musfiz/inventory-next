@@ -19,7 +19,6 @@ export default function AddPurchasePage() {
   const authUser = useAuthStore(s => s.user);
   const [formData, setFormData] = useState<any>({
     tenant_id: undefined,
-    po_number: '',
     supplier_id: undefined,
     warehouse_id: undefined,
     order_date: '',
@@ -43,7 +42,6 @@ export default function AddPurchasePage() {
   const [focusItemIndex, setFocusItemIndex] = useState<number | null>(null);
 
   const formRef = useRef<HTMLFormElement | null>(null);
-  const poNumberRef = useRef<HTMLInputElement | null>(null);
 
   const [supplierOptionsDefault, setSupplierOptionsDefault] = useState<any[]>([]);
   const [warehouseOptionsDefault, setWarehouseOptionsDefault] = useState<any[]>([]);
@@ -80,10 +78,7 @@ export default function AddPurchasePage() {
     if (!productId) return;
     try {
       const p: any = await productService.getProduct(String(productId));
-      // Set product selling price
-      if (p?.base_price !== undefined) {
-        handleItemChange(index, 'price', p.base_price);
-      }
+      // Do not auto-fill cost/price here; user will enter cost manually
       if (p?.sku) {
         handleItemChange(index, 'sku', p.sku);
       }
@@ -104,15 +99,7 @@ export default function AddPurchasePage() {
           const single = variations[0];
           handleItemChange(index, 'variation_id', single.value);
           handleItemChange(index, 'variation_name', single.label);
-          // populate selling price from variation details
-          try {
-            const vDetail: any = await productVariationService.getVariation(String(single.value));
-            if (vDetail?.selling_price !== undefined) {
-              handleItemChange(index, 'price', vDetail.selling_price);
-            }
-          } catch (err) {
-            // ignore
-          }
+          // intentionally do not populate price automatically for variations
         }
       } catch (err) {
         // ignore variation preload errors
@@ -133,10 +120,7 @@ export default function AddPurchasePage() {
     if (!variationId) return;
     try {
       const v: any = await productVariationService.getVariation(String(variationId));
-      // Set variation selling price
-      if (v?.selling_price !== undefined) {
-        handleItemChange(index, 'price', v.selling_price);
-      }
+      // intentionally do not auto-set cost/price; user will input cost manually
     } catch (err) {
       // ignore
     }
@@ -145,7 +129,7 @@ export default function AddPurchasePage() {
   const computeSubtotal = () => {
     return items.reduce((sum, it) => {
       const q = Number(it.quantity_ordered) || 0;
-      const u = Number(it.price) || 0; // use selling price for total
+      const u = Number(it.cost_price) || 0; // use cost_price for total
       return sum + q * u;
     }, 0);
   };
@@ -350,8 +334,6 @@ export default function AddPurchasePage() {
 
   const validate = () => {
     const e: Record<string, string[]> = {};
-    if (!formData.po_number || !String(formData.po_number).trim())
-      e.po_number = ['PO Number is required'];
     if (!formData.supplier_id) e.supplier_id = ['Supplier is required'];
     if (!formData.warehouse_id) e.warehouse_id = ['Warehouse is required'];
     if (!formData.order_date) e.order_date = ['Order date is required'];
@@ -402,7 +384,7 @@ export default function AddPurchasePage() {
             product_id: it.product_id,
             variation_id: it.variation_id,
             quantity_ordered: Number(it.quantity_ordered || 0),
-            price: parseFloat(String(it.price) || '0'),
+            price: parseFloat(String(it.cost_price) || '0'),
           });
         }
         return acc;
@@ -415,14 +397,18 @@ export default function AddPurchasePage() {
         payment_status: paymentStatus,
         discount: Number(discount) || 0,
         discount_type: discountType,
+        discount_amount: discountAmountValue,
+        discount_percentage: discountType === 'percent' ? Number(discount) || 0 : null,
         vat: Number(vat) || 0,
         shipping: Number(shipping) || 0,
+        sub_total: subtotalValue,
+        vat_amount: vatAmountValue,
+        total_amount: Number(Math.round(grandTotalValue).toFixed(2)),
       };
       await purchaseOrderService.storePurchaseOrder(payload);
       notify.success('Purchase order created');
       setFormData({
         tenant_id: undefined,
-        po_number: '',
         supplier_id: undefined,
         warehouse_id: undefined,
         order_date: '',
@@ -443,9 +429,7 @@ export default function AddPurchasePage() {
         setTimeout(() => {
           formRef.current?.scrollIntoView({ behavior: 'smooth' });
           const keys = Object.keys(respErrors);
-          if (keys.includes('po_number')) {
-            poNumberRef.current?.focus();
-          }
+          // focus first error field if present (po_number removed from UI)
         }, 80);
       } else {
         notify.error(err?.response?.data?.message || 'Failed to create purchase order');
@@ -500,17 +484,17 @@ export default function AddPurchasePage() {
         {/* validation alert removed from header per request */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
           <div>
-            <label className="block text-sm">PO Number</label>
-            <input
-              ref={poNumberRef}
-              value={formData.po_number}
-              onChange={e => handleInputChange('po_number', e.target.value)}
-              placeholder="Order Number"
-              className={`w-full px-2 py-1.25 text-sm border rounded-sm focus:outline-none focus:ring-1 focus:ring-blue-500 dark:focus:ring-blue-400 focus:border-transparent dark:bg-gray-700 dark:text-gray-100 ${hasFieldError('po_number') ? 'border-red-500' : 'border-gray-300'}`}
-            />
-            {hasFieldError('po_number') && (
-              <p className="text-red-600 text-xs mt-1">{getFieldError('po_number')}</p>
-            )}
+            <label className="block text-sm">Payment Status</label>
+            <select
+              value={paymentStatus}
+              onChange={e => setPaymentStatus(e.target.value as any)}
+              className="w-full px-2 py-1 text-sm border rounded-sm dark:bg-gray-700 dark:text-gray-100 border-gray-300 dark:border-gray-600 focus:outline-none focus:ring-1 focus:ring-blue-500 dark:focus:ring-blue-400 focus:border-transparent"
+            >
+              <option value="pending">Pending</option>
+              <option value="partial">Partial</option>
+              <option value="paid">Paid</option>
+              <option value="overdue">Overdue</option>
+            </select>
           </div>
 
           <div>
@@ -704,16 +688,16 @@ export default function AddPurchasePage() {
                       <input
                         type="number"
                         step="0.01"
-                        value={it.price}
-                        onChange={e => handleItemChange(idx, 'price', e.target.value)}
+                        value={it.cost_price}
+                        onChange={e => handleItemChange(idx, 'cost_price', e.target.value)}
                         onFocus={e => (e.target as HTMLInputElement).select()}
-                        className={`w-full px-2 py-1.25 text-sm text-right font-semibold rounded-sm border focus:outline-none focus:ring-1 focus:ring-blue-500 dark:focus:ring-blue-400 focus:border-transparent dark:bg-gray-700 dark:text-gray-100 [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none ${errors[`items.${idx}.price`] ? 'border-red-500' : 'border-gray-300 dark:border-gray-600'}`}
+                        className={`w-full px-2 py-1.25 text-sm text-right font-semibold rounded-sm border focus:outline-none focus:ring-1 focus:ring-blue-500 dark:focus:ring-blue-400 focus:border-transparent dark:bg-gray-700 dark:text-gray-100 [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none ${errors[`items.${idx}.cost_price`] ? 'border-red-500' : 'border-gray-300 dark:border-gray-600'}`}
                         placeholder="0.00"
                       />
                     </div>
 
                     <div className="col-span-2 text-right text-sm font-medium dark:text-gray-200">
-                      {((Number(it.quantity_ordered) || 0) * (Number(it.price) || 0)).toFixed(0)}
+                      {((Number(it.quantity_ordered) || 0) * (Number(it.cost_price) || 0)).toFixed(0)}
                     </div>
 
                     <div className="col-span-1 text-center">
@@ -767,24 +751,11 @@ export default function AddPurchasePage() {
                         placeholder="Add a note for this purchase order"
                         rows={2}
                         className="w-full px-2 py-2 text-sm border border-gray-300 dark:border-gray-600 rounded-sm focus:outline-none focus:ring-1 focus:ring-blue-500 dark:focus:ring-blue-400"
-                      />
-                      <div className="mt-2">
-                        <label className="block text-sm mb-1">Payment Status</label>
-                        <select
-                          value={paymentStatus}
-                          onChange={e => setPaymentStatus(e.target.value as any)}
-                          className="w-40 px-2 py-1 text-sm border rounded-sm dark:bg-gray-700 dark:text-gray-100 border-gray-300 dark:border-gray-600"
-                        >
-                          <option value="pending">Pending</option>
-                          <option value="partial">Partial</option>
-                          <option value="paid">Paid</option>
-                          <option value="overdue">Overdue</option>
-                        </select>
-                      </div>
+                      />                     
                     </div>
 
                     <div className="md:w-64 w-full">
-                      <div className="space-y-2">
+                      <div className="space-y-1">
                         <div className="flex justify-between text-sm">
                           <span className="text-gray-600 dark:text-gray-400">Subtotal:</span>
                           <span className="font-medium dark:text-gray-200">{subtotalValue.toFixed(0)}</span>
@@ -828,8 +799,6 @@ export default function AddPurchasePage() {
                           />
                         </div>
 
-
-
                         <div className="flex justify-between py-2 border-t border-gray-300 dark:border-gray-600 text-base font-bold">
                           <span className="dark:text-gray-200">Total:</span>
                           <span className="text-blue-600 dark:text-blue-400">{grandTotalValue.toFixed(0)}</span>
@@ -857,7 +826,6 @@ export default function AddPurchasePage() {
             onClick={() => {
               setFormData({
                 tenant_id: undefined,
-                po_number: '',
                 supplier_id: undefined,
                 warehouse_id: undefined,
                 order_date: '',
