@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Plus, Edit, Trash2, X, MapPin, Package, AlertTriangle, Archive } from 'lucide-react';
 import { ColumnDef } from '@tanstack/react-table';
 import { notify, confirm } from '@/lib/notifications';
@@ -9,9 +9,11 @@ import type { Bin } from '@/services/binService';
 import DataTable from '@/components/ui/datatable';
 import CustomSelect from '@/components/ui/custom-select';
 import { usePermissions } from '@/hooks/use-permissions';
+import { useAuthStore } from '@/stores/auth-store';
 
 export default function BinPage() {
   const { isSuperAdmin } = usePermissions();
+  const authUser = useAuthStore(s => s.user);
   const [showForm, setShowForm] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
   const [currentBin, setCurrentBin] = useState<Bin | null>(null);
@@ -70,18 +72,18 @@ export default function BinPage() {
     tenantId?: string
   ): Promise<{ value: string; label: string }[]> => {
     try {
-      // Use provided tenantId or fall back to formData.tenant_id
-      const effectiveTenantId = tenantId !== undefined ? tenantId : formData.tenant_id;
+      // Use provided tenantId or fall back to formData.tenant_id or authUser.tenant_id
+      const effectiveTenantId = tenantId !== undefined ? tenantId : (isSuperAdmin ? formData.tenant_id : authUser?.tenant_id);
 
-      // For super admin, don't load warehouses until tenant is selected
-      if (isSuperAdmin && !effectiveTenantId) {
+      // tenant_id is required for the endpoint
+      if (!effectiveTenantId) {
         return [];
       }
 
       // Use the new warehouse-by-tenant endpoint for better filtering
       const warehouses = await commonService.getWarehousesByTenant({
         search: inputValue,
-        tenant_id: isSuperAdmin ? effectiveTenantId : undefined,
+        tenant_id: effectiveTenantId,
       });
       const options = warehouses.map(warehouse => ({
         value: warehouse.id,
@@ -99,6 +101,46 @@ export default function BinPage() {
       return [];
     }
   };
+
+  // Prefetch warehouse options on mount for tenant users
+  useEffect(() => {
+    const prefetch = async () => {
+      if (!isSuperAdmin && authUser?.tenant_id) {
+        const warehouses = await commonService.getWarehousesByTenant({
+          tenant_id: authUser.tenant_id,
+          per_page: 50,
+        }).catch(() => []);
+        setDefaultWarehouseOptions(
+          (warehouses || []).map((w: any) => ({
+            value: w.id,
+            label: `${w.code} - ${w.name}`,
+          }))
+        );
+      }
+    };
+    prefetch();
+  }, [isSuperAdmin, authUser?.tenant_id]);
+
+  // When superadmin selects a tenant, refresh warehouse options
+  useEffect(() => {
+    const refreshWarehouses = async () => {
+      if (isSuperAdmin && selectedTenant?.value) {
+        const warehouses = await commonService.getWarehousesByTenant({
+          tenant_id: selectedTenant.value,
+          per_page: 50,
+        }).catch(() => []);
+        setDefaultWarehouseOptions(
+          (warehouses || []).map((w: any) => ({
+            value: w.id,
+            label: `${w.code} - ${w.name}`,
+          }))
+        );
+      } else if (isSuperAdmin && !selectedTenant) {
+        setDefaultWarehouseOptions([]);
+      }
+    };
+    refreshWarehouses();
+  }, [isSuperAdmin, selectedTenant]);
 
   const handleAddBin = () => {
     setIsEditing(false);
@@ -294,16 +336,16 @@ export default function BinPage() {
     },
     ...(isSuperAdmin
       ? [
-          {
-            id: 'tenant',
-            header: 'Tenant',
-            cell: ({ row }: { row: any }) => (
-              <span className="px-2 py-1 text-xs rounded-full bg-purple-100 text-purple-800 dark:bg-purple-900/30 dark:text-purple-400">
-                {row.original.tenant?.business_name || '-'}
-              </span>
-            ),
-          },
-        ]
+        {
+          id: 'tenant',
+          header: 'Tenant',
+          cell: ({ row }: { row: any }) => (
+            <span className="px-2 py-1 text-xs rounded-full bg-purple-100 text-purple-800 dark:bg-purple-900/30 dark:text-purple-400">
+              {row.original.tenant?.business_name || '-'}
+            </span>
+          ),
+        },
+      ]
       : []),
     {
       id: 'warehouse',
@@ -355,11 +397,10 @@ export default function BinPage() {
       header: 'Status',
       cell: ({ row }) => (
         <span
-          className={`px-2 py-1 text-xs rounded-full ${
-            row.original.is_active
-              ? 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400'
-              : 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400'
-          }`}
+          className={`px-2 py-1 text-xs rounded-full ${row.original.is_active
+            ? 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400'
+            : 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400'
+            }`}
         >
           {row.original.is_active ? 'Active' : 'Inactive'}
         </span>
@@ -502,9 +543,8 @@ export default function BinPage() {
                   placeholder="Main Storage Bin 01"
                   value={formData.name}
                   onChange={e => setFormData({ ...formData, name: e.target.value })}
-                  className={`w-full px-2 py-1.25 text-sm border rounded-sm focus:outline-none focus:ring-1 focus:ring-blue-500 dark:focus:ring-blue-400 focus:border-transparent dark:bg-gray-700 dark:text-gray-100 ${
-                    formErrors.name ? 'border-red-500' : 'border-gray-300 dark:border-gray-600'
-                  }`}
+                  className={`w-full px-2 py-1.25 text-sm border rounded-sm focus:outline-none focus:ring-1 focus:ring-blue-500 dark:focus:ring-blue-400 focus:border-transparent dark:bg-gray-700 dark:text-gray-100 ${formErrors.name ? 'border-red-500' : 'border-gray-300 dark:border-gray-600'
+                    }`}
                 />
                 {formErrors.name && <p className="text-red-600 text-xs mt-1">{formErrors.name}</p>}
               </div>
@@ -516,9 +556,8 @@ export default function BinPage() {
                 <select
                   value={formData.bin_type}
                   onChange={e => setFormData({ ...formData, bin_type: e.target.value })}
-                  className={`w-full px-2 py-1.25 text-sm border rounded-sm focus:outline-none focus:ring-1 focus:ring-blue-500 dark:focus:ring-blue-400 focus:border-transparent dark:bg-gray-700 dark:text-gray-100 ${
-                    formErrors.bin_type ? 'border-red-500' : 'border-gray-300 dark:border-gray-600'
-                  }`}
+                  className={`w-full px-2 py-1.25 text-sm border rounded-sm focus:outline-none focus:ring-1 focus:ring-blue-500 dark:focus:ring-blue-400 focus:border-transparent dark:bg-gray-700 dark:text-gray-100 ${formErrors.bin_type ? 'border-red-500' : 'border-gray-300 dark:border-gray-600'
+                    }`}
                 >
                   <option value="storage">Storage</option>
                   <option value="picking">Picking</option>
@@ -586,9 +625,8 @@ export default function BinPage() {
                   placeholder="500.00"
                   value={formData.capacity}
                   onChange={e => setFormData({ ...formData, capacity: e.target.value })}
-                  className={`w-full px-2 py-1.25 text-sm border rounded-sm focus:outline-none focus:ring-1 focus:ring-blue-500 dark:focus:ring-blue-400 focus:border-transparent dark:bg-gray-700 dark:text-gray-100 ${
-                    formErrors.capacity ? 'border-red-500' : 'border-gray-300 dark:border-gray-600'
-                  }`}
+                  className={`w-full px-2 py-1.25 text-sm border rounded-sm focus:outline-none focus:ring-1 focus:ring-blue-500 dark:focus:ring-blue-400 focus:border-transparent dark:bg-gray-700 dark:text-gray-100 ${formErrors.capacity ? 'border-red-500' : 'border-gray-300 dark:border-gray-600'
+                    }`}
                 />
                 {formErrors.capacity && (
                   <p className="text-red-600 text-xs mt-1">{formErrors.capacity}</p>
@@ -605,11 +643,10 @@ export default function BinPage() {
                   placeholder="0.00"
                   value={formData.current_occupancy}
                   onChange={e => setFormData({ ...formData, current_occupancy: e.target.value })}
-                  className={`w-full px-2 py-1.25 text-sm border rounded-sm focus:outline-none focus:ring-1 focus:ring-blue-500 dark:focus:ring-blue-400 focus:border-transparent dark:bg-gray-700 dark:text-gray-100 ${
-                    formErrors.current_occupancy
-                      ? 'border-red-500'
-                      : 'border-gray-300 dark:border-gray-600'
-                  }`}
+                  className={`w-full px-2 py-1.25 text-sm border rounded-sm focus:outline-none focus:ring-1 focus:ring-blue-500 dark:focus:ring-blue-400 focus:border-transparent dark:bg-gray-700 dark:text-gray-100 ${formErrors.current_occupancy
+                    ? 'border-red-500'
+                    : 'border-gray-300 dark:border-gray-600'
+                    }`}
                 />
                 {formErrors.current_occupancy && (
                   <p className="text-red-600 text-xs mt-1">{formErrors.current_occupancy}</p>

@@ -19,24 +19,24 @@ export interface PurchaseOrder {
 
 class PurchaseOrderService {
   async getPurchaseOrders(params?: Record<string, any>) {
-    const response = await apiClient.get<ApiResponse<any>>('/api/v1/purchase-orders', { params });
+    const response = await apiClient.get<ApiResponse<any>>('/api/v1/purchase-order', { params });
     return response.data;
   }
 
   async getPurchaseOrderItems(purchaseOrderId: number) {
     const response = await apiClient.get<ApiResponse<any>>(
-      `/api/v1/purchase-orders/${purchaseOrderId}/items`
+      `/api/v1/purchase-order/${purchaseOrderId}/items`
     );
     return response.data.data;
   }
 
   async storePurchaseOrder(data: Record<string, any>) {
-    const response = await apiClient.post<ApiResponse<any>>('/api/v1/purchase-orders/store', data);
+    const response = await apiClient.post<ApiResponse<any>>('/api/v1/purchase-order/store', data);
     return response.data.data;
   }
 
   async deletePurchaseOrder(id: number) {
-    await apiClient.post(`/api/v1/purchase-orders/delete/${id}`);
+    await apiClient.post(`/api/v1/purchase-order/delete/${id}`);
   }
 }
 

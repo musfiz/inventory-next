@@ -13,8 +13,11 @@ import {
   productVariationService,
   commonService,
 } from '@/services';
+import { usePermissions } from '@/hooks/use-permissions';
+import { useAuthStore } from '@/stores/auth-store';
 
 export default function AddPurchasePage() {
+  const authUser = useAuthStore(s => s.user);
   const [formData, setFormData] = useState<any>({
     tenant_id: undefined,
     po_number: '',
@@ -24,6 +27,17 @@ export default function AddPurchasePage() {
     expected_delivery_date: '',
     status: 'draft',
   });
+
+  const STATUS_LIST = [
+    'draft',
+    'pending',
+    'approved',
+    'ordered',
+    'partial',
+    'received',
+    'completed',
+    'cancelled',
+  ];
   const [errors, setErrors] = useState<Record<string, string[]>>({});
   const [isLoading, setIsLoading] = useState(false);
   const [items, setItems] = useState<any[]>([]);
@@ -35,6 +49,26 @@ export default function AddPurchasePage() {
   const [supplierOptionsDefault, setSupplierOptionsDefault] = useState<any[]>([]);
   const [warehouseOptionsDefault, setWarehouseOptionsDefault] = useState<any[]>([]);
   const [productOptionsDefault, setProductOptionsDefault] = useState<any[]>([]);
+  const [note, setNote] = useState<string>('');
+  const [discount, setDiscount] = useState<string | number>('0');
+  const [vat, setVat] = useState<string | number>('0');
+  const [shipping, setShipping] = useState<string | number>('0');
+  const [discountType, setDiscountType] = useState<'amount' | 'percent'>('percent');
+  const [paymentStatus, setPaymentStatus] = useState<'pending' | 'partial' | 'paid' | 'overdue'>('pending');
+  const { isSuperAdmin } = usePermissions();
+  const [selectedTenant, setSelectedTenant] = useState<any>(null);
+  const [defaultTenantOptions, setDefaultTenantOptions] = useState<any[]>([]);
+
+  const loadTenantOptions = async (input = '') => {
+    try {
+      const tenants: any = await commonService.getTenantsForDropdown({ search: input });
+      const options = (tenants || []).map((t: any) => ({ value: t.id, label: t.business_name }));
+      if (!input && defaultTenantOptions.length === 0) setDefaultTenantOptions(options);
+      return options;
+    } catch (err) {
+      return [];
+    }
+  };
 
   // Fetch product details and set unit cost when product selected
   const onProductSelect = async (index: number, productId?: string, productLabel?: string) => {
@@ -118,13 +152,32 @@ export default function AddPurchasePage() {
     }
   };
 
-  const computeTotal = () => {
+  const computeSubtotal = () => {
     return items.reduce((sum, it) => {
       const q = Number(it.quantity_ordered) || 0;
       const u = Number(it.price) || 0; // use selling price for total
       return sum + q * u;
     }, 0);
   };
+
+  const computeGrandTotal = () => {
+    const subtotal = computeSubtotal();
+    const disc = Number(discount) || 0;
+    const discountAmount = discountType === 'percent' ? (subtotal * (disc / 100)) : disc;
+    const vatPercent = Number(vat) || 0;
+    const vatAmount = subtotal * (vatPercent / 100);
+    const shippingAmount = Number(shipping) || 0;
+    return Math.max(0, subtotal - discountAmount - vatAmount + shippingAmount);
+  };
+
+  // Precompute values for display
+  const subtotalValue = computeSubtotal();
+  const discValue = Number(discount) || 0;
+  const discountAmountValue = discountType === 'percent' ? subtotalValue * (discValue / 100) : discValue;
+  const vatPercentValue = Number(vat) || 0;
+  const vatAmountValue = subtotalValue * (vatPercentValue / 100);
+  const shippingAmountValue = Number(shipping) || 0;
+  const grandTotalValue = Math.max(0, subtotalValue - discountAmountValue - vatAmountValue + shippingAmountValue);
 
   const handleItemChange = (index: number, key: string, value: any) => {
     setItems(prev => prev.map((it, i) => (i === index ? { ...it, [key]: value } : it)));
@@ -150,11 +203,12 @@ export default function AddPurchasePage() {
         ...prev,
         {
           product_id: undefined,
-          product_name: undefined,
+          product_name: '',
           variation_id: undefined,
-          variation_name: undefined,
+          variation_name: '',
           quantity_ordered: 1,
-          unit_cost: 0,
+          cost_price: 0,
+          price: 0,
         },
       ];
       setFocusItemIndex(next.length - 1);
@@ -197,7 +251,10 @@ export default function AddPurchasePage() {
 
   const loadWarehouses = async (input = '') => {
     try {
-      const list: any = await commonService.getWarehousesByTenant({ search: input });
+      const tenant_id = isSuperAdmin ? formData.tenant_id : authUser?.tenant_id;
+      if (!tenant_id) return [];
+      const params: any = { search: input, tenant_id };
+      const list: any = await commonService.getWarehousesByTenant(params);
       return (list || []).map((w: any) => ({ value: w.id, label: w.name || w.code || w.id }));
     } catch (err) {
       return [];
@@ -237,6 +294,69 @@ export default function AddPurchasePage() {
       mounted = false;
     };
   }, []);
+
+  // preload supplier and warehouse options so selected value shows label immediately
+  useEffect(() => {
+    let mounted = true;
+    (async () => {
+      try {
+        const s: any = await supplierService.getSuppliers({ per_page: 50 });
+        const suppliers = (Array.isArray(s) ? s : s.data || []).map((su: any) => ({
+          value: su.id,
+          label: su.name || su.company_name || su.id,
+        }));
+        if (mounted) setSupplierOptionsDefault(suppliers);
+      } catch (err) {
+        // ignore
+      }
+
+      try {
+        const tenant_id = isSuperAdmin ? undefined : authUser?.tenant_id;
+        if (tenant_id) {
+          const w: any = await commonService.getWarehousesByTenant({ tenant_id, per_page: 50 });
+          const warehouses = (Array.isArray(w) ? w : w.data || []).map((wh: any) => ({
+            value: wh.id,
+            label: wh.name || wh.code || wh.id,
+          }));
+          if (mounted) setWarehouseOptionsDefault(warehouses);
+        }
+      } catch (err) {
+        // ignore
+      }
+    })();
+    return () => {
+      mounted = false;
+    };
+  }, []);
+
+  useEffect(() => {
+    if (isSuperAdmin) loadTenantOptions('');
+  }, [isSuperAdmin]);
+
+  // refresh warehouse defaults when tenant changes so tenant-scoped warehouses appear
+  useEffect(() => {
+    let mounted = true;
+    (async () => {
+      if (!formData.tenant_id) {
+        // clear warehouse options when tenant not selected
+        if (mounted) setWarehouseOptionsDefault([]);
+        return;
+      }
+      try {
+        const w: any = await commonService.getWarehousesByTenant({ tenant_id: formData.tenant_id, per_page: 50 });
+        const warehouses = (Array.isArray(w) ? w : w.data || []).map((wh: any) => ({
+          value: wh.id,
+          label: wh.name || wh.code || wh.id,
+        }));
+        if (mounted) setWarehouseOptionsDefault(warehouses);
+      } catch (err) {
+        // ignore
+      }
+    })();
+    return () => {
+      mounted = false;
+    };
+  }, [formData.tenant_id]);
 
   const validate = () => {
     const e: Record<string, string[]> = {};
@@ -292,7 +412,6 @@ export default function AddPurchasePage() {
             product_id: it.product_id,
             variation_id: it.variation_id,
             quantity_ordered: Number(it.quantity_ordered || 0),
-            cost_price: parseFloat(String(it.cost_price) || '0'),
             price: parseFloat(String(it.price) || '0'),
           });
         }
@@ -302,6 +421,12 @@ export default function AddPurchasePage() {
       const payload: any = {
         ...formData,
         items: collapsed.map(({ __key, ...rest }) => rest),
+        note: note,
+        payment_status: paymentStatus,
+        discount: Number(discount) || 0,
+        discount_type: discountType,
+        vat: Number(vat) || 0,
+        shipping: Number(shipping) || 0,
       };
       await purchaseOrderService.storePurchaseOrder(payload);
       notify.success('Purchase order created');
@@ -315,6 +440,11 @@ export default function AddPurchasePage() {
         status: 'draft',
       });
       setItems([]);
+      setNote('');
+      setPaymentStatus('pending');
+      setDiscount('');
+      setVat('');
+      setShipping('');
     } catch (err: any) {
       const respErrors = err?.response?.data?.errors;
       if (respErrors) {
@@ -336,7 +466,7 @@ export default function AddPurchasePage() {
   };
 
   return (
-    <div className="space-y-3">
+    <div className="space-y-1">
       <div className="flex items-center justify-between">
         <h1 className="text-xl font-bold flex items-center gap-2">Purchase Orders — Add</h1>
         <div className="flex items-center gap-2">
@@ -353,8 +483,30 @@ export default function AddPurchasePage() {
       <form
         ref={formRef}
         onSubmit={handleSubmit}
-        className="bg-white dark:bg-gray-800 rounded-md p-4 space-y-3"
+        className="bg-white dark:bg-gray-800 rounded-md p-4 space-y-1"
       >
+        {isSuperAdmin && (
+          <div>
+            <label className="block text-sm">Tenant</label>
+            <CustomSelect
+              className={'w-64 text-xs'}
+              value={selectedTenant}
+              onChange={(o: any) => {
+                setSelectedTenant(o);
+                handleInputChange('tenant_id', o?.value);
+                if (errors.tenant_id) {
+                  const { tenant_id, ...rest } = errors;
+                  setErrors(rest);
+                }
+              }}
+              loadOptions={loadTenantOptions}
+              defaultOptions={defaultTenantOptions}
+              placeholder="Select tenant"
+              isInvalid={!!errors.tenant_id}
+            />
+            {errors.tenant_id && <p className="text-red-600 text-xs mt-1">{errors.tenant_id[0] || errors.tenant_id}</p>}
+          </div>
+        )}
         {/* validation alert removed from header per request */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
           <div>
@@ -375,7 +527,14 @@ export default function AddPurchasePage() {
             <label className="block text-sm">Supplier</label>
             <CustomSelect
               loadOptions={loadSuppliers}
-              value={formData.supplier_id ? { value: formData.supplier_id, label: '' } : null}
+              value={
+                formData.supplier_id
+                  ? supplierOptionsDefault.find((o: any) => o.value === formData.supplier_id) || {
+                    value: formData.supplier_id,
+                    label: '',
+                  }
+                  : null
+              }
               onChange={(o: any) => {
                 handleInputChange('supplier_id', o?.value);
               }}
@@ -392,7 +551,14 @@ export default function AddPurchasePage() {
             <label className="block text-sm">Warehouse</label>
             <CustomSelect
               loadOptions={loadWarehouses}
-              value={formData.warehouse_id ? { value: formData.warehouse_id, label: '' } : null}
+              value={
+                formData.warehouse_id
+                  ? warehouseOptionsDefault.find((o: any) => o.value === formData.warehouse_id) || {
+                    value: formData.warehouse_id,
+                    label: '',
+                  }
+                  : null
+              }
               onChange={(o: any) => {
                 handleInputChange('warehouse_id', o?.value);
               }}
@@ -434,16 +600,17 @@ export default function AddPurchasePage() {
               onChange={e => handleInputChange('status', e.target.value)}
               className="w-full px-2 py-1.25 text-sm border border-gray-300 dark:border-gray-600 rounded-sm focus:outline-none focus:ring-1 focus:ring-blue-500 dark:focus:ring-blue-400 focus:border-transparent dark:bg-gray-700 dark:text-gray-100"
             >
-              <option value="draft">Draft</option>
-              <option value="pending">Pending</option>
-              <option value="approved">Approved</option>
-              <option value="ordered">Ordered</option>
+              {STATUS_LIST.map(s => (
+                <option key={s} value={s}>
+                  {s.charAt(0).toUpperCase() + s.slice(1)}
+                </option>
+              ))}
             </select>
           </div>
         </div>
 
         <div>
-          <h3 className="text-sm font-medium mb-3">Order Items</h3>
+          <h3 className="text-sm font-medium mb-1">Order Items</h3>
           {hasFieldError('items') && (
             <p className="text-red-600 text-xs mb-2">{getFieldError('items')}</p>
           )}
@@ -451,19 +618,18 @@ export default function AddPurchasePage() {
           {/* Invoice-style table header */}
           <div className="border border-gray-300 dark:border-gray-600 rounded-md overflow-hidden">
             <div className="bg-gray-50 dark:bg-gray-700 border-b border-gray-300 dark:border-gray-600">
-              <div className="grid grid-cols-12 gap-2 px-3 py-2 text-xs font-semibold text-gray-700 dark:text-gray-200 text-center">
-                <div className="col-span-3">Product</div>
-                <div className="col-span-2">Variation</div>
-                <div className="col-span-1">Qty</div>
-                <div className="col-span-2">Cost Price</div>
-                <div className="col-span-2">Price</div>
-                <div className="col-span-1 text-right">Total</div>
+              <div className="grid grid-cols-24 gap-2 px-3 py-2 text-xs font-semibold text-gray-700 dark:text-gray-200 text-center">
+                <div className="col-span-8">Product</div>
+                <div className="col-span-7">Variation</div>
+                <div className="col-span-2">Qty</div>
+                <div className="col-span-4">Cost Price</div>
+                <div className="col-span-2 text-right">Total</div>
                 <div className="col-span-1 text-center">Action</div>
               </div>
             </div>
 
             {/* Scrollable items body */}
-            <div className="max-h-95 overflow-auto">
+            <div className="max-h-34 overflow-auto">
               {items.length === 0 && (
                 <div className="p-6 text-center text-sm text-gray-500 dark:text-gray-400">
                   No items added. Click "Add Item" to begin.
@@ -474,8 +640,8 @@ export default function AddPurchasePage() {
                   key={idx}
                   className="border-b border-gray-200 dark:border-gray-700 last:border-b-0 hover:bg-gray-50 dark:hover:bg-gray-700/50"
                 >
-                  <div className="grid grid-cols-12 gap-2 px-3 py-3 items-center">
-                    <div className="col-span-3">
+                  <div className="grid grid-cols-24 gap-2 px-1.5 py-1.5 items-center">
+                    <div className="col-span-8">
                       <CustomSelect
                         loadOptions={loadProducts}
                         value={
@@ -495,7 +661,7 @@ export default function AddPurchasePage() {
                       )}
                     </div>
 
-                    <div className="col-span-2">
+                    <div className="col-span-7">
                       <CustomSelect
                         loadOptions={async (input: string) => {
                           if (!it.product_id) return [];
@@ -527,7 +693,7 @@ export default function AddPurchasePage() {
                       />
                     </div>
 
-                    <div className="col-span-1">
+                    <div className="col-span-2">
                       <input
                         type="number"
                         step="1"
@@ -544,20 +710,7 @@ export default function AddPurchasePage() {
                       )}
                     </div>
 
-                    <div className="col-span-2">
-                      <input
-                        type="number"
-                        step="0.01"
-                        value={it.cost_price}
-                        readOnly
-                        aria-disabled="true"
-                        tabIndex={0}
-                        onFocus={e => (e.target as HTMLInputElement).select()}
-                        className={`w-full px-2 py-1.25 text-sm text-right font-semibold rounded-sm border focus:outline-none focus:ring-1 focus:ring-blue-500 dark:focus:ring-blue-400 focus:border-transparent bg-gray-200 dark:bg-gray-800 dark:text-gray-100 cursor-not-allowed ${errors[`items.${idx}.cost_price`] ? 'border-red-500' : 'border-gray-300 dark:border-gray-600'}`}
-                        placeholder="0.00"
-                      />
-                    </div>
-                    <div className="col-span-2">
+                    <div className="col-span-4">
                       <input
                         type="number"
                         step="0.01"
@@ -569,7 +722,7 @@ export default function AddPurchasePage() {
                       />
                     </div>
 
-                    <div className="col-span-1 text-right font-semibold text-sm font-medium dark:text-gray-200">
+                    <div className="col-span-2 text-right text-sm font-medium dark:text-gray-200">
                       {((Number(it.quantity_ordered) || 0) * (Number(it.price) || 0)).toFixed(2)}
                     </div>
 
@@ -592,19 +745,105 @@ export default function AddPurchasePage() {
             {items.length > 0 && (
               <div className="bg-gray-50 dark:bg-gray-800 border-t-2 border-gray-300 dark:border-gray-600">
                 <div className="px-3 py-3">
-                  <div className="flex justify-end">
-                    <div className="w-64">
-                      <div className="flex justify-between py-2 text-sm">
-                        <span className="text-gray-600 dark:text-gray-400">Subtotal:</span>
-                        <span className="font-medium dark:text-gray-200">
-                          {computeTotal().toFixed(2)}
-                        </span>
+                  <div className="flex flex-col md:flex-row md:items-start md:justify-between gap-3">
+                    <div className="md:w-2/3">
+                      <div className="mb-2 flex items-center gap-4">
+                        <label className="flex items-center gap-2 text-sm">
+                          <input
+                            type="radio"
+                            name="discountTypeTop"
+                            checked={discountType === 'percent'}
+                            onChange={() => setDiscountType('percent')}
+                            className="form-radio"
+                          />
+                          <span>Discount as percent</span>
+                        </label>
+                        <label className="flex items-center gap-2 text-sm">
+                          <input
+                            type="radio"
+                            name="discountTypeTop"
+                            checked={discountType === 'amount'}
+                            onChange={() => setDiscountType('amount')}
+                            className="form-radio"
+                          />
+                          <span>Discount as amount</span>
+                        </label>
                       </div>
-                      <div className="flex justify-between py-2 border-t border-gray-300 dark:border-gray-600 text-base font-bold">
-                        <span className="dark:text-gray-200">Total:</span>
-                        <span className="text-blue-600 dark:text-blue-400">
-                          {computeTotal().toFixed(2)}
-                        </span>
+
+                      <label className="block text-sm mb-1">Note</label>
+                      <textarea
+                        value={note}
+                        onChange={e => setNote(e.target.value)}
+                        placeholder="Add a note for this purchase order"
+                        rows={2}
+                        className="w-full px-2 py-2 text-sm border border-gray-300 dark:border-gray-600 rounded-sm focus:outline-none focus:ring-1 focus:ring-blue-500 dark:focus:ring-blue-400"
+                      />
+                      <div className="mt-2">
+                        <label className="block text-sm mb-1">Payment Status</label>
+                        <select
+                          value={paymentStatus}
+                          onChange={e => setPaymentStatus(e.target.value as any)}
+                          className="w-40 px-2 py-1 text-sm border rounded-sm dark:bg-gray-700 dark:text-gray-100 border-gray-300 dark:border-gray-600"
+                        >
+                          <option value="pending">Pending</option>
+                          <option value="partial">Partial</option>
+                          <option value="paid">Paid</option>
+                          <option value="overdue">Overdue</option>
+                        </select>
+                      </div>
+                    </div>
+
+                    <div className="md:w-64 w-full">
+                      <div className="space-y-2">
+                        <div className="flex justify-between text-sm">
+                          <span className="text-gray-600 dark:text-gray-400">Subtotal:</span>
+                          <span className="font-medium dark:text-gray-200">{subtotalValue.toFixed(2)}</span>
+                        </div>
+
+                        <div className="flex items-center justify-between gap-2 text-sm">
+                          <span className="text-gray-600 dark:text-gray-400">Discount:</span>
+                          <input
+                            type="number"
+                            step="0.01"
+                            value={discount as any}
+                            onChange={e => setDiscount(e.target.value)}
+                            onFocus={e => (e.target as HTMLInputElement).select()}
+                            className="w-28 px-2 py-1 text-sm border rounded-sm dark:bg-gray-700 dark:text-gray-100 border-gray-300 dark:border-gray-600 text-right"
+                          />
+                        </div>
+
+
+                        <div className="flex items-center justify-between gap-2 text-sm">
+                          <span className="text-gray-600 dark:text-gray-400">VAT (%):</span>
+                          <input
+                            type="number"
+                            step="0.01"
+                            value={vat as any}
+                            onChange={e => setVat(e.target.value)}
+                            onFocus={e => (e.target as HTMLInputElement).select()}
+                            className="w-28 px-2 py-1 text-sm border rounded-sm dark:bg-gray-700 dark:text-gray-100 border-gray-300 dark:border-gray-600 text-right"
+                          />
+                        </div>
+
+
+                        <div className="flex items-center justify-between gap-2 text-sm">
+                          <span className="text-gray-600 dark:text-gray-400">Shipping:</span>
+                          <input
+                            type="number"
+                            step="0.01"
+                            value={shipping as any}
+                            onChange={e => setShipping(e.target.value)}
+                            onFocus={e => (e.target as HTMLInputElement).select()}
+                            className="w-28 px-2 py-1 text-sm border rounded-sm dark:bg-gray-700 dark:text-gray-100 border-gray-300 dark:border-gray-600 text-right"
+                          />
+                        </div>
+
+
+
+                        <div className="flex justify-between py-2 border-t border-gray-300 dark:border-gray-600 text-base font-bold">
+                          <span className="dark:text-gray-200">Total:</span>
+                          <span className="text-blue-600 dark:text-blue-400">{grandTotalValue.toFixed(2)}</span>
+                        </div>
                       </div>
                     </div>
                   </div>
@@ -614,7 +853,7 @@ export default function AddPurchasePage() {
           </div>
         </div>
 
-        <div className="flex gap-2 pt-2">
+        <div className="flex gap-2 pt-1">
           <button
             type="submit"
             disabled={isLoading}
@@ -636,6 +875,11 @@ export default function AddPurchasePage() {
                 status: 'draft',
               });
               setItems([]);
+              setNote('');
+              setPaymentStatus('pending');
+              setDiscount('');
+              setVat('');
+              setShipping('');
             }}
             className="px-3 py-1.5 bg-gray-600 text-white text-sm font-medium rounded-sm"
           >

@@ -78,7 +78,10 @@ export default function SupplierListPage() {
       notify.success(isEditing ? 'Supplier updated successfully' : 'Supplier created successfully');
       setShowForm(false);
       setRefreshKey(k => k + 1);
-      setFormData(prev => ({
+      setSelectedTenant(null);
+      setIsEditing(false);
+      setFormErrors({});
+      setFormData({
         tenant_id: undefined,
         name: '',
         company_name: '',
@@ -93,9 +96,11 @@ export default function SupplierListPage() {
         vat_number: '',
         tin_number: '',
         trade_license: '',
-        credit_limit: '',
+        website: '',
+        payment_terms: '',
+        credit_limit: 0,
         status: 'active',
-      }));
+      });
     } catch (err: any) {
       if (err?.response?.data?.errors) {
         const transformed: any = {};
@@ -199,6 +204,27 @@ export default function SupplierListPage() {
             setShowForm(true);
             setIsEditing(false);
             setFormErrors({});
+            setSelectedTenant(null);
+            setFormData({
+              tenant_id: undefined,
+              name: '',
+              company_name: '',
+              contact_person: '',
+              phone: '',
+              email: '',
+              address: '',
+              city: '',
+              state: '',
+              country: 'Bangladesh',
+              postal_code: '',
+              vat_number: '',
+              tin_number: '',
+              trade_license: '',
+              website: '',
+              payment_terms: '',
+              credit_limit: 0,
+              status: 'active',
+            });
           }}
           className="flex items-center gap-2 px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium rounded-sm transition-colors duration-200"
         >
@@ -415,7 +441,32 @@ export default function SupplierListPage() {
             </button>
             <button
               type="button"
-              onClick={() => setShowForm(false)}
+              onClick={() => {
+                setShowForm(false);
+                setIsEditing(false);
+                setFormErrors({});
+                setSelectedTenant(null);
+                setFormData({
+                  tenant_id: undefined,
+                  name: '',
+                  company_name: '',
+                  contact_person: '',
+                  phone: '',
+                  email: '',
+                  address: '',
+                  city: '',
+                  state: '',
+                  country: 'Bangladesh',
+                  postal_code: '',
+                  vat_number: '',
+                  tin_number: '',
+                  trade_license: '',
+                  website: '',
+                  payment_terms: '',
+                  credit_limit: 0,
+                  status: 'active',
+                });
+              }}
               className="px-3 py-1.5 bg-gray-600 text-white text-sm font-medium rounded-sm hover:bg-gray-700 transition-colors flex items-center gap-2 cursor-pointer"
             >
               <X className="w-4 h-4" />

@@ -118,7 +118,7 @@ export default function PurchaseOrdersPage() {
     },
   ];
 
-  const buildApiEndpoint = () => 'purchase-orders';
+  const buildApiEndpoint = () => '/purchase-order';
 
   return (
     <div className="space-y-2">

@@ -61,14 +61,38 @@ class CommonService {
   }
 
   /**
-   * Get warehouses by tenant for dropdown (common endpoint)
-   * GET /api/v1/dropdown/warehouse-by-tenant
+   * Get warehouses by tenant for dropdown
+   * GET /api/v1/tenant/{id}/warehouse
    */
-  async getWarehousesByTenant(params?: { search?: string; tenant_id?: string }): Promise<any[]> {
+  async getWarehousesByTenant(
+    params?: { search?: string; tenant_id?: string; per_page?: number } | string,
+    tenant_id?: string
+  ): Promise<any[]> {
+    // Support both calling conventions:
+    // - getWarehousesByTenant({ search, tenant_id })
+    // - getWarehousesByTenant(params, tenant_id)
+    let queryParams: any = {};
+    let tid: any = tenant_id;
+
+    if (typeof params === 'string') {
+      // legacy: params was tenant_id
+      tid = params;
+    } else if (params) {
+      queryParams = { ...params };
+      if (params.tenant_id) {
+        tid = params.tenant_id;
+        delete queryParams.tenant_id;
+      }
+    }
+
+    if (!tid) {
+      throw new Error('tenant_id is required for getWarehousesByTenant');
+    }
+
     const response = await apiClient.get<{
       data: any[];
-    }>('/api/v1/dropdown/warehouse-by-tenant', {
-      params,
+    }>(`/api/v1/tenant/${tid}/warehouse`, {
+      params: queryParams,
     });
     return response.data.data;
   }

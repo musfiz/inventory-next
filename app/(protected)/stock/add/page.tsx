@@ -45,9 +45,9 @@ export default function StockAddPage() {
 
   const loadWarehouseOptions = async (input: string) => {
     const tenant_id = isSuperAdmin ? selectedTenant?.value : authUser?.tenant_id;
-    const list = await commonService
-      .getWarehousesByTenant({ search: input, tenant_id })
-      .catch(() => []);
+    if (!tenant_id) return [];
+    const params: any = { search: input, tenant_id };
+    const list = await commonService.getWarehousesByTenant(params).catch(() => []);
     return (list || []).map((w: any) => ({ value: w.id, label: `${w.name} (${w.code})` }));
   };
 
@@ -58,7 +58,7 @@ export default function StockAddPage() {
     const prefetch = async () => {
       if (!isSuperAdmin && authUser?.tenant_id) {
         const list = await commonService
-          .getWarehousesByTenant({ tenant_id: authUser.tenant_id })
+          .getWarehousesByTenant({ tenant_id: authUser?.tenant_id })
           .catch(() => []);
         setDefaultWarehouseOptions(
           (list || []).map((w: any) => ({ value: w.id, label: `${w.name} (${w.code})` }))
