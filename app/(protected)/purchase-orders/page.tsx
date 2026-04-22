@@ -8,6 +8,7 @@ import { formatDate } from '@/lib/utils/date';
 import { notify, confirm } from '@/lib/notifications';
 import purchaseOrderService from '@/services/purchaseOrderService';
 import { useRouter } from 'next/navigation';
+import PurchaseOrderInvoice from '@/components/invoices/PurchaseOrderInvoice';
 
 export default function PurchaseOrdersPage() {
   const router = useRouter();
@@ -18,6 +19,7 @@ export default function PurchaseOrdersPage() {
   const [detailLoading, setDetailLoading] = useState(false);
   const [currentPO, setCurrentPO] = useState<any | null>(null);
   const [updating, setUpdating] = useState(false);
+  const [printPO, setPrintPO] = useState<any | null>(null);
 
   const STATUS_LIST = [
     'draft', 'pending', 'approved', 'ordered', 'partial', 'received', 'completed', 'cancelled'
@@ -90,6 +92,21 @@ export default function PurchaseOrdersPage() {
       setRefreshKey(k => k + 1);
     } catch (err: any) {
       notify.error(err?.response?.data?.message || 'Failed to delete');
+    }
+  };
+
+  const handlePrint = async (id: number) => {
+    try {
+      const po = await purchaseOrderService.getPurchaseOrder(id);
+      setPrintPO(po);
+      // Delay to ensure DOM is fully updated and rendered before printing
+      setTimeout(() => {
+        window.print();
+        // Clean up after print dialog is closed
+        setTimeout(() => setPrintPO(null), 500);
+      }, 300);
+    } catch (err: any) {
+      notify.error(err?.response?.data?.message || 'Failed to load purchase order');
     }
   };
 
@@ -168,7 +185,7 @@ export default function PurchaseOrdersPage() {
           </button>
           <button
             title="Print"
-            onClick={() => window.open(`/purchase-orders/print/${row.original.id}`, '_blank')}
+            onClick={() => handlePrint(row.original.id)}
             className="p-1 text-gray-600 hover:text-gray-800 cursor-pointer"
           >
             <Printer className="w-4 h-4" />
@@ -265,7 +282,7 @@ export default function PurchaseOrdersPage() {
                       <label className="text-xs text-gray-600 mb-1 block">Status</label>
                       <select
                         value={currentPO?.status || 'draft'}
-                        onChange={e => setCurrentPO(prev => prev ? { ...prev, status: e.target.value } : prev)}
+                        onChange={e => setCurrentPO((prev: any) => prev ? { ...prev, status: e.target.value } : prev)}
                         className="px-2 py-1 border border-gray-300 dark:border-gray-700 rounded text-sm focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
                       >
                         {STATUS_LIST.map(s => <option key={s} value={s}>{s}</option>)}
@@ -275,7 +292,7 @@ export default function PurchaseOrdersPage() {
                       <label className="text-xs text-gray-600 mb-1 block">Payment Status</label>
                       <select
                         value={currentPO?.payment_status || 'pending'}
-                        onChange={e => setCurrentPO(prev => prev ? { ...prev, payment_status: e.target.value } : prev)}
+                        onChange={e => setCurrentPO((prev: any) => prev ? { ...prev, payment_status: e.target.value } : prev)}
                         className="px-2 py-1 border border-gray-300 dark:border-gray-700 rounded text-sm focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
                       >
                         {PAYMENT_STATUS_LIST.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
@@ -287,7 +304,7 @@ export default function PurchaseOrdersPage() {
                         type="number"
                         step="0.01"
                         value={currentPO?.paid_amount ?? 0}
-                        onChange={e => setCurrentPO(prev => prev ? { ...prev, paid_amount: e.target.value } : prev)}
+                        onChange={e => setCurrentPO((prev: any) => prev ? { ...prev, paid_amount: e.target.value } : prev)}
                         onFocus={e => e.target.select()}
                         onKeyDown={preventMinus}
                         className="px-2 py-1 text-right border border-gray-300 dark:border-gray-700 rounded text-sm focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500 w-36 [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
@@ -342,6 +359,71 @@ export default function PurchaseOrdersPage() {
           </div>
         </div>
       )}
+
+      {/* Hidden print preview - only visible when printing */}
+      {printPO && (
+        <div className="print-only" id="print-invoice">
+          <PurchaseOrderInvoice po={printPO} />
+        </div>
+      )}
+
+      {/* Print-specific styles */}
+      <style jsx global>{`
+        @media screen {
+          .print-only {
+            display: none !important;
+          }
+        }
+
+        @media print {
+          /* Hide everything */
+          body * {
+            visibility: hidden;
+          }
+
+          /* Show only print content and its children */
+          #print-invoice,
+          #print-invoice * {
+            visibility: visible !important;
+          }
+
+          /* Position print content at top of page */
+          #print-invoice {
+            position: absolute;
+            left: 0;
+            top: 0;
+            width: 100%;
+          }
+
+          .invoice-content {
+            width: 210mm;
+            min-height: 297mm;
+            margin: 0 auto;
+            padding: 20mm;
+            background: white;
+          }
+
+          @page {
+            size: A4;
+            margin: 0;
+          }
+
+          /* Avoid page breaks inside tables */
+          table,
+          tr,
+          td,
+          th {
+            page-break-inside: avoid;
+          }
+          
+          /* Ensure backgrounds and colors print */
+          * {
+            -webkit-print-color-adjust: exact !important;
+            print-color-adjust: exact !important;
+            color-adjust: exact !important;
+          }
+        }
+      `}</style>
     </div>
   );
 }
