@@ -47,10 +47,10 @@ const STATUS_LIST = [
 ];
 
 const PAYMENT_STATUS_LIST: { value: PaymentStatus; label: string }[] = [
-  { value: 'pending',  label: 'Pending'  },
-  { value: 'partial',  label: 'Partial'  },
-  { value: 'paid',     label: 'Paid'     },
-  { value: 'overdue',  label: 'Overdue'  },
+  { value: 'pending', label: 'Pending' },
+  { value: 'partial', label: 'Partial' },
+  { value: 'paid', label: 'Paid' },
+  { value: 'overdue', label: 'Overdue' },
 ];
 
 // Shared class tokens used across form controls for visual consistency
@@ -70,32 +70,32 @@ export default function AddPurchaseOrderPage() {
 
   // ── Form state ──────────────────────────────────────────────────────────────
   const [formData, setFormData] = useState<OrderForm>({
-    tenant_id:              undefined,
-    supplier_id:            undefined,
-    warehouse_id:           undefined,
-    order_date:             '',
+    tenant_id: undefined,
+    supplier_id: undefined,
+    warehouse_id: undefined,
+    order_date: '',
     expected_delivery_date: '',
-    status:                 'draft',
+    status: 'draft',
   });
 
-  const [items,         setItems        ] = useState<OrderItem[]>([]);
-  const [note,          setNote         ] = useState('');
-  const [discount,      setDiscount     ] = useState('0');
-  const [discountType,  setDiscountType ] = useState<DiscountType>('percent');
-  const [vat,           setVat          ] = useState('0');
-  const [shipping,      setShipping     ] = useState('0');
+  const [items, setItems] = useState<OrderItem[]>([]);
+  const [note, setNote] = useState('');
+  const [discount, setDiscount] = useState('0');
+  const [discountType, setDiscountType] = useState<DiscountType>('percent');
+  const [vat, setVat] = useState('0');
+  const [shipping, setShipping] = useState('0');
   const [paymentStatus, setPaymentStatus] = useState<PaymentStatus>('pending');
 
   // ── UI state ────────────────────────────────────────────────────────────────
-  const [errors,    setErrors   ] = useState<Record<string, string[]>>({});
+  const [errors, setErrors] = useState<Record<string, string[]>>({});
   const [isLoading, setIsLoading] = useState(false);
 
   // ── Dropdown option caches ───────────────────────────────────────────────────
-  const [supplierDefaults,  setSupplierDefaults ] = useState<any[]>([]);
+  const [supplierDefaults, setSupplierDefaults] = useState<any[]>([]);
   const [warehouseDefaults, setWarehouseDefaults] = useState<any[]>([]);
-  const [productDefaults,   setProductDefaults  ] = useState<any[]>([]);
-  const [tenantDefaults,    setTenantDefaults   ] = useState<any[]>([]);
-  const [selectedTenant,    setSelectedTenant   ] = useState<any>(null);
+  const [productDefaults, setProductDefaults] = useState<any[]>([]);
+  const [tenantDefaults, setTenantDefaults] = useState<any[]>([]);
+  const [selectedTenant, setSelectedTenant] = useState<any>(null);
 
   // ─── Derived financial values ─────────────────────────────────────────────────
 
@@ -104,26 +104,31 @@ export default function AddPurchaseOrderPage() {
     0
   );
 
-  const discountValue  = Number(discount) || 0;
+  const discountValue = Number(discount) || 0;
   const discountAmount = discountType === 'percent'
     ? (subtotal * discountValue) / 100
     : discountValue;
 
   const vatPercent = Number(vat) || 0;
-  const vatAmount  = ((subtotal - discountAmount) * vatPercent) / 100;
+  const vatAmount = ((subtotal - discountAmount) * vatPercent) / 100;
 
   const shippingCost = Number(shipping) || 0;
-  const grandTotal   = subtotal - discountAmount + vatAmount + shippingCost;
+  const grandTotal = subtotal - discountAmount + vatAmount + shippingCost;
 
   // ─── Micro-helpers ────────────────────────────────────────────────────────────
 
-  const err    = (field: string) => errors[field]?.[0] || '';
+  const err = (field: string) => errors[field]?.[0] || '';
   const hasErr = (field: string) => !!errors[field];
 
   const clearErr = (field: string) => {
     if (!errors[field]) return;
     const { [field]: _, ...rest } = errors;
     setErrors(rest);
+  };
+
+  // Prevent entering minus sign in numeric inputs
+  const preventMinus = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === '-') e.preventDefault();
   };
 
   const setField = (key: string, value: any) => {
@@ -141,17 +146,19 @@ export default function AddPurchaseOrderPage() {
   const addItem = () =>
     setItems(prev => [
       ...prev,
-      { product_id: undefined, product_name: '', variation_id: undefined,
-        variation_name: '', quantity_ordered: 1, cost_price: 0, variationOptions: [] },
+      {
+        product_id: undefined, product_name: '', variation_id: undefined,
+        variation_name: '', quantity_ordered: 1, cost_price: 0, variationOptions: []
+      },
     ]);
 
   const removeItem = (idx: number) => setItems(prev => prev.filter((_, i) => i !== idx));
 
   // On product select: clear variation and preload variation options
   const onProductSelect = async (idx: number, productId?: string, label?: string) => {
-    setItemField(idx, 'product_id',     productId);
-    setItemField(idx, 'product_name',   label || '');
-    setItemField(idx, 'variation_id',   undefined);
+    setItemField(idx, 'product_id', productId);
+    setItemField(idx, 'product_name', label || '');
+    setItemField(idx, 'variation_id', undefined);
     setItemField(idx, 'variation_name', undefined);
     setItemField(idx, 'variationOptions', []);
 
@@ -168,14 +175,14 @@ export default function AddPurchaseOrderPage() {
 
       // Auto-select when only one variation exists
       if (opts.length === 1) {
-        setItemField(idx, 'variation_id',   opts[0].value);
+        setItemField(idx, 'variation_id', opts[0].value);
         setItemField(idx, 'variation_name', opts[0].label);
       }
     } catch { /* silent — variation preload failure is non-critical */ }
   };
 
   const onVariationSelect = (idx: number, variationId?: string, label?: string) => {
-    setItemField(idx, 'variation_id',   variationId);
+    setItemField(idx, 'variation_id', variationId);
     setItemField(idx, 'variation_name', label || '');
     // NOTE: cost_price is intentionally NOT auto-filled — user enters it manually
   };
@@ -304,30 +311,53 @@ export default function AddPurchaseOrderPage() {
   const validate = (): boolean => {
     const e: Record<string, string[]> = {};
 
-    if (!formData.supplier_id)  e.supplier_id  = ['Supplier is required'];
+    if (!formData.supplier_id) e.supplier_id = ['Supplier is required'];
     if (!formData.warehouse_id) e.warehouse_id = ['Warehouse is required'];
-    if (!formData.order_date)   e.order_date   = ['Order date is required'];
-    if (items.length === 0)     e.items        = ['At least one item is required'];
+    if (!formData.order_date) e.order_date = ['Order date is required'];
+    if (items.length === 0) e.items = ['At least one item is required'];
 
+    const costErrorItems: number[] = [];
     items.forEach((it, idx) => {
       if (!it.product_id) e[`items.${idx}.product_id`] = [''];
       if (!it.quantity_ordered || Number(it.quantity_ordered) <= 0)
         e[`items.${idx}.quantity_ordered`] = [`Item ${idx + 1}: quantity must be > 0`];
+
+      // cost_price must be > 0
+      if (Number(it.cost_price) <= 0) {
+        e[`items.${idx}.cost_price`] = [''];
+        costErrorItems.push(idx + 1);
+      }
     });
 
-    // Flag duplicate product + variation combos
+    // Flag duplicate product + variation combos (only check items with product_id)
     const seen: Record<string, number[]> = {};
     items.forEach((it, idx) => {
-      const key = `${it.product_id || ''}:${it.variation_id || ''}`;
+      // Only check for duplicates if product is selected
+      if (!it.product_id) return;
+
+      // Create unique key from product_id + variation_id combination
+      const key = `${it.product_id}:${it.variation_id || 'none'}`;
       if (!seen[key]) seen[key] = [];
       seen[key].push(idx);
     });
+
+    // Mark all duplicate entries
     Object.values(seen)
       .filter(ids => ids.length > 1)
       .forEach(ids => {
         e.items = ['Duplicate items detected — remove or merge them.'];
-        ids.forEach(i => { e[`items.${i}.product_id`] = e[`items.${i}.product_id`] || ['']; });
+        ids.forEach(i => {
+          e[`items.${i}.product_id`] = [''];
+          e[`items.${i}.variation_id`] = [''];
+        });
       });
+
+    // Show a single toast for unit cost errors (client-side)
+    if (costErrorItems.length > 0) {
+      notify.error(
+        `Unit cost must be > 0 for item${costErrorItems.length > 1 ? 's' : ''}: ${costErrorItems.join(', ')}`
+      );
+    }
 
     setErrors(e);
     return Object.keys(e).length === 0;
@@ -349,11 +379,11 @@ export default function AddPurchaseOrderPage() {
           found.quantity_ordered += Number(it.quantity_ordered) || 0;
         } else {
           acc.push({
-            __key:            key,
-            product_id:       it.product_id,
-            variation_id:     it.variation_id,
+            __key: key,
+            product_id: it.product_id,
+            variation_id: it.variation_id,
             quantity_ordered: Number(it.quantity_ordered) || 0,
-            price:            parseFloat(String(it.cost_price)) || 0,
+            price: parseFloat(String(it.cost_price)) || 0,
           });
         }
         return acc;
@@ -361,18 +391,18 @@ export default function AddPurchaseOrderPage() {
 
       const payload = {
         ...formData,
-        items:               collapsedItems.map(({ __key, ...rest }) => rest),
+        items: collapsedItems.map(({ __key, ...rest }) => rest),
         note,
-        payment_status:      paymentStatus,
-        discount:            discountValue,
-        discount_type:       discountType,
-        discount_amount:     discountAmount,
+        payment_status: paymentStatus,
+        discount: discountValue,
+        discount_type: discountType,
+        discount_amount: discountAmount,
         discount_percentage: discountType === 'percent' ? discountValue : null,
-        vat:                 vatPercent,
-        shipping:            shippingCost,
-        sub_total:           subtotal,
-        vat_amount:          vatAmount,
-        total_amount:        Number(Math.round(grandTotal).toFixed(2)),
+        vat: vatPercent,
+        shipping: shippingCost,
+        sub_total: subtotal,
+        vat_amount: vatAmount,
+        total_amount: Number(Math.round(grandTotal).toFixed(2)),
       };
 
       await purchaseOrderService.storePurchaseOrder(payload);
@@ -392,8 +422,10 @@ export default function AddPurchaseOrderPage() {
   };
 
   const handleReset = () => {
-    setFormData({ tenant_id: undefined, supplier_id: undefined, warehouse_id: undefined,
-      order_date: '', expected_delivery_date: '', status: 'draft' });
+    setFormData({
+      tenant_id: undefined, supplier_id: undefined, warehouse_id: undefined,
+      order_date: '', expected_delivery_date: '', status: 'draft'
+    });
     setSelectedTenant(null);
     setItems([]);
     setNote('');
@@ -428,13 +460,9 @@ export default function AddPurchaseOrderPage() {
 
         {/* ── Section 1: Order Details ──────────────────────────────────────────── */}
         <div className="bg-white dark:bg-gray-800 rounded-md shadow-sm border border-gray-200 dark:border-gray-700 p-3">
-          <h3 className="text-sm font-semibold text-gray-900 dark:text-gray-100 mb-3 pb-1.5 border-b border-gray-200 dark:border-gray-700">
-            Order Details
-          </h3>
-
           {/* Tenant row — super admin only, rendered above the main fields */}
           {isSuperAdmin && (
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-3 mb-3">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-3 mb-2">
               <div>
                 <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">
                   Tenant
@@ -466,7 +494,7 @@ export default function AddPurchaseOrderPage() {
                 value={
                   formData.supplier_id
                     ? (supplierDefaults.find(o => o.value === formData.supplier_id) ||
-                       { value: formData.supplier_id, label: '' })
+                      { value: formData.supplier_id, label: '' })
                     : null
                 }
                 onChange={(o: any) => setField('supplier_id', o?.value)}
@@ -487,7 +515,7 @@ export default function AddPurchaseOrderPage() {
                 value={
                   formData.warehouse_id
                     ? (warehouseDefaults.find(o => o.value === formData.warehouse_id) ||
-                       { value: formData.warehouse_id, label: '' })
+                      { value: formData.warehouse_id, label: '' })
                     : null
                 }
                 onChange={(o: any) => setField('warehouse_id', o?.value)}
@@ -644,11 +672,11 @@ export default function AddPurchaseOrderPage() {
                       min="1"
                       value={it.quantity_ordered}
                       onChange={e => setItemField(idx, 'quantity_ordered', e.target.value)}
+                      onKeyDown={preventMinus}
                       onFocus={e => e.target.select()}
                       placeholder="0"
-                      className={`${inputCls} text-right font-semibold [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none ${
-                        hasErr(`items.${idx}.quantity_ordered`) ? 'border-red-500' : ''
-                      }`}
+                      className={`${inputCls} text-right font-semibold [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none ${hasErr(`items.${idx}.quantity_ordered`) ? 'border-red-500' : ''
+                        }`}
                     />
                     {err(`items.${idx}.quantity_ordered`) && (
                       <p className="text-red-600 text-xs mt-0.5">{err(`items.${idx}.quantity_ordered`)}</p>
@@ -663,10 +691,12 @@ export default function AddPurchaseOrderPage() {
                       min="0"
                       value={it.cost_price}
                       onChange={e => setItemField(idx, 'cost_price', e.target.value)}
+                      onKeyDown={preventMinus}
                       onFocus={e => e.target.select()}
                       placeholder="0.00"
-                      className={`${inputCls} text-right font-semibold [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none`}
+                      className={`${inputCls} text-right font-semibold [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none ${hasErr(`items.${idx}.cost_price`) ? 'border-red-500' : ''}`}
                     />
+
                   </div>
 
                   {/* Line total (computed) */}
@@ -758,6 +788,7 @@ export default function AddPurchaseOrderPage() {
                         step="0.01"
                         value={discount}
                         onChange={e => setDiscount(e.target.value)}
+                        onKeyDown={preventMinus}
                         onFocus={e => e.target.select()}
                         className="w-24 px-2 py-1 text-xs text-right border border-gray-300 dark:border-gray-600 rounded-sm bg-white dark:bg-gray-700 dark:text-gray-100 focus:outline-none focus:ring-1 focus:ring-blue-500 [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
                       />
@@ -779,6 +810,7 @@ export default function AddPurchaseOrderPage() {
                         step="0.01"
                         value={vat}
                         onChange={e => setVat(e.target.value)}
+                        onKeyDown={preventMinus}
                         onFocus={e => e.target.select()}
                         className="w-24 px-2 py-1 text-xs text-right border border-gray-300 dark:border-gray-600 rounded-sm bg-white dark:bg-gray-700 dark:text-gray-100 focus:outline-none focus:ring-1 focus:ring-blue-500 [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
                       />
@@ -800,6 +832,7 @@ export default function AddPurchaseOrderPage() {
                         step="0.01"
                         value={shipping}
                         onChange={e => setShipping(e.target.value)}
+                        onKeyDown={preventMinus}
                         onFocus={e => e.target.select()}
                         className="w-24 px-2 py-1 text-xs text-right border border-gray-300 dark:border-gray-600 rounded-sm bg-white dark:bg-gray-700 dark:text-gray-100 focus:outline-none focus:ring-1 focus:ring-blue-500 [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
                       />

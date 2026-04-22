@@ -30,13 +30,25 @@ class PurchaseOrderService {
     return response.data.data;
   }
 
+  async getPurchaseOrder(purchaseOrderId: number) {
+    const response = await apiClient.get<ApiResponse<any>>(
+      `/api/v1/purchase-order/${purchaseOrderId}`
+    );
+    return response.data.data;
+  }
+
   async storePurchaseOrder(data: Record<string, any>) {
     const response = await apiClient.post<ApiResponse<any>>('/api/v1/purchase-order/store', data);
     return response.data.data;
   }
 
   async deletePurchaseOrder(id: number) {
-    await apiClient.post(`/api/v1/purchase-order/delete/${id}`);
+    await apiClient.get(`/api/v1/purchase-order/delete/${id}`);
+  }
+
+  async updatePurchaseOrderFromDetails(id: number, data: Record<string, any>) {
+    const response = await apiClient.post<ApiResponse<any>>(`/api/v1/purchase-order/${id}/update/details`, data);
+    return response.data.data;
   }
 }
 

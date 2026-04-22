@@ -4,36 +4,70 @@ import { useEffect, useState } from 'react';
 import { ColumnDef } from '@tanstack/react-table';
 import { List, Plus, Edit, Trash2, Eye, Printer } from 'lucide-react';
 import DataTable from '@/components/ui/datatable';
+import { formatDate } from '@/lib/utils/date';
 import { notify, confirm } from '@/lib/notifications';
 import purchaseOrderService from '@/services/purchaseOrderService';
 import { useRouter } from 'next/navigation';
 
 export default function PurchaseOrdersPage() {
   const router = useRouter();
-  const formatDate = (val?: string | null) => {
-    if (!val) return '-';
-    const d = new Date(val);
-    if (isNaN(d.getTime())) return '-';
-    const dd = String(d.getDate()).padStart(2, '0');
-    const mm = String(d.getMonth() + 1).padStart(2, '0');
-    const yyyy = d.getFullYear();
-    return `${dd}/${mm}/${yyyy}`;
-  };
+
   const [refreshKey, setRefreshKey] = useState(0);
   const [showDetails, setShowDetails] = useState(false);
   const [detailItems, setDetailItems] = useState<any[]>([]);
   const [detailLoading, setDetailLoading] = useState(false);
+  const [currentPO, setCurrentPO] = useState<any | null>(null);
+  const [updating, setUpdating] = useState(false);
+
+  const STATUS_LIST = [
+    'draft', 'pending', 'approved', 'ordered', 'partial', 'received', 'completed', 'cancelled'
+  ];
+  const PAYMENT_STATUS_LIST = [
+    { value: 'pending', label: 'Pending' },
+    { value: 'partial', label: 'Partial' },
+    { value: 'paid', label: 'Paid' },
+    { value: 'overdue', label: 'Overdue' },
+  ];
 
   const loadItems = async (id: number) => {
     try {
       setDetailLoading(true);
-      const items = await purchaseOrderService.getPurchaseOrderItems(id);
-      setDetailItems(items || []);
+      const po = await purchaseOrderService.getPurchaseOrder(id);
+      // if API returns wrapped data
+      const data = po || {};
+      setCurrentPO(data);
+      setDetailItems(data.items || []);
       setShowDetails(true);
     } catch (err: any) {
-      notify.error(err?.response?.data?.message || 'Failed to load items');
+      notify.error(err?.response?.data?.message || 'Failed to load details');
     } finally {
       setDetailLoading(false);
+    }
+  };
+
+  // Prevent entering minus sign in numeric inputs
+  const preventMinus = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === '-') e.preventDefault();
+  };
+
+
+  const handleUpdate = async () => {
+    if (!currentPO) return;
+    try {
+      setUpdating(true);
+      const payload: any = {
+        status: currentPO.status,
+        payment_status: currentPO.payment_status,
+        paid_amount: currentPO.paid_amount ?? 0,
+      };
+      await purchaseOrderService.updatePurchaseOrderFromDetails(currentPO.id, payload);
+      notify.success('Purchase order updated');
+      setShowDetails(false);
+      setRefreshKey(k => k + 1);
+    } catch (err: any) {
+      notify.error(err?.response?.data?.message || 'Failed to update');
+    } finally {
+      setUpdating(false);
     }
   };
 
@@ -85,12 +119,14 @@ export default function PurchaseOrdersPage() {
     {
       accessorKey: 'order_date',
       header: 'Order Date',
-      cell: ({ row }) => formatDate(row.original.order_date),
+      cell: ({ row }) => formatDate(row.original.order_date, 'DD/MM/YYYY'),
     },
     {
       accessorKey: 'expected_delivery_date',
       header: 'Expected Delivery',
-      cell: ({ row }) => formatDate(row.original.expected_delivery_date),
+      cell: ({ row }) => formatDate(row.original.expected_delivery_date,
+        'DD/MM/YYYY'
+      ),
     },
     {
       accessorKey: 'status',
@@ -131,18 +167,18 @@ export default function PurchaseOrdersPage() {
             <Eye className="w-4 h-4" />
           </button>
           <button
-            title="Edit"
-            onClick={() => handleEdit(row.original)}
-            className="p-1 text-green-600 hover:text-green-800 cursor-pointer"
-          >
-            <Edit className="w-4 h-4" />
-          </button>
-          <button
             title="Print"
             onClick={() => window.open(`/purchase-orders/print/${row.original.id}`, '_blank')}
             className="p-1 text-gray-600 hover:text-gray-800 cursor-pointer"
           >
             <Printer className="w-4 h-4" />
+          </button>
+          <button
+            title="Edit"
+            onClick={() => handleEdit(row.original)}
+            className="p-1 text-green-600 hover:text-green-800 cursor-pointer"
+          >
+            <Edit className="w-4 h-4" />
           </button>
           <button
             title="Delete"
@@ -188,7 +224,7 @@ export default function PurchaseOrdersPage() {
         <div className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center">
           <div className="bg-white dark:bg-gray-800 rounded-md w-11/12 md:w-3/4 lg:w-1/2 p-4">
             <div className="flex items-center justify-between mb-3">
-              <h3 className="text-lg font-medium">Purchase Order Items</h3>
+              <h3 className="text-lg font-medium">Purchase Order Details</h3>
               <button
                 onClick={() => setShowDetails(false)}
                 className="px-2 py-1 text-sm bg-gray-200 rounded"
@@ -200,42 +236,107 @@ export default function PurchaseOrdersPage() {
               <div className="text-sm">Loading...</div>
             ) : (
               <div className="overflow-x-auto">
-                <table className="min-w-full text-sm">
-                  <thead>
-                    <tr className="text-left text-xs text-gray-600">
-                      <th className="px-2 py-1">#</th>
-                      <th className="px-2 py-1">Product</th>
-                      <th className="px-2 py-1">Variation</th>
-                      <th className="px-2 py-1">Ordered</th>
-                      <th className="px-2 py-1">Received</th>
-                      <th className="px-2 py-1">Unit Cost</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {detailItems.length === 0 ? (
-                      <tr>
-                        <td className="px-2 py-3" colSpan={6}>
-                          No items found
-                        </td>
+                <div className="flex flex-col gap-3">
+                  {/* Header */}
+                  <div className="flex items-start justify-between">
+                    <div>
+                      <div className="text-sm font-semibold">{currentPO?.po_number || '-'}</div>
+                      <div className="text-xs text-gray-500">{currentPO?.supplier?.name || '-'}</div>
+                      <div className="text-xs text-gray-500">Warehouse: {currentPO?.warehouse?.name || '-'}</div>
+                    </div>
+                    <div className="text-right">
+                      <div className="text-xs">Order Date: {formatDate(currentPO?.order_date, 'DD/MM/YYYY')}</div>
+                      <div className="text-xs">Expected: {formatDate(currentPO?.expected_delivery_date, 'DD/MM/YYYY')}</div>
+                      <div className="text-xs">Shipping: {Number(currentPO?.shipping_charge ?? currentPO?.shipping ?? 0).toFixed(2)}</div>
+                      <div className="text-xs">
+                        VAT: {currentPO?.vat ? `${currentPO.vat}%` : '-'}
+                        {currentPO ? ` (${Number(((currentPO.sub_total ?? 0) - (currentPO.discount_amount ?? 0)) * ((currentPO.vat ?? 0) / 100)).toFixed(2)})` : ''}
+                      </div>
+                      <div className="text-xs">
+                        Discount: {currentPO?.discount_percentage ? `${currentPO.discount_percentage}%` : (currentPO?.discount_amount ? `${Number(currentPO.discount_amount).toFixed(2)}` : '-')}
+                      </div>
+                      <div className="text-sm font-bold">Total: {currentPO?.total_amount ?? '-'}</div>
+                    </div>
+                  </div>
+
+                  {/* Status controls */}
+                  <div className="flex items-center gap-3">
+                    <div>
+                      <label className="text-xs text-gray-600 mb-1 block">Status</label>
+                      <select
+                        value={currentPO?.status || 'draft'}
+                        onChange={e => setCurrentPO(prev => prev ? { ...prev, status: e.target.value } : prev)}
+                        className="px-2 py-1 border border-gray-300 dark:border-gray-700 rounded text-sm focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
+                      >
+                        {STATUS_LIST.map(s => <option key={s} value={s}>{s}</option>)}
+                      </select>
+                    </div>
+                    <div>
+                      <label className="text-xs text-gray-600 mb-1 block">Payment Status</label>
+                      <select
+                        value={currentPO?.payment_status || 'pending'}
+                        onChange={e => setCurrentPO(prev => prev ? { ...prev, payment_status: e.target.value } : prev)}
+                        className="px-2 py-1 border border-gray-300 dark:border-gray-700 rounded text-sm focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
+                      >
+                        {PAYMENT_STATUS_LIST.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
+                      </select>
+                    </div>
+                    <div>
+                      <label className="text-xs text-gray-600 mb-1 block">Paid Amount</label>
+                      <input
+                        type="number"
+                        step="0.01"
+                        value={currentPO?.paid_amount ?? 0}
+                        onChange={e => setCurrentPO(prev => prev ? { ...prev, paid_amount: e.target.value } : prev)}
+                        onFocus={e => e.target.select()}
+                        onKeyDown={preventMinus}
+                        className="px-2 py-1 text-right border border-gray-300 dark:border-gray-700 rounded text-sm focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500 w-36 [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                      />
+                    </div>
+                    <div className="ml-auto">
+                      <button onClick={handleUpdate} disabled={updating} className="px-3 py-1 bg-blue-600 text-white rounded text-sm">
+                        {updating ? 'Saving...' : 'Save'}
+                      </button>
+                    </div>
+                  </div>
+
+                  <table className="min-w-full text-sm">
+                    <thead>
+                      <tr className="text-left text-xs text-gray-600">
+                        <th className="px-2 py-1">#</th>
+                        <th className="px-2 py-1">Product</th>
+                        <th className="px-2 py-1">Variation</th>
+                        <th className="px-2 py-1">Ordered</th>
+                        <th className="px-2 py-1">Received</th>
+                        <th className="px-2 py-1">Unit Cost</th>
                       </tr>
-                    ) : (
-                      detailItems.map((it, idx) => (
-                        <tr key={it.id} className="border-t">
-                          <td className="px-2 py-2">{idx + 1}</td>
-                          <td className="px-2 py-2">
-                            {it.product?.name || it.product_name || '-'}
+                    </thead>
+                    <tbody>
+                      {detailItems.length === 0 ? (
+                        <tr>
+                          <td className="px-2 py-3" colSpan={6}>
+                            No items found
                           </td>
-                          <td className="px-2 py-2">
-                            {it.variation?.name || it.variation_name || '-'}
-                          </td>
-                          <td className="px-2 py-2">{it.quantity_ordered}</td>
-                          <td className="px-2 py-2">{it.quantity_received}</td>
-                          <td className="px-2 py-2">{it.unit_cost}</td>
                         </tr>
-                      ))
-                    )}
-                  </tbody>
-                </table>
+                      ) : (
+                        detailItems.map((it, idx) => (
+                          <tr key={it.id} className="border-t">
+                            <td className="px-2 py-2">{idx + 1}</td>
+                            <td className="px-2 py-2">
+                              {it.product?.name || it.product_name || '-'}
+                            </td>
+                            <td className="px-2 py-2">
+                              {it.variation?.name || it.variation_name || '-'}
+                            </td>
+                            <td className="px-2 py-2 text-center">{Math.abs(it.quantity_ordered)}</td>
+                            <td className="px-2 py-2 text-center">{Math.abs(it.quantity_received)}</td>
+                            <td className="px-2 py-2">{Number(it.unit_cost ?? 0).toFixed(2)}</td>
+                          </tr>
+                        ))
+                      )}
+                    </tbody>
+                  </table>
+                </div>
               </div>
             )}
           </div>
