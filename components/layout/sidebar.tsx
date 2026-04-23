@@ -31,7 +31,13 @@ import {
   Container,
   LayersPlus,
   SquarePlus,
+  FileText,
+  FileSpreadsheet,
 } from 'lucide-react';
+import { MdOutlineAssignmentReturn, MdOutlinePointOfSale, MdOutlinePostAdd } from 'react-icons/md';
+import { BsReceiptCutoff } from 'react-icons/bs';
+import { LiaFileInvoiceDollarSolid } from 'react-icons/lia';
+import { PiUserListDuotone } from 'react-icons/pi';
 
 interface SidebarProps {
   sidebarOpen: boolean;
@@ -42,7 +48,7 @@ interface SidebarProps {
 interface NavigationItem {
   name: string;
   href?: string;
-  icon: LucideIcon;
+  icon: any;
   children?: NavigationItem[];
   permission?: string;
   permissions?: string[];
@@ -127,11 +133,11 @@ const navigation: NavigationItem[] = [
     icon: ListMinus,
     permission: 'view-purchases',
     children: [
-      { name: 'Supplier List', href: '/suppliers', icon: List, permission: 'view-suppliers' },
+      { name: 'Supplier List', href: '/suppliers', icon: PiUserListDuotone, permission: 'view-suppliers' },
       {
         name: 'Purchase Orders',
         href: '/purchase-orders',
-        icon: ShoppingCart,
+        icon: LiaFileInvoiceDollarSolid,
         permission: 'view-purchases',
       },
       {
@@ -140,6 +146,12 @@ const navigation: NavigationItem[] = [
         icon: SquarePlus,
         permission: 'create-purchases',
       },
+      {
+        name: 'Purchase Orders Return',
+        href: '/purchase-orders',
+        icon: MdOutlineAssignmentReturn,
+        permission: 'view-purchases',
+      },
     ],
   },
   {
@@ -147,7 +159,17 @@ const navigation: NavigationItem[] = [
     icon: CircleDollarSign,
     permission: 'view-sales',
     children: [
-      { name: 'POS Sale', href: '/pos-sales', icon: DollarSign, permission: 'view-pos-sales' },
+      { name: 'Sales Orders', href: '/sales-orders', icon: BsReceiptCutoff, permission: 'view-sales' },
+      { name: 'Add Sales Order', href: '/sales-orders/add', icon: MdOutlinePostAdd, permission: 'create-sales' },
+      { name: 'POS Sales', href: '/pos-sales', icon: MdOutlinePointOfSale, permission: 'view-pos-sales' },
+    ],
+  },
+  {
+    name: 'Report Management',
+    icon: FileText,
+    permission: '',
+    children: [
+      { name: 'Purchase Report', href: '/pos-sales', icon: FileSpreadsheet, permission: 'view-pos-sales' },
     ],
   },
   {
@@ -275,10 +297,9 @@ function NavItem({
           className={`
             relative group flex items-center px-3 py-1 text-sm font-medium rounded-md transition-colors cursor-pointer
             ${depth > 0 && sidebarOpen ? 'ml-4' : ''}
-            ${
-              isActive
-                ? 'bg-indigo-100 dark:bg-indigo-900/30 text-indigo-900 dark:text-indigo-300'
-                : 'text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-700 hover:text-gray-900 dark:hover:text-gray-100'
+            ${isActive
+              ? 'bg-indigo-100 dark:bg-indigo-900/30 text-indigo-900 dark:text-indigo-300'
+              : 'text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-700 hover:text-gray-900 dark:hover:text-gray-100'
             }
           `}
           title={!sidebarOpen ? item.name : undefined}
@@ -295,10 +316,9 @@ function NavItem({
             className={`
               relative group flex items-center px-3 py-2 text-sm font-medium rounded-md transition-colors cursor-pointer
               ${depth > 0 && sidebarOpen ? 'ml-4 w-[calc(100%-1rem)]' : 'w-full'}
-              ${
-                isParentActive
-                  ? 'bg-indigo-50 dark:bg-indigo-900/20 text-indigo-900 dark:text-indigo-300'
-                  : 'text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-700 hover:text-gray-900 dark:hover:text-gray-100'
+              ${isParentActive
+                ? 'bg-indigo-50 dark:bg-indigo-900/20 text-indigo-900 dark:text-indigo-300'
+                : 'text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-700 hover:text-gray-900 dark:hover:text-gray-100'
               }
             `}
             title={!sidebarOpen ? item.name : undefined}

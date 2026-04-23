@@ -1,34 +1,44 @@
 'use client';
 
-import { useState, FormEvent, Suspense } from 'react';
-import { Mail, Lock, Eye, EyeOff } from 'lucide-react';
+import { useState, Suspense } from 'react';
+import { Mail, Lock, Eye, EyeOff, Loader2 } from 'lucide-react';
 import Link from 'next/link';
 import { useAuth } from '@/hooks/use-auth';
+
+interface ValidationErrors {
+  email?: string[];
+  password?: string[];
+}
 
 function LoginForm() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [shouldRemember, setShouldRemember] = useState(false);
-  const [errors, setErrors] = useState([]);
+  const [errors, setErrors] = useState<ValidationErrors>({});
   const [isLoading, setIsLoading] = useState(false);
+
   const { login } = useAuth({
     middleware: 'guest',
     redirectIfAuthenticated: '/dashboard',
   });
 
-  const handleSubmit = async (event: FormEvent<HTMLFormElement>): Promise<void> => {
+  const handleSubmit = async (event: React.FormEvent<HTMLFormElement>): Promise<void> => {
     event.preventDefault();
     setIsLoading(true);
+    setErrors({});
 
-    login({
+    await login({
       email,
       password,
       remember: shouldRemember,
-      setErrors,
+      setErrors: (validationErrors: ValidationErrors) => {
+        if (validationErrors && Object.keys(validationErrors).length > 0) {
+          setErrors(validationErrors);
+          setIsLoading(false);
+        }
+      },
     });
-
-    setIsLoading(false);
   };
 
   return (
@@ -36,7 +46,7 @@ function LoginForm() {
       <div className="max-w-md w-full space-y-8">
         {/* Header */}
         <div className="text-center">
-          <h2 className="mt-2 text-3xl font-bold text-gray-900 dark:text-gray-100">Welcome Back</h2>
+          <h2 className="mt-2 text-3xl font-bold text-gray-900 dark:text-gray-100">Welcome to UIMS</h2>
           <p className="mt-1 text-sm text-gray-600 dark:text-gray-400">
             Please sign in to continue to your dashboard
           </p>
@@ -45,13 +55,6 @@ function LoginForm() {
         {/* Form Card */}
         <div className="bg-white dark:bg-gray-800 shadow-lg dark:shadow-gray-900/50 rounded-lg border border-gray-200 dark:border-gray-700 p-8">
           <form className="space-y-4" onSubmit={handleSubmit}>
-            {/* Error Message */}
-            {errors.length > 0 && (
-              <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 text-red-700 dark:text-red-400 px-4 py-3 rounded-md text-sm">
-                {errors}
-              </div>
-            )}
-
             {/* Email Field */}
             <div>
               <label
@@ -62,7 +65,7 @@ function LoginForm() {
               </label>
               <div className="relative">
                 <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                  <Mail className="h-5 w-5 text-gray-400 dark:text-gray-500" />
+                  <Mail className={`h-5 w-5 ${errors.email ? 'text-red-500' : 'text-gray-400 dark:text-gray-500'}`} />
                 </div>
                 <input
                   id="email"
@@ -71,11 +74,25 @@ function LoginForm() {
                   autoComplete="email"
                   required
                   value={email}
-                  onChange={e => setEmail(e.target.value)}
-                  className="block w-full pl-10 pr-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 placeholder-gray-400 dark:placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:focus:ring-indigo-400 focus:border-transparent transition-colors"
+                  onChange={e => {
+                    setEmail(e.target.value);
+                    // Clear email error when user starts typing
+                    if (errors.email) {
+                      setErrors(prev => ({ ...prev, email: undefined }));
+                    }
+                  }}
+                  className={`block w-full pl-10 pr-3 py-2 border rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 placeholder-gray-400 dark:placeholder-gray-500 focus:outline-none focus:ring-2 transition-colors ${errors.email
+                    ? 'border-red-500 dark:border-red-500 focus:ring-red-500 dark:focus:ring-red-500 focus:border-red-500'
+                    : 'border-gray-300 dark:border-gray-600 focus:ring-indigo-500 dark:focus:ring-indigo-400 focus:border-transparent'
+                    }`}
                   placeholder="admin@example.com"
                 />
               </div>
+              {errors.email && (
+                <p className="mt-1 text-sm text-red-600 dark:text-red-400">
+                  {errors.email[0]}
+                </p>
+              )}
             </div>
 
             {/* Password Field */}
@@ -88,7 +105,7 @@ function LoginForm() {
               </label>
               <div className="relative">
                 <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                  <Lock className="h-5 w-5 text-gray-400 dark:text-gray-500" />
+                  <Lock className={`h-5 w-5 ${errors.password ? 'text-red-500' : 'text-gray-400 dark:text-gray-500'}`} />
                 </div>
                 <input
                   id="password"
@@ -97,8 +114,17 @@ function LoginForm() {
                   autoComplete="current-password"
                   required
                   value={password}
-                  onChange={e => setPassword(e.target.value)}
-                  className="block w-full pl-10 pr-10 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 placeholder-gray-400 dark:placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:focus:ring-indigo-400 focus:border-transparent transition-colors"
+                  onChange={e => {
+                    setPassword(e.target.value);
+                    // Clear password error when user starts typing
+                    if (errors.password) {
+                      setErrors(prev => ({ ...prev, password: undefined }));
+                    }
+                  }}
+                  className={`block w-full pl-10 pr-10 py-2 border rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 placeholder-gray-400 dark:placeholder-gray-500 focus:outline-none focus:ring-2 transition-colors ${errors.password
+                    ? 'border-red-500 dark:border-red-500 focus:ring-red-500 dark:focus:ring-red-500 focus:border-red-500'
+                    : 'border-gray-300 dark:border-gray-600 focus:ring-indigo-500 dark:focus:ring-indigo-400 focus:border-transparent'
+                    }`}
                   placeholder="••••••••"
                 />
                 <button
@@ -109,6 +135,11 @@ function LoginForm() {
                   {showPassword ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
                 </button>
               </div>
+              {errors.password && (
+                <p className="mt-1 text-sm text-red-600 dark:text-red-400">
+                  {errors.password[0]}
+                </p>
+              )}
             </div>
 
             {/* Remember Me & Forgot Password */}
@@ -144,26 +175,17 @@ function LoginForm() {
             <button
               type="submit"
               disabled={isLoading}
-              className="w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 dark:focus:ring-offset-gray-800 disabled:opacity-50 disabled:cursor-not-allowed transition-colors cursor-pointer"
+              className="w-full flex justify-center items-center gap-2 py-2.5 px-4 border border-transparent rounded-sm shadow-sm text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 dark:focus:ring-offset-gray-800 disabled:opacity-50 disabled:cursor-not-allowed transition-colors cursor-pointer"
             >
               {isLoading ? (
-                <div className="flex items-center gap-2">
-                  <div className="h-5 w-5 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                <>
+                  <Loader2 className="h-5 w-5 animate-spin" />
                   <span>Signing in...</span>
-                </div>
+                </>
               ) : (
                 'Sign in'
               )}
             </button>
-
-            {/* Demo Credentials */}
-            <div className="rounded-md bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 p-4">
-              <div className="text-sm text-blue-800 dark:text-blue-300">
-                <p className="font-medium mb-1">Demo Credentials:</p>
-                <p className="font-mono text-xs">Email: admin@example.com</p>
-                <p className="font-mono text-xs">Password: admin123</p>
-              </div>
-            </div>
           </form>
         </div>
 
@@ -171,11 +193,11 @@ function LoginForm() {
         <div className="text-center text-xs text-gray-500 dark:text-gray-400 space-y-1">
           <p>
             Don&apos;t have an account?{' '}
-            <Link
-              href="/signup"
+            <Link target="blank"
+              href="https://musfiz.com"
               className="font-medium text-indigo-600 dark:text-indigo-400 hover:text-indigo-500 dark:hover:text-indigo-300 transition-colors"
             >
-              Create account
+
             </Link>
           </p>
           <div className="flex items-center justify-center gap-4">
@@ -187,6 +209,11 @@ function LoginForm() {
               Terms of Service
             </a>
           </div>
+        </div>
+
+        {/* Copyright */}
+        <div className="text-center text-xs text-gray-400 dark:text-gray-500 pt-4 border-t border-gray-200 dark:border-gray-800">
+          <p>© {new Date().getFullYear()} UIMS. All rights reserved.</p>
         </div>
       </div>
     </main>
