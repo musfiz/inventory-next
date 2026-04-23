@@ -21,6 +21,7 @@ export { default as stockService } from './stockService';
 export { default as supplierService } from './supplierService';
 export { default as purchaseOrderService } from './purchaseOrderService';
 export { default as salesOrderService } from './salesOrderService';
+export { default as customerService } from './customerService';
 
 // Re-export types for convenience
 export type {

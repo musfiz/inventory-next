@@ -169,7 +169,7 @@ const navigation: NavigationItem[] = [
     icon: FileText,
     permission: '',
     children: [
-      { name: 'Purchase Report', href: '/pos-sales', icon: FileSpreadsheet, permission: 'view-pos-sales' },
+      { name: 'Purchase Report', href: '/reports/purchase-list', icon: FileSpreadsheet, permission: 'view-purchase-reports' },
     ],
   },
   {
