@@ -19,10 +19,6 @@ interface ProductFormData {
   unit_id: string;
   type: 'simple' | 'variable' | 'composite' | 'digital' | 'service';
   status: 'active' | 'inactive' | 'discontinued' | 'archived';
-  cost_price: string;
-  selling_price: string;
-  dp: string;
-  mrp: string;
   is_taxable: boolean;
   tax_rate: string;
   track_inventory: boolean;
@@ -67,10 +63,6 @@ export default function AddProductPage() {
     unit_id: '',
     type: 'simple',
     status: 'active',
-    cost_price: '',
-    selling_price: '',
-    dp: '',
-    mrp: '',
     is_taxable: false,
     tax_rate: '0',
     track_inventory: true,
@@ -340,10 +332,6 @@ export default function AddProductPage() {
       const submitData = {
         ...formData,
         business_type: businessType, // Add business type
-        cost_price: formData.cost_price ? parseFloat(formData.cost_price) : 0,
-        selling_price: formData.selling_price ? parseFloat(formData.selling_price) : 0,
-        dp: formData.dp ? parseFloat(formData.dp) : undefined,
-        mrp: formData.mrp ? parseFloat(formData.mrp) : undefined,
         tax_rate: formData.tax_rate ? parseFloat(formData.tax_rate) : 0,
         low_stock_threshold: formData.low_stock_threshold
           ? parseInt(formData.low_stock_threshold)
@@ -599,107 +587,7 @@ export default function AddProductPage() {
             <h3 className="text-base font-semibold text-gray-900 dark:text-gray-100 mb-2">
               Pricing & Tax
             </h3>
-            <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
-              <div>
-                <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-2">
-                  Cost Price
-                </label>
-                <input
-                  type="number"
-                  name="cost_price"
-                  value={formData.cost_price}
-                  onChange={handleInputChange}
-                  step="0.01"
-                  min="0"
-                  className={`w-full px-2.5 py-1 text-sm bg-white dark:bg-gray-700 border ${
-                    hasFieldError('cost_price')
-                      ? 'border-red-500 focus:border-red-500'
-                      : 'border-gray-300 dark:border-gray-600 focus:border-indigo-500 dark:focus:border-indigo-400'
-                  } rounded-sm text-gray-900 dark:text-gray-100 focus:outline-none`}
-                  placeholder="0.00"
-                />
-                {hasFieldError('cost_price') && (
-                  <p className="mt-1 text-xs text-red-600 dark:text-red-400">
-                    {getFieldError('cost_price')}
-                  </p>
-                )}
-              </div>
-
-              <div>
-                <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-2">
-                  Selling Price
-                </label>
-                <input
-                  type="number"
-                  name="selling_price"
-                  value={formData.selling_price}
-                  onChange={handleInputChange}
-                  step="0.01"
-                  min="0"
-                  className={`w-full px-2.5 py-1 text-sm bg-white dark:bg-gray-700 border ${
-                    hasFieldError('selling_price')
-                      ? 'border-red-500 focus:border-red-500'
-                      : 'border-gray-300 dark:border-gray-600 focus:border-indigo-500 dark:focus:border-indigo-400'
-                  } rounded-sm text-gray-900 dark:text-gray-100 focus:outline-none`}
-                  placeholder="0.00"
-                />
-                {hasFieldError('selling_price') && (
-                  <p className="mt-1 text-xs text-red-600 dark:text-red-400">
-                    {getFieldError('selling_price')}
-                  </p>
-                )}
-              </div>
-
-              <div>
-                <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-2">
-                  DP
-                </label>
-                <input
-                  type="number"
-                  name="dp"
-                  value={formData.dp}
-                  onChange={handleInputChange}
-                  step="0.01"
-                  min="0"
-                  className={`w-full px-2.5 py-1 text-sm bg-white dark:bg-gray-700 border ${
-                    hasFieldError('dp')
-                      ? 'border-red-500 focus:border-red-500'
-                      : 'border-gray-300 dark:border-gray-600 focus:border-indigo-500 dark:focus:border-indigo-400'
-                  } rounded-sm text-gray-900 dark:text-gray-100 focus:outline-none`}
-                  placeholder="0.00"
-                />
-                {hasFieldError('dp') && (
-                  <p className="mt-1 text-xs text-red-600 dark:text-red-400">
-                    {getFieldError('dp')}
-                  </p>
-                )}
-              </div>
-
-              <div>
-                <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-2">
-                  MRP
-                </label>
-                <input
-                  type="number"
-                  name="mrp"
-                  value={formData.mrp}
-                  onChange={handleInputChange}
-                  step="0.01"
-                  min="0"
-                  className={`w-full px-2.5 py-1 text-sm bg-white dark:bg-gray-700 border ${
-                    hasFieldError('mrp')
-                      ? 'border-red-500 focus:border-red-500'
-                      : 'border-gray-300 dark:border-gray-600 focus:border-indigo-500 dark:focus:border-indigo-400'
-                  } rounded-sm text-gray-900 dark:text-gray-100 focus:outline-none`}
-                  placeholder="0.00"
-                />
-                {hasFieldError('mrp') && (
-                  <p className="mt-1 text-xs text-red-600 dark:text-red-400">
-                    {getFieldError('mrp')}
-                  </p>
-                )}
-              </div>
-            </div>
+            {/* Product-level pricing removed; prices managed on product variations */}
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mt-2">
               <div>

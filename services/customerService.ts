@@ -35,6 +35,21 @@ class CustomerService {
     const response = await apiClient.get<ApiResponse<Customer[]>>('/api/v1/customers/dropdown');
     return response.data.data;
   }
+
+  async storeCustomer(data: Record<string, any>) {
+    const response = await apiClient.post<ApiResponse<any>>('/api/v1/customers', data);
+    return response.data;
+  }
+
+  async updateCustomer(id: number, data: Record<string, any>) {
+    const response = await apiClient.put<ApiResponse<any>>(`/api/v1/customers/${id}`, data);
+    return response.data;
+  }
+
+  async deleteCustomer(id: number) {
+    const response = await apiClient.delete<ApiResponse<any>>(`/api/v1/customers/${id}`);
+    return response.data;
+  }
 }
 
 export default new CustomerService();

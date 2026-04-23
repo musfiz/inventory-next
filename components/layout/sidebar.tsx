@@ -159,6 +159,7 @@ const navigation: NavigationItem[] = [
     icon: CircleDollarSign,
     permission: 'view-sales',
     children: [
+      { name: 'Customers', href: '/customers', icon: PiUserListDuotone, permission: 'view-customers' },
       { name: 'Sales Orders', href: '/sales-orders', icon: BsReceiptCutoff, permission: 'view-sales' },
       { name: 'Add Sales Order', href: '/sales-orders/add', icon: MdOutlinePostAdd, permission: 'create-sales' },
       { name: 'POS Sales', href: '/pos-sales', icon: MdOutlinePointOfSale, permission: 'view-pos-sales' },

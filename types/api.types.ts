@@ -72,10 +72,6 @@ export interface Product {
   unit_id?: string;
   type?: 'simple' | 'variable' | 'composite' | 'digital' | 'service';
   status?: 'draft' | 'active' | 'inactive' | 'discontinued' | 'archived';
-  cost_price?: number;
-  base_price?: number;
-  mrp?: number;
-  compare_at_price?: number;
   tax_rate?: number;
   is_taxable?: boolean;
   weight?: number;
@@ -210,16 +206,13 @@ export interface CreateProductRequest {
   business_type: string;
   category_id: string;
   brand_id: string;
-  cost_price: number;
-  selling_price: number;
+  // pricing fields removed for product table (kept in product variations)
 
   // Optional fields
   description?: string;
   unit_id?: string;
   type?: 'simple' | 'variable' | 'composite' | 'digital' | 'service';
   status?: 'draft' | 'active' | 'inactive' | 'discontinued' | 'archived';
-  dp_price?: number;
-  mrp?: number;
   tax_rate?: number;
   is_taxable?: boolean;
   track_inventory?: boolean;
