@@ -3,17 +3,18 @@ import type { ApiResponse } from '@/types/api.types';
 
 export interface Customer {
   id: number;
+  tenant_id: string;
   uuid?: string;
-  code: string;
   name: string;
-  company_name?: string;
-  contact_person?: string;
   phone?: string;
   email?: string;
+  company_name?: string;
+  contact_person?: string;
   address?: string;
   city?: string;
   state?: string;
   country?: string;
+  nid_number?: string;
   type?: 'retail' | 'wholesale' | 'corporate' | 'dealer';
   credit_limit?: number;
   current_balance?: number;
@@ -31,13 +32,8 @@ class CustomerService {
     return response.data.data;
   }
 
-  async getCustomersDropdown() {
-    const response = await apiClient.get<ApiResponse<Customer[]>>('/api/v1/customers/dropdown');
-    return response.data.data;
-  }
-
   async storeCustomer(data: Record<string, any>) {
-    const response = await apiClient.post<ApiResponse<any>>('/api/v1/customers', data);
+    const response = await apiClient.post<ApiResponse<any>>('/api/v1/customers/store', data);
     return response.data;
   }
 
@@ -47,8 +43,15 @@ class CustomerService {
   }
 
   async deleteCustomer(id: number) {
-    const response = await apiClient.delete<ApiResponse<any>>(`/api/v1/customers/${id}`);
+    const response = await apiClient.get<ApiResponse<any>>(`/api/v1/customers/delete/${id}`);
     return response.data;
+  }
+
+  async getCustomersDropdown(params?: Record<string, any>) {
+    const response = await apiClient.get<ApiResponse<Customer[]>>('/api/v1/customers', {
+      params: { ...params, per_page: params?.per_page || 100 }
+    });
+    return response.data.data || [];
   }
 }
 
