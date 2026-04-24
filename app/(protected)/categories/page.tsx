@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { FolderOpen, Plus, Edit, Trash2, Eye, X } from 'lucide-react';
+import { FolderOpen, Plus, Edit, Trash2, Eye, X, Download } from 'lucide-react';
 import { ColumnDef } from '@tanstack/react-table';
 import { notify } from '@/lib/notifications';
 import { categoryService } from '@/services';
@@ -47,6 +47,17 @@ export default function CategoriesPage() {
   const [defaultParentOptions, setDefaultParentOptions] = useState<
     { value: string; label: string }[]
   >([]);
+
+  const handleExportExcel = async () => {
+    try {
+      const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL;
+      window.open(`${backendUrl}/api/v1/categories/export`, '_blank');
+      notify.success('Excel export started');
+    } catch (error) {
+      notify.error('Failed to export categories');
+      console.error('Export error:', error);
+    }
+  };
 
   const loadParentCategoryOptions = async (
     inputValue: string
@@ -279,13 +290,22 @@ export default function CategoriesPage() {
             Product Categories
           </h1>
         </div>
-        <button
-          onClick={handleAddCategory}
-          className="flex items-center gap-2 px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium rounded-sm transition-colors duration-200 cursor-pointer"
-        >
-          <Plus className="w-4 h-4" />
-          Add Category
-        </button>
+        <div className="flex items-center gap-2">
+          <button
+            onClick={handleExportExcel}
+            className="flex items-center gap-2 px-3 py-1.5 bg-green-600 hover:bg-green-700 text-white text-sm font-medium rounded-sm transition-colors duration-200 cursor-pointer"
+          >
+            <Download className="w-4 h-4" />
+            Export Excel
+          </button>
+          <button
+            onClick={handleAddCategory}
+            className="flex items-center gap-2 px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium rounded-sm transition-colors duration-200 cursor-pointer"
+          >
+            <Plus className="w-4 h-4" />
+            Add Category
+          </button>
+        </div>
       </div>
 
       {/* Add/Edit Category Form */}
