@@ -694,7 +694,7 @@ export default function POSSalesPage() {
               <h3 className="text-sm font-semibold text-gray-900 dark:text-gray-100 mb-1">
                 Payment Method
               </h3>
-              <div className="grid grid-cols-2 gap-2">
+              <div className="grid grid-cols-3 gap-2">
                 {PAYMENT_METHODS.map(method => {
                   const Icon = method.icon;
                   return (

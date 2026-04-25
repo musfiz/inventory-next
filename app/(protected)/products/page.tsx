@@ -1,15 +1,21 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
-import { Eye, Edit, Trash2, Rows4, Package2, Plus, Image } from 'lucide-react';
+import { Eye, Edit, Trash2, Rows4, Package2, Plus, Image, X } from 'lucide-react';
 import { ColumnDef } from '@tanstack/react-table';
 import DataTable from '@/components/ui/datatable';
+import CustomSelect from '@/components/ui/custom-select';
 import { Product } from '@/types/api.types';
 import { productService } from '@/services';
+import apiClient from '@/lib/api/axios';
 import { usePermissions } from '@/hooks/use-permissions';
 import { confirm, notify } from '@/lib/notifications';
 import { useAuthStore } from '@/stores/auth-store';
+import { ImDownload } from "react-icons/im";
+import { RiDragDropLine, RiFileExcel2Line } from "react-icons/ri";
+import { TiUploadOutline } from "react-icons/ti";
+import { PiListBulletsFill, PiListPlusFill } from "react-icons/pi";
 
 export default function ProductsPage() {
   const router = useRouter();
@@ -18,6 +24,111 @@ export default function ProductsPage() {
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const { hasPermission, isHydrated } = usePermissions();
 
+  const [showBulkUpload, setShowBulkUpload] = useState(false);
+  const [uploading, setUploading] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [businessType, setBusinessType] = useState<string>('');
+  const [refreshKey, setRefreshKey] = useState(0);
+
+  const handleFile = (file: File) => {
+    setSelectedFile(file);
+  };
+
+  const clearFile = () => {
+    setSelectedFile(null);
+    if (fileInputRef.current) fileInputRef.current.value = '';
+  };
+
+  const handleDownloadSample = () => {
+    try {
+      const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL || '';
+      let url = `${backendUrl}/api/v1/products/sample-excel`;
+
+      if (isSuperAdmin && businessType) {
+        url += `?business_type=${encodeURIComponent(businessType)}`;
+      }
+
+      window.open(url, '_blank');
+    } catch (err) {
+      notify.error('Failed to download sample file');
+    }
+  };
+
+  const handleBulkUpload = async (e: React.FormEvent) => {
+    e.preventDefault();
+    
+    // Validate file selection
+    if (!selectedFile) {
+      notify.error('Please select a file to upload');
+      return;
+    }
+
+    // Validate business type for super admin
+    if (isSuperAdmin && !businessType) {
+      notify.error('Please select a business type');
+      return;
+    }
+
+    // Client-side validation: ensure Excel file
+    const allowedExt = ['.xls', '.xlsx'];
+    const fileName = selectedFile.name.toLowerCase();
+    const isValidExt = allowedExt.some(ext => fileName.endsWith(ext));
+    
+    if (!isValidExt) {
+      notify.error('Invalid file type. Please upload an Excel file (.xls, .xlsx).');
+      return;
+    }
+
+    try {
+      setUploading(true);
+      
+      const formData = new FormData();
+      formData.append('file', selectedFile);
+      
+      if (isSuperAdmin && businessType) {
+        formData.append('business_type', businessType);
+      }
+
+      const response = await apiClient.post('/api/v1/products/bulk-upload', formData, {
+        headers: { 'Content-Type': 'multipart/form-data' },
+      });
+
+      notify.success(response.data.message || 'Products uploaded successfully');
+      setShowBulkUpload(false);
+      clearFile();
+      setBusinessType('');
+      setRefreshKey(prev => prev + 1); // Refresh the product list
+    } catch (err: any) {
+      const errorMessage = err?.response?.data?.message || 'Bulk upload failed';
+      notify.error(errorMessage);
+    } finally {
+      setUploading(false);
+    }
+  };
+
+  // Business type options - matching brand page
+  const businessTypeOptions = [
+    { value: 'pharmacy', label: 'Pharmacy' },
+    { value: 'electric', label: 'Electric' },
+    { value: 'electronics', label: 'Electronics' },
+    { value: 'fashion', label: 'Fashion' },
+    { value: 'furniture', label: 'Furniture' },
+    { value: 'bookshop', label: 'Bookshop' },
+    { value: 'departmental', label: 'Departmental' },
+    { value: 'computer', label: 'Computer' },
+    { value: 'clothing', label: 'Clothing' },
+    { value: 'footwear', label: 'Footwear' },
+    { value: 'cosmetics', label: 'Cosmetics' },
+    { value: 'stationery', label: 'Stationery' },
+    { value: 'grocery', label: 'Grocery' },
+    { value: 'hardware', label: 'Hardware' },
+    { value: 'restaurant', label: 'Restaurant' },
+    { value: 'cafe', label: 'Cafe' },
+    { value: 'supermarket', label: 'Supermarket' },
+    { value: 'other', label: 'Other' },
+  ];
+
   // Check permissions only after store is hydrated
   useEffect(() => {
     if (isHydrated && !hasPermission('view-products')) {
@@ -25,8 +136,8 @@ export default function ProductsPage() {
     }
   }, [hasPermission, isHydrated, router]);
 
-  const getStatusBadge = (isActive: boolean) => {
-    return isActive ? (
+  const getStatusBadge = (isActive: boolean) =>
+    isActive ? (
       <span className="px-1.5 py-0.5 text-xs font-medium rounded bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400">
         Active
       </span>
@@ -35,27 +146,16 @@ export default function ProductsPage() {
         Inactive
       </span>
     );
-  };
 
   const getStockStatusBadge = (quantity: number, minQuantity?: number) => {
-    if (quantity === 0) {
-      return (
-        <span className="px-1.5 py-0.5 text-xs font-medium rounded bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400">
-          Out of Stock
-        </span>
-      );
-    }
-    if (minQuantity && quantity <= minQuantity) {
-      return (
-        <span className="px-1.5 py-0.5 text-xs font-medium rounded bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-400">
-          Low Stock
-        </span>
-      );
-    }
+    if (quantity === 0) return (
+      <span className="px-1.5 py-0.5 text-xs font-medium rounded bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400">Out of Stock</span>
+    );
+    if (minQuantity && quantity <= minQuantity) return (
+      <span className="px-1.5 py-0.5 text-xs font-medium rounded bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-400">Low Stock</span>
+    );
     return (
-      <span className="px-1.5 py-0.5 text-xs font-medium rounded bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400">
-        In Stock
-      </span>
+      <span className="px-1.5 py-0.5 text-xs font-medium rounded bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400">In Stock</span>
     );
   };
 
@@ -82,13 +182,9 @@ export default function ProductsPage() {
         const name = row.original.name;
         const maxLength = 30;
         const truncatedName = name.length > maxLength ? name.substring(0, maxLength) + '...' : name;
-
         return (
           <div className="flex items-center">
-            <div
-              className="text-xs font-medium text-gray-900 dark:text-gray-100 truncate w-full"
-              title={name}
-            >
+            <div className="text-xs font-medium text-gray-900 dark:text-gray-100 truncate w-full" title={name}>
               {truncatedName}
             </div>
           </div>
@@ -113,31 +209,19 @@ export default function ProductsPage() {
       accessorKey: 'brand.name',
       header: 'Brand',
       meta: { width: '10%' },
-      cell: ({ row }) => (
-        <span className="text-xs text-gray-600 dark:text-gray-400">
-          {row.original.brand?.name || '-'}
-        </span>
-      ),
+      cell: ({ row }) => <span className="text-xs text-gray-600 dark:text-gray-400">{row.original.brand?.name || '-'}</span>,
     },
     {
       accessorKey: 'category.name',
       header: 'Category',
       meta: { width: '12%' },
-      cell: ({ row }) => (
-        <span className="text-xs text-gray-600 dark:text-gray-400">
-          {row.original.category?.name || '-'}
-        </span>
-      ),
+      cell: ({ row }) => <span className="text-xs text-gray-600 dark:text-gray-400">{row.original.category?.name || '-'}</span>,
     },
     {
       accessorKey: 'unit.name',
       header: 'Unit',
       meta: { width: '8%' },
-      cell: ({ row }) => (
-        <span className="text-xs text-gray-600 dark:text-gray-400">
-          {row.original.unit?.name || '-'}
-        </span>
-      ),
+      cell: ({ row }) => <span className="text-xs text-gray-600 dark:text-gray-400">{row.original.unit?.name || '-'}</span>,
     },
     {
       accessorKey: 'type',
@@ -154,19 +238,17 @@ export default function ProductsPage() {
       header: 'Status',
       meta: { width: '10%' },
       cell: ({ row }) => {
-        const status = row.original.status;
-        const statusColors = {
+        const status = row.original.status || 'draft';
+        const statusColors: Record<string, string> = {
           draft: 'bg-gray-100 text-gray-800 dark:bg-gray-900/30 dark:text-gray-400',
           active: 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400',
           inactive: 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400',
           discontinued: 'bg-orange-100 text-orange-800 dark:bg-orange-900/30 dark:text-orange-400',
           archived: 'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400',
         };
-
+        const defaultColor = 'bg-gray-100 text-gray-800 dark:bg-gray-900/30 dark:text-gray-400';
         return (
-          <span
-            className={`px-1.5 py-0.5 text-xs font-medium rounded capitalize ${statusColors[status as keyof typeof statusColors] || statusColors.draft}`}
-          >
+          <span className={`px-1.5 py-0.5 text-xs font-medium rounded capitalize ${statusColors[status] || defaultColor}`}>
             {status}
           </span>
         );
@@ -224,8 +306,7 @@ export default function ProductsPage() {
                   try {
                     await productService.deleteProduct(row.original.id);
                     notify.success('Product deleted successfully');
-                    // The DataTable will automatically refresh
-                    window.location.reload();
+                    setRefreshKey(prev => prev + 1); // Refresh the product list
                   } catch (error) {
                     notify.error('Failed to delete product');
                   }
@@ -249,28 +330,152 @@ export default function ProductsPage() {
   };
 
   return (
-    <div className="space-y-3">
+    <div className="space-y-2">
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-xl font-bold text-gray-900 dark:text-gray-100 flex items-center gap-2">
-            <Package2 className="w-5 h-5 text-indigo-600 dark:text-indigo-400" />
+            <PiListBulletsFill className="w-7 h-7 text-indigo-600 dark:text-indigo-400" />
             Product List
           </h1>
         </div>
-        {hasPermission('create-products') && (
+        <div className="flex items-center gap-2">
           <button
-            onClick={() => router.push('/products/add')}
-            className="flex items-center gap-2 px-2 py-1 text-sm bg-indigo-600 hover:bg-indigo-700 text-white font-medium rounded-sm transition-colors duration-200 cursor-pointer"
+            type="button"
+            onClick={handleDownloadSample}
+            className="px-3 py-1.5 bg-cyan-600 text-white text-sm font-medium rounded-sm hover:bg-cyan-700 transition-colors flex items-center gap-2 cursor-pointer"
           >
-            <Plus className="w-6 h-6" />
-            Add Product
+            <ImDownload className="w-4 h-4" /> Product Sample(Excel)
           </button>
-        )}
+          {hasPermission('create-products') && (
+            <button
+              onClick={() => setShowBulkUpload(!showBulkUpload)}
+              className="flex items-center gap-2 px-3 py-1.5 bg-green-600 hover:bg-green-700 text-white text-sm font-medium rounded-sm transition-colors duration-200 cursor-pointer"
+            >
+              <RiFileExcel2Line className="w-4 h-4" />
+              Product Upload (Bulk)
+            </button>
+          )}
+          {hasPermission('create-products') && (
+            <button
+              onClick={() => router.push('/products/add')}
+              className="flex items-center gap-2 px-3 py-1.5 bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-medium rounded-sm transition-colors duration-200 cursor-pointer"
+            >
+              <PiListPlusFill className="w-5 h-5" />
+              Add Product
+            </button>
+          )}
+        </div>
       </div>
+
+      {/* Bulk Upload Form */}
+      {showBulkUpload && (
+        <div className="bg-white dark:bg-gray-800 rounded-md shadow-sm border border-gray-200 dark:border-gray-700 p-4 mb-1">
+          <h2 className="text-lg font-semibold mb-3 text-gray-900 dark:text-gray-100">Bulk Product Upload</h2>
+          <form onSubmit={handleBulkUpload} className="space-y-3">
+            {/* Business Type Field - Only for Super Admin */}
+            {isSuperAdmin && (
+              <div className="w-1/3">
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                  Business Type <span className="text-red-500">*</span>
+                </label>
+                <CustomSelect
+                  className="w-full text-sm"
+                  value={businessTypeOptions.find(t => t.value === businessType) || null}
+                  onChange={option => setBusinessType(option?.value || '')}
+                  options={businessTypeOptions}
+                  placeholder="Select Business Type"
+                  isDisabled={uploading}
+                />
+              </div>
+            )}
+
+            {/* File Upload Field */}
+            <div className="w-1/3">
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                Select File <span className="text-red-500">*</span>
+              </label>
+              <div
+                onDragOver={e => e.preventDefault()}
+                onDrop={e => {
+                  e.preventDefault();
+                  const f = e.dataTransfer?.files?.[0];
+                  if (f) handleFile(f);
+                }}
+              >
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  accept=".xls,.xlsx"
+                  onChange={e => {
+                    const f = e.target.files?.[0];
+                    if (f) handleFile(f);
+                  }}
+                  className="hidden"
+                  disabled={uploading}
+                />
+
+                <label
+                  htmlFor="file"
+                  onClick={() => fileInputRef.current?.click()}
+                  className="flex items-center justify-center gap-3 px-3 py-3 border-2 border-dashed border-gray-300 dark:border-gray-600 rounded-md cursor-pointer hover:border-green-500 transition-colors bg-gray-50 dark:bg-gray-700"
+                >
+                  <RiDragDropLine className="w-8 h-8" />
+                  <div className="text-sm text-gray-700 dark:text-gray-200">
+                    {selectedFile ? (
+                      <div className="flex items-center gap-3">
+                        <span className="font-medium">{selectedFile.name}</span>
+                        <button
+                          type="button"
+                          onClick={e => {
+                            e.stopPropagation();
+                            clearFile();
+                          }}
+                          className="text-xs text-red-600 hover:text-red-800 ml-2"
+                        >
+                          Remove
+                        </button>
+                      </div>
+                    ) : (
+                      <div>
+                        <div className="font-medium">Click or drop Excel file here</div>
+                        <div className="text-xs text-gray-500">.xls, .xlsx — max 10MB</div>
+                      </div>
+                    )}
+                  </div>
+                </label>
+              </div>
+              <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">Accepted file types: .xls, .xlsx (Excel files only)</p>
+            </div>
+
+            {/* Action Buttons */}
+            <div className="flex gap-2 mt-2">
+              <button
+                type="submit"
+                disabled={uploading}
+                className="px-3 py-1.5 bg-rose-500 text-white text-sm font-medium rounded-sm hover:bg-rose-700 transition-colors flex items-center gap-2 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                <TiUploadOutline className="w-4 h-4" />
+                {uploading ? 'Uploading...' : 'Upload Excel'}
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setShowBulkUpload(false)}
+                disabled={uploading}
+                className="px-3 py-1.5 bg-gray-600 text-white text-sm font-medium rounded-sm hover:bg-gray-700 transition-colors flex items-center gap-2 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                <X className="w-4 h-4" />
+                Cancel
+              </button>
+            </div>
+          </form>
+        </div>
+      )}
 
       {/* DataTable */}
       <DataTable
+        key={refreshKey}
         columns={columns}
         apiEndpoint={buildApiEndpoint()}
         pageSize={15}
@@ -279,6 +484,8 @@ export default function ProductsPage() {
         enablePagination={true}
         enableSorting={true}
       />
+
+      {/* Inline form used above; no modal component to render */}
     </div>
   );
 }

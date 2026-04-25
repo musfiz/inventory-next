@@ -15,6 +15,7 @@ import type {
   VariationAttributeInput,
 } from '@/types/api.types';
 import commonService from '@/services/commonService';
+import { GiSave } from "react-icons/gi";
 
 interface VariationFormData {
   product_id: string;
@@ -719,7 +720,7 @@ export default function AddProductVariationPage() {
             disabled={isLoading}
             className="flex items-center gap-2 px-5 py-1.5 text-sm bg-indigo-600 hover:bg-indigo-700 disabled:bg-gray-400 text-white rounded-sm transition-colors cursor-pointer"
           >
-            <Save className="w-3.5 h-3.5" />
+            <GiSave className="w-5 h-5" />
             {isLoading ? 'Saving...' : 'Save Variation'}
           </button>
           <button

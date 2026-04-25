@@ -7,9 +7,11 @@ import DataTable from '@/components/ui/datatable';
 import { ProductVariation } from '@/types/api.types';
 import productVariationService from '@/services/productVariationService';
 import { confirm, notify } from '@/lib/notifications';
+import { useState } from "react";
 
 export default function ProductVariationsPage() {
   const router = useRouter();
+  const [refreshKey, setRefreshKey] = useState(0);
 
   const columns: ColumnDef<ProductVariation>[] = [
     {
@@ -152,7 +154,7 @@ export default function ProductVariationsPage() {
                 try {
                   await productVariationService.deleteVariation(row.original.id);
                   notify.success('Variation deleted successfully');
-                  window.location.reload();
+                  setRefreshKey(prev => prev + 1); // Refresh the product list
                 } catch (error) {
                   notify.error('Failed to delete variation');
                 }
@@ -187,6 +189,7 @@ export default function ProductVariationsPage() {
 
       {/* DataTable */}
       <DataTable
+        key={refreshKey}
         columns={columns}
         apiEndpoint="product-variations"
         pageSize={15}

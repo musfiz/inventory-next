@@ -52,10 +52,8 @@ export default function CategoriesPage() {
     try {
       const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL;
       window.open(`${backendUrl}/api/v1/categories/export`, '_blank');
-      notify.success('Excel export started');
     } catch (error) {
       notify.error('Failed to export categories');
-      console.error('Export error:', error);
     }
   };
 

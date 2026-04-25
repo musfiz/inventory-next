@@ -75,6 +75,10 @@ const customStyles = (isInvalid?: boolean): StylesConfig<SelectOption, false> =>
     boxShadow: '0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -2px rgb(0 0 0 / 0.05)',
     zIndex: 9999,
   }),
+  menuPortal: provided => ({
+    ...provided,
+    zIndex: 99999,
+  }),
   option: (provided, state) => ({
     ...provided,
     backgroundColor: state.isSelected
