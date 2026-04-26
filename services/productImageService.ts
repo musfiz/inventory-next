@@ -56,10 +56,11 @@ class ProductImageService {
     axiosConfig?: Record<string, any>
   ): Promise<ProductImage> {
     const formData = new FormData();
+    formData.append('product_id', productId);
     formData.append('image', data.image);
     if (data.variation_id) formData.append('variation_id', data.variation_id);
     if (data.alt_text) formData.append('alt_text', data.alt_text);
-    if (data.is_primary !== undefined) formData.append('is_primary', String(data.is_primary));
+    if (data.is_primary !== undefined) formData.append('is_primary', data.is_primary ? '1' : '0');
     if (data.sort_order !== undefined) formData.append('sort_order', String(data.sort_order));
 
     const response = await apiClient.post<ApiResponse<{ image: ProductImage }>>(

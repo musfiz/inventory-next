@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { Image as ImageIcon, Upload, Trash2, Star, X, Plus } from 'lucide-react';
 import { ColumnDef } from '@tanstack/react-table';
@@ -33,6 +33,11 @@ export default function ProductImagesPage() {
 
   const loadProductOptions = async (inputValue: string): Promise<SelectOption[]> => {
     try {
+      // If no input value and we have cached default options, return them
+      if (!inputValue && defaultProductOptions.length > 0) {
+        return defaultProductOptions;
+      }
+
       const params: { search?: string } = {};
 
       // Add search parameter only if inputValue is provided
@@ -70,6 +75,13 @@ export default function ProductImagesPage() {
       setVariationOptions([]);
     }
   };
+
+  // Fetch variations when productId is available from URL
+  useEffect(() => {
+    if (productId) {
+      fetchVariations(productId);
+    }
+  }, [productId]);
 
   const validateAndSetFile = (file: File | null) => {
     if (!file) return;
@@ -186,7 +198,7 @@ export default function ProductImagesPage() {
 
     if (result.isConfirmed) {
       try {
-        await productImageService.deleteProductImage(pid, image.id);
+        await productImageService.deleteProductImage(image.id);
         notify.success('Image deleted successfully');
         setRefreshKey(prev => prev + 1);
       } catch (error: any) {
@@ -203,7 +215,7 @@ export default function ProductImagesPage() {
     }
 
     try {
-      await productImageService.setPrimaryImage(pid, image.id);
+      await productImageService.setPrimaryImage(image.id);
       notify.success('Primary image updated');
       setRefreshKey(prev => prev + 1);
     } catch (error: any) {
@@ -225,6 +237,7 @@ export default function ProductImagesPage() {
     {
       id: 'serial',
       header: 'SL',
+      meta: { width: '6%' },
       cell: ({ row, table }) => (
         <span className="text-xs text-gray-600 dark:text-gray-400">
           {table.getState().pagination.pageIndex * table.getState().pagination.pageSize +
@@ -236,13 +249,34 @@ export default function ProductImagesPage() {
     {
       id: 'image',
       header: 'Image',
-      cell: ({ row }) => (
-        <img
-          src={row.original.file_url}
-          alt={row.original.alt_text || 'Product image'}
-          className="h-16 w-16 rounded-sm object-cover border border-gray-200 dark:border-gray-600"
-        />
-      ),
+      meta: { width: '6%' },
+      cell: ({ row }) => {
+        const fileUrl: string | undefined = row.original.file_url;
+        const fullUrl = fileUrl
+          ? fileUrl.startsWith('http')
+            ? fileUrl
+            : `${process.env.NEXT_PUBLIC_BACKEND_URL?.replace(/\/$/, '')}${fileUrl.startsWith('/') ? '' : '/'}${fileUrl}`
+          : null;
+
+        return (
+          <div className="flex items-center justify-center">
+            {fullUrl ? (
+              <img
+                src={fullUrl}
+                alt={row.original.alt_text || 'Product image'}
+                className="h-16 w-16 rounded-sm object-cover border border-gray-200 dark:border-gray-600"
+                onError={(e) => {
+                  (e.target as HTMLImageElement).src = 'data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 width=%2740%27 height=%2740%27%3E%3Crect width=%2740%27 height=%2740%27 fill=%27%23f3f4f6%27/%3E%3Ctext x=%2750%25%27 y=%2750%25%27 dominant-baseline=%27middle%27 text-anchor=%27middle%27 fill=%27%239ca3af%27 font-size=%2712%27%3ENo Image%3C/text%3E%3C/svg%3E';
+                }}
+              />
+            ) : (
+              <div className="w-16 h-16 flex items-center justify-center rounded-sm border border-gray-200 dark:border-gray-600 bg-gray-50 dark:bg-gray-800 text-xs text-gray-400">
+                No Image
+              </div>
+            )}
+          </div>
+        );
+      },
     },
     {
       accessorKey: 'product',
@@ -361,9 +395,12 @@ export default function ProductImagesPage() {
                       setSelectedProduct(option);
                       setSelectedVariation(null);
                       setVariationOptions([]);
+                      if (option?.value) {
+                        fetchVariations(option.value);
+                      }
                     }}
                     loadOptions={loadProductOptions}
-                    defaultOptions={defaultProductOptions}
+                    defaultOptions={true}
                     placeholder="Select Product"
                     className="text-sm"
                   />
