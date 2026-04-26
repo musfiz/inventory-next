@@ -1,12 +1,9 @@
 import apiClient from '@/lib/api/axios';
 import type {
   Product,
-  ProductImage,
   CreateProductRequest,
   UpdateProductRequest,
-  CreateProductImageRequest,
   ProductListResponse,
-  ProductImageListResponse,
   ApiResponse,
 } from '@/types/api.types';
 
@@ -76,67 +73,6 @@ class ProductService {
    */
   async deleteProduct(id: string): Promise<void> {
     await apiClient.get(`/api/v1/products/destroy/${id}`);
-  }
-
-  /**
-   * Get product images
-   * GET /api/v1/products/{productId}/images
-   */
-  async getProductImages(
-    productId: string,
-    params?: {
-      page?: number;
-      per_page?: number;
-    }
-  ): Promise<ProductImageListResponse> {
-    const response = await apiClient.get<ApiResponse<ProductImageListResponse>>(
-      `/api/v1/products/${productId}/images`,
-      { params }
-    );
-    return response.data.data;
-  }
-
-  /**
-   * Upload product image
-   * POST /api/v1/products/{productId}/images
-   */
-  async uploadProductImage(
-    productId: string,
-    data: CreateProductImageRequest
-  ): Promise<ProductImage> {
-    const formData = new FormData();
-    formData.append('image', data.image);
-    if (data.variation_id) formData.append('variation_id', data.variation_id);
-    if (data.alt_text) formData.append('alt_text', data.alt_text);
-    if (data.is_primary !== undefined) formData.append('is_primary', data.is_primary.toString());
-    if (data.sort_order !== undefined) formData.append('sort_order', data.sort_order.toString());
-
-    const response = await apiClient.post<ApiResponse<{ image: ProductImage }>>(
-      `/api/v1/products/${productId}/images`,
-      formData,
-      {
-        headers: {
-          'Content-Type': 'multipart/form-data',
-        },
-      }
-    );
-    return response.data.data.image;
-  }
-
-  /**
-   * Delete product image
-   * DELETE /api/v1/products/{productId}/images/{imageId}
-   */
-  async deleteProductImage(productId: string, imageId: string): Promise<void> {
-    await apiClient.delete(`/api/v1/products/${productId}/images/${imageId}`);
-  }
-
-  /**
-   * Set primary image
-   * PATCH /api/v1/products/{productId}/images/{imageId}/primary
-   */
-  async setPrimaryImage(productId: string, imageId: string): Promise<void> {
-    await apiClient.patch(`/api/v1/products/${productId}/images/${imageId}/primary`);
   }
 }
 

@@ -139,14 +139,22 @@ export interface ProductImage {
   id: string;
   product_id: string;
   variation_id?: string;
-  image_path: string;
-  image_url: string;
+  file_path: string;
+  file_url: string;
   alt_text?: string;
   is_primary: boolean;
-  is_active?: boolean;
   sort_order?: number;
   created_at?: string;
   updated_at?: string;
+  product?: {
+    id: string;
+    name: string;
+  };
+  variation?: {
+    id: string;
+    name?: string;
+    sku?: string;
+  };
 }
 
 export interface Brand {
