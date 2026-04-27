@@ -76,7 +76,7 @@ export default function ProductVariationsPage() {
     {
       id: 'attributes',
       header: 'Attributes',
-      meta: { width: '18%' },
+      meta: { width: '25%' },
       cell: ({ row }) => (
         <div className="flex flex-wrap gap-1">
           {row.original.variation_attributes?.map(attr => (
@@ -116,11 +116,10 @@ export default function ProductVariationsPage() {
       meta: { width: '8%' },
       cell: ({ row }) => (
         <span
-          className={`px-1.5 py-0.5 text-xs font-medium rounded ${
-            row.original.is_active
+          className={`px-1.5 py-0.5 text-xs font-medium rounded ${row.original.is_active
               ? 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400'
               : 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400'
-          }`}
+            }`}
         >
           {row.original.is_active ? 'Active' : 'Inactive'}
         </span>
