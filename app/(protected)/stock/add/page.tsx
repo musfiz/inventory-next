@@ -99,8 +99,11 @@ export default function StockAddPage() {
     const load = async () => {
       if (!selectedProduct) return;
       try {
+        const warehouseId = selectedWarehouse?.value;
         const items = await commonService
-          .getVariationsByProduct(selectedProduct.value)
+          .getVariationsByProduct(selectedProduct.value, {
+            warehouse_id: warehouseId,
+          })
           .catch(() => []);
         setVariations(items || []);
         setStocks(
@@ -120,7 +123,7 @@ export default function StockAddPage() {
       }
     };
     load();
-  }, [selectedProduct]);
+  }, [selectedProduct, selectedWarehouse]);
 
   const handleStockChange = (index: number, field: string, value: any) => {
     const copy = [...stocks];
@@ -325,7 +328,10 @@ export default function StockAddPage() {
                         Variation (SKU / Name)
                       </th>
                       <th className="px-3 py-2 text-left text-xs font-semibold text-gray-700 dark:text-gray-300 border-b border-gray-300 dark:border-gray-600 w-32">
-                        Quantity
+                        Current Stock
+                      </th>
+                      <th className="px-3 py-2 text-left text-xs font-semibold text-gray-700 dark:text-gray-300 border-b border-gray-300 dark:border-gray-600 w-32">
+                        New Qty
                       </th>
                       <th className="px-3 py-2 text-left text-xs font-semibold text-gray-700 dark:text-gray-300 border-b border-gray-300 dark:border-gray-600 w-32">
                         Reserved
@@ -365,50 +371,69 @@ export default function StockAddPage() {
                           </div>
                         </td>
                         <td className="px-3 py-1">
+                          <div className="flex items-center justify-center">
+                            {v.stock ? (
+                              <span className="font-semibold text-sm text-gray-900 dark:text-gray-100">
+                                {Number(v.stock.quantity).toFixed(0)}
+                              </span>
+                            ) : (
+                              <span className="text-xs text-gray-400 dark:text-gray-500">N/A</span>
+                            )}
+                          </div>
+                        </td>
+                        <td className="px-3 py-1">
                           <input
                             type="number"
                             value={stocks[idx]?.quantity ?? 0}
-                            onChange={e => handleStockChange(idx, 'quantity', e.target.value)}
+                            min={0}
+                            step={1}
+                            onChange={e =>
+                              handleStockChange(idx, 'quantity', Math.max(0, Number(e.target.value)))
+                            }
                             onFocus={e => e.target.select()}
-                            className="w-full px-2.5 py-1.5 text-sm border border-gray-300 dark:border-gray-600 rounded-sm focus:outline-none focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400 focus:border-transparent dark:bg-gray-700 dark:text-gray-100 transition-all"
+                            className="w-full px-2.5 py-1.5 text-right text-sm border border-gray-300 dark:border-gray-600 rounded-sm focus:outline-none focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400 focus:border-transparent dark:bg-gray-700 dark:text-gray-100 transition-all"
                             placeholder="0"
                           />
                         </td>
                         <td className="px-3 py-1">
                           <input
                             type="number"
-                            value={stocks[idx]?.reserved_quantity ?? 0}
+                            min={0}
+                            value={Math.round(stocks[idx]?.reserved_quantity) ?? 0}
                             onChange={e =>
                               handleStockChange(idx, 'reserved_quantity', e.target.value)
                             }
                             onFocus={e => e.target.select()}
-                            className="w-full px-2.5 py-1.5 text-sm border border-gray-300 dark:border-gray-600 rounded-sm focus:outline-none focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400 focus:border-transparent dark:bg-gray-700 dark:text-gray-100 transition-all"
+                            className="w-full px-2.5 py-1.5 text-right text-sm border border-gray-300 dark:border-gray-600 rounded-sm focus:outline-none focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400 focus:border-transparent dark:bg-gray-700 dark:text-gray-100 transition-all"
                             placeholder="0"
                           />
                         </td>
                         <td className="px-3 py-1">
                           <input
                             type="number"
-                            value={stocks[idx]?.min_quantity ?? 1}
+                            min={0}
+                            value={Math.round(stocks[idx]?.min_quantity) ?? 1}
                             onChange={e => handleStockChange(idx, 'min_quantity', e.target.value)}
                             onFocus={e => e.target.select()}
-                            className="w-full px-2.5 py-1.5 text-sm border border-gray-300 dark:border-gray-600 rounded-sm focus:outline-none focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400 focus:border-transparent dark:bg-gray-700 dark:text-gray-100 transition-all"
+                            className="w-full px-2.5 py-1.5 text-right text-sm border border-gray-300 dark:border-gray-600 rounded-sm focus:outline-none focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400 focus:border-transparent dark:bg-gray-700 dark:text-gray-100 transition-all"
                             placeholder="Opt."
                           />
                         </td>
                         <td className="px-3 py-1">
                           <input
                             type="number"
-                            value={stocks[idx]?.max_quantity ?? ''}
+                            min={0}
+                            value={Math.round(stocks[idx]?.max_quantity) ?? ''}
                             onChange={e => handleStockChange(idx, 'max_quantity', e.target.value)}
                             onFocus={e => e.target.select()}
-                            className="w-full px-2.5 py-1.5 text-sm border border-gray-300 dark:border-gray-600 rounded-sm focus:outline-none focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400 focus:border-transparent dark:bg-gray-700 dark:text-gray-100 transition-all"
+                            className="w-full px-2.5 py-1.5 text-right text-sm border border-gray-300 dark:border-gray-600 rounded-sm focus:outline-none focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400 focus:border-transparent dark:bg-gray-700 dark:text-gray-100 transition-all"
                             placeholder="Opt."
                           />
                         </td>
                         <td className="px-3 py-1">
                           <input
                             type="number"
+                            min={0}
                             value={stocks[idx]?.reorder_point ?? ''}
                             onChange={e => handleStockChange(idx, 'reorder_point', e.target.value)}
                             onFocus={e => e.target.select()}

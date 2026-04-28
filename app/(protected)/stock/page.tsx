@@ -42,18 +42,18 @@ export default function StockListPage() {
     {
       accessorKey: 'quantity',
       header: 'Quantity',
-      cell: ({ row }) => <div>{row.original.quantity ?? 0}</div>,
+      cell: ({ row }) => <div>{Math.round(row.original.quantity) ?? 0}</div>,
     },
     {
       accessorKey: 'reserved_quantity',
       header: 'Reserved',
-      cell: ({ row }) => <div>{row.original.reserved_quantity ?? 0}</div>,
+      cell: ({ row }) => <div>{Math.round(row.original.reserved_quantity) ?? 0}</div>,
     },
     {
       id: 'available',
       header: 'Available',
       cell: ({ row }) => (
-        <div>{(row.original.quantity ?? 0) - (row.original.reserved_quantity ?? 0)}</div>
+        <div>{Math.round((row.original.quantity ?? 0) - (row.original.reserved_quantity ?? 0))}</div>
       ),
     },
   ];

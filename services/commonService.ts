@@ -114,7 +114,10 @@ class CommonService {
    * Get product variations for a product
    * GET /api/v1/product/{id}/variant
    */
-  async getVariationsByProduct(productId: string, params?: { search?: string }): Promise<any[]> {
+  async getVariationsByProduct(
+    productId: string,
+    params?: { search?: string; warehouse_id?: number }
+  ): Promise<any[]> {
     const response = await apiClient.get<{
       data: any[];
     }>(`/api/v1/product/${productId}/variant`, {
