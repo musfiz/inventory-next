@@ -4,71 +4,86 @@ import { useState, useMemo } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { Image as ImageIcon, Plus } from 'lucide-react';
 import DataTable from '@/components/ui/datatable';
-import { useProductImages, useProductSelection } from './hooks';
 import { ImageUploadForm } from './components';
 import { createProductImageColumns } from './columns';
 import { TABLE_CONFIG } from './constants';
+import { productImageService } from '@/services';
+import { notify, confirm } from '@/lib/notifications';
+import { ProductImage } from '@/types/api.types';
 
 /**
  * Product Images Management Page
- * 
- * Features:
- * - Upload product images with drag-and-drop support
- * - Set primary image for products
- * - Delete product images
- * - Filter images by product and variation
- * - Search and pagination
+ * Simple page for managing product images with upload form
  */
 export default function ProductImagesPage() {
   const searchParams = useSearchParams();
   const productId = searchParams.get('product_id');
   const [showAddForm, setShowAddForm] = useState(false);
+  const [refreshKey, setRefreshKey] = useState(0);
 
-  // Custom hooks for managing product images
-  const {
-    uploadState,
-    handleFileSelect,
-    handleUpload,
-    handleDelete,
-    handleSetPrimary,
-    clearSelection,
-    refreshImages,
-    refreshKey,
-  } = useProductImages();
+  // Refresh table
+  const refreshImages = () => {
+    setRefreshKey((prev) => prev + 1);
+  };
 
-  const { selectedProduct } = useProductSelection(productId);
+  // Handle delete
+  const handleDelete = async (image: ProductImage) => {
+    if (!image.product_id) {
+      notify.error('Invalid product ID');
+      return;
+    }
 
-  // Memoize table columns to prevent unnecessary re-renders
+    const result = await confirm({
+      title: 'Delete Image',
+      text: 'Are you sure you want to delete this image?',
+      icon: 'warning',
+      confirmButtonText: 'Yes, delete it!',
+    });
+
+    if (result.isConfirmed) {
+      try {
+        await productImageService.deleteProductImage(image.id);
+        notify.success('Image deleted successfully');
+        refreshImages();
+      } catch (error: any) {
+        notify.error(error?.response?.data?.message || 'Failed to delete image');
+      }
+    }
+  };
+
+  // Handle set primary
+  const handleSetPrimary = async (image: ProductImage) => {
+    if (!image.product_id) {
+      notify.error('Invalid product ID');
+      return;
+    }
+
+    try {
+      await productImageService.setPrimaryImage(image.id);
+      notify.success('Primary image updated successfully');
+      refreshImages();
+    } catch (error: any) {
+      notify.error(error?.response?.data?.message || 'Failed to set primary image');
+    }
+  };
+
+  // Memoize table columns
   const columns = useMemo(
     () => createProductImageColumns(handleDelete, handleSetPrimary),
-    [handleDelete, handleSetPrimary]
+    []
   );
 
-  /**
-   * Handle upload form submission
-   */
-  const handleFormUpload = async (formData: { alt_text?: string; is_primary?: boolean; variation_id?: string }) => {
-    const pid = productId || selectedProduct?.value;
-    if (!pid) return;
+  // Handle upload success
+  const handleUploadSuccess = () => {
+    setShowAddForm(false);
+    refreshImages();
+  };
 
-    await handleUpload({
-      product_id: pid,
-      ...formData,
-    });
+  // Handle cancel
+  const handleCancel = () => {
     setShowAddForm(false);
   };
 
-  /**
-   * Handle form cancellation
-   */
-  const handleFormCancel = () => {
-    setShowAddForm(false);
-    clearSelection();
-  };
-
-  /**
-   * Build API endpoint for DataTable
-   */
   const apiEndpoint = 'products/images';
 
   return (
@@ -96,12 +111,8 @@ export default function ProductImagesPage() {
       {showAddForm && (
         <ImageUploadForm
           productId={productId}
-          uploadState={uploadState}
-          onFileSelect={handleFileSelect}
-          onUpload={handleFormUpload}
-          onClear={clearSelection}
-          onCancel={handleFormCancel}
-          onSuccess={refreshImages}
+          onSuccess={handleUploadSuccess}
+          onCancel={handleCancel}
         />
       )}
 

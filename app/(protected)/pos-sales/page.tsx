@@ -22,9 +22,8 @@ import {
   AlertCircle,
   CheckCircle,
 } from 'lucide-react';
-import Image from 'next/image';
 import { notify } from '@/lib/notifications';
-import { productService, customerService, commonService } from '@/services';
+import { posService } from '@/services';
 import { useAuthStore } from '@/stores/auth-store';
 import Swal from 'sweetalert2';
 
@@ -32,11 +31,14 @@ import Swal from 'sweetalert2';
 
 interface Product {
   id: string;
-  name: string;
+  product_name: string;
+  variant_name: string;
+  name: string; // Combined display name
   sku: string;
   price: number;
-  sale_price?: number;
+  selling_price: number;
   image?: string;
+  images?: string[];
   stock?: number;
   category?: string;
   barcode?: string;
@@ -98,6 +100,21 @@ export default function POSSalesPage() {
 
   // ── Effects ─────────────────────────────────────────────────────────────────
 
+  // Hide parent scrollbar for full-screen POS
+  useEffect(() => {
+    const mainElement = document.querySelector('main');
+    if (mainElement) {
+      mainElement.style.overflow = 'hidden';
+      mainElement.style.padding = '0';
+    }
+    return () => {
+      if (mainElement) {
+        mainElement.style.overflow = '';
+        mainElement.style.padding = '';
+      }
+    };
+  }, []);
+
   useEffect(() => {
     loadProducts();
     generateOrderNumber();
@@ -128,22 +145,56 @@ export default function POSSalesPage() {
 
   const loadProducts = async () => {
     try {
-      const response: any = await productService.getProducts({ per_page: 100 });
-      const productList = response?.data || [];
-      setProducts(
-        productList.map((p: any) => ({
-          id: p.id,
-          name: p.name,
-          sku: p.sku,
-          price: parseFloat(p.price || 0),
-          sale_price: p.sale_price ? parseFloat(p.sale_price) : undefined,
-          image: p.image,
-          stock: p.stock || 0,
-          category: p.category?.name || 'Uncategorized',
-          barcode: p.barcode,
-        }))
-      );
-      setFilteredProducts(productList);
+      const variations: any[] = await posService.getProducts({ per_page: 100 });
+      const productList = variations || [];
+      const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL || '';
+      
+      // Helper function to construct full image URL
+      const getImageUrl = (path: string | undefined) => {
+        if (!path) return undefined;
+        // If already a full URL, return as is
+        if (path.startsWith('http://') || path.startsWith('https://')) {
+          return path;
+        }
+        // Remove leading slash if present
+        const cleanPath = path.startsWith('/') ? path.substring(1) : path;
+        // Construct full URL
+        return `${backendUrl}/${cleanPath}`;
+      };
+      
+      const mapped = productList.map((v: any) => {
+        const productName = v.product?.name || 'Unknown Product';
+        const variantName = v.name || 'Default';
+        const sellingPrice = parseFloat(v.selling_price ?? 0);
+        
+        // Get first image URL
+        const firstImage = v.images && v.images.length > 0 
+          ? getImageUrl(v.images[0].file_url) 
+          : getImageUrl(v.product?.image);
+        
+        // Get all image URLs
+        const allImages = (v.images || [])
+          .map((img: any) => getImageUrl(img.file_url))
+          .filter((url: any) => url);
+        
+        return {
+          id: v.id,
+          product_name: productName,
+          variant_name: variantName,
+          name: `${productName} - ${variantName}`, // Combined for search
+          sku: v.sku,
+          price: parseFloat(v.selling_price ?? 0),
+          selling_price: sellingPrice,
+          image: firstImage,
+          images: allImages,
+          stock: v.stock?.quantity ?? 0,
+          category: v.product?.category?.name || 'Uncategorized',
+          barcode: v.barcode,
+        };
+      });
+
+      setProducts(mapped);
+      setFilteredProducts(mapped);
     } catch (error: any) {
       notify.error('Failed to load products');
     }
@@ -161,12 +212,20 @@ export default function POSSalesPage() {
 
   const addToCart = (product: Product) => {
     const existingItem = cart.find(item => item.product_id === product.id);
-    const price = product.sale_price || product.price;
+    const price = product.selling_price;
 
     if (existingItem) {
       // Check stock
       if (product.stock && existingItem.quantity >= product.stock) {
-        notify.warning(`Cannot add more. Only ${product.stock} in stock`);
+        Swal.fire({
+          icon: 'warning',
+          title: 'Stock Limit',
+          text: `Cannot add more. Only ${product.stock} in stock`,
+          toast: true,
+          position: 'top-end',
+          showConfirmButton: false,
+          timer: 3000,
+        });
         return;
       }
       updateCartItem(existingItem.id, { quantity: existingItem.quantity + 1 });
@@ -174,7 +233,7 @@ export default function POSSalesPage() {
       const newItem: CartItem = {
         id: Date.now().toString(),
         product_id: product.id,
-        product_name: product.name,
+        product_name: `${product.product_name} - ${product.variant_name}`,
         sku: product.sku,
         quantity: 1,
         unit_price: price,
@@ -185,7 +244,7 @@ export default function POSSalesPage() {
       };
       setCart([...cart, newItem]);
     }
-    notify.success(`${product.name} added to cart`, { duration: 1000 });
+    notify.success(`${product.product_name} - ${product.variant_name} added to cart`);
   };
 
   const updateCartItem = (itemId: string, updates: Partial<CartItem>) => {
@@ -316,7 +375,15 @@ export default function POSSalesPage() {
   };
 
   const printReceipt = () => {
-    notify.info('Printing receipt...', { duration: 2000 });
+    Swal.fire({
+      icon: 'info',
+      title: 'Printing Receipt',
+      text: 'Sending to printer...',
+      toast: true,
+      position: 'top-end',
+      showConfirmButton: false,
+      timer: 2000,
+    });
     // Implement thermal printer integration here
   };
 
@@ -330,9 +397,9 @@ export default function POSSalesPage() {
   // ─── Render ─────────────────────────────────────────────────────────────────
 
   return (
-    <div className="h-screen flex flex-col bg-gray-50 dark:bg-gray-950">
-      {/* Header */}
-      <div className="bg-white dark:bg-gray-900 border-b border-gray-200 dark:border-gray-800 px-4 py-1">
+    <div className="h-full w-full flex flex-col bg-gray-50 dark:bg-gray-950 overflow-hidden">
+      {/* Header - Fixed */}
+      <div className="bg-white dark:bg-gray-900 border-b-2 border-gray-300 dark:border-gray-700 px-4 py-2 flex-shrink-0 shadow-sm">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
             <div className="p-2 bg-blue-100 dark:bg-blue-900/30 rounded-lg">
@@ -345,7 +412,17 @@ export default function POSSalesPage() {
           </div>
           <div className="flex items-center gap-2">
             <button
-              onClick={() => notify.info('View held orders')}
+              onClick={() => {
+                Swal.fire({
+                  icon: 'info',
+                  title: 'Held Orders',
+                  text: 'View held orders feature coming soon',
+                  toast: true,
+                  position: 'top-end',
+                  showConfirmButton: false,
+                  timer: 2000,
+                });
+              }}
               className="px-3 py-1.5 text-sm font-medium text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-md hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
             >
               <Save className="w-4 h-4 inline mr-1" />
@@ -355,12 +432,12 @@ export default function POSSalesPage() {
         </div>
       </div>
 
-      {/* Main Content */}
-      <div className="flex-1 flex overflow-hidden">
-        {/* LEFT: Product List (40%) */}
-        <div className="w-[40%] flex flex-col border-r border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900">
-          {/* Search Bar */}
-          <div className="p-2 border-b border-gray-200 dark:border-gray-800">
+      {/* Main Content - No Page Scroll */}
+      <div className="flex-1 flex overflow-hidden min-h-0">
+        {/* LEFT: Product List (40%) - Independent Scroll */}
+        <div className="w-[40%] flex flex-col border-r-2 border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-900 overflow-hidden">
+          {/* Search Bar - Fixed */}
+          <div className="p-2 border-b border-gray-200 dark:border-gray-800 flex-shrink-0 bg-white dark:bg-gray-900">
             <div className="relative">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
               <input
@@ -375,13 +452,13 @@ export default function POSSalesPage() {
             </div>
           </div>
 
-          {/* Category Chips */}
-          <div className="px-2 py-2 border-b border-gray-200 dark:border-gray-800 overflow-x-auto">
+          {/* Category Chips - Fixed */}
+          <div className="px-2 py-2 border-b border-gray-200 dark:border-gray-800 overflow-x-auto flex-shrink-0 bg-white dark:bg-gray-900">
             <div className="flex gap-2">
               {categories.map(cat => (
                 <button
-                  key={cat}
-                  onClick={() => setSelectedCategory(cat)}
+                  key={cat || 'all'}
+                  onClick={() => setSelectedCategory(cat || 'all')}
                   className={`px-3 py-1 text-xs font-medium rounded-full whitespace-nowrap transition-colors ${selectedCategory === cat
                     ? 'bg-blue-600 text-white'
                     : 'bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700'
@@ -393,9 +470,9 @@ export default function POSSalesPage() {
             </div>
           </div>
 
-          {/* Product Grid */}
-          <div className="flex-1 overflow-y-auto p-4">
-            <div className="grid grid-cols-3 gap-3">
+          {/* Product Grid - Scrollable */}
+          <div className="flex-1 overflow-y-auto p-2 min-h-0 overscroll-contain scrollbar-thin">
+            <div className="grid grid-cols-4 gap-2">
               {filteredProducts.map(product => {
                 const stockStatus =
                   !product.stock || product.stock === 0
@@ -409,10 +486,10 @@ export default function POSSalesPage() {
                     key={product.id}
                     onClick={() => addToCart(product)}
                     disabled={stockStatus === 'out'}
-                    className="group relative bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg p-3 hover:shadow-lg hover:scale-[1.02] transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                    className="group relative bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg p-2 hover:shadow-lg hover:scale-[1.02] transition-all disabled:opacity-50 disabled:cursor-not-allowed"
                   >
                     {/* Stock Badge */}
-                    <div className="absolute top-2 right-2 z-10">
+                    <div className="absolute top-1 right-1 z-10">
                       {stockStatus === 'in' && (
                         <div className="w-2 h-2 bg-green-500 rounded-full" title="In Stock" />
                       )}
@@ -430,13 +507,17 @@ export default function POSSalesPage() {
                     </div>
 
                     {/* Product Image */}
-                    <div className="aspect-square mb-2 bg-gray-100 dark:bg-gray-700 rounded-md overflow-hidden relative">
+                    <div className="aspect-square mb-1.5 bg-gray-100 dark:bg-gray-700 rounded-md overflow-hidden relative">
                       {product.image ? (
-                        <Image
+                        <img
                           src={product.image}
-                          alt={product.name}
-                          fill
-                          className="object-cover"
+                          alt={product.product_name}
+                          className="w-full h-full object-cover"
+                          onError={(e) => {
+                            const target = e.target as HTMLImageElement;
+                            target.style.display = 'none';
+                            target.parentElement!.innerHTML = '<div class="w-full h-full flex items-center justify-center"><svg class="w-8 h-8 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"></path></svg></div>';
+                          }}
                         />
                       ) : (
                         <div className="w-full h-full flex items-center justify-center">
@@ -445,17 +526,43 @@ export default function POSSalesPage() {
                       )}
                     </div>
 
+                    {/* Thumbnails (if multiple images) */}
+                    {product.images && product.images.length > 1 && (
+                      <div className="flex items-center gap-0.5 mb-1">
+                        {product.images.slice(0, 4).map((img, i) => (
+                          <div
+                            key={i}
+                            className="w-6 h-6 bg-gray-100 dark:bg-gray-800 rounded overflow-hidden border border-gray-200 dark:border-gray-700"
+                          >
+                            <img 
+                              src={img} 
+                              alt={`${product.product_name} ${i}`} 
+                              className="w-full h-full object-cover"
+                              onError={(e) => {
+                                (e.target as HTMLImageElement).style.display = 'none';
+                              }}
+                            />
+                          </div>
+                        ))}
+                      </div>
+                    )}
+
                     {/* Product Info */}
                     <div className="text-left">
-                      <h3 className="text-sm font-medium text-gray-900 dark:text-gray-100 line-clamp-2 mb-1">
-                        {product.name}
+                      <h3 className="text-xs font-semibold text-gray-900 dark:text-gray-100 line-clamp-1 mb-0.5">
+                        {product.product_name}
                       </h3>
-                      <p className="text-xs text-gray-500 dark:text-gray-400 mb-2">{product.sku}</p>
+                      <p className="text-xs text-blue-600 dark:text-blue-400 font-medium line-clamp-1 mb-0.5">
+                        {product.variant_name}
+                      </p>
+                      <p className="text-xs text-gray-500 dark:text-gray-400 mb-1">
+                        SKU: {product.sku}
+                      </p>
                       <div className="flex items-center justify-between">
-                        <span className="text-lg font-bold text-blue-600 dark:text-blue-400">
-                          ৳{(product.sale_price || product.price).toFixed(2)}
+                        <span className="text-sm font-bold text-green-600 dark:text-green-400">
+                          ৳{product.selling_price.toFixed(2)}
                         </span>
-                        <Plus className="w-4 h-4 text-green-600 dark:text-green-400 opacity-0 group-hover:opacity-100 transition-opacity" />
+                        <Plus className="w-3.5 h-3.5 text-green-600 dark:text-green-400 opacity-0 group-hover:opacity-100 transition-opacity" />
                       </div>
                     </div>
                   </button>
@@ -472,10 +579,10 @@ export default function POSSalesPage() {
           </div>
         </div>
 
-        {/* MIDDLE: Current Order (35%) */}
-        <div className="w-[35%] flex flex-col bg-white dark:bg-gray-900">
-          {/* Cart Header */}
-          <div className="px-3 py-1 border-b border-gray-200 dark:border-gray-800">
+        {/* MIDDLE: Current Order (35%) - Independent Scroll */}
+        <div className="w-[35%] flex flex-col bg-white dark:bg-gray-900 border-r-2 border-gray-300 dark:border-gray-700 overflow-hidden">
+          {/* Cart Header - Fixed */}
+          <div className="px-3 py-1.5 border-b border-gray-200 dark:border-gray-800 flex-shrink-0 bg-white dark:bg-gray-900">
             <div className="flex items-center justify-between mb-1">
               <div className="flex items-center gap-2">
                 <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100">Current Order</h2>
@@ -502,7 +609,17 @@ export default function POSSalesPage() {
                 <span className="text-sm text-gray-700 dark:text-gray-300">{customer.name}</span>
               </div>
               <button
-                onClick={() => notify.info('Customer search modal')}
+                onClick={() => {
+                  Swal.fire({
+                    icon: 'info',
+                    title: 'Customer Search',
+                    text: 'Customer search feature coming soon',
+                    toast: true,
+                    position: 'top-end',
+                    showConfirmButton: false,
+                    timer: 2000,
+                  });
+                }}
                 className="text-xs text-blue-600 dark:text-blue-400 hover:underline"
               >
                 Change
@@ -510,8 +627,8 @@ export default function POSSalesPage() {
             </div>
           </div>
 
-          {/* Cart Items */}
-          <div className="flex-1 overflow-y-auto p-4">
+          {/* Cart Items - Scrollable */}
+          <div className="flex-1 overflow-y-auto p-2 min-h-0 overscroll-contain scrollbar-thin">
             {cart.length === 0 ? (
               <div className="flex flex-col items-center justify-center h-full text-gray-400">
                 <ShoppingCart className="w-16 h-16 mb-3" />
@@ -519,13 +636,13 @@ export default function POSSalesPage() {
                 <p className="text-xs">Add products to start</p>
               </div>
             ) : (
-              <div className="space-y-2">
+              <div className="space-y-1.5">
                 {cart.map(item => (
                   <div
                     key={item.id}
-                    className="p-3 bg-gray-50 dark:bg-gray-800 rounded-md border border-gray-200 dark:border-gray-700"
+                    className="p-2 bg-gray-50 dark:bg-gray-800 rounded-md border border-gray-200 dark:border-gray-700"
                   >
-                    <div className="flex items-start justify-between mb-2">
+                    <div className="flex items-start justify-between mb-1.5">
                       <div className="flex-1">
                         <h4 className="text-sm font-medium text-gray-900 dark:text-gray-100">
                           {item.product_name}
@@ -534,7 +651,7 @@ export default function POSSalesPage() {
                       </div>
                       <button
                         onClick={() => removeCartItem(item.id)}
-                        className="text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 p-1 rounded"
+                        className="text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 p-0.5 rounded"
                       >
                         <Trash2 className="w-4 h-4" />
                       </button>
@@ -593,33 +710,53 @@ export default function POSSalesPage() {
             )}
           </div>
 
-          {/* Cart Actions */}
-          {cart.length > 0 && (
-            <div className="p-4 border-t border-gray-200 dark:border-gray-800 space-y-2">
+          {/* Cart Actions - Always Visible */}
+          <div className="p-2 border-t-2 border-gray-300 dark:border-gray-700 space-y-1.5 flex-shrink-0 bg-white dark:bg-gray-900 shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.1)]">
               <button
-                onClick={() => notify.info('Discount modal')}
-                className="w-full flex items-center justify-center gap-2 px-3 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 rounded-md transition-colors"
+                onClick={() => {
+                  Swal.fire({
+                    icon: 'info',
+                    title: 'Discount',
+                    text: 'Discount modal coming soon',
+                    toast: true,
+                    position: 'top-end',
+                    showConfirmButton: false,
+                    timer: 2000,
+                  });
+                }}
+                disabled={cart.length === 0}
+                className="w-full flex items-center justify-center gap-2 px-3 py-2 text-sm font-semibold text-gray-700 dark:text-gray-300 bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 rounded-lg transition-colors shadow-sm disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 <Tag className="w-4 h-4" />
                 Apply Discount
               </button>
               <button
-                onClick={() => notify.info('Note modal')}
-                className="w-full flex items-center justify-center gap-2 px-3 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 rounded-md transition-colors"
+                onClick={() => {
+                  Swal.fire({
+                    icon: 'info',
+                    title: 'Add Note',
+                    text: 'Note modal coming soon',
+                    toast: true,
+                    position: 'top-end',
+                    showConfirmButton: false,
+                    timer: 2000,
+                  });
+                }}
+                disabled={cart.length === 0}
+                className="w-full flex items-center justify-center gap-2 px-3 py-2 text-sm font-semibold text-gray-700 dark:text-gray-300 bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 rounded-lg transition-colors shadow-sm disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 <FileText className="w-4 h-4" />
                 Add Note
               </button>
             </div>
-          )}
         </div>
 
-        {/* RIGHT: Order Summary & Payment (25%) */}
-        <div className="w-[25%] flex flex-col bg-white dark:bg-gray-900 border-l border-gray-200 dark:border-gray-800 overflow-hidden">
-          {/* Scrollable Content */}
-          <div className="flex-1 overflow-y-auto">
+        {/* RIGHT: Order Summary & Payment (25%) - Independent Scroll */}
+        <div className="w-[25%] flex flex-col bg-white dark:bg-gray-900 overflow-hidden">
+          {/* Payment Details - Scrollable */}
+          <div className="flex-1 overflow-y-auto min-h-0 overscroll-contain scrollbar-thin">
             {/* Price Breakdown */}
-            <div className="px-2 py-1 border-b border-gray-200 dark:border-gray-800">
+            <div className="px-2 py-2 border-b border-gray-200 dark:border-gray-800">
               <div className="space-y-1 text-sm">
                 <div className="flex justify-between text-gray-600 dark:text-gray-400">
                   <span className="text-sm font-semibold text-gray-900 dark:text-gray-100">Subtotal</span>
@@ -647,8 +784,8 @@ export default function POSSalesPage() {
               </div>
 
               {/* Discount Input */}
-              <div className="mt-0.5 p-2 bg-gray-50 dark:bg-gray-800 rounded-md">
-                <label className="block text-xs font-medium text-gray-700 dark:text-gray-300">
+              <div className="mt-2 p-2 bg-gray-50 dark:bg-gray-800 rounded-md">
+                <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">
                   Order Discount
                 </label>
                 <div className="flex gap-2">
@@ -690,8 +827,8 @@ export default function POSSalesPage() {
             </div>
 
             {/* Payment Method */}
-            <div className="px-2 pb-1 border-b border-gray-200 dark:border-gray-800">
-              <h3 className="text-sm font-semibold text-gray-900 dark:text-gray-100 mb-1">
+            <div className="px-2 py-2">
+              <h3 className="text-sm font-semibold text-gray-900 dark:text-gray-100 mb-2">
                 Payment Method
               </h3>
               <div className="grid grid-cols-3 gap-2">
@@ -717,7 +854,7 @@ export default function POSSalesPage() {
 
               {/* Cash Payment */}
               {paymentMethod === 'cash' && (
-                <div className="mt-3 space-y-2">
+                <div className="mt-2 space-y-2 pb-2">
                   <div>
                     <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">
                       Amount Tendered
@@ -745,12 +882,12 @@ export default function POSSalesPage() {
             </div>
           </div>
 
-          {/* Action Buttons - Fixed at Bottom */}
-          <div className="p-2 space-y-2 border-t border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900">
+          {/* Action Buttons - Always Visible at Bottom */}
+          <div className="p-2 space-y-1.5 border-t-2 border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-900 flex-shrink-0 shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.1)]">
             <button
               onClick={handlePayment}
               disabled={cart.length === 0 || isLoading}
-              className="w-full flex items-center justify-center gap-2 px-4 py-2.5 bg-green-600 hover:bg-green-700 text-white font-semibold rounded-md transition-colors disabled:opacity-50 disabled:cursor-not-allowed text-sm"
+              className="w-full flex items-center justify-center gap-2 px-4 py-2.5 bg-green-600 hover:bg-green-700 text-white font-bold rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed text-sm shadow-md"
             >
               <CheckCircle className="w-4 h-4" />
               {isLoading ? 'Processing...' : 'PAY NOW'}
@@ -759,7 +896,7 @@ export default function POSSalesPage() {
             <button
               onClick={holdOrder}
               disabled={cart.length === 0}
-              className="w-full flex items-center justify-center gap-2 px-4 py-1.5 bg-yellow-500 hover:bg-yellow-600 text-white font-medium rounded-md transition-colors disabled:opacity-50 text-sm"
+              className="w-full flex items-center justify-center gap-2 px-4 py-1.5 bg-yellow-500 hover:bg-yellow-600 text-white font-semibold rounded-lg transition-colors disabled:opacity-50 text-sm shadow-md"
             >
               <Save className="w-4 h-4" />
               HOLD
@@ -768,7 +905,7 @@ export default function POSSalesPage() {
             <button
               onClick={clearCart}
               disabled={cart.length === 0}
-              className="w-full flex items-center justify-center gap-2 px-4 py-1.5 bg-red-600 hover:bg-red-700 text-white font-medium rounded-md transition-colors disabled:opacity-50 text-sm"
+              className="w-full flex items-center justify-center gap-2 px-4 py-1.5 bg-red-600 hover:bg-red-700 text-white font-semibold rounded-lg transition-colors disabled:opacity-50 text-sm shadow-md"
             >
               <XCircle className="w-4 h-4" />
               VOID
@@ -784,7 +921,17 @@ export default function POSSalesPage() {
                 Print
               </button>
               <button
-                onClick={() => notify.info('Email receipt')}
+                onClick={() => {
+                  Swal.fire({
+                    icon: 'info',
+                    title: 'Email Receipt',
+                    text: 'Email feature coming soon',
+                    toast: true,
+                    position: 'top-end',
+                    showConfirmButton: false,
+                    timer: 2000,
+                  });
+                }}
                 disabled={cart.length === 0}
                 className="flex items-center justify-center gap-1 px-2 py-1.5 text-xs bg-gray-600 hover:bg-gray-700 text-white rounded-md transition-colors disabled:opacity-50"
               >
