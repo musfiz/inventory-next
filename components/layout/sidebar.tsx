@@ -19,7 +19,6 @@ import {
   Key,
   UserLock,
   ListTodo,
-  Package2,
   Barcode,
   Warehouse,
   CirclePile,
@@ -32,11 +31,12 @@ import {
   FileSpreadsheet,
 } from 'lucide-react';
 import { MdOutlineAssignmentReturn, MdOutlinePointOfSale, MdOutlinePostAdd, MdSupervisedUserCircle } from 'react-icons/md';
-import { BsReceiptCutoff } from 'react-icons/bs';
+import { BsFilePost, BsReceiptCutoff } from 'react-icons/bs';
 import { LiaFileInvoiceDollarSolid } from 'react-icons/lia';
 import { PiUserListDuotone } from 'react-icons/pi';
 import { VscEditSession } from "react-icons/vsc";
 import { TbCreditCardRefund } from "react-icons/tb";
+import { AiOutlineProduct } from "react-icons/ai";
 
 interface SidebarProps {
   sidebarOpen: boolean;
@@ -85,7 +85,7 @@ const navigation: NavigationItem[] = [
   },
   {
     name: 'Product Management',
-    icon: Package2,
+    icon: AiOutlineProduct,
     permission: 'view-products',
     children: [
       { name: 'Products', href: '/products', icon: List, permission: 'view-products' },
@@ -165,7 +165,7 @@ const navigation: NavigationItem[] = [
   },
   {
     name: 'POS Management',
-    icon: MdOutlinePointOfSale,
+    icon: BsFilePost,
     permission: 'view-pos-sales',
     children: [
       { name: 'POS Register', href: '/pos-registers', icon: MdOutlinePostAdd, permission: 'view-pos-register' },

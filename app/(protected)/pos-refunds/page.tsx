@@ -1,154 +1,399 @@
 'use client';
 
-import { useState, useEffect } from 'react';
-import { Plus, Trash2, Edit, Save, X } from 'lucide-react';
+import { useEffect, useState } from 'react';
+import { Plus, X, CheckCircle, Check } from 'lucide-react';
 import { ColumnDef } from '@tanstack/react-table';
 import { notify, confirm } from '@/lib/notifications';
+import { posRefundService, commonService, userService } from '@/services';
+import type { PosRefund } from '@/services/posRefundService';
 import DataTable from '@/components/ui/datatable';
 import CustomSelect from '@/components/ui/custom-select';
-import { posRefundService, commonService, salesOrderService, userService } from '@/services';
+import DateTimePicker from '@/components/ui/date-time-picker';
 import { usePermissions } from '@/hooks/use-permissions';
-import { useRouter } from 'next/navigation';
+import { useAuthStore } from '@/stores/auth-store';
+import apiClient from '@/lib/api/axios';
+
+// ─── Constants ────────────────────────────────────────────────────────────────
+
+const REFUND_REASONS = [
+  { value: 'return',                   label: 'Return' },
+  { value: 'damaged',                  label: 'Damaged' },
+  { value: 'wrong_item',               label: 'Wrong Item' },
+  { value: 'customer_dissatisfaction', label: 'Customer Dissatisfaction' },
+  { value: 'expired',                  label: 'Expired' },
+  { value: 'exchange',                 label: 'Exchange' },
+  { value: 'other',                    label: 'Other' },
+];
+
+const REFUND_METHODS = [
+  { value: 'cash',          label: 'Cash' },
+  { value: 'card',          label: 'Card' },
+  { value: 'bkash',         label: 'bKash' },
+  { value: 'nagad',         label: 'Nagad' },
+  { value: 'rocket',        label: 'Rocket' },
+  { value: 'bank_transfer', label: 'Bank Transfer' },
+  { value: 'store_credit',  label: 'Store Credit' },
+  { value: 'exchange',      label: 'Exchange' },
+];
+
+const STATUSES = [
+  { value: 'pending',   label: 'Pending' },
+  { value: 'approved',  label: 'Approved' },
+  { value: 'completed', label: 'Completed' },
+  { value: 'rejected',  label: 'Rejected' },
+  { value: 'cancelled', label: 'Cancelled' },
+];
+
+// ─── Helpers ──────────────────────────────────────────────────────────────────
+
+function statusBadge(status?: string) {
+  const map: Record<string, string> = {
+    pending:   'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200',
+    approved:  'bg-blue-100   text-blue-800   dark:bg-blue-900   dark:text-blue-200',
+    completed: 'bg-green-100  text-green-800  dark:bg-green-900  dark:text-green-200',
+    rejected:  'bg-red-100    text-red-800    dark:bg-red-900    dark:text-red-200',
+    cancelled: 'bg-gray-100   text-gray-700   dark:bg-gray-700   dark:text-gray-300',
+  };
+  const cls = map[status ?? ''] ?? 'bg-gray-100 text-gray-600';
+  return <span className={`px-2 py-0.5 text-xs rounded-full font-medium capitalize ${cls}`}>{status ?? '-'}</span>;
+}
+
+function fmtDate(d?: string | null) {
+  if (!d) return '-';
+  return new Date(d).toLocaleString();
+}
+
+function fmtNum(n?: string | number | null) {
+  if (n === null || n === undefined || n === '') return '-';
+  return Number(n).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+}
+
+function reasonLabel(v?: string) {
+  return REFUND_REASONS.find(r => r.value === v)?.label ?? v ?? '-';
+}
+
+function methodLabel(v?: string) {
+  return REFUND_METHODS.find(r => r.value === v)?.label ?? v ?? '-';
+}
+
+// ─── Form type ────────────────────────────────────────────────────────────────
+
+interface RefundForm {
+  id: string;
+  tenant_id: string;
+  original_order_id: string;
+  refund_order_id: string;
+  refund_number: string;
+  refund_date: string;
+  refund_reason: string;
+  reason_details: string;
+  total_refund_amount: string;
+  refund_method: string;
+  status: string;
+  approved_by: string;
+  approved_at: string;
+  completed_at: string;
+}
+
+const emptyForm = (): RefundForm => ({
+  id: '', tenant_id: '', original_order_id: '', refund_order_id: '',
+  refund_number: '', refund_date: '',
+  refund_reason: 'return', reason_details: '',
+  total_refund_amount: '', refund_method: 'cash', status: 'pending',
+  approved_by: '', approved_at: '', completed_at: '',
+});
+
+// ─── Page ─────────────────────────────────────────────────────────────────────
 
 export default function PosRefundsPage() {
   const { isSuperAdmin } = usePermissions();
-  const [showForm, setShowForm] = useState(false);
+  const authUser = useAuthStore(s => s.user);
+
+  const [showForm, setShowForm]     = useState(false);
   const [refreshKey, setRefreshKey] = useState(0);
-  const router = useRouter();
+  const [submitting, setSubmitting] = useState(false);
+  const [errors, setErrors]         = useState<Record<string, string>>({});
 
-  const [formData, setFormData] = useState<any>({
-    tenant_id: undefined,
-    original_order_id: undefined,
-    refund_date: '',
-    refund_reason: 'return',
-    reason_details: '',
-    total_refund_amount: '',
-    refund_method: 'cash',
-    status: 'pending',
-    approved_by: undefined,
-  });
-
-  const [formErrors, setFormErrors] = useState<Record<string, string>>({});
-  const [defaultTenantOptions, setDefaultTenantOptions] = useState<any[]>([]);
+  const [form, setForm]                               = useState<RefundForm>(emptyForm());
+  const [selectedTenant, setSelectedTenant]           = useState<any>(null);
+  const [selectedOrder, setSelectedOrder]             = useState<any>(null);
+  const [selectedRefundOrder, setSelectedRefundOrder] = useState<any>(null);
+  const [selectedApprovedBy, setSelectedApprovedBy]   = useState<any>(null);
   const [defaultOrderOptions, setDefaultOrderOptions] = useState<any[]>([]);
-  const [selectedTenant, setSelectedTenant] = useState<any>(null);
 
-  useEffect(() => {
-    const prefetch = async () => {
-      const orders = await salesOrderService.getSalesOrders({ per_page: 10 }).catch(() => ({ data: [] }));
-      setDefaultOrderOptions((orders.data || []).map((o: any) => ({ value: o.id, label: o.order_number || o.invoice_number || String(o.id) })));
-    };
-    prefetch();
-  }, []);
+  const sf = (field: keyof RefundForm) =>
+    (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) =>
+      setForm(f => ({ ...f, [field]: e.target.value }));
+
+  // ── Dropdown loaders ──────────────────────────────────────────────────────
 
   const loadTenantOptions = async (input: string) => {
     if (!isSuperAdmin) return [];
-    const tenants = await commonService.getTenantsForDropdown({ search: input }).catch(() => []);
-    const options = tenants.map((t: any) => ({ value: t.id, label: t.business_name }));
-    if (!input && defaultTenantOptions.length === 0) setDefaultTenantOptions(options);
-    return options;
+    const list = await commonService.getTenantsForDropdown({ search: input }).catch(() => []);
+    return (list || []).map((t: any) => ({ value: t.id, label: t.business_name }));
   };
 
   const loadOrderOptions = async (input: string) => {
-    const res = await salesOrderService.getSalesOrders({ search: input }).catch(() => ({ data: [] }));
-    return (res.data || []).map((o: any) => ({ value: o.id, label: o.order_number || o.invoice_number || String(o.id) }));
-  };
-
-  const loadUserOptions = async (input: string) => {
     try {
-      const res = await userService.getUsers({ search: input, per_page: 10 });
-      return (res.users || []).map((u: any) => ({ value: u.id, label: u.name || u.email || String(u.id) }));
+      const res = await apiClient.get('/api/v1/pos/orders', { params: { search: input, per_page: 20 } });
+      const items = res.data?.data?.data ?? res.data?.data ?? [];
+      return items.map((o: any) => ({ value: o.id, label: o.order_number || `#${o.id}` }));
     } catch {
       return [];
     }
   };
 
-  const handleAddRefund = () => {
-    setFormData({
-      tenant_id: undefined,
-      original_order_id: undefined,
-      refund_date: '',
-      refund_reason: 'return',
-      reason_details: '',
-      total_refund_amount: '',
-      refund_method: 'cash',
-      status: 'pending',
-      approved_by: undefined,
-    });
-    setFormErrors({});
-    setSelectedTenant(null);
-    if (isSuperAdmin) {
-      loadTenantOptions('');
+  const loadUserOptions = async (input: string) => {
+    try {
+      const res = await userService.getUsers({ search: input, per_page: 20 });
+      return (res.users || []).map((u: any) => ({ value: u.id, label: u.name || u.email }));
+    } catch {
+      return [];
     }
+  };
+
+  useEffect(() => {
+    loadOrderOptions('').then(setDefaultOrderOptions).catch(() => {});
+  }, []);
+
+  // ── Validation ────────────────────────────────────────────────────────────
+
+  const validateForm = (): boolean => {
+    const errs: Record<string, string> = {};
+    if (isSuperAdmin && !form.id && !form.tenant_id) errs.tenant_id = 'Tenant is required';
+    if (!form.original_order_id) errs.original_order_id = 'Original order is required';
+    if (!form.refund_reason)     errs.refund_reason      = 'Refund reason is required';
+    if (!form.total_refund_amount || Number(form.total_refund_amount) < 0)
+                                 errs.total_refund_amount = 'Refund amount must be ≥ 0';
+    if (!form.refund_method)     errs.refund_method       = 'Refund method is required';
+    setErrors(errs);
+    return Object.keys(errs).length === 0;
+  };
+
+  // ── Handlers ─────────────────────────────────────────────────────────────
+
+  const handleAdd = () => {
+    setForm({ ...emptyForm(), tenant_id: isSuperAdmin ? '' : (authUser?.tenant_id ?? '') });
+    setSelectedTenant(null);
+    setSelectedOrder(null);
+    setSelectedRefundOrder(null);
+    setSelectedApprovedBy(null);
+    setErrors({});
     setShowForm(true);
   };
 
-  const handleFormSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setFormErrors({});
+  const handleEdit = (refund: PosRefund) => {
+    setForm({
+      id:                   String(refund.id),
+      tenant_id:            String(refund.tenant_id           ?? ''),
+      original_order_id:    String(refund.original_order_id   ?? ''),
+      refund_order_id:      String(refund.refund_order_id     ?? ''),
+      refund_number:        String(refund.refund_number        ?? ''),
+      refund_date:          refund.refund_date  ? new Date(refund.refund_date).toISOString().slice(0, 16)  : '',
+      refund_reason:        String(refund.refund_reason        ?? 'return'),
+      reason_details:       String(refund.reason_details       ?? ''),
+      total_refund_amount:  String(refund.total_refund_amount  ?? ''),
+      refund_method:        String(refund.refund_method        ?? 'cash'),
+      status:               String(refund.status               ?? 'pending'),
+      approved_by:          String(refund.approved_by          ?? ''),
+      approved_at:          refund.approved_at  ? new Date(refund.approved_at).toISOString().slice(0, 16)  : '',
+      completed_at:         refund.completed_at ? new Date(refund.completed_at).toISOString().slice(0, 16) : '',
+    });
+    setSelectedTenant(null);
+    setSelectedOrder(refund.original_order
+      ? { value: refund.original_order.id, label: refund.original_order.order_number }
+      : null);
+    setSelectedRefundOrder(refund.refund_order
+      ? { value: refund.refund_order.id, label: refund.refund_order.order_number }
+      : null);
+    setSelectedApprovedBy((refund as any).approved_by_user
+      ? { value: (refund as any).approved_by_user.id, label: (refund as any).approved_by_user.name }
+      : null);
+    setErrors({});
+    setShowForm(true);
+  };
 
-    try {
-      const payload = {
-        tenant_id: formData.tenant_id,
-        original_order_id: formData.original_order_id,
-        refund_date: formData.refund_date,
-        refund_reason: formData.refund_reason,
-        reason_details: formData.reason_details,
-        total_refund_amount: Number(formData.total_refund_amount) || 0,
-        refund_method: formData.refund_method,
-        status: formData.status,
-        approved_by: formData.approved_by,
-      };
+  const handleCancel = () => { setShowForm(false); setErrors({}); };
 
-      await posRefundService.store(payload);
-      notify.success('Refund created successfully');
-      setShowForm(false);
-      setRefreshKey(prev => prev + 1);
-    } catch (err: any) {
-      if (err?.response?.data?.errors) {
-        const transformed: Record<string, string> = {};
-        Object.entries(err.response.data.errors).forEach(([k, v]: any) => {
-          transformed[k] = Array.isArray(v) ? v.join(', ') : v;
-        });
-        setFormErrors(transformed);
-      } else {
-        notify.error(err?.response?.data?.message || 'Failed to create refund');
-      }
+  const handleError = (err: any) => {
+    const msg = err?.response?.data?.message || err?.response?.data?.errors;
+    if (typeof msg === 'object') {
+      const flat: Record<string, string> = {};
+      Object.entries(msg).forEach(([k, v]) => { flat[k] = Array.isArray(v) ? v[0] as string : String(v); });
+      setErrors(flat);
+    } else {
+      notify.error(String(msg || 'An error occurred'));
     }
   };
 
-  const columns: ColumnDef<any>[] = [
-    { id: 'serial', header: 'SL', cell: ({ row, table }) => (table.getState().pagination.pageIndex * table.getState().pagination.pageSize + row.index + 1) },
-    { accessorKey: 'refund_number', header: 'Refund #', cell: ({ row }) => <div className="font-mono">{row.original.refund_number || '-'}</div> },
-    { accessorKey: 'refund_date', header: 'Refund Date', cell: ({ row }) => <div>{row.original.refund_date ? new Date(row.original.refund_date).toLocaleString() : '-'}</div> },
-    { accessorKey: 'refund_reason', header: 'Reason', cell: ({ row }) => <div className="text-sm">{row.original.refund_reason || '-'}</div> },
-    { accessorKey: 'total_refund_amount', header: 'Amount', cell: ({ row }) => <div className="font-medium">{row.original.total_refund_amount ?? '-'}</div> },
-    { accessorKey: 'refund_method', header: 'Method', cell: ({ row }) => <div>{row.original.refund_method || '-'}</div> },
-    { accessorKey: 'status', header: 'Status', cell: ({ row }) => (
-      <span className={`px-2 py-1 text-xs rounded-full ${row.original.status === 'completed' ? 'bg-green-100 text-green-800' : 'bg-yellow-100 text-yellow-800'}`}>{row.original.status || '-'}</span>
-    ) },
-    { id: 'actions', header: 'Actions', cell: ({ row }) => (
-      <div className="flex items-center gap-2">
-        <button onClick={() => router.push(`/pos-refunds/add?edit=${row.original.id}`)} className="p-1 text-green-600"><Edit className="w-4 h-4" /></button>
-        <button onClick={() => handleDelete(row.original)} className="p-1 text-red-600"><Trash2 className="w-4 h-4" /></button>
-      </div>
-    ) },
-  ];
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!validateForm()) return;
+    setSubmitting(true);
+    try {
+      const payload: Record<string, any> = {
+        tenant_id:           form.tenant_id          || undefined,
+        original_order_id:   form.original_order_id  || undefined,
+        refund_order_id:     form.refund_order_id     || undefined,
+        refund_number:       form.refund_number       || undefined,
+        refund_date:         form.refund_date         || undefined,
+        refund_reason:       form.refund_reason,
+        reason_details:      form.reason_details      || undefined,
+        total_refund_amount: Number(form.total_refund_amount),
+        refund_method:       form.refund_method,
+        status:              form.status,
+        approved_by:         form.approved_by         || undefined,
+        approved_at:         form.approved_at         || undefined,
+        completed_at:        form.completed_at        || undefined,
+      };
+      if (form.id) payload.id = form.id;
+      await posRefundService.store(payload);
+      notify.success(form.id ? 'Refund updated successfully' : 'Refund created successfully');
+      setShowForm(false);
+      setRefreshKey(k => k + 1);
+    } catch (err: any) { handleError(err); }
+    finally { setSubmitting(false); }
+  };
 
-  const buildApiEndpoint = () => `pos/refunds`;
-
-  const handleDelete = async (r: any) => {
-    const result = await confirm({ title: 'Delete Refund', html: `Delete refund <strong>${r.refund_number || r.id}</strong>?`, confirmButtonText: 'Delete', cancelButtonText: 'Cancel', icon: 'warning' });
+  const handleApprove = async (refund: PosRefund) => {
+    const result = await confirm({
+      title: 'Approve Refund',
+      html: `Approve refund <strong>${refund.refund_number}</strong>?`,
+      confirmButtonText: 'Approve', cancelButtonText: 'Cancel', icon: 'question',
+    });
     if (!result.isConfirmed) return;
     try {
-      await posRefundService.destroy(r.id);
-      notify.success('Refund deleted');
-      // trigger refresh by navigating to same page (DataTable listens to route change)
-      router.refresh();
+      await posRefundService.approve(refund.id);
+      notify.success('Refund approved');
+      setRefreshKey(k => k + 1);
     } catch (err: any) {
-      notify.error(err?.response?.data?.message || 'Failed to delete refund');
+      notify.error(err?.response?.data?.message || 'Failed to approve');
     }
   };
+
+  const handleComplete = async (refund: PosRefund) => {
+    const result = await confirm({
+      title: 'Complete Refund',
+      html: `Mark refund <strong>${refund.refund_number}</strong> as completed?`,
+      confirmButtonText: 'Complete', cancelButtonText: 'Cancel', icon: 'question',
+    });
+    if (!result.isConfirmed) return;
+    try {
+      await posRefundService.complete(refund.id);
+      notify.success('Refund completed');
+      setRefreshKey(k => k + 1);
+    } catch (err: any) {
+      notify.error(err?.response?.data?.message || 'Failed to complete');
+    }
+  };
+
+  const handleDelete = async (refund: PosRefund) => {
+    const result = await confirm({
+      title: 'Delete Refund',
+      html: `Delete refund <strong>${refund.refund_number}</strong>? This cannot be undone.`,
+      confirmButtonText: 'Delete', cancelButtonText: 'Cancel', icon: 'warning',
+    });
+    if (!result.isConfirmed) return;
+    try {
+      await posRefundService.destroy(refund.id);
+      notify.success('Refund deleted');
+      setRefreshKey(k => k + 1);
+    } catch (err: any) {
+      notify.error(err?.response?.data?.message || 'Failed to delete');
+    }
+  };
+
+  // ── Columns ───────────────────────────────────────────────────────────────
+
+  const columns: ColumnDef<PosRefund>[] = [
+    {
+      id: 'serial', header: 'SL',
+      cell: ({ row, table }) => table.getState().pagination.pageIndex * table.getState().pagination.pageSize + row.index + 1,
+    },
+    {
+      accessorKey: 'refund_number', header: 'Refund #',
+      cell: ({ row }) => <span className="font-mono text-xs font-semibold">{row.original.refund_number ?? '-'}</span>,
+    },
+    {
+      accessorKey: 'original_order_id', header: 'Original Order',
+      cell: ({ row }) => <span className="text-xs">{(row.original as any).original_order?.order_number ?? row.original.original_order_id ?? '-'}</span>,
+    },
+    {
+      accessorKey: 'refund_order_id', header: 'Refund Order',
+      cell: ({ row }) => <span className="text-xs">{(row.original as any).refund_order?.order_number ?? (row.original.refund_order_id ? `#${row.original.refund_order_id}` : '-')}</span>,
+    },
+    {
+      accessorKey: 'refund_date', header: 'Refund Date',
+      cell: ({ row }) => <span className="text-xs">{fmtDate(row.original.refund_date)}</span>,
+    },
+    {
+      accessorKey: 'refund_reason', header: 'Reason',
+      cell: ({ row }) => <span className="text-xs">{reasonLabel(row.original.refund_reason)}</span>,
+    },
+    {
+      accessorKey: 'total_refund_amount', header: 'Amount',
+      cell: ({ row }) => <span className="font-mono text-xs font-semibold">{fmtNum(row.original.total_refund_amount)}</span>,
+    },
+    {
+      accessorKey: 'refund_method', header: 'Method',
+      cell: ({ row }) => <span className="text-xs">{methodLabel(row.original.refund_method)}</span>,
+    },
+    {
+      accessorKey: 'status', header: 'Status',
+      cell: ({ row }) => statusBadge(row.original.status),
+    },
+    {
+      accessorKey: 'approved_by', header: 'Approved By',
+      cell: ({ row }) => <span className="text-xs">{(row.original as any).approved_by_user?.name ?? '-'}</span>,
+    },
+    {
+      accessorKey: 'approved_at', header: 'Approved At',
+      cell: ({ row }) => <span className="text-xs">{fmtDate(row.original.approved_at)}</span>,
+    },
+    {
+      accessorKey: 'completed_at', header: 'Completed At',
+      cell: ({ row }) => <span className="text-xs">{fmtDate(row.original.completed_at)}</span>,
+    },
+    {
+      accessorKey: 'created_by', header: 'Created By',
+      cell: ({ row }) => <span className="text-xs">{(row.original as any).created_by_user?.name ?? '-'}</span>,
+    },
+    {
+      id: 'actions', header: 'Actions',
+      cell: ({ row }) => {
+        const r = row.original;
+        return (
+          <div className="flex items-center gap-1">
+            {r.status === 'pending' && (
+              <button onClick={() => handleApprove(r)} title="Approve" className="p-1 rounded text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/30 cursor-pointer">
+                <CheckCircle className="w-4 h-4" />
+              </button>
+            )}
+            {r.status === 'approved' && (
+              <button onClick={() => handleComplete(r)} title="Mark Complete" className="p-1 rounded text-green-600 hover:bg-green-50 dark:hover:bg-green-900/30 cursor-pointer">
+                <Check className="w-4 h-4" />
+              </button>
+            )}
+            <button onClick={() => handleEdit(r)} title="Edit" className="p-1 rounded text-yellow-600 hover:bg-yellow-50 dark:hover:bg-yellow-900/30 cursor-pointer">
+              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" /></svg>
+            </button>
+            <button onClick={() => handleDelete(r)} title="Delete" className="p-1 rounded text-red-600 hover:bg-red-50 dark:hover:bg-red-900/30 cursor-pointer">
+              <X className="w-4 h-4" />
+            </button>
+          </div>
+        );
+      },
+    },
+  ];
+
+  // ── Shared styles ─────────────────────────────────────────────────────────
+
+  const inputCls   = 'w-full px-2 py-1.5 text-sm border rounded-sm focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-transparent border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100';
+  const labelCls   = 'block text-sm font-medium text-gray-700 dark:text-gray-300 mb-0.5';
+  const errCls     = 'text-xs text-red-500 mt-0.5';
+  const sectionCls = 'text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400 border-b border-gray-200 dark:border-gray-600 pb-1 mb-2 mt-3';
+
+  // ── Render ────────────────────────────────────────────────────────────────
 
   return (
     <div className="space-y-2">
@@ -156,221 +401,157 @@ export default function PosRefundsPage() {
       <div className="flex items-center justify-between">
         <h1 className="text-xl font-bold text-gray-900 dark:text-gray-100">POS Refunds</h1>
         <button
-          onClick={handleAddRefund}
-          className="flex items-center gap-2 px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium rounded-sm transition-colors duration-200 cursor-pointer"
+          onClick={handleAdd}
+          className="flex items-center gap-2 px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium rounded-sm transition-colors cursor-pointer"
         >
-          <Plus className="w-4 h-4" />
-          Add Refund
+          <Plus className="w-4 h-4" /> Add Refund
         </button>
       </div>
 
-      {/* Add Refund Form */}
+      {/* Form */}
       {showForm && (
-        <div className="bg-white dark:bg-gray-800 rounded-md shadow-sm border border-gray-200 dark:border-gray-700 p-1.5 mb-1">
-          <h2 className="text-lg font-semibold mb-1.5 text-gray-900 dark:text-gray-100">
-            Add Refund
-          </h2>
-          <form onSubmit={handleFormSubmit} className="space-y-3">
-            {/* Tenant Selection - Only for Super Admin */}
-            {isSuperAdmin && (
-              <div className="grid grid-cols-1 md:grid-cols-4 gap-1.5">
+        <div className="bg-white dark:bg-gray-800 rounded-md shadow-sm p-4">
+          <div className="flex items-center justify-between mb-3">
+            <h2 className="text-base font-semibold text-gray-900 dark:text-gray-100">
+              {form.id ? `Edit Refund — ${form.refund_number}` : 'Add New Refund'}
+            </h2>
+            <button onClick={handleCancel} className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 cursor-pointer">
+              <X className="w-5 h-5" />
+            </button>
+          </div>
+
+          <form onSubmit={handleSubmit} className="space-y-2">
+
+            {/* ── Basic Info ── */}
+            <p className={sectionCls}>Basic Info</p>
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-2">
+              {isSuperAdmin && !form.id && (
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-0.5">
-                    Tenant
-                  </label>
+                  <label className={labelCls}>Tenant <span className="text-red-500">*</span></label>
                   <CustomSelect
                     value={selectedTenant}
-                    onChange={(option: any) => {
-                      setFormData({ ...formData, tenant_id: option?.value || undefined });
-                      setSelectedTenant(option);
-                      if (option?.value && formErrors.tenant_id) {
-                        const { tenant_id, ...rest } = formErrors;
-                        setFormErrors(rest);
-                      }
-                    }}
+                    onChange={opt => { setSelectedTenant(opt); setForm(f => ({ ...f, tenant_id: opt?.value ?? '' })); }}
                     loadOptions={loadTenantOptions}
-                    defaultOptions={defaultTenantOptions}
                     placeholder="Select tenant"
                     className="text-sm"
-                    isInvalid={!!formErrors.tenant_id}
                   />
-                  {formErrors.tenant_id && (
-                    <p className="text-red-600 text-xs mt-1">{formErrors.tenant_id}</p>
-                  )}
+                  {errors.tenant_id && <p className={errCls}>{errors.tenant_id}</p>}
                 </div>
-              </div>
-            )}
+              )}
 
-            {/* Original Order, Refund Date, Refund Method */}
-            <div className="grid grid-cols-1 md:grid-cols-4 gap-1.5">
               <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-0.5">
-                  Original Order
-                </label>
+                <label className={labelCls}>Original Order <span className="text-red-500">*</span></label>
                 <CustomSelect
-                  value={formData.original_order_id ? { value: formData.original_order_id, label: '' } : null}
-                  onChange={(option: any) => {
-                    setFormData({ ...formData, original_order_id: option?.value });
-                    if (option?.value && formErrors.original_order_id) {
-                      const { original_order_id, ...rest } = formErrors;
-                      setFormErrors(rest);
-                    }
-                  }}
+                  value={selectedOrder}
+                  onChange={opt => { setSelectedOrder(opt); setForm(f => ({ ...f, original_order_id: opt?.value ?? '' })); }}
                   loadOptions={loadOrderOptions}
                   defaultOptions={defaultOrderOptions}
-                  placeholder="Search orders..."
+                  placeholder="Select POS order"
                   className="text-sm"
-                  isInvalid={!!formErrors.original_order_id}
                 />
-                {formErrors.original_order_id && (
-                  <p className="text-red-600 text-xs mt-1">{formErrors.original_order_id}</p>
-                )}
+                {errors.original_order_id && <p className={errCls}>{errors.original_order_id}</p>}
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-0.5">
-                  Approved By
-                </label>
+                <label className={labelCls}>Refund Order <span className="text-gray-400 text-xs">(optional)</span></label>
                 <CustomSelect
-                  value={formData.approved_by ? { value: formData.approved_by, label: '' } : null}
-                  onChange={(option: any) => setFormData({ ...formData, approved_by: option?.value })}
+                  value={selectedRefundOrder}
+                  onChange={opt => { setSelectedRefundOrder(opt); setForm(f => ({ ...f, refund_order_id: opt?.value ?? '' })); }}
+                  loadOptions={loadOrderOptions}
+                  defaultOptions={defaultOrderOptions}
+                  placeholder="Linked refund order"
+                  className="text-sm"
+                />
+              </div>
+
+              <div>
+                <label className={labelCls}>Refund #</label>
+                <input type="text" value={form.refund_number} onChange={sf('refund_number')} placeholder="Auto-generated if blank" className={inputCls} />
+              </div>
+            </div>
+
+            {/* ── Refund Details ── */}
+            <p className={sectionCls}>Refund Details</p>
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-2">
+              <div>
+                <label className={labelCls}>Refund Date</label>
+                <DateTimePicker value={form.refund_date} onChange={v => setForm(f => ({ ...f, refund_date: v }))} placeholder="Select refund date" />
+              </div>
+
+              <div>
+                <label className={labelCls}>Refund Reason <span className="text-red-500">*</span></label>
+                <select value={form.refund_reason} onChange={sf('refund_reason')} className={inputCls}>
+                  {REFUND_REASONS.map(r => <option key={r.value} value={r.value}>{r.label}</option>)}
+                </select>
+                {errors.refund_reason && <p className={errCls}>{errors.refund_reason}</p>}
+              </div>
+
+              <div>
+                <label className={labelCls}>Refund Method <span className="text-red-500">*</span></label>
+                <select value={form.refund_method} onChange={sf('refund_method')} className={inputCls}>
+                  {REFUND_METHODS.map(m => <option key={m.value} value={m.value}>{m.label}</option>)}
+                </select>
+                {errors.refund_method && <p className={errCls}>{errors.refund_method}</p>}
+              </div>
+
+              <div>
+                <label className={labelCls}>Total Refund Amount <span className="text-red-500">*</span></label>
+                <input type="number" step="0.01" min="0" value={form.total_refund_amount} onChange={sf('total_refund_amount')} className={inputCls} placeholder="0.00" />
+                {errors.total_refund_amount && <p className={errCls}>{errors.total_refund_amount}</p>}
+              </div>
+            </div>
+
+            <div>
+              <label className={labelCls}>Reason Details</label>
+              <textarea rows={2} value={form.reason_details} onChange={sf('reason_details')} className={inputCls} placeholder="Additional details about the reason for refund..." />
+            </div>
+
+            {/* ── Status & Approval ── */}
+            <p className={sectionCls}>Status & Approval</p>
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-2">
+              <div>
+                <label className={labelCls}>Status</label>
+                <select value={form.status} onChange={sf('status')} className={inputCls}>
+                  {STATUSES.map(s => <option key={s.value} value={s.value}>{s.label}</option>)}
+                </select>
+              </div>
+
+              <div>
+                <label className={labelCls}>Approved By</label>
+                <CustomSelect
+                  value={selectedApprovedBy}
+                  onChange={opt => { setSelectedApprovedBy(opt); setForm(f => ({ ...f, approved_by: opt?.value ?? '' })); }}
                   loadOptions={loadUserOptions}
                   placeholder="Select user"
                   className="text-sm"
                 />
-                {formErrors.approved_by && (
-                  <p className="text-red-600 text-xs mt-1">{formErrors.approved_by}</p>
-                )}
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-0.5">
-                  Refund Date
-                </label>
-                <input
-                  type="datetime-local"
-                  value={formData.refund_date}
-                  onChange={e => setFormData({ ...formData, refund_date: e.target.value })}
-                  className={`w-full px-2 py-1.25 text-sm border rounded-sm focus:outline-none focus:ring-1 focus:ring-blue-500 dark:focus:ring-blue-400 focus:border-transparent dark:bg-gray-700 dark:text-gray-100 ${
-                    formErrors.refund_date ? 'border-red-500' : 'border-gray-300 dark:border-gray-600'
-                  }`}
-                />
-                {formErrors.refund_date && (
-                  <p className="text-red-600 text-xs mt-1">{formErrors.refund_date}</p>
-                )}
+                <label className={labelCls}>Approved At</label>
+                <DateTimePicker value={form.approved_at} onChange={v => setForm(f => ({ ...f, approved_at: v }))} placeholder="Select approved date" />
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-0.5">
-                  Refund Method
-                </label>
-                <select
-                  value={formData.refund_method}
-                  onChange={e => setFormData({ ...formData, refund_method: e.target.value })}
-                  className="w-full px-2 py-1.25 text-sm border border-gray-300 dark:border-gray-600 rounded-sm focus:outline-none focus:ring-1 focus:ring-blue-500 dark:focus:ring-blue-400 focus:border-transparent dark:bg-gray-700 dark:text-gray-100"
-                >
-                  <option value="cash">Cash</option>
-                  <option value="card">Card</option>
-                  <option value="bkash">Bkash</option>
-                  <option value="store_credit">Store Credit</option>
-                  <option value="exchange">Exchange</option>
-                </select>
+                <label className={labelCls}>Completed At</label>
+                <DateTimePicker value={form.completed_at} onChange={v => setForm(f => ({ ...f, completed_at: v }))} placeholder="Select completed date" />
               </div>
             </div>
 
-            {/* Reason (span 2), Total Refund Amount */}
-            <div className="grid grid-cols-1 md:grid-cols-5 gap-1.5">
-              <div className="md:col-span-1">
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-0.5">
-                  Reason
-                </label>
-                <select
-                  value={formData.refund_reason}
-                  onChange={e => setFormData({ ...formData, refund_reason: e.target.value })}
-                  className="w-full px-2 py-1.25 text-sm border border-gray-300 dark:border-gray-600 rounded-sm focus:outline-none focus:ring-1 focus:ring-blue-500 dark:focus:ring-blue-400 focus:border-transparent dark:bg-gray-700 dark:text-gray-100"
-                >
-                  <option value="return">Return</option>
-                  <option value="damaged">Damaged</option>
-                  <option value="wrong_item">Wrong Item</option>
-                  <option value="customer_dissatisfaction">Customer Dissatisfaction</option>
-                  <option value="expired">Expired</option>
-                  <option value="exchange">Exchange</option>
-                  <option value="other">Other</option>
-                </select>
-                {formErrors.refund_reason && (
-                  <p className="text-red-600 text-xs mt-1">{formErrors.refund_reason}</p>
-                )}
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-0.5">
-                  Status
-                </label>
-                <select
-                  value={formData.status}
-                  onChange={e => setFormData({ ...formData, status: e.target.value })}
-                  className="w-full px-2 py-1.25 text-sm border border-gray-300 dark:border-gray-600 rounded-sm focus:outline-none focus:ring-1 focus:ring-blue-500 dark:focus:ring-blue-400 focus:border-transparent dark:bg-gray-700 dark:text-gray-100"
-                >
-                  <option value="pending">Pending</option>
-                  <option value="approved">Approved</option>
-                  <option value="completed">Completed</option>
-                  <option value="rejected">Rejected</option>
-                </select>
-                {formErrors.status && (
-                  <p className="text-red-600 text-xs mt-1">{formErrors.status}</p>
-                )}
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-0.5">
-                  Total Amount
-                </label>
-                <input
-                  type="number"
-                  step="0.01"
-                  value={formData.total_refund_amount}
-                  onChange={e => setFormData({ ...formData, total_refund_amount: e.target.value })}
-                  placeholder="0.00"
-                  className={`w-full px-2 py-1.25 text-right text-sm border rounded-sm focus:outline-none focus:ring-1 focus:ring-blue-500 dark:focus:ring-blue-400 focus:border-transparent dark:bg-gray-700 dark:text-gray-100 ${
-                    formErrors.total_refund_amount ? 'border-red-500' : 'border-gray-300 dark:border-gray-600'
-                  }`}
-                />
-                {formErrors.total_refund_amount && (
-                  <p className="text-red-600 text-xs mt-1">{formErrors.total_refund_amount}</p>
-                )}
-              </div>
-              <div className="md:col-span-2">
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-0.5">
-                  Reason Details
-                </label>
-                <input
-                  type="text"
-                  value={formData.reason_details}
-                  onChange={e => setFormData({ ...formData, reason_details: e.target.value })}
-                  placeholder="Additional details..."
-                  className="w-full px-2 py-1.25 text-sm border border-gray-300 dark:border-gray-600 rounded-sm focus:outline-none focus:ring-1 focus:ring-blue-500 dark:focus:ring-blue-400 focus:border-transparent dark:bg-gray-700 dark:text-gray-100"
-                />
-                {formErrors.reason_details && (
-                  <p className="text-red-600 text-xs mt-1">{formErrors.reason_details}</p>
-                )}
-              </div>
-            </div>
-
-            {/* Form Actions */}
+            {/* Buttons */}
             <div className="flex gap-2 pt-2">
               <button
                 type="submit"
-                className="px-3 py-1.5 bg-blue-600 text-white text-sm font-medium rounded-sm hover:bg-blue-700 transition-colors flex items-center gap-2 cursor-pointer"
+                disabled={submitting}
+                className="px-4 py-1.5 bg-blue-600 text-white text-sm font-medium rounded-sm hover:bg-blue-700 transition-colors cursor-pointer disabled:opacity-60"
               >
-                <Save className="w-4 h-4" />
-                Save Refund
+                {submitting ? 'Saving…' : form.id ? 'Update Refund' : 'Save Refund'}
               </button>
               <button
                 type="button"
-                onClick={() => setShowForm(false)}
-                className="px-3 py-1.5 bg-gray-600 text-white text-sm font-medium rounded-sm hover:bg-gray-700 transition-colors flex items-center gap-2 cursor-pointer"
+                onClick={handleCancel}
+                className="px-4 py-1.5 bg-gray-500 text-white text-sm font-medium rounded-sm hover:bg-gray-600 transition-colors cursor-pointer"
               >
-                <X className="w-4 h-4" />
                 Cancel
               </button>
             </div>
@@ -378,12 +559,14 @@ export default function PosRefundsPage() {
         </div>
       )}
 
-      {/* DataTable */}
+      {/* Data Table */}
       <DataTable
         key={refreshKey}
         columns={columns}
-        apiEndpoint={buildApiEndpoint()}
-        pageSize={10}
+        apiEndpoint="pos/refunds"
+        pageSize={15}
+        enableSearch
+        searchPlaceholder="Search refunds…"
       />
     </div>
   );

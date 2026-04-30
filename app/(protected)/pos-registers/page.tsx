@@ -172,7 +172,7 @@ export default function PosRegisterPage() {
       receipt_header: '',
       receipt_footer: '',
       receipt_logo_url: '',
-      show_tax_details: true,
+      show_tax_details: false,
       show_barcode: true,
       is_active: true,
       is_online: false,
@@ -291,25 +291,43 @@ export default function PosRegisterPage() {
 
   const columns: ColumnDef<PosRegister>[] = [
     { id: 'serial', header: 'SL', cell: ({ row, table }) => (table.getState().pagination.pageIndex * table.getState().pagination.pageSize + row.index + 1) },
-    { accessorKey: 'code', header: 'Code', cell: ({ row }) => <div className="font-mono">{row.original.code || '-'}</div> },
-    { accessorKey: 'name', header: 'Name', cell: ({ row }) => <div className="font-medium">{row.original.name}</div> },
-    // description removed — not part of model
+    { accessorKey: 'code', header: 'Code', cell: ({ row }) => <div className="font-mono text-xs">{(row.original as any).code || '-'}</div> },
+    { accessorKey: 'name', header: 'Register Name', cell: ({ row }) => (
+      <div>
+        <div className="font-medium text-sm">{row.original.name}</div>
+        {(row.original as any).location && <div className="text-xs text-gray-500 dark:text-gray-400">{(row.original as any).location}</div>}
+      </div>
+    )},
+    { accessorKey: 'warehouse', header: 'Warehouse', cell: ({ row }) => {
+      const wh = (row.original as any).warehouse;
+      return wh ? <span className="text-xs">{wh.name} {wh.code ? `(${wh.code})` : ''}</span> : <span className="text-gray-400 text-xs">-</span>;
+    }},
+    { id: 'payment', header: 'Payment', cell: ({ row }) => (
+      <span className="px-1.5 py-0.5 bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 text-xs rounded">{(row.original as any).default_payment_method || '-'}</span>
+    )},
+    { id: 'online', header: 'Online', cell: ({ row }) => (
+      <span className={`px-2 py-0.5 text-xs rounded-full ${ (row.original as any).is_online ? 'bg-blue-100 dark:bg-blue-900/40 text-blue-700 dark:text-blue-400' : 'bg-gray-100 dark:bg-gray-700 text-gray-500 dark:text-gray-400'}`}>
+        {(row.original as any).is_online ? 'Online' : 'Offline'}
+      </span>
+    )},
     { accessorKey: 'is_active', header: 'Status', cell: ({ row }) => (
-      <span className={`px-2 py-1 text-xs rounded-full ${row.original.is_active ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}`}>{row.original.is_active ? 'Active' : 'Inactive'}</span>
-    ) },
+      <span className={`px-2 py-0.5 text-xs rounded-full ${row.original.is_active ? 'bg-green-100 dark:bg-green-900/40 text-green-700 dark:text-green-400' : 'bg-red-100 dark:bg-red-900/40 text-red-700 dark:text-red-400'}`}>
+        {row.original.is_active ? 'Active' : 'Inactive'}
+      </span>
+    )},
     { id: 'actions', header: 'Actions', cell: ({ row }) => (
       <div className="flex items-center gap-2">
-        <button onClick={() => handleEdit(row.original)} className="p-1 text-green-600"><Edit className="w-4 h-4" /></button>
-        <button onClick={() => handleDelete(row.original)} className="p-1 text-red-600"><Trash2 className="w-4 h-4" /></button>
+        <button onClick={() => handleEdit(row.original)} className="p-1 text-green-600 hover:text-green-700"><Edit className="w-4 h-4" /></button>
+        <button onClick={() => handleDelete(row.original)} className="p-1 text-red-600 hover:text-red-700"><Trash2 className="w-4 h-4" /></button>
       </div>
-    ) },
+    )},
   ];
 
   const buildApiEndpoint = () => `pos/registers`;
 
   return (
     <div className="space-y-2">
-        <div className="flex items-center justify-between">
+      <div className="flex items-center justify-between">
         <h1 className="text-xl font-bold">POS Registers</h1>
         <button onClick={handleAdd} className="flex items-center gap-2 px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium rounded-sm transition-colors duration-200 cursor-pointer">
           <Plus className="w-4 h-4" /> Add Register
@@ -317,8 +335,8 @@ export default function PosRegisterPage() {
       </div>
 
       {showForm && (
-        <div className="bg-white rounded-md shadow-sm p-2">
-          <h2 className="text-lg font-semibold mb-2">{isEditing ? 'Edit Register' : 'Add Register'}</h2>
+        <div className="bg-white dark:bg-gray-800 rounded-md shadow-sm p-3">
+          <h2 className="text-base font-semibold mb-3 text-gray-900 dark:text-gray-100">{isEditing ? 'Edit Register' : 'Add Register'}</h2>
           <form onSubmit={handleSubmit} className="space-y-3">
             {isSuperAdmin && (
               <div className="grid grid-cols-1 md:grid-cols-3 gap-1.5">
@@ -347,7 +365,7 @@ export default function PosRegisterPage() {
             {/* Top row: small warehouse selector, name, code */}
             <div className="grid grid-cols-1 md:grid-cols-4 gap-2">
               <div className="md:col-span-1">
-                <label className="block text-sm font-medium text-gray-700 mb-0.5">Warehouse <span className="text-red-500">*</span></label>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-0.5">Warehouse <span className="text-red-500">*</span></label>
                 <CustomSelect
                   value={selectedWarehouse}
                   onChange={opt => {
@@ -368,7 +386,7 @@ export default function PosRegisterPage() {
               </div>
 
               <div className="md:col-span-2">
-                <label className="block text-sm font-medium text-gray-700 mb-0.5">Register Name <span className="text-red-500">*</span></label>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-0.5">Register Name <span className="text-red-500">*</span></label>
                 <input
                   type="text"
                   value={formData.name}
@@ -379,18 +397,19 @@ export default function PosRegisterPage() {
                       setFormErrors(rest);
                     }
                   }}
-                  className={`w-full px-2 py-1.25 text-sm border rounded-sm focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-transparent ${formErrors.name ? 'border-red-500' : 'border-gray-300'}`}
+                  className={`w-full px-2 py-1.5 text-sm border rounded-sm focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-transparent dark:bg-gray-700 dark:text-gray-100 dark:border-gray-600 ${formErrors.name ? 'border-red-500' : 'border-gray-300'}`}
                 />
                 {formErrors.name && <p className="text-red-600 text-xs mt-1">{formErrors.name}</p>}
               </div>
 
               <div className="md:col-span-1">
-                <label className="block text-sm font-medium text-gray-700 mb-0.5">Code</label>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-0.5">Code <span className="text-xs text-gray-400">(auto if blank)</span></label>
                 <input
                   type="text"
                   value={formData.code}
                   onChange={e => setFormData({ ...formData, code: e.target.value })}
-                  className="w-full px-2 py-1.25 text-sm border rounded-sm focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-transparent border-gray-300"
+                  className="w-full px-2 py-1.5 text-sm border border-gray-300 dark:border-gray-600 rounded-sm focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-transparent dark:bg-gray-700 dark:text-gray-100"
+                  placeholder="e.g. REG-01"
                 />
               </div>
             </div>
@@ -398,30 +417,31 @@ export default function PosRegisterPage() {
             {/* Second row: location, terminal id, default customer */}
             <div className="grid grid-cols-1 md:grid-cols-4 gap-2">
               <div className="md:col-span-2">
-                <label className="block text-sm font-medium text-gray-700 mb-0.5">Location</label>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-0.5">Location</label>
                 <input
                   type="text"
                   value={formData.location}
                   onChange={e => setFormData({ ...formData, location: e.target.value })}
-                  className="w-full px-2 py-1.25 text-sm border rounded-sm focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-transparent border-gray-300"
+                  className="w-full px-2 py-1.5 text-sm border border-gray-300 dark:border-gray-600 rounded-sm focus:outline-none focus:ring-1 focus:ring-blue-500 dark:bg-gray-700 dark:text-gray-100"
+                  placeholder="e.g. Ground Floor - Counter 1"
                 />
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-0.5">Terminal ID</label>
-                <input type="text" value={formData.terminal_id} onChange={e => setFormData({ ...formData, terminal_id: e.target.value })} className="w-full px-2 py-1.25 text-sm border rounded-sm focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-transparent border-gray-300" />
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-0.5">Terminal ID</label>
+                <input type="text" value={formData.terminal_id} onChange={e => setFormData({ ...formData, terminal_id: e.target.value })} className="w-full px-2 py-1.5 text-sm border border-gray-300 dark:border-gray-600 rounded-sm focus:outline-none focus:ring-1 focus:ring-blue-500 dark:bg-gray-700 dark:text-gray-100" placeholder="e.g. TERM-001" />
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-0.5">Default Customer</label>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-0.5">Default Customer</label>
                 <CustomSelect value={selectedCustomer} onChange={opt => { setFormData({ ...formData, default_customer_id: opt?.value }); setSelectedCustomer(opt); }} loadOptions={loadCustomerOptions} defaultOptions={defaultCustomerOptions} placeholder="Select customer" className="text-sm" />
               </div>
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
               <div>
-                <label className="block text-sm font-medium">Default Payment Method</label>
-                <select value={formData.default_payment_method} onChange={e => setFormData({ ...formData, default_payment_method: e.target.value })} className="w-full px-2 py-1.25 text-sm border rounded-sm focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-transparent border-gray-300">
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Default Payment Method</label>
+                <select value={formData.default_payment_method} onChange={e => setFormData({ ...formData, default_payment_method: e.target.value })} className="w-full px-2 py-1.5 text-sm border border-gray-300 dark:border-gray-600 rounded-sm focus:outline-none focus:ring-1 focus:ring-blue-500 dark:bg-gray-700 dark:text-gray-100">
                   <option value="cash">Cash</option>
                   <option value="card">Card</option>
                   <option value="bkash">bKash</option>
@@ -432,88 +452,88 @@ export default function PosRegisterPage() {
               </div>
 
               <div>
-                <label className="block text-sm font-medium">Default Tax Rate</label>
-                <input type="text" value={formData.default_tax_rate} onChange={e => setFormData({ ...formData, default_tax_rate: e.target.value })} className="w-full px-2 py-1.25 text-sm border rounded-sm focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-transparent border-gray-300" />
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Default Tax Rate (%)</label>
+                <input type="number" min="0" max="100" step="0.01" value={formData.default_tax_rate} onChange={e => setFormData({ ...formData, default_tax_rate: e.target.value })} className="w-full px-2 py-1.5 text-sm border border-gray-300 dark:border-gray-600 rounded-sm focus:outline-none focus:ring-1 focus:ring-blue-500 dark:bg-gray-700 dark:text-gray-100" placeholder="0.00" />
               </div>
 
               <div>
-                <label className="block text-sm font-medium">Receipt Logo URL</label>
-                <input type="text" value={formData.receipt_logo_url} onChange={e => setFormData({ ...formData, receipt_logo_url: e.target.value })} className="w-full px-2 py-1.25 text-sm border rounded-sm focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-transparent border-gray-300" />
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Receipt Logo URL</label>
+                <input type="text" value={formData.receipt_logo_url} onChange={e => setFormData({ ...formData, receipt_logo_url: e.target.value })} className="w-full px-2 py-1.5 text-sm border border-gray-300 dark:border-gray-600 rounded-sm focus:outline-none focus:ring-1 focus:ring-blue-500 dark:bg-gray-700 dark:text-gray-100" placeholder="https://..." />
               </div>
             </div>
 
             {/* Receipt Footer, Device Info, Header in same row */}
             <div className="grid grid-cols-1 md:grid-cols-3 gap-2 mt-0">
               <div>
-                <label className="block text-sm font-medium">Receipt Footer</label>
-                <textarea value={formData.receipt_footer} onChange={e => setFormData({ ...formData, receipt_footer: e.target.value })} className="w-full px-2 py-1.25 text-sm border rounded-sm focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-transparent border-gray-300" rows={3} />
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Receipt Header</label>
+                <textarea value={formData.receipt_header} onChange={e => setFormData({ ...formData, receipt_header: e.target.value })} className="w-full px-2 py-1.5 text-sm border border-gray-300 dark:border-gray-600 rounded-sm focus:outline-none focus:ring-1 focus:ring-blue-500 dark:bg-gray-700 dark:text-gray-100" rows={3} placeholder="e.g. Welcome to our store!" />
               </div>
 
               <div>
-                <label className="block text-sm font-medium">Device Info (JSON)</label>
-                <textarea value={formData.device_info} onChange={e => setFormData({ ...formData, device_info: e.target.value })} className="w-full px-2 py-1.25 text-sm border rounded-sm focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-transparent border-gray-300" rows={3} />
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Receipt Footer</label>
+                <textarea value={formData.receipt_footer} onChange={e => setFormData({ ...formData, receipt_footer: e.target.value })} className="w-full px-2 py-1.5 text-sm border border-gray-300 dark:border-gray-600 rounded-sm focus:outline-none focus:ring-1 focus:ring-blue-500 dark:bg-gray-700 dark:text-gray-100" rows={3} placeholder="e.g. Thank you for shopping!" />
               </div>
 
               <div>
-                <label className="block text-sm font-medium">Receipt Header</label>
-                <textarea value={formData.receipt_header} onChange={e => setFormData({ ...formData, receipt_header: e.target.value })} className="w-full px-2 py-1.25 text-sm border rounded-sm focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-transparent border-gray-300" rows={3} />
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Device Info (JSON)</label>
+                <textarea value={formData.device_info} onChange={e => setFormData({ ...formData, device_info: e.target.value })} className="w-full px-2 py-1.5 text-sm border border-gray-300 dark:border-gray-600 rounded-sm focus:outline-none focus:ring-1 focus:ring-blue-500 dark:bg-gray-700 dark:text-gray-100" rows={3} placeholder='{"model":"..."}' />
               </div>
             </div>
 
             <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
               <div>
-                <label className="block text-sm font-medium">Allow Price Override</label>
                 <label className="flex items-center gap-2 mt-1 cursor-pointer">
                   <input type="checkbox" checked={!!formData.allow_price_override} onChange={e => setFormData({ ...formData, allow_price_override: e.target.checked })} className="w-4 h-4" />
-                  <span className="text-sm">Allow</span>
+                  <span className="text-sm text-gray-700 dark:text-gray-300">Allow Price Override</span>
                 </label>
               </div>
 
               <div>
-                <label className="block text-sm font-medium">Allow Discount</label>
                 <label className="flex items-center gap-2 mt-1 cursor-pointer">
                   <input type="checkbox" checked={!!formData.allow_discount} onChange={e => setFormData({ ...formData, allow_discount: e.target.checked })} className="w-4 h-4" />
-                  <span className="text-sm">Allow</span>
+                  <span className="text-sm text-gray-700 dark:text-gray-300">Allow Discount</span>
                 </label>
               </div>
 
               <div>
-                <label className="block text-sm font-medium">Allow Negative Stock</label>
                 <label className="flex items-center gap-2 mt-1 cursor-pointer">
                   <input type="checkbox" checked={!!formData.allow_negative_stock} onChange={e => setFormData({ ...formData, allow_negative_stock: e.target.checked })} className="w-4 h-4" />
-                  <span className="text-sm">Allow</span>
+                  <span className="text-sm text-gray-700 dark:text-gray-300">Allow Negative Stock</span>
                 </label>
               </div>
 
               <div>
-                <label className="block text-sm font-medium">Require Customer</label>
                 <label className="flex items-center gap-2 mt-1 cursor-pointer">
                   <input type="checkbox" checked={!!formData.require_customer} onChange={e => setFormData({ ...formData, require_customer: e.target.checked })} className="w-4 h-4" />
-                  <span className="text-sm">Require</span>
+                  <span className="text-sm text-gray-700 dark:text-gray-300">Require Customer</span>
                 </label>
               </div>
 
               <div>
-                <label className="block text-sm font-medium">Show Tax Details</label>
                 <label className="flex items-center gap-2 mt-1 cursor-pointer">
                   <input type="checkbox" checked={!!formData.show_tax_details} onChange={e => setFormData({ ...formData, show_tax_details: e.target.checked })} className="w-4 h-4" />
-                  <span className="text-sm">Show</span>
+                  <span className="text-sm text-gray-700 dark:text-gray-300">Show Tax Details</span>
                 </label>
               </div>
 
               <div>
-                <label className="block text-sm font-medium">Show Barcode</label>
                 <label className="flex items-center gap-2 mt-1 cursor-pointer">
                   <input type="checkbox" checked={!!formData.show_barcode} onChange={e => setFormData({ ...formData, show_barcode: e.target.checked })} className="w-4 h-4" />
-                  <span className="text-sm">Show</span>
+                  <span className="text-sm text-gray-700 dark:text-gray-300">Show Barcode</span>
                 </label>
               </div>
 
               <div>
-                <label className="block text-sm font-medium">Online</label>
                 <label className="flex items-center gap-2 mt-1 cursor-pointer">
                   <input type="checkbox" checked={!!formData.is_online} onChange={e => setFormData({ ...formData, is_online: e.target.checked })} className="w-4 h-4" />
-                  <span className="text-sm">Is Online</span>
+                  <span className="text-sm text-gray-700 dark:text-gray-300">Is Online</span>
+                </label>
+              </div>
+
+              <div>
+                <label className="flex items-center gap-2 mt-1 cursor-pointer">
+                  <input type="checkbox" checked={!!formData.is_active} onChange={e => setFormData({ ...formData, is_active: e.target.checked })} className="w-4 h-4" />
+                  <span className="text-sm text-gray-700 dark:text-gray-300">Is Active</span>
                 </label>
               </div>
             </div>
@@ -529,7 +549,7 @@ export default function PosRegisterPage() {
               <button
                 type="button"
                 onClick={() => setShowForm(false)}
-                className="px-3 py-1.5 bg-gray-600 text-white text-sm font-medium rounded-sm hover:bg-gray-700 transition-colors flex items-center gap-2 cursor-pointer"
+                className="px-3 py-1.5 bg-gray-500 text-white text-sm font-medium rounded-sm hover:bg-gray-600 transition-colors flex items-center gap-2 cursor-pointer"
               >
                 <X className="w-4 h-4" />
                 Cancel
