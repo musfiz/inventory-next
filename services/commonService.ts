@@ -116,7 +116,7 @@ class CommonService {
    */
   async getVariationsByProduct(
     productId: string,
-    params?: { search?: string; warehouse_id?: number }
+    params?: { search?: string; warehouse_id?: number; is_brand?: boolean }
   ): Promise<any[]> {
     const response = await apiClient.get<{
       data: any[];

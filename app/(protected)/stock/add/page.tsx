@@ -22,6 +22,19 @@ export default function StockAddPage() {
 
   const [variations, setVariations] = useState<any[]>([]);
   const [stocks, setStocks] = useState<any[]>([]);
+  const [productByBrand, setproductByBrand] = useState<boolean>(false);
+
+  // Confirmation modal state (used when productByBrand is active)
+  const [showConfirm, setShowConfirm] = useState(false);
+  const [confirmItems, setConfirmItems] = useState<Array<{sku: string; name: string; productName: string; qty: number}>>([]);
+  const [pendingPayload, setPendingPayload] = useState<any>(null);
+
+  // Computed: check if product selection is allowed
+  const canSelectProduct = () => {
+    if (isSuperAdmin && !selectedTenant) return false;
+    if (!selectedWarehouse) return false;
+    return true;
+  };
 
   const loadTenantOptions = async (input: string) => {
     if (!isSuperAdmin) return [];
@@ -39,6 +52,17 @@ export default function StockAddPage() {
   }, [isSuperAdmin]);
 
   const loadProductOptions = async (input: string) => {
+    // Validation: ensure tenant (if superadmin) and warehouse are selected first
+    const tenant_id = isSuperAdmin ? selectedTenant?.value : authUser?.tenant_id;
+    if (isSuperAdmin && !selectedTenant) {
+      notify.error('Please select a tenant first');
+      return [];
+    }
+    if (!selectedWarehouse) {
+      notify.error('Please select a warehouse first');
+      return [];
+    }
+    
     const list = await commonService.getProductsForDropdown({ search: input }).catch(() => []);
     return (list || []).map((p: any) => ({ value: p.id, label: p.name }));
   };
@@ -95,27 +119,30 @@ export default function StockAddPage() {
   }, [isSuperAdmin, selectedTenant]);
 
   useEffect(() => {
-    // when product selected, load its variations
+    // when product selected, load variations (backend handles brand logic via is_brand param)
     const load = async () => {
       if (!selectedProduct) return;
       try {
         const warehouseId = selectedWarehouse?.value;
+        
+        // Pass is_brand to backend - it will handle fetching all brand variations if true
         const items = await commonService
-          .getVariationsByProduct(selectedProduct.value, {
+          .getVariationsByProduct(selectedProduct.value, { 
             warehouse_id: warehouseId,
-          })
+            is_brand: productByBrand 
+          } as any)
           .catch(() => []);
+        
         setVariations(items || []);
-        setStocks(
-          (items || []).map((v: any) => ({
-            variation_id: v.id,
-            quantity: v.stock?.quantity ?? 0,
-            reserved_quantity: v.stock?.reserved_quantity ?? 0,
-            min_quantity: v.stock?.min_quantity ?? null,
-            max_quantity: v.stock?.max_quantity ?? null,
-            reorder_point: v.stock?.reorder_point ?? null,
-          }))
-        );
+        setStocks((items || []).map((v: any) => ({
+          variation_id: v.id,
+          quantity: 0,
+          reserved_quantity: v.stock?.reserved_quantity ?? 0,
+          min_quantity: v.stock?.min_quantity ?? null,
+          max_quantity: v.stock?.max_quantity ?? null,
+          reorder_point: v.stock?.reorder_point ?? null,
+          last_cost: v.stock?.last_cost ?? null,
+        })));
       } catch (err) {
         console.error('Failed to load variations', err);
         setVariations([]);
@@ -123,11 +150,12 @@ export default function StockAddPage() {
       }
     };
     load();
-  }, [selectedProduct, selectedWarehouse]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedProduct, selectedWarehouse, productByBrand]);
 
   const handleStockChange = (index: number, field: string, value: any) => {
     const copy = [...stocks];
-    const numericFields = ['quantity', 'reserved_quantity', 'min_quantity', 'max_quantity', 'reorder_point'];
+    const numericFields = ['quantity', 'reserved_quantity', 'min_quantity', 'max_quantity', 'reorder_point', 'last_cost'];
     let newValue: any = value;
     if (numericFields.includes(field)) {
       // allow empty string to clear optional fields
@@ -167,30 +195,69 @@ export default function StockAddPage() {
     }
 
     try {
+      // Reusable helper to build a single stock entry
+      const buildEntry = (s: any, i: number) => ({
+        variation_id: s.variation_id,
+        product_id: variations[i]?.product_id || selectedProduct.value,
+        warehouse_id: selectedWarehouse.value,
+        quantity: s.quantity || 0,
+        reserved_quantity: s.reserved_quantity || 0,
+        min_quantity:
+          s.min_quantity === undefined || s.min_quantity === null || s.min_quantity === ''
+            ? 1
+            : Number(s.min_quantity),
+        max_quantity:
+          s.max_quantity === undefined || s.max_quantity === null || s.max_quantity === ''
+            ? null
+            : Number(s.max_quantity),
+        reorder_point:
+          s.reorder_point === undefined || s.reorder_point === null || s.reorder_point === ''
+            ? null
+            : Number(s.reorder_point),
+        last_cost:
+          s.last_cost === undefined || s.last_cost === null || s.last_cost === ''
+            ? null
+            : Number(s.last_cost),
+      });
+
+      if (productByBrand) {
+        // Brand mode: only include rows where the user entered qty > 0
+        const activeItems = stocks
+          .map((s, i) => ({ s, i }))
+          .filter(({ s }) => Number(s.quantity) > 0);
+
+        if (activeItems.length === 0) {
+          notify.error('Please enter Add Quantity for at least one variation');
+          return;
+        }
+
+        // Build the display list for the confirmation modal
+        const items = activeItems.map(({ s, i }) => ({
+          sku: variations[i]?.sku || '',
+          name: variations[i]?.name || '',
+          productName: variations[i]?.product?.name || selectedProduct.label || '',
+          qty: Number(s.quantity),
+        }));
+
+        const payload = {
+          tenant_id: isSuperAdmin ? selectedTenant?.value : undefined,
+          warehouse_id: selectedWarehouse.value,
+          product_id: selectedProduct.value,
+          stocks: activeItems.map(({ s, i }) => buildEntry(s, i)),
+        };
+
+        setConfirmItems(items);
+        setPendingPayload(payload);
+        setShowConfirm(true);
+        return; // wait for user confirmation
+      }
+
+      // Non-brand mode: send all variations as before
       const payload = {
         tenant_id: isSuperAdmin ? selectedTenant?.value : undefined,
         warehouse_id: selectedWarehouse.value,
         product_id: selectedProduct.value,
-        stocks: stocks.map((s, i) => ({
-          variation_id: s.variation_id,
-          product_id: selectedProduct.value,
-          warehouse_id: selectedWarehouse.value,
-          quantity: s.quantity || 0,
-          reserved_quantity: s.reserved_quantity || 0,
-          // If min_quantity is empty/null/undefined, default to 1
-          min_quantity:
-            s.min_quantity === undefined || s.min_quantity === null || s.min_quantity === ''
-              ? 1
-              : Number(s.min_quantity),
-          max_quantity:
-            s.max_quantity === undefined || s.max_quantity === null || s.max_quantity === ''
-              ? null
-              : Number(s.max_quantity),
-          reorder_point:
-            s.reorder_point === undefined || s.reorder_point === null || s.reorder_point === ''
-              ? null
-              : Number(s.reorder_point),
-        })),
+        stocks: stocks.map((s, i) => buildEntry(s, i)),
       };
 
       await stockService.storeStocks(payload);
@@ -204,6 +271,31 @@ export default function StockAddPage() {
     } catch (err: any) {
       console.error(err);
       // If validation errors from backend
+      if (err?.response?.data?.errors) {
+        const transformed: { [k: string]: string } = {};
+        Object.entries(err.response.data.errors).forEach(([k, v]: any) => {
+          transformed[k] = Array.isArray(v) ? v.join(', ') : v;
+        });
+        setFormErrors(transformed);
+      } else {
+        notify.error(err?.response?.data?.message || 'Failed to save stocks');
+      }
+    }
+  };
+
+  const handleConfirmSave = async () => {
+    setShowConfirm(false);
+    try {
+      await stockService.storeStocks(pendingPayload);
+      notify.success('Stocks saved successfully');
+      setFormErrors({});
+      setSelectedProduct(null);
+      setVariations([]);
+      setStocks([]);
+      setPendingPayload(null);
+      setConfirmItems([]);
+    } catch (err: any) {
+      console.error(err);
       if (err?.response?.data?.errors) {
         const transformed: { [k: string]: string } = {};
         Object.entries(err.response.data.errors).forEach(([k, v]: any) => {
@@ -238,8 +330,11 @@ export default function StockAddPage() {
                     const { tenant_id, ...rest } = formErrors;
                     setFormErrors(rest);
                   }
-                  // clear selected warehouse when tenant changes
+                  // clear selected warehouse and product when tenant changes
                   setSelectedWarehouse(null);
+                  setSelectedProduct(null);
+                  setVariations([]);
+                  setStocks([]);
                 }}
                 loadOptions={loadTenantOptions}
                 defaultOptions={defaultTenantOptions}
@@ -267,6 +362,10 @@ export default function StockAddPage() {
                   const { warehouse_id, ...rest } = formErrors;
                   setFormErrors(rest);
                 }
+                // clear selected product when warehouse changes
+                setSelectedProduct(null);
+                setVariations([]);
+                setStocks([]);
               }}
               loadOptions={loadWarehouseOptions}
               defaultOptions={defaultWarehouseOptions}
@@ -296,9 +395,16 @@ export default function StockAddPage() {
                   }}
                   loadOptions={loadProductOptions}
                   defaultOptions={defaultProductOptions}
-                  placeholder="Select product"
+                  placeholder={
+                    !canSelectProduct()
+                      ? isSuperAdmin && !selectedTenant
+                        ? 'Select tenant first'
+                        : 'Select warehouse first'
+                      : 'Select product'
+                  }
                   className="text-sm"
                   isInvalid={!!formErrors.product_id}
+                  isDisabled={!canSelectProduct()}
                 />
               </div>
               {selectedProduct && (
@@ -321,7 +427,35 @@ export default function StockAddPage() {
             {formErrors.product_id && (
               <p className="text-red-600 text-xs mt-1">{formErrors.product_id}</p>
             )}
+            {!canSelectProduct() && (
+              <p className="text-amber-600 text-xs mt-1">
+                {isSuperAdmin && !selectedTenant
+                  ? '⚠ Please select a tenant before choosing a product'
+                  : '⚠ Please select a warehouse before choosing a product'}
+              </p>
+            )}
           </div>
+        </div>
+
+        {/* Product By Brand Row */}
+        <div className="flex items-center gap-3">
+          <label className="flex items-center text-sm cursor-pointer">
+            <input
+              type="checkbox"
+              checked={productByBrand}
+              onChange={e => setproductByBrand(e.target.checked)}
+              disabled={!canSelectProduct()}
+              className="mr-2 w-4 h-4 disabled:opacity-50 disabled:cursor-not-allowed"
+            />
+            <span className={!canSelectProduct() ? 'text-gray-400 dark:text-gray-500' : 'text-gray-700 dark:text-gray-300 font-medium'}>
+              Product By Brand
+            </span>
+          </label>
+          {productByBrand && (
+            <span className="text-xs font-bold text-cyan-600 dark:text-cyan-400">
+              ℹ All variations from products with the same brand will be loaded
+            </span>
+          )}
         </div>
 
         {/* Variations table */}
@@ -350,7 +484,7 @@ export default function StockAddPage() {
                         Current Stock
                       </th>
                       <th className="px-3 py-2 text-left text-xs font-semibold text-gray-700 dark:text-gray-300 border-b border-gray-300 dark:border-gray-600 w-32">
-                        New Qty
+                        Add Quantity
                       </th>
                       <th className="px-3 py-2 text-left text-xs font-semibold text-gray-700 dark:text-gray-300 border-b border-gray-300 dark:border-gray-600 w-32">
                         Reserved
@@ -363,6 +497,9 @@ export default function StockAddPage() {
                       </th>
                       <th className="px-3 py-2 text-left text-xs font-semibold text-gray-700 dark:text-gray-300 border-b border-gray-300 dark:border-gray-600 w-28">
                         Reorder Point
+                      </th>
+                      <th className="px-3 py-2 text-left text-xs font-semibold text-gray-700 dark:text-gray-300 border-b border-gray-300 dark:border-gray-600 w-32">
+                        Last Cost
                       </th>
                     </tr>
                   </thead>
@@ -385,6 +522,11 @@ export default function StockAddPage() {
                             {v.name && (
                               <span className="text-xs text-gray-500 dark:text-gray-400">
                                 {v.name}
+                              </span>
+                            )}
+                            {v.product && v.product.name && (
+                              <span className="text-xs text-blue-600 dark:text-blue-400 mt-0.5 font-medium">
+                                {v.product.name}
                               </span>
                             )}
                           </div>
@@ -460,6 +602,18 @@ export default function StockAddPage() {
                             placeholder="Opt."
                           />
                         </td>
+                        <td className="px-3 py-1">
+                          <input
+                            type="number"
+                            min={0}
+                            step="0.01"
+                            value={stocks[idx]?.last_cost !== undefined && stocks[idx]?.last_cost !== null && stocks[idx]?.last_cost !== '' ? stocks[idx].last_cost : ''}
+                            onChange={e => handleStockChange(idx, 'last_cost', e.target.value)}
+                            onFocus={e => e.target.select()}
+                            className="w-full px-2.5 py-1.5 text-right text-sm border border-gray-300 dark:border-gray-600 rounded-sm focus:outline-none focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400 focus:border-transparent dark:bg-gray-700 dark:text-gray-100 transition-all"
+                            placeholder="Opt."
+                          />
+                        </td>
                       </tr>
                     ))}
                   </tbody>
@@ -483,6 +637,70 @@ export default function StockAddPage() {
           </button>
         </div>
       </form>
+
+      {/* Confirmation Modal — shown only in Product By Brand mode */}
+      {showConfirm && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
+          <div className="bg-white dark:bg-gray-800 rounded-lg shadow-xl p-5 max-w-lg w-full mx-4">
+            <h2 className="text-base font-semibold text-gray-900 dark:text-gray-100 mb-1">
+              Confirm Stock Update
+            </h2>
+            <p className="text-sm text-gray-600 dark:text-gray-400 mb-3">
+              <strong>{confirmItems.length}</strong> variation(s) with new quantity will be updated.
+              Variations with Add Quantity = 0 will be skipped.
+            </p>
+            <div className="border border-gray-200 dark:border-gray-600 rounded-md overflow-hidden max-h-60 overflow-y-auto mb-3">
+              <table className="w-full text-sm">
+                <thead className="bg-gray-100 dark:bg-gray-700 sticky top-0">
+                  <tr>
+                    <th className="px-3 py-2 text-left text-xs font-semibold text-gray-700 dark:text-gray-300">Variation</th>
+                    <th className="px-3 py-2 text-left text-xs font-semibold text-gray-700 dark:text-gray-300">Product</th>
+                    <th className="px-3 py-2 text-right text-xs font-semibold text-gray-700 dark:text-gray-300">Add Qty</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-gray-200 dark:divide-gray-700 bg-white dark:bg-gray-800">
+                  {confirmItems.map((item, i) => (
+                    <tr key={i}>
+                      <td className="px-3 py-1.5">
+                        <span className="font-mono text-xs font-medium text-gray-900 dark:text-gray-100">{item.sku}</span>
+                        {item.name && (
+                          <span className="block text-xs text-gray-500 dark:text-gray-400">{item.name}</span>
+                        )}
+                      </td>
+                      <td className="px-3 py-1.5 text-xs text-blue-600 dark:text-blue-400">{item.productName}</td>
+                      <td className="px-3 py-1.5 text-right font-semibold text-green-600 dark:text-green-400">+{item.qty}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+            <p className="text-xs text-gray-500 dark:text-gray-400 mb-4">
+              Confirmed quantities will be added to existing stock (old + new).
+            </p>
+            <div className="flex justify-end gap-2">
+              <button
+                type="button"
+                onClick={() => {
+                  setShowConfirm(false);
+                  setPendingPayload(null);
+                  setConfirmItems([]);
+                }}
+                className="px-4 py-1.5 bg-gray-200 hover:bg-gray-300 dark:bg-gray-700 dark:hover:bg-gray-600 text-gray-800 dark:text-gray-200 text-sm font-medium rounded-sm transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={handleConfirmSave}
+                className="px-4 py-1.5 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium rounded-sm transition-colors flex items-center gap-1.5"
+              >
+                <SaveAll className="w-4 h-4" />
+                Confirm &amp; Save
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

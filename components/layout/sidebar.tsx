@@ -31,7 +31,7 @@ import {
   FileText,
   FileSpreadsheet,
 } from 'lucide-react';
-import { MdOutlineAssignmentReturn, MdOutlinePointOfSale, MdOutlinePostAdd } from 'react-icons/md';
+import { MdOutlineAssignmentReturn, MdOutlinePointOfSale, MdOutlinePostAdd, MdSupervisedUserCircle } from 'react-icons/md';
 import { BsReceiptCutoff } from 'react-icons/bs';
 import { LiaFileInvoiceDollarSolid } from 'react-icons/lia';
 import { PiUserListDuotone } from 'react-icons/pi';
@@ -158,6 +158,7 @@ const navigation: NavigationItem[] = [
     icon: CircleDollarSign,
     permission: 'view-sales',
     children: [
+      { name: 'Customer', href: '/customers', icon: MdSupervisedUserCircle, permission: 'view-customer' },
       { name: 'Sales Orders', href: '/sales-orders', icon: BsReceiptCutoff, permission: 'view-sales' },
       { name: 'Add Sales Order', href: '/sales-orders/add', icon: MdOutlinePostAdd, permission: 'create-sales' },
     ],

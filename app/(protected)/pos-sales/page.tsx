@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState, useRef, useMemo } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import {
   Search,
   Barcode,
@@ -24,10 +24,17 @@ import {
 } from 'lucide-react';
 import { notify } from '@/lib/notifications';
 import { posService } from '@/services';
+import customerService from '@/services/customerService';
 import { useAuthStore } from '@/stores/auth-store';
 import Swal from 'sweetalert2';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
+
+interface PosCategory {
+  id: number;
+  name: string;
+  image_url?: string;
+}
 
 interface Product {
   id: string;
@@ -87,7 +94,8 @@ export default function POSSalesPage() {
   const [filteredProducts, setFilteredProducts] = useState<Product[]>([]);
   const [cart, setCart] = useState<CartItem[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
-  const [selectedCategory, setSelectedCategory] = useState<string>('all');
+  const [selectedCategory, setSelectedCategory] = useState<number | 'all'>('all');
+  const [categories, setCategories] = useState<PosCategory[]>([]);
   const [customer, setCustomer] = useState<Customer>({ name: 'Walk-in Customer' });
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>('cash');
   const [amountTendered, setAmountTendered] = useState<string>('');
@@ -96,7 +104,20 @@ export default function POSSalesPage() {
   const [taxRate, setTaxRate] = useState<number>(0);
   const [note, setNote] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const [productsLoading, setProductsLoading] = useState(false);
   const [orderNumber, setOrderNumber] = useState('');
+  const searchDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // ── Customer Dialog State ────────────────────────────────────────────────────
+  const [showCustomerDialog, setShowCustomerDialog] = useState(false);
+  const [customerSearch, setCustomerSearch] = useState('');
+  const [customerResults, setCustomerResults] = useState<any[]>([]);
+  const [customerSearchLoading, setCustomerSearchLoading] = useState(false);
+  const [showCreateForm, setShowCreateForm] = useState(false);
+  const [newCustomerName, setNewCustomerName] = useState('');
+  const [newCustomerPhone, setNewCustomerPhone] = useState('');
+  const [customerCreateLoading, setCustomerCreateLoading] = useState(false);
+  const customerSearchDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // ── Effects ─────────────────────────────────────────────────────────────────
 
@@ -117,35 +138,41 @@ export default function POSSalesPage() {
 
   useEffect(() => {
     loadProducts();
+    loadCategories();
     generateOrderNumber();
   }, []);
 
+  // Debounced server-side search: fires 400ms after the user stops typing
   useEffect(() => {
-    // Filter products based on search and category
-    let filtered = products;
-
-    if (searchQuery) {
-      const query = searchQuery.toLowerCase();
-      filtered = filtered.filter(
-        p =>
-          p.name?.toLowerCase().includes(query) ||
-          p.sku?.toLowerCase().includes(query) ||
-          p.barcode?.toLowerCase().includes(query)
-      );
-    }
-
-    if (selectedCategory !== 'all') {
-      filtered = filtered.filter(p => p.category === selectedCategory);
-    }
-
-    setFilteredProducts(filtered);
-  }, [searchQuery, selectedCategory, products]);
+    if (searchDebounceRef.current) clearTimeout(searchDebounceRef.current);
+    searchDebounceRef.current = setTimeout(() => {
+      const catId = selectedCategory === 'all' ? undefined : selectedCategory;
+      loadProducts(catId, searchQuery);
+    }, 400);
+    return () => {
+      if (searchDebounceRef.current) clearTimeout(searchDebounceRef.current);
+    };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [searchQuery]);
 
   // ── Data Loading ────────────────────────────────────────────────────────────
 
-  const loadProducts = async () => {
+  const loadCategories = async () => {
     try {
-      const variations: any[] = await posService.getProducts({ per_page: 100 });
+      const cats = await posService.getCategories();
+      setCategories(cats || []);
+    } catch {
+      // categories are non-critical, fail silently
+    }
+  };
+
+  const loadProducts = async (categoryId?: number, search?: string) => {
+    setProductsLoading(true);
+    try {
+      const params: { per_page: number; category_id?: number; search?: string } = { per_page: 100 };
+      if (categoryId) params.category_id = categoryId;
+      if (search && search.trim()) params.search = search.trim();
+      const variations: any[] = await posService.getProducts(params);
       const productList = variations || [];
       const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL || '';
       
@@ -189,7 +216,7 @@ export default function POSSalesPage() {
           images: allImages,
           stock: v.stock?.quantity ?? 0,
           category: v.product?.category?.name || 'Uncategorized',
-          barcode: v.barcode,
+          barcode: v.barcodes?.[0]?.barcode ?? v.barcode,
         };
       });
 
@@ -197,6 +224,70 @@ export default function POSSalesPage() {
       setFilteredProducts(mapped);
     } catch (error: any) {
       notify.error('Failed to load products');
+    } finally {
+      setProductsLoading(false);
+    }
+  };
+
+  // ── Customer Dialog Logic ────────────────────────────────────────────────────
+
+  const openCustomerDialog = () => {
+    setCustomerSearch('');
+    setCustomerResults([]);
+    setShowCreateForm(false);
+    setNewCustomerName('');
+    setNewCustomerPhone('');
+    setShowCustomerDialog(true);
+    // Preload top customers
+    searchCustomerApi('');
+  };
+
+  const searchCustomerApi = async (q: string) => {
+    setCustomerSearchLoading(true);
+    try {
+      const results = await customerService.getCustomersDropdown({ search: q, per_page: 20 });
+      setCustomerResults(results || []);
+    } catch {
+      setCustomerResults([]);
+    } finally {
+      setCustomerSearchLoading(false);
+    }
+  };
+
+  const handleCustomerSearchChange = (val: string) => {
+    setCustomerSearch(val);
+    if (customerSearchDebounceRef.current) clearTimeout(customerSearchDebounceRef.current);
+    customerSearchDebounceRef.current = setTimeout(() => searchCustomerApi(val), 350);
+  };
+
+  const selectCustomer = (c: any) => {
+    setCustomer({
+      id: c.id,
+      name: c.phone ? `${c.name} (${c.phone})` : c.name,
+      phone: c.phone,
+      email: c.email,
+    });
+    setShowCustomerDialog(false);
+  };
+
+  const handleCreateCustomer = async () => {
+    if (!newCustomerName.trim()) {
+      notify.error('Customer name is required');
+      return;
+    }
+    setCustomerCreateLoading(true);
+    try {
+      const res = await customerService.storeCustomer({
+        name: newCustomerName.trim(),
+        phone: newCustomerPhone.trim() || undefined,
+      });
+      const created = res?.data || res;
+      selectCustomer(created);
+      notify.success('Customer created and selected');
+    } catch (err: any) {
+      notify.error(err?.response?.data?.message || 'Failed to create customer');
+    } finally {
+      setCustomerCreateLoading(false);
     }
   };
 
@@ -244,7 +335,6 @@ export default function POSSalesPage() {
       };
       setCart([...cart, newItem]);
     }
-    notify.success(`${product.product_name} - ${product.variant_name} added to cart`);
   };
 
   const updateCartItem = (itemId: string, updates: Partial<CartItem>) => {
@@ -387,13 +477,6 @@ export default function POSSalesPage() {
     // Implement thermal printer integration here
   };
 
-  // ── Categories ──────────────────────────────────────────────────────────────
-
-  const categories = useMemo(() => {
-    const cats = new Set(products.map(p => p.category));
-    return ['all', ...Array.from(cats)];
-  }, [products]);
-
   // ─── Render ─────────────────────────────────────────────────────────────────
 
   return (
@@ -448,23 +531,50 @@ export default function POSSalesPage() {
                 onChange={e => setSearchQuery(e.target.value)}
                 className="w-full pl-10 pr-10 py-1.5 text-sm bg-gray-50 dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-md text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
               />
-              <Barcode className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+              {productsLoading ? (
+                <svg className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-blue-500 animate-spin" fill="none" viewBox="0 0 24 24">
+                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z" />
+                </svg>
+              ) : searchQuery ? (
+                <button
+                  onClick={() => { setSearchQuery(''); const catId = selectedCategory === 'all' ? undefined : selectedCategory; loadProducts(catId); searchInputRef.current?.focus(); }}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 transition-colors"
+                  title="Clear search"
+                >
+                  <XCircle className="w-4 h-4" />
+                </button>
+              ) : (
+                <Barcode className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+              )}
             </div>
           </div>
 
           {/* Category Chips - Fixed */}
           <div className="px-2 py-2 border-b border-gray-200 dark:border-gray-800 overflow-x-auto flex-shrink-0 bg-white dark:bg-gray-900">
             <div className="flex gap-2">
-              {categories.map(cat => (
-                <button
-                  key={cat || 'all'}
-                  onClick={() => setSelectedCategory(cat || 'all')}
-                  className={`px-3 py-1 text-xs font-medium rounded-full whitespace-nowrap transition-colors ${selectedCategory === cat
+              {/* All button */}
+              <button
+                onClick={() => { setSelectedCategory('all'); loadProducts(undefined, searchQuery || undefined); }}
+                className={`px-3 py-1 text-xs font-medium rounded-full whitespace-nowrap transition-colors ${
+                  selectedCategory === 'all'
                     ? 'bg-blue-600 text-white'
                     : 'bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700'
-                    }`}
+                }`}
+              >
+                All
+              </button>
+              {categories.map(cat => (
+                <button
+                  key={cat.id}
+                  onClick={() => { setSelectedCategory(cat.id); loadProducts(cat.id, searchQuery || undefined); }}
+                  className={`px-3 py-1 text-xs font-medium rounded-full whitespace-nowrap transition-colors ${
+                    selectedCategory === cat.id
+                      ? 'bg-blue-600 text-white'
+                      : 'bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700'
+                  }`}
                 >
-                  {cat === 'all' ? 'All' : cat}
+                  {cat.name}
                 </button>
               ))}
             </div>
@@ -472,8 +582,21 @@ export default function POSSalesPage() {
 
           {/* Product Grid - Scrollable */}
           <div className="flex-1 overflow-y-auto p-2 min-h-0 overscroll-contain scrollbar-thin">
-            <div className="grid grid-cols-4 gap-2">
-              {filteredProducts.map(product => {
+            {productsLoading ? (
+              <div className="grid grid-cols-4 gap-2">
+                {Array.from({ length: 12 }).map((_, i) => (
+                  <div key={i} className="bg-gray-100 dark:bg-gray-800 rounded-lg p-2 animate-pulse">
+                    <div className="aspect-square mb-1.5 bg-gray-200 dark:bg-gray-700 rounded-md" />
+                    <div className="h-3 bg-gray-200 dark:bg-gray-700 rounded mb-1" />
+                    <div className="h-3 bg-gray-200 dark:bg-gray-700 rounded w-2/3 mb-1" />
+                    <div className="h-4 bg-gray-200 dark:bg-gray-700 rounded w-1/2" />
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <>
+                <div className="grid grid-cols-5 gap-2">
+                  {filteredProducts.map(product => {
                 const stockStatus =
                   !product.stock || product.stock === 0
                     ? 'out'
@@ -549,7 +672,7 @@ export default function POSSalesPage() {
 
                     {/* Product Info */}
                     <div className="text-left">
-                      <h3 className="text-xs font-semibold text-gray-900 dark:text-gray-100 line-clamp-1 mb-0.5">
+                      <h3 title={product.product_name } className="text-xs font-semibold text-gray-900 dark:text-gray-100 line-clamp-1 mb-0.5">
                         {product.product_name}
                       </h3>
                       <p className="text-xs text-blue-600 dark:text-blue-400 font-medium line-clamp-1 mb-0.5">
@@ -568,13 +691,15 @@ export default function POSSalesPage() {
                   </button>
                 );
               })}
-            </div>
+                </div>
 
-            {filteredProducts.length === 0 && (
-              <div className="flex flex-col items-center justify-center h-64 text-gray-400">
-                <Package className="w-16 h-16 mb-3" />
-                <p className="text-sm">No products found</p>
-              </div>
+                {filteredProducts.length === 0 && (
+                  <div className="flex flex-col items-center justify-center h-64 text-gray-400">
+                    <Package className="w-16 h-16 mb-3" />
+                    <p className="text-sm">No products found</p>
+                  </div>
+                )}
+              </>
             )}
           </div>
         </div>
@@ -609,17 +734,7 @@ export default function POSSalesPage() {
                 <span className="text-sm text-gray-700 dark:text-gray-300">{customer.name}</span>
               </div>
               <button
-                onClick={() => {
-                  Swal.fire({
-                    icon: 'info',
-                    title: 'Customer Search',
-                    text: 'Customer search feature coming soon',
-                    toast: true,
-                    position: 'top-end',
-                    showConfirmButton: false,
-                    timer: 2000,
-                  });
-                }}
+                onClick={openCustomerDialog}
                 className="text-xs text-blue-600 dark:text-blue-400 hover:underline"
               >
                 Change
@@ -716,24 +831,6 @@ export default function POSSalesPage() {
                 onClick={() => {
                   Swal.fire({
                     icon: 'info',
-                    title: 'Discount',
-                    text: 'Discount modal coming soon',
-                    toast: true,
-                    position: 'top-end',
-                    showConfirmButton: false,
-                    timer: 2000,
-                  });
-                }}
-                disabled={cart.length === 0}
-                className="w-full flex items-center justify-center gap-2 px-3 py-2 text-sm font-semibold text-gray-700 dark:text-gray-300 bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 rounded-lg transition-colors shadow-sm disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                <Tag className="w-4 h-4" />
-                Apply Discount
-              </button>
-              <button
-                onClick={() => {
-                  Swal.fire({
-                    icon: 'info',
                     title: 'Add Note',
                     text: 'Note modal coming soon',
                     toast: true,
@@ -803,6 +900,7 @@ export default function POSSalesPage() {
                     step="0.01"
                     value={discount}
                     onChange={e => setDiscount(parseFloat(e.target.value) || 0)}
+                    onFocus={e => (e.target as HTMLInputElement).select()}
                     className="flex-1 px-2 py-1 text-xs bg-white dark:bg-gray-900 border border-gray-300 dark:border-gray-600 rounded text-right"
                     placeholder="0.00"
                   />
@@ -820,6 +918,7 @@ export default function POSSalesPage() {
                   step="0.01"
                   value={taxRate}
                   onChange={e => setTaxRate(parseFloat(e.target.value) || 0)}
+                  onFocus={e => (e.target as HTMLInputElement).select()}
                   className="w-full px-2 py-1 text-xs bg-white dark:bg-gray-900 border border-gray-300 dark:border-gray-600 rounded text-right"
                   placeholder="0.00"
                 />
@@ -942,6 +1041,124 @@ export default function POSSalesPage() {
           </div>
         </div>
       </div>
+
+      {/* Customer Search & Quick-Create Dialog */}
+      {showCustomerDialog && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50" onClick={() => setShowCustomerDialog(false)}>
+          <div className="bg-white dark:bg-gray-800 rounded-xl shadow-2xl w-full max-w-md mx-4 flex flex-col max-h-[80vh]" onClick={e => e.stopPropagation()}>
+            {/* Dialog Header */}
+            <div className="flex items-center justify-between px-4 py-3 border-b border-gray-200 dark:border-gray-700 flex-shrink-0">
+              <h2 className="text-base font-semibold text-gray-900 dark:text-gray-100">Select Customer</h2>
+              <button onClick={() => setShowCustomerDialog(false)} className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-200">
+                <XCircle className="w-5 h-5" />
+              </button>
+            </div>
+
+            {/* Search Input */}
+            <div className="px-4 pt-3 pb-2 flex-shrink-0">
+              <div className="relative">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+                <input
+                  autoFocus
+                  type="text"
+                  placeholder="Search by name or mobile no..."
+                  value={customerSearch}
+                  onChange={e => handleCustomerSearchChange(e.target.value)}
+                  className="w-full pl-9 pr-4 py-2 text-sm border border-gray-300 dark:border-gray-600 rounded-lg bg-gray-50 dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                />
+                {customerSearchLoading && (
+                  <svg className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-blue-500 animate-spin" fill="none" viewBox="0 0 24 24">
+                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z" />
+                  </svg>
+                )}
+              </div>
+            </div>
+
+            {/* Customer List */}
+            <div className="flex-1 overflow-y-auto px-4 min-h-0">
+              {customerResults.length > 0 ? (
+                <ul className="divide-y divide-gray-100 dark:divide-gray-700">
+                  {customerResults.map((c: any) => (
+                    <li key={c.id}>
+                      <button
+                        onClick={() => selectCustomer(c)}
+                        className="w-full flex items-center gap-3 py-2.5 hover:bg-gray-50 dark:hover:bg-gray-700/50 rounded-lg px-1 text-left transition-colors"
+                      >
+                        <div className="w-8 h-8 rounded-full bg-blue-100 dark:bg-blue-900/40 flex items-center justify-center flex-shrink-0">
+                          <User className="w-4 h-4 text-blue-600 dark:text-blue-400" />
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm font-medium text-gray-900 dark:text-gray-100 truncate">{c.name}</p>
+                          {c.phone && <p className="text-xs text-gray-500 dark:text-gray-400">{c.phone}</p>}
+                          {c.email && <p className="text-xs text-gray-400 dark:text-gray-500 truncate">{c.email}</p>}
+                        </div>
+                      </button>
+                    </li>
+                  ))}
+                </ul>
+              ) : !customerSearchLoading ? (
+                <p className="text-sm text-gray-400 dark:text-gray-500 text-center py-6">No customers found</p>
+              ) : null}
+            </div>
+
+            {/* Quick Create Toggle */}
+            <div className="px-4 py-3 border-t border-gray-200 dark:border-gray-700 flex-shrink-0">
+              {!showCreateForm ? (
+                <button
+                  onClick={() => setShowCreateForm(true)}
+                  className="w-full flex items-center justify-center gap-2 py-2 text-sm font-medium text-blue-600 dark:text-blue-400 border border-blue-300 dark:border-blue-600 rounded-lg hover:bg-blue-50 dark:hover:bg-blue-900/20 transition-colors"
+                >
+                  <Plus className="w-4 h-4" />
+                  Create New Customer
+                </button>
+              ) : (
+                <div className="space-y-2">
+                  <p className="text-xs font-semibold text-gray-700 dark:text-gray-300 mb-1">Quick Create Customer</p>
+                  <input
+                    autoFocus
+                    type="text"
+                    placeholder="Customer name *"
+                    value={newCustomerName}
+                    onChange={e => setNewCustomerName(e.target.value)}
+                    onKeyDown={e => { if (e.key === 'Enter') handleCreateCustomer(); }}
+                    className="w-full px-3 py-2 text-sm border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  />
+                  <input
+                    type="tel"
+                    placeholder="Mobile no (optional)"
+                    value={newCustomerPhone}
+                    onChange={e => setNewCustomerPhone(e.target.value)}
+                    onKeyDown={e => { if (e.key === 'Enter') handleCreateCustomer(); }}
+                    className="w-full px-3 py-2 text-sm border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  />
+                  <div className="flex gap-2">
+                    <button
+                      onClick={() => { setShowCreateForm(false); setNewCustomerName(''); setNewCustomerPhone(''); }}
+                      className="flex-1 py-2 text-sm font-medium text-gray-600 dark:text-gray-400 bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 rounded-lg transition-colors"
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      onClick={handleCreateCustomer}
+                      disabled={customerCreateLoading || !newCustomerName.trim()}
+                      className="flex-1 py-2 text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 rounded-lg transition-colors disabled:opacity-50 flex items-center justify-center gap-1"
+                    >
+                      {customerCreateLoading ? (
+                        <svg className="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
+                          <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                          <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z" />
+                        </svg>
+                      ) : <Plus className="w-4 h-4" />}
+                      Save &amp; Select
+                    </button>
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

@@ -56,6 +56,13 @@ export default function StockListPage() {
         <div>{Math.round((row.original.quantity ?? 0) - (row.original.reserved_quantity ?? 0))}</div>
       ),
     },
+    {
+      id: 'last_cost',
+      header: 'Last Cost',
+      cell: ({ row }) => (
+        <div>{row.original.last_cost}</div>
+      ),
+    },
   ];
 
   const buildApiEndpoint = () => {
