@@ -17,14 +17,11 @@ import {
   Package,
   Tag,
   Key,
-  LucideIcon,
   UserLock,
   ListTodo,
   Package2,
   Barcode,
   Warehouse,
-  ShoppingCart,
-  DollarSign,
   CirclePile,
   CircleDollarSign,
   ListMinus,
@@ -38,6 +35,8 @@ import { MdOutlineAssignmentReturn, MdOutlinePointOfSale, MdOutlinePostAdd } fro
 import { BsReceiptCutoff } from 'react-icons/bs';
 import { LiaFileInvoiceDollarSolid } from 'react-icons/lia';
 import { PiUserListDuotone } from 'react-icons/pi';
+import { VscEditSession } from "react-icons/vsc";
+import { TbCreditCardRefund } from "react-icons/tb";
 
 interface SidebarProps {
   sidebarOpen: boolean;
@@ -159,10 +158,19 @@ const navigation: NavigationItem[] = [
     icon: CircleDollarSign,
     permission: 'view-sales',
     children: [
-      { name: 'Customers', href: '/customers', icon: PiUserListDuotone, permission: 'view-customers' },
       { name: 'Sales Orders', href: '/sales-orders', icon: BsReceiptCutoff, permission: 'view-sales' },
       { name: 'Add Sales Order', href: '/sales-orders/add', icon: MdOutlinePostAdd, permission: 'create-sales' },
+    ],
+  },
+  {
+    name: 'POS Management',
+    icon: MdOutlinePointOfSale,
+    permission: 'view-pos-sales',
+    children: [
+      { name: 'POS Register', href: '/pos-registers', icon: MdOutlinePostAdd, permission: 'view-pos-register' },
+      { name: 'POS Session', href: '/pos-session', icon: VscEditSession, permission: 'view-pos-session' },
       { name: 'POS Sales', href: '/pos-sales', icon: MdOutlinePointOfSale, permission: 'view-pos-sales' },
+      { name: 'POS Refund', href: '/pos-refunds', icon: TbCreditCardRefund, permission: 'view-pos-refund' },
     ],
   },
   {

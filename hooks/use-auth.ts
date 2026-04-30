@@ -19,27 +19,40 @@ export const useAuth = ({ middleware, redirectIfAuthenticated }: UseAuthOptions 
     data: user,
     error,
     mutate,
-  } = useSWR('/api/v1/user', () =>
-    axios
-      .get('/api/v1/user')
-      .then(res => {
+    isLoading,
+    isValidating,
+  } = useSWR(
+    '/api/v1/user',
+    async () => {
+      try {
+        const res = await axios.get('/api/v1/user');
         setUser(res.data);
         return res.data;
-      })
-      .catch(error => {
+      } catch (error: any) {
         if (error.response?.status === 401) {
-          // Only redirect to login if this is a protected route (middleware: 'auth')
-          if (middleware === 'auth') {
+          // Clear auth and redirect to login for protected routes
+          clearAuth();
+          if (middleware === 'auth' && !isRedirecting) {
+            setIsRedirecting(true);
             router.push('/login');
           }
-          return;
+          return null; // Return null instead of undefined
         }
         if (error.response?.status === 409) {
           router.push('/verify-email');
-          return;
+          return null;
         }
-        throw error;
-      })
+        // For other errors, return null to prevent infinite loading
+        console.error('Auth fetch error:', error);
+        return null;
+      }
+    },
+    {
+      revalidateOnFocus: false, // Disable revalidation on tab focus to prevent duplicate requests
+      revalidateOnReconnect: true,
+      shouldRetryOnError: false,
+      dedupingInterval: 2000, // Prevent duplicate requests within 2 seconds
+    }
   );
 
   const csrf = async () => {
@@ -185,5 +198,6 @@ export const useAuth = ({ middleware, redirectIfAuthenticated }: UseAuthOptions 
     resendEmailVerification,
     logout,
     isRedirecting,
+    isLoading: isLoading || isValidating,
   };
 };

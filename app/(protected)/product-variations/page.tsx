@@ -29,16 +29,6 @@ export default function ProductVariationsPage() {
       },
     },
     {
-      accessorKey: 'sku',
-      header: 'SKU',
-      meta: { width: '12%' },
-      cell: ({ row }) => (
-        <span className="text-xs font-medium text-gray-900 dark:text-gray-100">
-          {row.original.sku}
-        </span>
-      ),
-    },
-    {
       accessorKey: 'product.name',
       header: 'Product',
       meta: { width: '18%' },
@@ -74,6 +64,16 @@ export default function ProductVariationsPage() {
       },
     },
     {
+      accessorKey: 'sku',
+      header: 'SKU',
+      meta: { width: '12%' },
+      cell: ({ row }) => (
+        <span className="text-xs font-medium text-gray-900 dark:text-gray-100">
+          {row.original.sku}
+        </span>
+      ),
+    },
+    {
       id: 'attributes',
       header: 'Attributes',
       meta: { width: '25%' },
@@ -84,7 +84,7 @@ export default function ProductVariationsPage() {
               key={attr.id}
               className="inline-flex items-center px-1.5 py-0.5 rounded-full text-xs font-medium bg-indigo-100 text-indigo-800 dark:bg-indigo-900 dark:text-indigo-200"
             >
-              {attr.attribute?.name}: {attr.attribute_value?.value}
+              {attr.attribute?.name}: {attr.attribute_value?.display_value}
             </span>
           )) || <span className="text-xs text-gray-500">-</span>}
         </div>

@@ -371,7 +371,8 @@ export default function AddProductVariationPage() {
 
       await productVariationService.createVariation(submitData);
       notify.success('Product variation created successfully!');
-      router.push('/product-variations');
+      // Clear the form instead of navigating away
+      clearForm();
     } catch (error: any) {
       if (error.response?.data?.errors) {
         setErrors(error.response.data.errors);
@@ -381,6 +382,29 @@ export default function AddProductVariationPage() {
     } finally {
       setIsLoading(false);
     }
+  };
+
+  const clearForm = () => {
+    setFormData({
+      product_id: '',
+      sku: '',
+      name: '',
+      cost_price: '',
+      selling_price: '',
+      dp: '',
+      mrp: '',
+      is_active: true,
+      is_default: false,
+      display_order: '0',
+    });
+
+    setSelectedProduct(null);
+    setSelectedAttributes([]);
+    setSelectedAttributeForAdd(null);
+    setSelectedValueForAdd(null);
+    setGeneratingSku(false);
+    setStatusValue('1');
+    setErrors({});
   };
 
   // Find selected attribute from both loaded attributes and the selectedAttributeForAdd

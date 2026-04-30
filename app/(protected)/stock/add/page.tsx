@@ -127,7 +127,17 @@ export default function StockAddPage() {
 
   const handleStockChange = (index: number, field: string, value: any) => {
     const copy = [...stocks];
-    copy[index] = { ...copy[index], [field]: value };
+    const numericFields = ['quantity', 'reserved_quantity', 'min_quantity', 'max_quantity', 'reorder_point'];
+    let newValue: any = value;
+    if (numericFields.includes(field)) {
+      // allow empty string to clear optional fields
+      if (value === '' || value === null) newValue = '';
+      else {
+        const n = Number(value);
+        newValue = Number.isNaN(n) ? 0 : n;
+      }
+    }
+    copy[index] = { ...copy[index], [field]: newValue };
     setStocks(copy);
   };
 
@@ -144,6 +154,13 @@ export default function StockAddPage() {
     if (!selectedProduct) {
       errors.product_id = 'Product is required';
     }
+    
+    // Check if selected product has variations
+    if (selectedProduct && variations.length === 0) {
+      notify.error('Selected product have no variation, please add a variation first!');
+      return;
+    }
+    
     if (Object.keys(errors).length > 0) {
       setFormErrors(errors);
       return;
@@ -156,6 +173,8 @@ export default function StockAddPage() {
         product_id: selectedProduct.value,
         stocks: stocks.map((s, i) => ({
           variation_id: s.variation_id,
+          product_id: selectedProduct.value,
+          warehouse_id: selectedWarehouse.value,
           quantity: s.quantity || 0,
           reserved_quantity: s.reserved_quantity || 0,
           // If min_quantity is empty/null/undefined, default to 1
@@ -384,11 +403,11 @@ export default function StockAddPage() {
                         <td className="px-3 py-1">
                           <input
                             type="number"
-                            value={stocks[idx]?.quantity ?? 0}
+                            value={stocks[idx]?.quantity !== undefined && stocks[idx]?.quantity !== null ? Math.round(stocks[idx].quantity) : 0}
                             min={0}
                             step={1}
                             onChange={e =>
-                              handleStockChange(idx, 'quantity', Math.max(0, Number(e.target.value)))
+                              handleStockChange(idx, 'quantity', e.target.value)
                             }
                             onFocus={e => e.target.select()}
                             className="w-full px-2.5 py-1.5 text-right text-sm border border-gray-300 dark:border-gray-600 rounded-sm focus:outline-none focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400 focus:border-transparent dark:bg-gray-700 dark:text-gray-100 transition-all"
@@ -399,7 +418,7 @@ export default function StockAddPage() {
                           <input
                             type="number"
                             min={0}
-                            value={Math.round(stocks[idx]?.reserved_quantity) ?? 0}
+                            value={stocks[idx]?.reserved_quantity !== undefined && stocks[idx]?.reserved_quantity !== null ? Math.round(stocks[idx].reserved_quantity) : 0}
                             onChange={e =>
                               handleStockChange(idx, 'reserved_quantity', e.target.value)
                             }
@@ -412,7 +431,7 @@ export default function StockAddPage() {
                           <input
                             type="number"
                             min={0}
-                            value={Math.round(stocks[idx]?.min_quantity) ?? 1}
+                            value={stocks[idx]?.min_quantity !== undefined && stocks[idx]?.min_quantity !== null ? Math.round(stocks[idx].min_quantity) : 1}
                             onChange={e => handleStockChange(idx, 'min_quantity', e.target.value)}
                             onFocus={e => e.target.select()}
                             className="w-full px-2.5 py-1.5 text-right text-sm border border-gray-300 dark:border-gray-600 rounded-sm focus:outline-none focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400 focus:border-transparent dark:bg-gray-700 dark:text-gray-100 transition-all"
@@ -423,7 +442,7 @@ export default function StockAddPage() {
                           <input
                             type="number"
                             min={0}
-                            value={Math.round(stocks[idx]?.max_quantity) ?? ''}
+                            value={stocks[idx]?.max_quantity !== undefined && stocks[idx]?.max_quantity !== null ? Math.round(stocks[idx].max_quantity) : ''}
                             onChange={e => handleStockChange(idx, 'max_quantity', e.target.value)}
                             onFocus={e => e.target.select()}
                             className="w-full px-2.5 py-1.5 text-right text-sm border border-gray-300 dark:border-gray-600 rounded-sm focus:outline-none focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400 focus:border-transparent dark:bg-gray-700 dark:text-gray-100 transition-all"
@@ -434,7 +453,7 @@ export default function StockAddPage() {
                           <input
                             type="number"
                             min={0}
-                            value={stocks[idx]?.reorder_point ?? ''}
+                            value={stocks[idx]?.reorder_point !== undefined && stocks[idx]?.reorder_point !== null ? Math.round(stocks[idx].reorder_point) : ''}
                             onChange={e => handleStockChange(idx, 'reorder_point', e.target.value)}
                             onFocus={e => e.target.select()}
                             className="w-full px-2.5 py-1.5 text-sm border border-gray-300 dark:border-gray-600 rounded-sm focus:outline-none focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400 focus:border-transparent dark:bg-gray-700 dark:text-gray-100 transition-all"
