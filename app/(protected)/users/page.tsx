@@ -2,26 +2,183 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { Eye, Edit, Trash2, Rows4, UserCheck } from 'lucide-react';
+import { Eye, Edit, Trash2, Rows4, UserCheck, Plus, X } from 'lucide-react';
 import { ColumnDef } from '@tanstack/react-table';
 import DataTable from '@/components/ui/datatable';
 import { User } from '@/types';
 import { useAuthStore } from '@/stores/auth-store';
 import { usePermissions } from '@/hooks/use-permissions';
 import { confirm, notify, success } from '@/lib/notifications';
+import { userService } from '@/services';
+
+interface UserForm {
+  name: string;
+  email: string;
+  password: string;
+  password_confirmation: string;
+  phone: string;
+  user_type: 'tenant_admin' | 'tenant_user';
+  tenant_id?: string;
+  is_active: boolean;
+}
 
 export default function UsersPage() {
   const router = useRouter();
   const [switchingUser, setSwitchingUser] = useState<string | null>(null);
   const currentUser = useAuthStore(state => state.user);
   const switchUser = useAuthStore(state => state.switchUser);
-  const { hasPermission, isHydrated } = usePermissions();
+  const { hasPermission, isHydrated, isSuperAdmin } = usePermissions();
+  
+  const [showForm, setShowForm] = useState(false);
+  const [mode, setMode] = useState<'add' | 'edit'>('add');
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [refreshKey, setRefreshKey] = useState(0);
+  const [submitting, setSubmitting] = useState(false);
+  const [formErrors, setFormErrors] = useState<{ [key: string]: string }>({});
+
+  const [form, setForm] = useState<UserForm>({
+    name: '',
+    email: '',
+    password: '',
+    password_confirmation: '',
+    phone: '',
+    user_type: 'tenant_user',
+    is_active: true,
+  });
 
   // Check permissions only after store is hydrated
   useEffect(() => {}, [hasPermission, isHydrated, router]);
 
-  // Check if current user is super admin
-  const isSuperAdmin = currentUser?.user_type === 'super_admin';
+  const resetForm = () => {
+    setForm({
+      name: '',
+      email: '',
+      password: '',
+      password_confirmation: '',
+      phone: '',
+      user_type: 'tenant_user',
+      is_active: true,
+    });
+    setFormErrors({});
+    setEditingId(null);
+    setMode('add');
+  };
+
+  const handleAdd = () => {
+    resetForm();
+    setMode('add');
+    setFormErrors({});
+    setShowForm(true);
+  };
+
+  const handleEdit = async (user: User) => {
+    setMode('edit');
+    setEditingId(user.id);
+    setForm({
+      name: user.name,
+      email: user.email,
+      password: '',
+      password_confirmation: '',
+      phone: user.phone || '',
+      user_type: user.user_type as 'tenant_admin' | 'tenant_user',
+      is_active: user.is_active,
+    });
+    setFormErrors({});
+    setShowForm(true);
+  };
+
+  const validateForm = (): boolean => {
+    const errors: { [key: string]: string } = {};
+
+    if (!form.name.trim()) {
+      errors.name = 'Name is required';
+    }
+
+    if (!form.email.trim()) {
+      errors.email = 'Email is required';
+    } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email)) {
+      errors.email = 'Please enter a valid email address';
+    }
+
+    if (mode === 'add' && !form.password) {
+      errors.password = 'Password is required';
+    }
+
+    if (form.password && form.password.length < 6) {
+      errors.password = 'Password must be at least 6 characters';
+    }
+
+    if (form.password && form.password !== form.password_confirmation) {
+      errors.password_confirmation = 'Passwords do not match';
+    }
+
+    setFormErrors(errors);
+    return Object.keys(errors).length === 0;
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!validateForm()) return;
+
+    setSubmitting(true);
+    try {
+      if (mode === 'add') {
+        await userService.createUser(form as any);
+        success('User created successfully');
+      } else if (editingId) {
+        const updateData: any = {
+          name: form.name,
+          email: form.email,
+          phone: form.phone,
+          user_type: form.user_type,
+          is_active: form.is_active,
+        };
+        // Only include password if it was changed
+        if (form.password) {
+          updateData.password = form.password;
+          updateData.password_confirmation = form.password_confirmation;
+        }
+        await userService.updateUser(editingId, updateData);
+        success('User updated successfully');
+      }
+      setShowForm(false);
+      resetForm();
+      setRefreshKey(prev => prev + 1);
+    } catch (error: any) {
+      // Handle server-side validation errors
+      if (error.response?.data?.errors) {
+        const transformedErrors: { [key: string]: string } = {};
+        Object.entries(error.response.data.errors).forEach(([key, messages]) => {
+          transformedErrors[key] = Array.isArray(messages) ? messages.join(', ') : messages as string;
+        });
+        setFormErrors(transformedErrors);
+      } else {
+        notify.error(error.response?.data?.message || 'An error occurred');
+      }
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const handleDelete = async (user: User) => {
+    const result = await confirm({
+      title: 'Delete User',
+      html: `Are you sure you want to delete <strong>${user.name}</strong>?<br><br>
+             <em style="color: #6b7280; font-size: 12px;">This action cannot be undone.</em>`,
+      confirmButtonText: 'Delete',
+      cancelButtonText: 'Cancel',
+    });
+
+    if (!result.isConfirmed) return;
+
+    try {
+      await userService.deleteUser(user.id);
+      success('User deleted successfully');
+      setRefreshKey(prev => prev + 1);
+    } catch (error: any) {
+      notify.error(error.response?.data?.message || 'Failed to delete user');
+    }
+  };
 
   const getStatusBadge = (isActive: boolean) => {
     return isActive ? (
@@ -53,32 +210,11 @@ export default function UsersPage() {
     {
       accessorKey: 'name',
       header: 'Name',
-      meta: { width: '10%' }, // Custom metadata for width
-      cell: ({ row }) => {
-        const name = row.original.name;
-        const maxLength = 15; // Maximum characters to display
-        const truncatedName = name.length > maxLength ? name.substring(0, maxLength) + '...' : name;
-
-        return (
-          <div className="flex items-center">
-            <div
-              className="text-xs font-medium text-gray-900 dark:text-gray-100 truncate w-full"
-              title={name} // Show full name on hover
-            >
-              {truncatedName}
-            </div>
-          </div>
-        );
-      },
-    },
-    {
-      accessorKey: 'user_type',
-      header: 'Type',
-      meta: { width: '10%' },
+      meta: { width: '15%' },
       cell: ({ row }) => (
-        <span className="text-xs text-gray-600 dark:text-gray-400 capitalize">
-          {row.original.user_type}
-        </span>
+        <div className="text-xs font-medium text-gray-900 dark:text-gray-100">
+          {row.original.name}
+        </div>
       ),
     },
     {
@@ -86,19 +222,25 @@ export default function UsersPage() {
       header: 'Email',
       meta: { width: '20%' },
       cell: ({ row }) => (
-        <div>
-          <div className="text-xs text-gray-900 dark:text-gray-100">{row.original.email}</div>
-        </div>
+        <div className="text-xs text-gray-900 dark:text-gray-100">{row.original.email}</div>
       ),
     },
     {
       accessorKey: 'phone',
-      header: 'Mobile No',
-      meta: { width: '15%' },
+      header: 'Phone',
+      meta: { width: '12%' },
       cell: ({ row }) => (
-        <div>
-          <div className="text-xs text-gray-500 dark:text-gray-400">{row.original.phone}</div>
-        </div>
+        <div className="text-xs text-gray-500 dark:text-gray-400">{row.original.phone || '-'}</div>
+      ),
+    },
+    {
+      accessorKey: 'user_type',
+      header: 'Type',
+      meta: { width: '12%' },
+      cell: ({ row }) => (
+        <span className="text-xs text-gray-600 dark:text-gray-400 capitalize">
+          {row.original.user_type?.replace('_', ' ')}
+        </span>
       ),
     },
     {
@@ -114,16 +256,9 @@ export default function UsersPage() {
       cell: ({ row }) => (
         <div className="flex items-center gap-1">
           <button
-            className="p-1 text-indigo-600 hover:text-indigo-900 dark:text-indigo-400 dark:hover:text-indigo-300 hover:bg-indigo-50 dark:hover:bg-indigo-900/20 rounded cursor-pointer"
-            title="View Details"
-            onClick={() => console.log('View', row.original.id)}
-          >
-            <Eye className="w-3.5 h-3.5" />
-          </button>
-          <button
             className="p-1 text-blue-600 hover:text-blue-900 dark:text-blue-400 dark:hover:text-blue-300 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded cursor-pointer"
             title="Edit"
-            onClick={() => console.log('Edit', row.original.id)}
+            onClick={() => handleEdit(row.original)}
           >
             <Edit className="w-3.5 h-3.5" />
           </button>
@@ -178,7 +313,7 @@ export default function UsersPage() {
           <button
             className="p-1 text-red-600 hover:text-red-900 dark:text-red-400 dark:hover:text-red-300 hover:bg-red-50 dark:hover:bg-red-900/20 rounded cursor-pointer"
             title="Delete"
-            onClick={() => console.log('Delete', row.original.id)}
+            onClick={() => handleDelete(row.original)}
           >
             <Trash2 className="w-3.5 h-3.5" />
           </button>
@@ -189,10 +324,11 @@ export default function UsersPage() {
 
   // Build API endpoint with filters
   const buildApiEndpoint = () => {
-    const params = new URLSearchParams();
-    const queryString = params.toString();
-    return `users${queryString ? `?${queryString}` : ''}`;
+    return 'users';
   };
+
+  const inputCls = 'w-full px-2 py-1.25 text-sm border border-gray-300 dark:border-gray-600 rounded-sm focus:outline-none focus:ring-1 focus:ring-blue-500 dark:focus:ring-blue-400 focus:border-transparent dark:bg-gray-700 dark:text-gray-100';
+  const labelCls = 'block text-sm font-medium text-gray-700 dark:text-gray-300 mb-0.5';
 
   return (
     <div className="space-y-3">
@@ -200,50 +336,191 @@ export default function UsersPage() {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-xl font-bold text-gray-900 dark:text-gray-100 flex items-center gap-2">
-            <Rows4 className="w-5 h-5 text-indigo-600 dark:text-indigo-400" />
-            User List
+            <Rows4 className="w-5 h-5 text-blue-600 dark:text-blue-400" />
+            User Management
           </h1>
         </div>
+        <button
+          onClick={handleAdd}
+          className="flex items-center gap-2 px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium rounded-sm transition-colors duration-200 cursor-pointer"
+        >
+          <Plus className="w-4 h-4" />
+          Add User
+        </button>
       </div>
 
-      {/* Filters */}
-      {/* <div className="bg-white dark:bg-gray-800 rounded-md shadow-sm border border-gray-200 dark:border-gray-700 p-2">
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
-          <select
-            value={statusFilter}
-            onChange={(e) => setStatusFilter(e.target.value)}
-            className="px-2 py-1 text-sm border border-gray-300 dark:border-gray-600 rounded focus:ring-1 focus:ring-indigo-500 dark:bg-gray-700 dark:text-gray-100"
-          >
-            <option value="all">All Status</option>
-            <option value="active">Active</option>
-            <option value="inactive">Inactive</option>
-          </select>
+      {/* Form Modal/Section */}
+      {showForm && (
+        <div className="bg-white dark:bg-gray-800 rounded-md shadow-sm border border-gray-200 dark:border-gray-700 p-1.5 mb-1">
+          <h2 className="text-lg font-semibold mb-1.5 text-gray-900 dark:text-gray-100">
+            {mode === 'add' ? 'Add User' : 'Edit User'}
+          </h2>
 
-          <select
-            value={businessTypeFilter}
-            onChange={(e) => setBusinessTypeFilter(e.target.value)}
-            className="px-2 py-1 text-sm border border-gray-300 dark:border-gray-600 rounded focus:ring-1 focus:ring-indigo-500 dark:bg-gray-700 dark:text-gray-100"
-          >
-            <option value="all">All Types</option>
-            <option value="retail">Retail</option>
-            <option value="wholesale">Wholesale</option>
-            <option value="manufacturing">Manufacturing</option>
-            <option value="distribution">Distribution</option>
-            <option value="ecommerce">E-commerce</option>
-            <option value="service">Service</option>
-            <option value="restaurant">Restaurant</option>
-            <option value="other">Other</option>
-          </select>
+          <form onSubmit={handleSubmit} className="space-y-3">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-1.5">
+              <div>
+                <label className={labelCls}>
+                  Name <span className="text-red-500">*</span>
+                </label>
+                <input
+                  type="text"
+                  value={form.name}
+                  onChange={(e) => {
+                    setForm({ ...form, name: e.target.value });
+                    // Clear error when user types
+                    if (e.target.value.trim() && formErrors.name) {
+                      const { name, ...rest } = formErrors;
+                      setFormErrors(rest);
+                    }
+                  }}
+                  className={`w-full px-2 py-1.25 text-sm border rounded-sm focus:outline-none focus:ring-1 focus:ring-blue-500 dark:focus:ring-blue-400 focus:border-transparent dark:bg-gray-700 dark:text-gray-100 ${
+                    formErrors.name ? 'border-red-500' : 'border-gray-300 dark:border-gray-600'
+                  }`}
+                  placeholder="Enter full name"
+                />
+                {formErrors.name && <p className="text-red-600 text-xs mt-1">{formErrors.name}</p>}
+              </div>
+
+              <div>
+                <label className={labelCls}>
+                  Email <span className="text-red-500">*</span>
+                </label>
+                <input
+                  type="email"
+                  value={form.email}
+                  onChange={(e) => {
+                    setForm({ ...form, email: e.target.value });
+                    // Clear error when valid email is entered
+                    if (e.target.value && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(e.target.value) && formErrors.email) {
+                      const { email, ...rest } = formErrors;
+                      setFormErrors(rest);
+                    }
+                  }}
+                  className={`w-full px-2 py-1.25 text-sm border rounded-sm focus:outline-none focus:ring-1 focus:ring-blue-500 dark:focus:ring-blue-400 focus:border-transparent dark:bg-gray-700 dark:text-gray-100 ${
+                    formErrors.email ? 'border-red-500' : 'border-gray-300 dark:border-gray-600'
+                  }`}
+                  placeholder="user@example.com"
+                />
+                {formErrors.email && <p className="text-red-600 text-xs mt-1">{formErrors.email}</p>}
+              </div>
+
+              <div>
+                <label className={labelCls}>Phone</label>
+                <input
+                  type="text"
+                  value={form.phone}
+                  onChange={(e) => setForm({ ...form, phone: e.target.value })}
+                  className={inputCls}
+                  placeholder="Phone number"
+                />
+              </div>
+
+              <div>
+                <label className={labelCls}>
+                  User Type <span className="text-red-500">*</span>
+                </label>
+                <select
+                  value={form.user_type}
+                  onChange={(e) => setForm({ ...form, user_type: e.target.value as 'tenant_admin' | 'tenant_user' })}
+                  className={inputCls}
+                >
+                  <option value="tenant_user">Tenant User</option>
+                  <option value="tenant_admin">Tenant Admin</option>
+                </select>
+              </div>
+
+              <div>
+                <label className={labelCls}>
+                  Password {mode === 'add' && <span className="text-red-500">*</span>}
+                </label>
+                <input
+                  type="password"
+                  value={form.password}
+                  onChange={(e) => {
+                    setForm({ ...form, password: e.target.value });
+                    // Clear error when user types
+                    if (e.target.value && formErrors.password) {
+                      const { password, ...rest } = formErrors;
+                      setFormErrors(rest);
+                    }
+                  }}
+                  className={`w-full px-2 py-1.25 text-sm border rounded-sm focus:outline-none focus:ring-1 focus:ring-blue-500 dark:focus:ring-blue-400 focus:border-transparent dark:bg-gray-700 dark:text-gray-100 ${
+                    formErrors.password ? 'border-red-500' : 'border-gray-300 dark:border-gray-600'
+                  }`}
+                  placeholder={mode === 'edit' ? 'Leave blank to keep current' : 'Minimum 6 characters'}
+                />
+                {formErrors.password && <p className="text-red-600 text-xs mt-1">{formErrors.password}</p>}
+              </div>
+
+              <div>
+                <label className={labelCls}>
+                  Confirm Password {mode === 'add' && <span className="text-red-500">*</span>}
+                </label>
+                <input
+                  type="password"
+                  value={form.password_confirmation}
+                  onChange={(e) => {
+                    setForm({ ...form, password_confirmation: e.target.value });
+                    // Clear error when user types
+                    if (e.target.value && formErrors.password_confirmation) {
+                      const { password_confirmation, ...rest } = formErrors;
+                      setFormErrors(rest);
+                    }
+                  }}
+                  className={`w-full px-2 py-1.25 text-sm border rounded-sm focus:outline-none focus:ring-1 focus:ring-blue-500 dark:focus:ring-blue-400 focus:border-transparent dark:bg-gray-700 dark:text-gray-100 ${
+                    formErrors.password_confirmation ? 'border-red-500' : 'border-gray-300 dark:border-gray-600'
+                  }`}
+                  placeholder="Re-enter password"
+                />
+                {formErrors.password_confirmation && <p className="text-red-600 text-xs mt-1">{formErrors.password_confirmation}</p>}
+              </div>
+
+            </div>
+
+            {/* Settings */}
+            <div className="flex items-center gap-2 pt-2 border-t border-gray-200 dark:border-gray-700">
+              <label className="flex items-center gap-2 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={form.is_active}
+                  onChange={(e) => setForm({ ...form, is_active: e.target.checked })}
+                  className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500 dark:focus:ring-blue-600 dark:ring-offset-gray-800 focus:ring-2 cursor-pointer"
+                />
+                <span className="text-sm font-medium text-gray-700 dark:text-gray-300">Active</span>
+              </label>
+            </div>
+
+            {/* Form Actions */}
+            <div className="flex gap-2 pt-2">
+              <button
+                type="submit"
+                disabled={submitting}
+                className="px-3 py-1.5 bg-blue-600 text-white text-sm font-medium rounded-sm hover:bg-blue-700 transition-colors flex items-center gap-2 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                <Edit className="w-4 h-4" />
+                {submitting ? 'Saving...' : mode === 'add' ? 'Create User' : 'Update User'}
+              </button>
+              <button
+                type="button"
+                onClick={() => { setShowForm(false); resetForm(); }}
+                className="px-3 py-1.5 bg-gray-600 text-white text-sm font-medium rounded-sm hover:bg-gray-700 transition-colors flex items-center gap-2 cursor-pointer"
+              >
+                <X className="w-4 h-4" />
+                Cancel
+              </button>
+            </div>
+          </form>
         </div>
-      </div> */}
+      )}
 
       {/* DataTable */}
       <DataTable
+        key={refreshKey}
         columns={columns}
         apiEndpoint={buildApiEndpoint()}
         pageSize={15}
         enableSearch={true}
-        searchPlaceholder="Search by business name, email, or slug..."
+        searchPlaceholder="Search by name, email, or phone..."
       />
     </div>
   );

@@ -454,14 +454,16 @@ export interface CreateUserRequest {
   password: string;
   password_confirmation: string;
   phone?: string;
-  role: string;
+  user_type: 'tenant_admin' | 'tenant_user';
+  tenant_id?: string;
+  is_active?: boolean;
 }
 
 export interface UpdateUserRequest {
   name?: string;
   email?: string;
   phone?: string;
-  role?: string;
+  user_type?: 'tenant_admin' | 'tenant_user';
   is_active?: boolean;
 }
 

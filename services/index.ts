@@ -27,6 +27,7 @@ export { default as supplierService } from './supplierService';
 export { default as purchaseOrderService } from './purchaseOrderService';
 export { default as salesOrderService } from './salesOrderService';
 export { default as customerService } from './customerService';
+export { default as dashboardService } from './dashboardService';
 
 // Re-export types for convenience
 export type {
