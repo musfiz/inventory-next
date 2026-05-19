@@ -28,7 +28,7 @@ export default function UsersPage() {
   const currentUser = useAuthStore(state => state.user);
   const switchUser = useAuthStore(state => state.switchUser);
   const { hasPermission, isHydrated, isSuperAdmin } = usePermissions();
-  
+
   const [showForm, setShowForm] = useState(false);
   const [mode, setMode] = useState<'add' | 'edit'>('add');
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -47,7 +47,7 @@ export default function UsersPage() {
   });
 
   // Check permissions only after store is hydrated
-  useEffect(() => {}, [hasPermission, isHydrated, router]);
+  useEffect(() => { }, [hasPermission, isHydrated, router]);
 
   const resetForm = () => {
     setForm({
@@ -263,18 +263,18 @@ export default function UsersPage() {
             <Edit className="w-3.5 h-3.5" />
           </button>
           {isSuperAdmin && row.original.user_type !== 'super_admin' && (
-            <button
-              className={`p-1 rounded transition-colors ${
-                switchingUser === row.original.id
+            <div>
+              <button
+                className={`p-1 rounded transition-colors ${switchingUser === row.original.id
                   ? 'text-gray-400 cursor-not-allowed'
                   : 'text-orange-600 hover:text-orange-900 dark:text-orange-400 dark:hover:text-orange-300 hover:bg-orange-50 dark:hover:bg-orange-900/20 cursor-pointer'
-              }`}
-              title={switchingUser === row.original.id ? 'Switching...' : 'Switch to User'}
-              disabled={switchingUser === row.original.id}
-              onClick={async () => {
-                const result = await confirm({
-                  title: 'Switch User Account',
-                  html: `Are you sure you want to switch to <strong>${row.original.name}</strong>'s account?<br><br>
+                  }`}
+                title={switchingUser === row.original.id ? 'Switching...' : 'Switch to User'}
+                disabled={switchingUser === row.original.id}
+                onClick={async () => {
+                  const result = await confirm({
+                    title: 'Switch User Account',
+                    html: `Are you sure you want to switch to <strong>${row.original.name}</strong>'s account?<br><br>
                           <div style="color: #6b7280; font-size: 13px; line-height: 1.5;">
                             <strong>Email:</strong> ${row.original.email}<br>
                             <strong>Type:</strong> ${row.original.user_type}
@@ -282,41 +282,42 @@ export default function UsersPage() {
                           <em style="color: #6b7280; font-size: 12px;">This is for debugging purposes only.
                             You can switch back from the header menu.
                           </em>`,
-                  confirmButtonText: 'Switch',
-                  cancelButtonText: 'Cancel',
-                });
+                    confirmButtonText: 'Switch',
+                    cancelButtonText: 'Cancel',
+                  });
 
-                if (!result.isConfirmed) return;
+                  if (!result.isConfirmed) return;
 
-                setSwitchingUser(row.original.id);
-                try {
-                  const switchSuccess = await switchUser(row.original.id.toString());
-                  if (switchSuccess) {
-                    window.location.href = '/dashboard';
-                  } else {
-                    notify.switchUserError();
+                  setSwitchingUser(row.original.id);
+                  try {
+                    const switchSuccess = await switchUser(row.original.id.toString());
+                    if (switchSuccess) {
+                      window.location.href = '/dashboard';
+                    } else {
+                      notify.switchUserError();
+                    }
+                  } catch (error) {
+                    notify.error('An error occurred while switching user. Please try again.');
+                  } finally {
+                    setSwitchingUser(null);
                   }
-                } catch (error) {
-                  notify.error('An error occurred while switching user. Please try again.');
-                } finally {
-                  setSwitchingUser(null);
-                }
-              }}
-            >
-              {switchingUser === row.original.id ? (
-                <div className="w-3.5 h-3.5 animate-spin rounded-full border-2 border-orange-600 border-t-transparent" />
-              ) : (
-                <UserCheck className="w-3.5 h-3.5" />
-              )}
-            </button>
+                }}
+              >
+                {switchingUser === row.original.id ? (
+                  <div className="w-3.5 h-3.5 animate-spin rounded-full border-2 border-orange-600 border-t-transparent" />
+                ) : (
+                  <UserCheck className="w-3.5 h-3.5" />
+                )}
+              </button>
+              <button
+                className="p-1 text-red-600 hover:text-red-900 dark:text-red-400 dark:hover:text-red-300 hover:bg-red-50 dark:hover:bg-red-900/20 rounded cursor-pointer"
+                title="Delete"
+                onClick={() => handleDelete(row.original)}
+              >
+                <Trash2 className="w-3.5 h-3.5" />
+              </button>
+            </div>
           )}
-          <button
-            className="p-1 text-red-600 hover:text-red-900 dark:text-red-400 dark:hover:text-red-300 hover:bg-red-50 dark:hover:bg-red-900/20 rounded cursor-pointer"
-            title="Delete"
-            onClick={() => handleDelete(row.original)}
-          >
-            <Trash2 className="w-3.5 h-3.5" />
-          </button>
         </div>
       ),
     },
@@ -373,9 +374,8 @@ export default function UsersPage() {
                       setFormErrors(rest);
                     }
                   }}
-                  className={`w-full px-2 py-1.25 text-sm border rounded-sm focus:outline-none focus:ring-1 focus:ring-blue-500 dark:focus:ring-blue-400 focus:border-transparent dark:bg-gray-700 dark:text-gray-100 ${
-                    formErrors.name ? 'border-red-500' : 'border-gray-300 dark:border-gray-600'
-                  }`}
+                  className={`w-full px-2 py-1.25 text-sm border rounded-sm focus:outline-none focus:ring-1 focus:ring-blue-500 dark:focus:ring-blue-400 focus:border-transparent dark:bg-gray-700 dark:text-gray-100 ${formErrors.name ? 'border-red-500' : 'border-gray-300 dark:border-gray-600'
+                    }`}
                   placeholder="Enter full name"
                 />
                 {formErrors.name && <p className="text-red-600 text-xs mt-1">{formErrors.name}</p>}
@@ -396,9 +396,8 @@ export default function UsersPage() {
                       setFormErrors(rest);
                     }
                   }}
-                  className={`w-full px-2 py-1.25 text-sm border rounded-sm focus:outline-none focus:ring-1 focus:ring-blue-500 dark:focus:ring-blue-400 focus:border-transparent dark:bg-gray-700 dark:text-gray-100 ${
-                    formErrors.email ? 'border-red-500' : 'border-gray-300 dark:border-gray-600'
-                  }`}
+                  className={`w-full px-2 py-1.25 text-sm border rounded-sm focus:outline-none focus:ring-1 focus:ring-blue-500 dark:focus:ring-blue-400 focus:border-transparent dark:bg-gray-700 dark:text-gray-100 ${formErrors.email ? 'border-red-500' : 'border-gray-300 dark:border-gray-600'
+                    }`}
                   placeholder="user@example.com"
                 />
                 {formErrors.email && <p className="text-red-600 text-xs mt-1">{formErrors.email}</p>}
@@ -444,9 +443,8 @@ export default function UsersPage() {
                       setFormErrors(rest);
                     }
                   }}
-                  className={`w-full px-2 py-1.25 text-sm border rounded-sm focus:outline-none focus:ring-1 focus:ring-blue-500 dark:focus:ring-blue-400 focus:border-transparent dark:bg-gray-700 dark:text-gray-100 ${
-                    formErrors.password ? 'border-red-500' : 'border-gray-300 dark:border-gray-600'
-                  }`}
+                  className={`w-full px-2 py-1.25 text-sm border rounded-sm focus:outline-none focus:ring-1 focus:ring-blue-500 dark:focus:ring-blue-400 focus:border-transparent dark:bg-gray-700 dark:text-gray-100 ${formErrors.password ? 'border-red-500' : 'border-gray-300 dark:border-gray-600'
+                    }`}
                   placeholder={mode === 'edit' ? 'Leave blank to keep current' : 'Minimum 6 characters'}
                 />
                 {formErrors.password && <p className="text-red-600 text-xs mt-1">{formErrors.password}</p>}
@@ -467,9 +465,8 @@ export default function UsersPage() {
                       setFormErrors(rest);
                     }
                   }}
-                  className={`w-full px-2 py-1.25 text-sm border rounded-sm focus:outline-none focus:ring-1 focus:ring-blue-500 dark:focus:ring-blue-400 focus:border-transparent dark:bg-gray-700 dark:text-gray-100 ${
-                    formErrors.password_confirmation ? 'border-red-500' : 'border-gray-300 dark:border-gray-600'
-                  }`}
+                  className={`w-full px-2 py-1.25 text-sm border rounded-sm focus:outline-none focus:ring-1 focus:ring-blue-500 dark:focus:ring-blue-400 focus:border-transparent dark:bg-gray-700 dark:text-gray-100 ${formErrors.password_confirmation ? 'border-red-500' : 'border-gray-300 dark:border-gray-600'
+                    }`}
                   placeholder="Re-enter password"
                 />
                 {formErrors.password_confirmation && <p className="text-red-600 text-xs mt-1">{formErrors.password_confirmation}</p>}

@@ -9,7 +9,7 @@ import { confirm, notify } from '@/lib/notifications';
 import permissionService from '@/services/permissionService';
 
 export default function PermissionsPage() {
-  const [searchQuery, setSearchQuery] = useState<string>('');
+
   const [modules, setModules] = useState<Module[]>([]);
   const [loadingModules, setLoadingModules] = useState(true);
 
@@ -185,13 +185,7 @@ export default function PermissionsPage() {
     },
   ];
 
-  // Build API endpoint with filters
-  const buildApiEndpoint = () => {
-    const params = new URLSearchParams();
-    if (searchQuery) params.append('search', searchQuery);
-    const queryString = params.toString();
-    return `permissions${queryString ? `?${queryString}` : ''}`;
-  };
+
 
   return (
     <div className="space-y-1">
@@ -227,9 +221,8 @@ export default function PermissionsPage() {
                 placeholder="e.g., create-users, view-reports"
                 value={formData.name}
                 onChange={e => setFormData({ ...formData, name: e.target.value })}
-                className={`w-full px-3 py-1 text-sm border rounded-md focus:outline-none focus:ring-1 focus:ring-indigo-500 dark:focus:ring-indigo-400 focus:border-transparent dark:bg-gray-700 dark:text-gray-100 ${
-                  formErrors.name ? 'border-red-500' : 'border-gray-300 dark:border-gray-600'
-                }`}
+                className={`w-full px-3 py-1 text-sm border rounded-md focus:outline-none focus:ring-1 focus:ring-indigo-500 dark:focus:ring-indigo-400 focus:border-transparent dark:bg-gray-700 dark:text-gray-100 ${formErrors.name ? 'border-red-500' : 'border-gray-300 dark:border-gray-600'
+                  }`}
                 required
               />
               {formErrors.name && <p className="text-red-600 text-xs mt-1">{formErrors.name}</p>}
@@ -242,9 +235,8 @@ export default function PermissionsPage() {
               <select
                 value={formData.module_id}
                 onChange={e => setFormData({ ...formData, module_id: e.target.value })}
-                className={`w-full px-3 py-1 text-sm border rounded-md focus:outline-none focus:ring-1 focus:ring-indigo-500 dark:focus:ring-indigo-400 focus:border-transparent dark:bg-gray-700 dark:text-gray-100 ${
-                  formErrors.module_id ? 'border-red-500' : 'border-gray-300 dark:border-gray-600'
-                }`}
+                className={`w-full px-3 py-1 text-sm border rounded-md focus:outline-none focus:ring-1 focus:ring-indigo-500 dark:focus:ring-indigo-400 focus:border-transparent dark:bg-gray-700 dark:text-gray-100 ${formErrors.module_id ? 'border-red-500' : 'border-gray-300 dark:border-gray-600'
+                  }`}
                 disabled={loadingModules}
               >
                 <option value="">Select Module (Optional)</option>
@@ -284,8 +276,9 @@ export default function PermissionsPage() {
       <DataTable
         key={refreshKey}
         columns={columns}
-        apiEndpoint={buildApiEndpoint()}
-        enableSearch={false} // We handle search via filters
+        apiEndpoint="permissions"
+        enableSearch={true}
+        searchPlaceholder="Search permissions or modules..."
       />
     </div>
   );

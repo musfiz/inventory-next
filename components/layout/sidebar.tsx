@@ -70,17 +70,16 @@ const navigation: NavigationItem[] = [
     icon: Users,
     permission: 'view-users',
     children: [
-      { name: 'All Users', href: '/users', icon: List, permission: 'view-users' },
-      { name: 'Add User', href: '/users/add', icon: UserPlus, permission: 'create-users' },
+      { name: 'All Users', href: '/users', icon: List, permission: 'view-users' }
     ],
   },
   {
     name: 'Permission Management',
     icon: UserLock,
-    permission: 'create-user-permission',
+    permission: 'view-user-permission',
     children: [
       { name: 'All Permissions', href: '/permissions', icon: Key, superAdminOnly: true },
-      { name: 'User Permissions', href: '/user-permissions', icon: Shield },
+      { name: 'User Permissions', href: '/user-permissions', icon: Shield, permissions: ['view-user-permission', 'create-user-permission'] },
     ],
   },
   {
@@ -106,7 +105,7 @@ const navigation: NavigationItem[] = [
         name: 'Product Barcodes',
         href: '/product-barcodes',
         icon: Barcode,
-        permission: 'view-products',
+        permission: 'view-product-barcodes',
       },
       {
         name: 'Product Image',
