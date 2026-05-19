@@ -78,7 +78,7 @@ const navigation: NavigationItem[] = [
     icon: UserLock,
     permission: 'view-user-permission',
     children: [
-      { name: 'All Permissions', href: '/permissions', icon: Key, superAdminOnly: true },
+      // { name: 'All Permissions', href: '/permissions', icon: Key, superAdminOnly: true },
       { name: 'User Permissions', href: '/user-permissions', icon: Shield, permissions: ['view-user-permission', 'create-user-permission'] },
     ],
   },

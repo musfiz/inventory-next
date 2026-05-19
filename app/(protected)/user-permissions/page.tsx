@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect, useMemo } from 'react';
+import { useRouter } from 'next/navigation';
 import { Shield, Search, Save, UserCheck, Check, X } from 'lucide-react';
 import CustomSelect from '@/components/ui/custom-select';
 import { notify } from '@/lib/notifications';
@@ -11,7 +12,8 @@ import userPermissionService, {
 import { usePermissions } from '@/hooks/use-permissions';
 
 export default function UserPermissionsPage() {
-  const { isTenantAdmin } = usePermissions();
+  const router = useRouter();
+  const { isTenantAdmin, isSuperAdmin, hasPermission, isHydrated } = usePermissions();
   const [users, setUsers] = useState<UserSelection[]>([]);
   const [selectedUserId, setSelectedUserId] = useState<string>('');
   const [modules, setModules] = useState<UserPermissionModule[]>([]);
@@ -39,6 +41,14 @@ export default function UserPermissionsPage() {
     fetchUsers();
     fetchModules();
   }, []);
+
+  // Redirect if no permission to view user permissions
+  useEffect(() => {
+    if (!isHydrated) return;
+    if (!isSuperAdmin && !hasPermission('view-user-permission')) {
+      router.replace('/dashboard');
+    }
+  }, [isHydrated, isSuperAdmin, hasPermission, router]);
 
   // Filter modules when search query or module filter changes
   useEffect(() => {
@@ -197,9 +207,9 @@ export default function UserPermissionsPage() {
               value={
                 filteredUsers.find(user => user.id === selectedUserId)
                   ? {
-                      value: filteredUsers.find(user => user.id === selectedUserId)!.id,
-                      label: `${filteredUsers.find(user => user.id === selectedUserId)!.name} (${filteredUsers.find(user => user.id === selectedUserId)!.user_type})`,
-                    }
+                    value: filteredUsers.find(user => user.id === selectedUserId)!.id,
+                    label: `${filteredUsers.find(user => user.id === selectedUserId)!.name} (${filteredUsers.find(user => user.id === selectedUserId)!.user_type})`,
+                  }
                   : null
               }
               onChange={option => handleUserChange(option?.value || '')}
@@ -362,8 +372,8 @@ export default function UserPermissionsPage() {
         </div>
       )}
 
-      {/* Save Button */}
-      {selectedUserId && (
+      {/* Save Button - only visible to users with create-user-permission */}
+      {selectedUserId && (isSuperAdmin || hasPermission('create-user-permission')) && (
         <div className="flex justify-end gap-3">
           <button
             onClick={handleSavePermissions}

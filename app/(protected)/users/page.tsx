@@ -46,8 +46,13 @@ export default function UsersPage() {
     is_active: true,
   });
 
-  // Check permissions only after store is hydrated
-  useEffect(() => { }, [hasPermission, isHydrated, router]);
+  // Redirect if no access to view users
+  useEffect(() => {
+    if (!isHydrated) return;
+    if (!isSuperAdmin && !hasPermission('view-users')) {
+      router.replace('/dashboard');
+    }
+  }, [isHydrated, isSuperAdmin, hasPermission, router]);
 
   const resetForm = () => {
     setForm({
@@ -255,26 +260,27 @@ export default function UsersPage() {
       meta: { width: '14%' },
       cell: ({ row }) => (
         <div className="flex items-center gap-1">
-          <button
-            className="p-1 text-blue-600 hover:text-blue-900 dark:text-blue-400 dark:hover:text-blue-300 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded cursor-pointer"
-            title="Edit"
-            onClick={() => handleEdit(row.original)}
-          >
-            <Edit className="w-3.5 h-3.5" />
-          </button>
+          {(isSuperAdmin || hasPermission('update-users')) && (
+            <button
+              className="p-1 text-blue-600 hover:text-blue-900 dark:text-blue-400 dark:hover:text-blue-300 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded cursor-pointer"
+              title="Edit"
+              onClick={() => handleEdit(row.original)}
+            >
+              <Edit className="w-3.5 h-3.5" />
+            </button>
+          )}
           {isSuperAdmin && row.original.user_type !== 'super_admin' && (
-            <div>
-              <button
-                className={`p-1 rounded transition-colors ${switchingUser === row.original.id
-                  ? 'text-gray-400 cursor-not-allowed'
-                  : 'text-orange-600 hover:text-orange-900 dark:text-orange-400 dark:hover:text-orange-300 hover:bg-orange-50 dark:hover:bg-orange-900/20 cursor-pointer'
-                  }`}
-                title={switchingUser === row.original.id ? 'Switching...' : 'Switch to User'}
-                disabled={switchingUser === row.original.id}
-                onClick={async () => {
-                  const result = await confirm({
-                    title: 'Switch User Account',
-                    html: `Are you sure you want to switch to <strong>${row.original.name}</strong>'s account?<br><br>
+            <button
+              className={`p-1 rounded transition-colors ${switchingUser === row.original.id
+                ? 'text-gray-400 cursor-not-allowed'
+                : 'text-orange-600 hover:text-orange-900 dark:text-orange-400 dark:hover:text-orange-300 hover:bg-orange-50 dark:hover:bg-orange-900/20 cursor-pointer'
+                }`}
+              title={switchingUser === row.original.id ? 'Switching...' : 'Switch to User'}
+              disabled={switchingUser === row.original.id}
+              onClick={async () => {
+                const result = await confirm({
+                  title: 'Switch User Account',
+                  html: `Are you sure you want to switch to <strong>${row.original.name}</strong>'s account?<br><br>
                           <div style="color: #6b7280; font-size: 13px; line-height: 1.5;">
                             <strong>Email:</strong> ${row.original.email}<br>
                             <strong>Type:</strong> ${row.original.user_type}
@@ -282,41 +288,42 @@ export default function UsersPage() {
                           <em style="color: #6b7280; font-size: 12px;">This is for debugging purposes only.
                             You can switch back from the header menu.
                           </em>`,
-                    confirmButtonText: 'Switch',
-                    cancelButtonText: 'Cancel',
-                  });
+                  confirmButtonText: 'Switch',
+                  cancelButtonText: 'Cancel',
+                });
 
-                  if (!result.isConfirmed) return;
+                if (!result.isConfirmed) return;
 
-                  setSwitchingUser(row.original.id);
-                  try {
-                    const switchSuccess = await switchUser(row.original.id.toString());
-                    if (switchSuccess) {
-                      window.location.href = '/dashboard';
-                    } else {
-                      notify.switchUserError();
-                    }
-                  } catch (error) {
-                    notify.error('An error occurred while switching user. Please try again.');
-                  } finally {
-                    setSwitchingUser(null);
+                setSwitchingUser(row.original.id);
+                try {
+                  const switchSuccess = await switchUser(row.original.id.toString());
+                  if (switchSuccess) {
+                    window.location.href = '/dashboard';
+                  } else {
+                    notify.switchUserError();
                   }
-                }}
-              >
-                {switchingUser === row.original.id ? (
-                  <div className="w-3.5 h-3.5 animate-spin rounded-full border-2 border-orange-600 border-t-transparent" />
-                ) : (
-                  <UserCheck className="w-3.5 h-3.5" />
-                )}
-              </button>
-              <button
-                className="p-1 text-red-600 hover:text-red-900 dark:text-red-400 dark:hover:text-red-300 hover:bg-red-50 dark:hover:bg-red-900/20 rounded cursor-pointer"
-                title="Delete"
-                onClick={() => handleDelete(row.original)}
-              >
-                <Trash2 className="w-3.5 h-3.5" />
-              </button>
-            </div>
+                } catch (error) {
+                  notify.error('An error occurred while switching user. Please try again.');
+                } finally {
+                  setSwitchingUser(null);
+                }
+              }}
+            >
+              {switchingUser === row.original.id ? (
+                <div className="w-3.5 h-3.5 animate-spin rounded-full border-2 border-orange-600 border-t-transparent" />
+              ) : (
+                <UserCheck className="w-3.5 h-3.5" />
+              )}
+            </button>
+          )}
+          {(isSuperAdmin || hasPermission('delete-users')) && row.original.user_type !== 'super_admin' && (
+            <button
+              className="p-1 text-red-600 hover:text-red-900 dark:text-red-400 dark:hover:text-red-300 hover:bg-red-50 dark:hover:bg-red-900/20 rounded cursor-pointer"
+              title="Delete"
+              onClick={() => handleDelete(row.original)}
+            >
+              <Trash2 className="w-3.5 h-3.5" />
+            </button>
           )}
         </div>
       ),
@@ -341,13 +348,15 @@ export default function UsersPage() {
             User Management
           </h1>
         </div>
-        <button
-          onClick={handleAdd}
-          className="flex items-center gap-2 px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium rounded-sm transition-colors duration-200 cursor-pointer"
-        >
-          <Plus className="w-4 h-4" />
-          Add User
-        </button>
+        {(isSuperAdmin || hasPermission('create-users')) && (
+          <button
+            onClick={handleAdd}
+            className="flex items-center gap-2 px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium rounded-sm transition-colors duration-200 cursor-pointer"
+          >
+            <Plus className="w-4 h-4" />
+            Add User
+          </button>
+        )}
       </div>
 
       {/* Form Modal/Section */}
