@@ -419,7 +419,7 @@ export default function Home() {
                 <ul className="space-y-2">
                   {section.features.map((feature, fidx) => (
                     <li key={fidx} className="flex items-start text-sm text-gray-700">
-                      <CheckCircle className="h-5 w-5 text-green-500 mr-2 flex-shrink-0 mt-0.5" />
+                      <CheckCircle className="h-5 w-5 text-green-500 mr-2 shrink-0 mt-0.5" />
                       <span>{feature}</span>
                     </li>
                   ))}

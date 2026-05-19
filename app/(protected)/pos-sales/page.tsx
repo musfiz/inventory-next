@@ -482,7 +482,7 @@ export default function POSSalesPage() {
   return (
     <div className="h-full w-full flex flex-col bg-gray-50 dark:bg-gray-950 overflow-hidden">
       {/* Header - Fixed */}
-      <div className="bg-white dark:bg-gray-900 border-b-2 border-gray-300 dark:border-gray-700 px-4 py-2 flex-shrink-0 shadow-sm">
+      <div className="bg-white dark:bg-gray-900 border-b-2 border-gray-300 dark:border-gray-700 px-4 py-2 shrink-0 shadow-sm">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
             <div className="p-2 bg-blue-100 dark:bg-blue-900/30 rounded-lg">
@@ -520,7 +520,7 @@ export default function POSSalesPage() {
         {/* LEFT: Product List (40%) - Independent Scroll */}
         <div className="w-[40%] flex flex-col border-r-2 border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-900 overflow-hidden">
           {/* Search Bar - Fixed */}
-          <div className="p-2 border-b border-gray-200 dark:border-gray-800 flex-shrink-0 bg-white dark:bg-gray-900">
+          <div className="p-2 border-b border-gray-200 dark:border-gray-800 shrink-0 bg-white dark:bg-gray-900">
             <div className="relative">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
               <input
@@ -551,7 +551,7 @@ export default function POSSalesPage() {
           </div>
 
           {/* Category Chips - Fixed */}
-          <div className="px-2 py-2 border-b border-gray-200 dark:border-gray-800 overflow-x-auto flex-shrink-0 bg-white dark:bg-gray-900">
+          <div className="px-2 py-2 border-b border-gray-200 dark:border-gray-800 overflow-x-auto shrink-0 bg-white dark:bg-gray-900">
             <div className="flex gap-2">
               {/* All button */}
               <button
@@ -707,7 +707,7 @@ export default function POSSalesPage() {
         {/* MIDDLE: Current Order (35%) - Independent Scroll */}
         <div className="w-[35%] flex flex-col bg-white dark:bg-gray-900 border-r-2 border-gray-300 dark:border-gray-700 overflow-hidden">
           {/* Cart Header - Fixed */}
-          <div className="px-3 py-1.5 border-b border-gray-200 dark:border-gray-800 flex-shrink-0 bg-white dark:bg-gray-900">
+          <div className="px-3 py-1.5 border-b border-gray-200 dark:border-gray-800 shrink-0 bg-white dark:bg-gray-900">
             <div className="flex items-center justify-between mb-1">
               <div className="flex items-center gap-2">
                 <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100">Current Order</h2>
@@ -826,7 +826,7 @@ export default function POSSalesPage() {
           </div>
 
           {/* Cart Actions - Always Visible */}
-          <div className="p-2 border-t-2 border-gray-300 dark:border-gray-700 space-y-1.5 flex-shrink-0 bg-white dark:bg-gray-900 shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.1)]">
+          <div className="p-2 border-t-2 border-gray-300 dark:border-gray-700 space-y-1.5 shrink-0 bg-white dark:bg-gray-900 shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.1)]">
               <button
                 onClick={() => {
                   Swal.fire({
@@ -982,7 +982,7 @@ export default function POSSalesPage() {
           </div>
 
           {/* Action Buttons - Always Visible at Bottom */}
-          <div className="p-2 space-y-1.5 border-t-2 border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-900 flex-shrink-0 shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.1)]">
+          <div className="p-2 space-y-1.5 border-t-2 border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-900 shrink-0 shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.1)]">
             <button
               onClick={handlePayment}
               disabled={cart.length === 0 || isLoading}
@@ -1047,7 +1047,7 @@ export default function POSSalesPage() {
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50" onClick={() => setShowCustomerDialog(false)}>
           <div className="bg-white dark:bg-gray-800 rounded-xl shadow-2xl w-full max-w-md mx-4 flex flex-col max-h-[80vh]" onClick={e => e.stopPropagation()}>
             {/* Dialog Header */}
-            <div className="flex items-center justify-between px-4 py-3 border-b border-gray-200 dark:border-gray-700 flex-shrink-0">
+            <div className="flex items-center justify-between px-4 py-3 border-b border-gray-200 dark:border-gray-700 shrink-0">
               <h2 className="text-base font-semibold text-gray-900 dark:text-gray-100">Select Customer</h2>
               <button onClick={() => setShowCustomerDialog(false)} className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-200">
                 <XCircle className="w-5 h-5" />
@@ -1055,7 +1055,7 @@ export default function POSSalesPage() {
             </div>
 
             {/* Search Input */}
-            <div className="px-4 pt-3 pb-2 flex-shrink-0">
+            <div className="px-4 pt-3 pb-2 shrink-0">
               <div className="relative">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
                 <input
@@ -1085,7 +1085,7 @@ export default function POSSalesPage() {
                         onClick={() => selectCustomer(c)}
                         className="w-full flex items-center gap-3 py-2.5 hover:bg-gray-50 dark:hover:bg-gray-700/50 rounded-lg px-1 text-left transition-colors"
                       >
-                        <div className="w-8 h-8 rounded-full bg-blue-100 dark:bg-blue-900/40 flex items-center justify-center flex-shrink-0">
+                        <div className="w-8 h-8 rounded-full bg-blue-100 dark:bg-blue-900/40 flex items-center justify-center shrink-0">
                           <User className="w-4 h-4 text-blue-600 dark:text-blue-400" />
                         </div>
                         <div className="flex-1 min-w-0">
@@ -1103,7 +1103,7 @@ export default function POSSalesPage() {
             </div>
 
             {/* Quick Create Toggle */}
-            <div className="px-4 py-3 border-t border-gray-200 dark:border-gray-700 flex-shrink-0">
+            <div className="px-4 py-3 border-t border-gray-200 dark:border-gray-700 shrink-0">
               {!showCreateForm ? (
                 <button
                   onClick={() => setShowCreateForm(true)}
