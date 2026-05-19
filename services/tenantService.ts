@@ -52,11 +52,11 @@ class TenantService {
 
   /**
    * Get tenant details by ID
-   * GET /api/v1/tenants/:id
+   * GET /api/v1/tenants/edit/:id
    */
   async getTenantById(tenantId: string): Promise<TenantDetailsResponse> {
     const response = await apiClient.get<ApiResponse<TenantDetailsResponse>>(
-      `/api/v1/tenants/${tenantId}`
+      `/api/v1/tenants/edit/${tenantId}`
     );
     return response.data.data;
   }
@@ -84,15 +84,15 @@ class TenantService {
 
   /**
    * Update tenant details
-   * PUT /api/v1/tenants/:id
+   * POST /api/v1/tenants/update  — id included in body
    */
   async updateTenant(
     tenantId: string,
     data: Partial<Omit<Tenant, 'id' | 'slug'>>
   ): Promise<Tenant> {
-    const response = await apiClient.put<ApiResponse<{ tenant: Tenant }>>(
-      `/api/v1/tenants/${tenantId}`,
-      data
+    const response = await apiClient.post<ApiResponse<{ tenant: Tenant }>>(
+      '/api/v1/tenants/update',
+      { ...data, id: tenantId }
     );
     return response.data.data.tenant;
   }

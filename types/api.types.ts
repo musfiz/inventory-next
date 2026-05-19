@@ -23,6 +23,7 @@ export interface Tenant {
   theme_color?: string;
   subscription_plan?: string;
   subscription_status?: string;
+  subscription_ends_at?: string;
   max_users?: number;
   max_products?: number;
   max_warehouses?: number;
@@ -174,24 +175,24 @@ export interface Category {
   description?: string;
   parent_id?: string;
   business_type?:
-    | 'pharmacy'
-    | 'electric'
-    | 'electronics'
-    | 'fashion'
-    | 'furniture'
-    | 'bookshop'
-    | 'departmental'
-    | 'computer'
-    | 'clothing'
-    | 'footwear'
-    | 'cosmetics'
-    | 'stationery'
-    | 'grocery'
-    | 'hardware'
-    | 'restaurant'
-    | 'cafe'
-    | 'supermarket'
-    | 'other';
+  | 'pharmacy'
+  | 'electric'
+  | 'electronics'
+  | 'fashion'
+  | 'furniture'
+  | 'bookshop'
+  | 'departmental'
+  | 'computer'
+  | 'clothing'
+  | 'footwear'
+  | 'cosmetics'
+  | 'stationery'
+  | 'grocery'
+  | 'hardware'
+  | 'restaurant'
+  | 'cafe'
+  | 'supermarket'
+  | 'other';
   parent?: Category;
   children?: Category[];
   is_active: boolean;
@@ -244,24 +245,24 @@ export interface CreateCategoryRequest {
   description?: string;
   parent_id?: string;
   business_type?:
-    | 'pharmacy'
-    | 'electric'
-    | 'electronics'
-    | 'fashion'
-    | 'furniture'
-    | 'bookshop'
-    | 'departmental'
-    | 'computer'
-    | 'clothing'
-    | 'footwear'
-    | 'cosmetics'
-    | 'stationery'
-    | 'grocery'
-    | 'hardware'
-    | 'restaurant'
-    | 'cafe'
-    | 'supermarket'
-    | 'other';
+  | 'pharmacy'
+  | 'electric'
+  | 'electronics'
+  | 'fashion'
+  | 'furniture'
+  | 'bookshop'
+  | 'departmental'
+  | 'computer'
+  | 'clothing'
+  | 'footwear'
+  | 'cosmetics'
+  | 'stationery'
+  | 'grocery'
+  | 'hardware'
+  | 'restaurant'
+  | 'cafe'
+  | 'supermarket'
+  | 'other';
   image_url?: string;
   sort_order?: number;
   is_active?: boolean;
@@ -303,24 +304,24 @@ export interface Brand {
   id: string;
   name: string;
   business_type?:
-    | 'pharmacy'
-    | 'electric'
-    | 'electronics'
-    | 'fashion'
-    | 'furniture'
-    | 'bookshop'
-    | 'departmental'
-    | 'computer'
-    | 'clothing'
-    | 'footwear'
-    | 'cosmetics'
-    | 'stationery'
-    | 'grocery'
-    | 'hardware'
-    | 'restaurant'
-    | 'cafe'
-    | 'supermarket'
-    | 'other';
+  | 'pharmacy'
+  | 'electric'
+  | 'electronics'
+  | 'fashion'
+  | 'furniture'
+  | 'bookshop'
+  | 'departmental'
+  | 'computer'
+  | 'clothing'
+  | 'footwear'
+  | 'cosmetics'
+  | 'stationery'
+  | 'grocery'
+  | 'hardware'
+  | 'restaurant'
+  | 'cafe'
+  | 'supermarket'
+  | 'other';
   description?: string;
   logo_url?: string;
   is_active: boolean;

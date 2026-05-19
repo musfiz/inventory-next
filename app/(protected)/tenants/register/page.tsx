@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation';
 import { Building2, Save, ArrowLeft } from 'lucide-react';
 import { notify } from '@/lib/notifications';
 import { tenantService } from '@/services/tenantService';
-import { BUSINESS_TYPES, SUBSCRIPTION_PLANS, CURRENCIES, TIMEZONES } from '@/lib/constants';
+import { BUSINESS_TYPES, SUBSCRIPTION_PLANS, SUBSCRIPTION_STATUSES } from '@/lib/constants';
 
 interface TenantFormData {
   business_name: string;
@@ -22,12 +22,19 @@ interface TenantFormData {
   vat_number: string;
   currency: string;
   timezone: string;
-  theme_color: string;
+  trial_ends_at: string;
   subscription_plan: string;
+  subscription_status: string;
+  subscription_ends_at: string;
   max_users: number;
   max_products: number;
   max_warehouses: number;
+  is_active: boolean;
 }
+
+const COUNTRY_OPTIONS = [
+  'Bangladesh'
+] as const;
 
 export default function TenantRegistrationPage() {
   const router = useRouter();
@@ -48,20 +55,28 @@ export default function TenantRegistrationPage() {
     vat_number: '',
     currency: 'BDT',
     timezone: 'Asia/Dhaka',
-    theme_color: '#3B82F6',
+    trial_ends_at: '',
     subscription_plan: 'free',
-    max_users: 5,
-    max_products: 1000,
-    max_warehouses: 3,
+    subscription_status: 'active',
+    subscription_ends_at: '',
+    max_users: 2,
+    max_products: 200,
+    max_warehouses: 2,
+    is_active: true,
   });
 
   const handleInputChange = (
     e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>
   ) => {
-    const { name, value } = e.target;
+    const { name, value, type } = e.target;
     setFormData(prev => ({
       ...prev,
-      [name]: name.includes('max_') ? parseInt(value) || 0 : value,
+      [name]:
+        type === 'checkbox'
+          ? (e.target as HTMLInputElement).checked
+          : name.includes('max_')
+            ? parseInt(value) || 0
+            : value,
     }));
 
     // Clear error for this field when user starts typing
@@ -82,8 +97,8 @@ export default function TenantRegistrationPage() {
     const hasError = !!errors[fieldName];
     return hasError
       ? baseClassName
-          .replace('border-gray-300 dark:border-gray-600', 'border-red-500')
-          .replace('focus:border-indigo-500 dark:focus:border-indigo-400', 'focus:border-red-500')
+        .replace('border-gray-300 dark:border-gray-600', 'border-red-500')
+        .replace('focus:border-indigo-500 dark:focus:border-indigo-400', 'focus:border-red-500')
       : baseClassName;
   };
 
@@ -125,11 +140,11 @@ export default function TenantRegistrationPage() {
       </div>
 
       {/* Form */}
-      <form onSubmit={handleSubmit} className="space-y-1">
+      <form onSubmit={handleSubmit} className="space-y-1" autoComplete="false">
         <div className="bg-white dark:bg-gray-800 rounded-md shadow-sm border border-gray-200 dark:border-gray-700 p-3">
           {/* Basic Information */}
-          <div className="mb-2">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+          <div className="mb-2 space-y-3">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
               <div>
                 <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-2">
                   Business Name <span className="text-red-500">*</span>
@@ -178,10 +193,7 @@ export default function TenantRegistrationPage() {
                   </p>
                 )}
               </div>
-            </div>
 
-            {/* Contact Information */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-3 mt-2">
               <div>
                 <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-2">
                   Email <span className="text-red-500">*</span>
@@ -204,6 +216,10 @@ export default function TenantRegistrationPage() {
                   </p>
                 )}
               </div>
+            </div>
+
+            {/* Contact Information */}
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
               <div>
                 <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-2">
                   Contact Person
@@ -247,31 +263,6 @@ export default function TenantRegistrationPage() {
                   </p>
                 )}
               </div>
-            </div>
-
-            {/* Address Information */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mt-2">
-              <div className="md:col-span-2">
-                <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-2">
-                  Address
-                </label>
-                <textarea
-                  name="address"
-                  value={formData.address}
-                  onChange={handleInputChange}
-                  rows={2}
-                  className={getInputClassName(
-                    'address',
-                    'w-full px-2.5 py-1 text-sm bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-sm text-gray-900 dark:text-gray-100 focus:outline-none focus:border-indigo-500 dark:focus:border-indigo-400'
-                  )}
-                  placeholder="Enter business address"
-                />
-                {getFieldError('address') && (
-                  <p className="mt-1 text-xs text-red-600 dark:text-red-400">
-                    {getFieldError('address')}
-                  </p>
-                )}
-              </div>
 
               <div>
                 <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-2">
@@ -299,8 +290,7 @@ export default function TenantRegistrationPage() {
                 <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-2">
                   Country
                 </label>
-                <input
-                  type="text"
+                <select
                   name="country"
                   value={formData.country}
                   onChange={handleInputChange}
@@ -308,14 +298,41 @@ export default function TenantRegistrationPage() {
                     'country',
                     'w-full px-2.5 py-1 text-sm bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-sm text-gray-900 dark:text-gray-100 focus:outline-none focus:border-indigo-500 dark:focus:border-indigo-400'
                   )}
-                  placeholder="Enter country"
-                />
+                >
+                  {COUNTRY_OPTIONS.map(country => (
+                    <option key={country} value={country}>
+                      {country}
+                    </option>
+                  ))}
+                </select>
                 {getFieldError('country') && (
                   <p className="mt-1 text-xs text-red-600 dark:text-red-400">
                     {getFieldError('country')}
                   </p>
                 )}
               </div>
+            </div>
+
+            <div>
+              <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-2">
+                Address
+              </label>
+              <textarea
+                name="address"
+                value={formData.address}
+                onChange={handleInputChange}
+                rows={2}
+                className={getInputClassName(
+                  'address',
+                  'w-full px-2.5 py-1 text-sm bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-sm text-gray-900 dark:text-gray-100 focus:outline-none focus:border-indigo-500 dark:focus:border-indigo-400'
+                )}
+                placeholder="Enter business address"
+              />
+              {getFieldError('address') && (
+                <p className="mt-1 text-xs text-red-600 dark:text-red-400">
+                  {getFieldError('address')}
+                </p>
+              )}
             </div>
           </div>
         </div>
@@ -350,7 +367,7 @@ export default function TenantRegistrationPage() {
               </div>
 
               <div>
-                <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-2">
+                <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">
                   TIN Number
                 </label>
                 <input
@@ -372,7 +389,7 @@ export default function TenantRegistrationPage() {
               </div>
 
               <div>
-                <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-2">
+                <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">
                   BIN Number
                 </label>
                 <input
@@ -394,7 +411,7 @@ export default function TenantRegistrationPage() {
               </div>
 
               <div>
-                <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-2">
+                <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">
                   VAT Number
                 </label>
                 <input
@@ -421,83 +438,10 @@ export default function TenantRegistrationPage() {
         {/* Settings */}
         <div className="bg-white dark:bg-gray-800 rounded-md shadow-sm border border-gray-200 dark:border-gray-700 p-3">
           <div className="mb-1">
-            <h3 className="text-base font-semibold text-gray-900 dark:text-gray-100 mb-2">
+            <h3 className="text-base font-semibold text-gray-900 dark:text-gray-100 mb-1">
               Settings & Configuration
             </h3>
             <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
-              <div>
-                <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-2">
-                  Currency
-                </label>
-                <select
-                  name="currency"
-                  value={formData.currency}
-                  onChange={handleInputChange}
-                  className={getInputClassName(
-                    'currency',
-                    'w-full px-2.5 py-1 text-sm bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-sm text-gray-900 dark:text-gray-100 focus:outline-none focus:border-indigo-500 dark:focus:border-indigo-400'
-                  )}
-                >
-                  {CURRENCIES.map(currency => (
-                    <option key={currency.value} value={currency.value}>
-                      {currency.label}
-                    </option>
-                  ))}
-                </select>
-                {getFieldError('currency') && (
-                  <p className="mt-1 text-xs text-red-600 dark:text-red-400">
-                    {getFieldError('currency')}
-                  </p>
-                )}
-              </div>
-
-              <div>
-                <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-2">
-                  Timezone
-                </label>
-                <select
-                  name="timezone"
-                  value={formData.timezone}
-                  onChange={handleInputChange}
-                  className={getInputClassName(
-                    'timezone',
-                    'w-full px-2.5 py-1 text-sm bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-sm text-gray-900 dark:text-gray-100 focus:outline-none focus:border-indigo-500 dark:focus:border-indigo-400'
-                  )}
-                >
-                  {TIMEZONES.map(tz => (
-                    <option key={tz.value} value={tz.value}>
-                      {tz.label}
-                    </option>
-                  ))}
-                </select>
-                {getFieldError('timezone') && (
-                  <p className="mt-1 text-xs text-red-600 dark:text-red-400">
-                    {getFieldError('timezone')}
-                  </p>
-                )}
-              </div>
-
-              <div>
-                <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-2">
-                  Theme Color
-                </label>
-                <input
-                  type="color"
-                  name="theme_color"
-                  value={formData.theme_color}
-                  onChange={handleInputChange}
-                  className={getInputClassName(
-                    'theme_color',
-                    'w-full h-8 px-2.5 py-1 text-sm bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-sm focus:outline-none focus:border-indigo-500 dark:focus:border-indigo-400'
-                  )}
-                />
-                {getFieldError('theme_color') && (
-                  <p className="mt-1 text-xs text-red-600 dark:text-red-400">
-                    {getFieldError('theme_color')}
-                  </p>
-                )}
-              </div>
-
               <div>
                 <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-2">
                   Subscription Plan
@@ -520,6 +464,74 @@ export default function TenantRegistrationPage() {
                 {getFieldError('subscription_plan') && (
                   <p className="mt-1 text-xs text-red-600 dark:text-red-400">
                     {getFieldError('subscription_plan')}
+                  </p>
+                )}
+              </div>
+
+              <div>
+                <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-2">
+                  Subscription Status
+                </label>
+                <select
+                  name="subscription_status"
+                  value={formData.subscription_status}
+                  onChange={handleInputChange}
+                  className={getInputClassName(
+                    'subscription_status',
+                    'w-full px-2.5 py-1 text-sm bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-sm text-gray-900 dark:text-gray-100 focus:outline-none focus:border-indigo-500 dark:focus:border-indigo-400'
+                  )}
+                >
+                  {SUBSCRIPTION_STATUSES.map(status => (
+                    <option key={status.value} value={status.value}>
+                      {status.label}
+                    </option>
+                  ))}
+                </select>
+                {getFieldError('subscription_status') && (
+                  <p className="mt-1 text-xs text-red-600 dark:text-red-400">
+                    {getFieldError('subscription_status')}
+                  </p>
+                )}
+              </div>
+
+              <div>
+                <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-2">
+                  Subscription End At
+                </label>
+                <input
+                  type="date"
+                  name="subscription_ends_at"
+                  value={formData.subscription_ends_at}
+                  onChange={handleInputChange}
+                  className={getInputClassName(
+                    'subscription_ends_at',
+                    'w-full px-2.5 py-1 text-sm bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-sm text-gray-900 dark:text-gray-100 focus:outline-none focus:border-indigo-500 dark:focus:border-indigo-400'
+                  )}
+                />
+                {getFieldError('subscription_ends_at') && (
+                  <p className="mt-1 text-xs text-red-600 dark:text-red-400">
+                    {getFieldError('subscription_ends_at')}
+                  </p>
+                )}
+              </div>
+
+              <div>
+                <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-2">
+                  Trial Ends At
+                </label>
+                <input
+                  type="date"
+                  name="trial_ends_at"
+                  value={formData.trial_ends_at}
+                  onChange={handleInputChange}
+                  className={getInputClassName(
+                    'trial_ends_at',
+                    'w-full px-2.5 py-1 text-sm bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-sm text-gray-900 dark:text-gray-100 focus:outline-none focus:border-indigo-500 dark:focus:border-indigo-400'
+                  )}
+                />
+                {getFieldError('trial_ends_at') && (
+                  <p className="mt-1 text-xs text-red-600 dark:text-red-400">
+                    {getFieldError('trial_ends_at')}
                   </p>
                 )}
               </div>
@@ -603,16 +615,40 @@ export default function TenantRegistrationPage() {
           </div>
         </div>
 
-        {/* Submit Button */}
-        <div className="flex justify-start">
-          <button
-            type="submit"
-            disabled={isLoading}
-            className="flex items-center gap-2 px-5 py-2 text-sm bg-indigo-600 text-white rounded-sm hover:bg-indigo-700 focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-          >
-            <Save className="w-3.5 h-3.5" />
-            {isLoading ? 'Creating...' : 'Create Tenant'}
-          </button>
+        {/* Active Status + Submit */}
+        <div className="bg-white dark:bg-gray-800 rounded-md shadow-sm border border-gray-200 dark:border-gray-700 p-3">
+          <div className="flex items-center justify-between">
+            <label className="flex items-center gap-2 cursor-pointer">
+              <input
+                type="checkbox"
+                name="is_active"
+                checked={formData.is_active}
+                onChange={handleInputChange}
+                className="w-4 h-4 text-indigo-600 border-gray-300 rounded focus:ring-indigo-500"
+              />
+              <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                Active
+              </span>
+            </label>
+
+            <div className="flex gap-2">
+              <button
+                type="button"
+                onClick={() => router.push('/tenants')}
+                className="px-3 py-1.5 text-sm font-medium text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-sm hover:bg-gray-50 dark:hover:bg-gray-600"
+              >
+                Cancel
+              </button>
+              <button
+                type="submit"
+                disabled={isLoading}
+                className="flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 rounded-sm disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                <Save className="w-3.5 h-3.5" />
+                {isLoading ? 'Creating…' : 'Create Tenant'}
+              </button>
+            </div>
+          </div>
         </div>
       </form>
     </div>

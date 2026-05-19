@@ -40,16 +40,13 @@ export const SUBSCRIPTION_STATUSES = [
 
 export const CURRENCIES = [
   { value: 'BDT', label: 'BDT (Bangladeshi Taka)' },
-  { value: 'USD', label: 'USD (US Dollar)' },
-  { value: 'EUR', label: 'EUR (Euro)' },
-  { value: 'GBP', label: 'GBP (British Pound)' },
-  { value: 'INR', label: 'INR (Indian Rupee)' },
+  // { value: 'USD', label: 'USD (US Dollar)' },
+  // { value: 'EUR', label: 'EUR (Euro)' },
+  // { value: 'GBP', label: 'GBP (British Pound)' },
+  // { value: 'INR', label: 'INR (Indian Rupee)' },
 ] as const;
 
 export const TIMEZONES = [
   { value: 'Asia/Dhaka', label: 'Asia/Dhaka (UTC+6)' },
-  { value: 'UTC', label: 'UTC' },
-  { value: 'America/New_York', label: 'America/New_York (UTC-5)' },
-  { value: 'Europe/London', label: 'Europe/London (UTC+0)' },
-  { value: 'Asia/Kolkata', label: 'Asia/Kolkata (UTC+5:30)' },
+  { value: 'UTC', label: 'UTC' }
 ] as const;
