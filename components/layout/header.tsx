@@ -296,8 +296,8 @@ export default function Header({
                         onClick={handleSwitchBack}
                         disabled={switchingBack}
                         className={`flex items-center gap-3 px-4 py-2.5 text-sm transition-colors cursor-pointer w-full text-left ${switchingBack
-                            ? 'text-gray-400 dark:text-gray-600 cursor-not-allowed'
-                            : 'text-orange-600 dark:text-orange-400 hover:bg-orange-50 dark:hover:bg-orange-900/20'
+                          ? 'text-gray-400 dark:text-gray-600 cursor-not-allowed'
+                          : 'text-orange-600 dark:text-orange-400 hover:bg-orange-50 dark:hover:bg-orange-900/20'
                           }`}
                       >
                         {switchingBack ? (
