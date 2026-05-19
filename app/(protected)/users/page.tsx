@@ -197,6 +197,31 @@ export default function UsersPage() {
     );
   };
 
+  // Delete access rules:
+  // - Super admin can delete any non-super-admin user except their own account.
+  // - Tenant admin can delete only tenant_user accounts from the same tenant.
+  // - Tenant users cannot delete anyone.
+  // - Super admin accounts are never deletable from this list.
+  const canDeleteUser = (targetUser: User) => {
+    if (targetUser.user_type === 'super_admin') {
+      return false;
+    }
+
+    if (isSuperAdmin) {
+      return targetUser.id !== currentUser?.id;
+    }
+
+    if (currentUser?.user_type === 'tenant_admin') {
+      return (
+        targetUser.user_type === 'tenant_user' &&
+        targetUser.tenant_id === currentUser.tenant_id &&
+        targetUser.id !== currentUser.id
+      );
+    }
+
+    return false;
+  };
+
   const columns: ColumnDef<User>[] = [
     {
       id: 'serial',
@@ -316,7 +341,7 @@ export default function UsersPage() {
               )}
             </button>
           )}
-          {(isSuperAdmin || hasPermission('delete-users')) && row.original.user_type !== 'super_admin' && (
+          {canDeleteUser(row.original) && (
             <button
               className="p-1 text-red-600 hover:text-red-900 dark:text-red-400 dark:hover:text-red-300 hover:bg-red-50 dark:hover:bg-red-900/20 rounded cursor-pointer"
               title="Delete"

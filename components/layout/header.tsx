@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import {
   Menu,
   Search,
@@ -45,6 +45,7 @@ export default function Header({
   const [notificationOpen, setNotificationOpen] = useState(false);
   const [mounted, setMounted] = useState(false);
   const [switchingBack, setSwitchingBack] = useState(false);
+  const userDropdownRef = useRef<HTMLDivElement | null>(null);
   const router = useRouter();
   const { theme, toggleTheme } = useTheme();
   const { logout } = useAuth();
@@ -55,6 +56,20 @@ export default function Header({
   useEffect(() => {
     setMounted(true);
   }, []);
+
+  useEffect(() => {
+    const handleOutsideClick = (event: MouseEvent) => {
+      if (!dropdownOpen) return;
+
+      const target = event.target as Node;
+      if (userDropdownRef.current && !userDropdownRef.current.contains(target)) {
+        setDropdownOpen(false);
+      }
+    };
+
+    document.addEventListener('mousedown', handleOutsideClick);
+    return () => document.removeEventListener('mousedown', handleOutsideClick);
+  }, [dropdownOpen]);
 
   const handleSwitchBack = async () => {
     setSwitchingBack(true);
@@ -241,7 +256,7 @@ export default function Header({
           </div>
 
           {/* User Dropdown */}
-          <div className="relative">
+          <div ref={userDropdownRef} className="relative">
             <button
               onClick={() => setDropdownOpen(!dropdownOpen)}
               className="flex items-center gap-2 p-1.5 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors cursor-pointer"
@@ -280,11 +295,10 @@ export default function Header({
                       <button
                         onClick={handleSwitchBack}
                         disabled={switchingBack}
-                        className={`flex items-center gap-3 px-4 py-2.5 text-sm transition-colors cursor-pointer w-full text-left ${
-                          switchingBack
+                        className={`flex items-center gap-3 px-4 py-2.5 text-sm transition-colors cursor-pointer w-full text-left ${switchingBack
                             ? 'text-gray-400 dark:text-gray-600 cursor-not-allowed'
                             : 'text-orange-600 dark:text-orange-400 hover:bg-orange-50 dark:hover:bg-orange-900/20'
-                        }`}
+                          }`}
                       >
                         {switchingBack ? (
                           <>
