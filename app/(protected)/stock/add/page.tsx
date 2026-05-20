@@ -6,7 +6,8 @@ import { notify } from '@/lib/notifications';
 import CustomSelect from '@/components/ui/custom-select';
 import { stockService, commonService } from '@/services';
 import { usePermissions } from '@/hooks/use-permissions';
-import { Package2, RefreshCcw, SaveAll } from 'lucide-react';
+import { Package2, RefreshCcw } from 'lucide-react';
+import { GiSave } from 'react-icons/gi';
 
 export default function StockAddPage() {
   const { isSuperAdmin } = usePermissions();
@@ -630,9 +631,9 @@ export default function StockAddPage() {
         <div className="flex gap-2">
           <button
             type="submit"
-            className="px-3 py-1.5 bg-blue-600 text-white text-sm font-medium rounded-sm hover:bg-blue-700 transition-colors flex items-center gap-2 cursor-pointer"
+            className="flex items-center justify-center gap-2 px-5 py-1.5 text-sm bg-indigo-600 hover:bg-indigo-700 disabled:bg-gray-400 text-white rounded-sm transition-colors cursor-pointer"
           >
-            <SaveAll className="w-4 h-4" />
+            <GiSave className="w-4 h-4" />
             Save Stocks
           </button>
         </div>
@@ -692,9 +693,9 @@ export default function StockAddPage() {
               <button
                 type="button"
                 onClick={handleConfirmSave}
-                className="px-4 py-1.5 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium rounded-sm transition-colors flex items-center gap-1.5"
+                className="flex items-center justify-center gap-2 px-5 py-1.5 text-sm bg-indigo-600 hover:bg-indigo-700 disabled:bg-gray-400 text-white rounded-sm transition-colors cursor-pointer"
               >
-                <SaveAll className="w-4 h-4" />
+                <GiSave className="w-4 h-4" />
                 Confirm &amp; Save
               </button>
             </div>

@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { Edit, Trash2, Tag, Plus, X } from 'lucide-react';
+import { GiSave } from 'react-icons/gi';
 import { ColumnDef } from '@tanstack/react-table';
 import DataTable from '@/components/ui/datatable';
 import { Attribute } from '@/types';
@@ -300,9 +301,8 @@ export default function AttributesPage() {
                   placeholder="Enter attribute name"
                   value={formData.name}
                   onChange={e => setFormData({ ...formData, name: e.target.value })}
-                  className={`w-full px-2 py-1.5 text-sm border rounded-sm focus:outline-none focus:ring-1 focus:ring-indigo-500 dark:focus:ring-indigo-400 focus:border-transparent dark:bg-gray-700 dark:text-gray-100 ${
-                    formErrors.name ? 'border-red-500' : 'border-gray-300 dark:border-gray-600'
-                  }`}
+                  className={`w-full px-2 py-1.5 text-sm border rounded-sm focus:outline-none focus:ring-1 focus:ring-indigo-500 dark:focus:ring-indigo-400 focus:border-transparent dark:bg-gray-700 dark:text-gray-100 ${formErrors.name ? 'border-red-500' : 'border-gray-300 dark:border-gray-600'
+                    }`}
                   required
                 />
                 {formErrors.name && <p className="text-red-600 text-xs mt-1">{formErrors.name}</p>}
@@ -339,11 +339,10 @@ export default function AttributesPage() {
                   onChange={e =>
                     setFormData({ ...formData, sort_order: parseInt(e.target.value) || 0 })
                   }
-                  className={`w-full px-2 py-1.5 text-sm border rounded-sm focus:outline-none focus:ring-1 focus:ring-indigo-500 dark:focus:ring-indigo-400 focus:border-transparent dark:bg-gray-700 dark:text-gray-100 ${
-                    formErrors.sort_order
-                      ? 'border-red-500'
-                      : 'border-gray-300 dark:border-gray-600'
-                  }`}
+                  className={`w-full px-2 py-1.5 text-sm border rounded-sm focus:outline-none focus:ring-1 focus:ring-indigo-500 dark:focus:ring-indigo-400 focus:border-transparent dark:bg-gray-700 dark:text-gray-100 ${formErrors.sort_order
+                    ? 'border-red-500'
+                    : 'border-gray-300 dark:border-gray-600'
+                    }`}
                   min="0"
                 />
                 {formErrors.sort_order && (
@@ -375,9 +374,8 @@ export default function AttributesPage() {
                 placeholder="Enter attribute description (optional)"
                 value={formData.description}
                 onChange={e => setFormData({ ...formData, description: e.target.value })}
-                className={`w-full px-2 py-1.5 text-sm border rounded-sm focus:outline-none focus:ring-1 focus:ring-indigo-500 dark:focus:ring-indigo-400 focus:border-transparent dark:bg-gray-700 dark:text-gray-100 ${
-                  formErrors.description ? 'border-red-500' : 'border-gray-300 dark:border-gray-600'
-                }`}
+                className={`w-full px-2 py-1.5 text-sm border rounded-sm focus:outline-none focus:ring-1 focus:ring-indigo-500 dark:focus:ring-indigo-400 focus:border-transparent dark:bg-gray-700 dark:text-gray-100 ${formErrors.description ? 'border-red-500' : 'border-gray-300 dark:border-gray-600'
+                  }`}
               />
               {formErrors.description && (
                 <p className="text-red-600 text-xs mt-1">{formErrors.description}</p>
@@ -389,7 +387,7 @@ export default function AttributesPage() {
                 type="submit"
                 className="px-3 py-1.5 bg-indigo-600 text-white text-sm font-medium rounded-sm hover:bg-indigo-700 transition-colors flex items-center gap-2 cursor-pointer"
               >
-                <Edit className="w-4 h-4" />
+                <GiSave className="w-4 h-4" />
                 {isEditing ? 'Update Attribute' : 'Save Attribute'}
               </button>
               <button

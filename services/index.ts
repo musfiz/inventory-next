@@ -7,6 +7,7 @@ export { tenantService } from './tenantService';
 export { userService } from './userService';
 export { default as brandService } from './brandService';
 export { default as unitService } from './unitService';
+export { default as moduleService } from './moduleService';
 export { default as attributeService } from './attributeService';
 export { default as permissionService } from './permissionService';
 export { default as userPermissionService } from './userPermissionService';

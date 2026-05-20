@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
-import { Package2, Save } from 'lucide-react';
+import { Package2 } from 'lucide-react';
 import { notify } from '@/lib/notifications';
 import { productService } from '@/services';
 import { Brand, Category, Unit } from '@/types/api.types';
@@ -10,6 +10,7 @@ import CustomSelect, { SelectOption } from '@/components/ui/custom-select';
 import commonService from '@/services/commonService';
 import { useAuthStore } from '@/stores/auth-store';
 import { BUSINESS_TYPES } from '@/lib/constants';
+import { GiSave } from 'react-icons/gi';
 
 interface ProductFormData {
   name: string;
@@ -799,9 +800,9 @@ export default function AddProductPage() {
           <button
             type="submit"
             disabled={isLoading}
-            className="flex items-center gap-2 px-5 py-2 text-sm bg-indigo-600 text-white rounded-sm hover:bg-indigo-700 focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+            className="flex items-center justify-center gap-2 px-5 py-1.5 text-sm bg-indigo-600 hover:bg-indigo-700 disabled:bg-gray-400 text-white rounded-sm transition-colors cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
           >
-            <Save className="w-3.5 h-3.5" />
+            <GiSave className="w-4 h-4" />
             {isLoading ? 'Creating...' : 'Create Product'}
           </button>
         </div>

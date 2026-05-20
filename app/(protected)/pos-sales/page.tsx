@@ -13,7 +13,6 @@ import {
   FileText,
   Printer,
   Mail,
-  Save,
   XCircle,
   CreditCard,
   Wallet,
@@ -22,6 +21,7 @@ import {
   AlertCircle,
   CheckCircle,
 } from 'lucide-react';
+import { GiSave } from 'react-icons/gi';
 import { notify } from '@/lib/notifications';
 import { posService } from '@/services';
 import customerService from '@/services/customerService';
@@ -508,7 +508,7 @@ export default function POSSalesPage() {
               }}
               className="px-3 py-1.5 text-sm font-medium text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-md hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
             >
-              <Save className="w-4 h-4 inline mr-1" />
+              <GiSave className="w-4 h-4 inline mr-1" />
               Held Orders
             </button>
           </div>
@@ -995,9 +995,9 @@ export default function POSSalesPage() {
             <button
               onClick={holdOrder}
               disabled={cart.length === 0}
-              className="w-full flex items-center justify-center gap-2 px-4 py-1.5 bg-yellow-500 hover:bg-yellow-600 text-white font-semibold rounded-lg transition-colors disabled:opacity-50 text-sm shadow-md"
+              className="w-full flex items-center justify-center gap-2 px-5 py-1.5 bg-indigo-600 hover:bg-indigo-700 text-white font-semibold rounded-sm transition-colors disabled:opacity-50 text-sm shadow-md"
             >
-              <Save className="w-4 h-4" />
+              <GiSave className="w-4 h-4" />
               HOLD
             </button>
 
@@ -1010,9 +1010,9 @@ export default function POSSalesPage() {
               VOID
             </button>
 
-            <div className="grid grid-cols-2 gap-2">
+              className="flex items-center justify-center gap-2 px-5 py-1.5 text-sm bg-indigo-600 hover:bg-indigo-700 disabled:bg-gray-400 text-white rounded-sm transition-colors cursor-pointer"
               <button
-                onClick={printReceipt}
+              <GiSave className="w-4 h-4" />
                 disabled={cart.length === 0}
                 className="flex items-center justify-center gap-1 px-2 py-1.5 text-xs bg-blue-600 hover:bg-blue-700 text-white rounded-md transition-colors disabled:opacity-50"
               >

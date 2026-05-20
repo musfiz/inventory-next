@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
-import { Shield, Search, Save, UserCheck, Check, X } from 'lucide-react';
+import { Shield, Search, UserCheck, Check, X } from 'lucide-react';
 import CustomSelect from '@/components/ui/custom-select';
 import { notify } from '@/lib/notifications';
 import userPermissionService, {
@@ -10,6 +10,8 @@ import userPermissionService, {
   UserSelection,
 } from '@/services/userPermissionService';
 import { usePermissions } from '@/hooks/use-permissions';
+import { MdViewModule } from 'react-icons/md';
+import { GiSave } from 'react-icons/gi';
 
 export default function UserPermissionsPage() {
   const router = useRouter();
@@ -322,7 +324,7 @@ export default function UserPermissionsPage() {
                     <tr key={module.module} className="hover:bg-gray-50 dark:hover:bg-gray-700/50">
                       <td className="px-4 py-3">
                         <div className="flex items-center">
-                          <UserCheck className="w-4 h-4 mr-2 text-indigo-600 dark:text-indigo-400" />
+                          <MdViewModule className="w-4 h-4 mr-2 text-indigo-600 dark:text-indigo-400" />
                           <span className="text-sm font-medium text-gray-900 dark:text-gray-100 capitalize">
                             {module.module}
                           </span>
@@ -378,7 +380,7 @@ export default function UserPermissionsPage() {
           <button
             onClick={handleSavePermissions}
             disabled={saving}
-            className="inline-flex items-center px-6 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            className="inline-flex items-center justify-center gap-2 px-5 py-1.5 border border-transparent text-sm font-medium rounded-sm text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
           >
             {saving ? (
               <>
@@ -387,7 +389,7 @@ export default function UserPermissionsPage() {
               </>
             ) : (
               <>
-                <Save className="w-4 h-4 mr-2" />
+                <GiSave className="w-4 h-4" />
                 Save Permissions
               </>
             )}

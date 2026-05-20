@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { Eye, Edit, Trash2, Package, Plus, X } from 'lucide-react';
+import { GiSave } from 'react-icons/gi';
 import { ColumnDef } from '@tanstack/react-table';
 import DataTable from '@/components/ui/datatable';
 import { Unit } from '@/types';
@@ -249,9 +250,8 @@ export default function UnitsPage() {
                   placeholder="Enter unit name"
                   value={formData.name}
                   onChange={e => setFormData({ ...formData, name: e.target.value })}
-                  className={`w-full px-2 py-1.5 text-sm border rounded-sm focus:outline-none focus:ring-1 focus:ring-indigo-500 dark:focus:ring-indigo-400 focus:border-transparent dark:bg-gray-700 dark:text-gray-100 ${
-                    formErrors.name ? 'border-red-500' : 'border-gray-300 dark:border-gray-600'
-                  }`}
+                  className={`w-full px-2 py-1.5 text-sm border rounded-sm focus:outline-none focus:ring-1 focus:ring-indigo-500 dark:focus:ring-indigo-400 focus:border-transparent dark:bg-gray-700 dark:text-gray-100 ${formErrors.name ? 'border-red-500' : 'border-gray-300 dark:border-gray-600'
+                    }`}
                   required
                 />
                 {formErrors.name && <p className="text-red-600 text-xs mt-1">{formErrors.name}</p>}
@@ -265,11 +265,10 @@ export default function UnitsPage() {
                   placeholder="e.g., kg, pcs, liter"
                   value={formData.short_name}
                   onChange={e => setFormData({ ...formData, short_name: e.target.value })}
-                  className={`w-full px-2 py-1.5 text-sm border rounded-sm focus:outline-none focus:ring-1 focus:ring-indigo-500 dark:focus:ring-indigo-400 focus:border-transparent dark:bg-gray-700 dark:text-gray-100 ${
-                    formErrors.short_name
+                  className={`w-full px-2 py-1.5 text-sm border rounded-sm focus:outline-none focus:ring-1 focus:ring-indigo-500 dark:focus:ring-indigo-400 focus:border-transparent dark:bg-gray-700 dark:text-gray-100 ${formErrors.short_name
                       ? 'border-red-500'
                       : 'border-gray-300 dark:border-gray-600'
-                  }`}
+                    }`}
                   required
                 />
                 {formErrors.short_name && (
@@ -295,9 +294,9 @@ export default function UnitsPage() {
             <div className="flex gap-2 md:col-span-2 mt-1.5">
               <button
                 type="submit"
-                className="px-3 py-1.5 bg-indigo-600 text-white text-sm font-medium rounded-sm hover:bg-indigo-700 transition-colors flex items-center gap-2 cursor-pointer"
+                className="flex items-center justify-center gap-2 px-5 py-1.5 text-sm bg-indigo-600 hover:bg-indigo-700 disabled:bg-gray-400 text-white rounded-sm transition-colors cursor-pointer"
               >
-                <Edit className="w-4 h-4" />
+                <GiSave className="w-4 h-4" />
                 {isEditing ? 'Update Unit' : 'Save Unit'}
               </button>
               <button

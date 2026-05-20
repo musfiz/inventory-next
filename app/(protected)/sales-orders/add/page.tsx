@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState, useRef } from 'react';
-import { ShoppingCart, Plus, Minus, Save, RotateCcw } from 'lucide-react';
+import { ShoppingCart, Plus, Minus, RotateCcw } from 'lucide-react';
 import CustomSelect from '@/components/ui/custom-select';
 import CustomDatePicker from '@/components/ui/date-picker';
 import { notify } from '@/lib/notifications';
@@ -14,6 +14,7 @@ import {
 } from '@/services';
 import { usePermissions } from '@/hooks/use-permissions';
 import { useAuthStore } from '@/stores/auth-store';
+import { GiSave } from 'react-icons/gi';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -862,9 +863,9 @@ export default function AddSalesOrderPage() {
           <button
             type="submit"
             disabled={isLoading}
-            className="flex items-center gap-2 px-4 py-1.5 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium rounded-sm transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
+            className="flex items-center justify-center gap-2 px-5 py-1.5 text-sm bg-indigo-600 hover:bg-indigo-700 disabled:bg-gray-400 text-white rounded-sm transition-colors cursor-pointer disabled:opacity-60 disabled:cursor-not-allowed"
           >
-            <Save className="w-4 h-4" />
+            <GiSave className="w-4 h-4" />
             {isLoading ? 'Creating...' : 'Create Sales Order'}
           </button>
           <button

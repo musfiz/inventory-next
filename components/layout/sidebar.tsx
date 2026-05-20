@@ -187,6 +187,7 @@ const navigation: NavigationItem[] = [
     children: [
       { name: 'Brands', href: '/brands', icon: Building2, superAdminOnly: true },
       { name: 'Units', href: '/units', icon: Package, superAdminOnly: true },
+      { name: 'Modules', href: '/modules', icon: LayersPlus, superAdminOnly: true },
       { name: 'Categories', href: '/categories', icon: ListTodo, superAdminOnly: true },
       {
         name: 'Attributes',

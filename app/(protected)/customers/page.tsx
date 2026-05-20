@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { Users as UsersIcon, Plus, Edit, Trash2, X } from 'lucide-react';
+import { GiSave } from 'react-icons/gi';
 import { ColumnDef } from '@tanstack/react-table';
 import { notify, confirm } from '@/lib/notifications';
 import customerService from '@/services/customerService';
@@ -389,7 +390,7 @@ export default function CustomersPage() {
             </div>
 
             <div className="flex gap-2 pt-2">
-              <button type="submit" className="px-3 py-1.5 bg-blue-600 text-white text-sm font-medium rounded-sm hover:bg-blue-700 transition-colors flex items-center gap-2"> <Edit className="w-4 h-4" /> {isEditing ? 'Update Customer' : 'Save Customer'}</button>
+              <button type="submit" className="flex items-center justify-center gap-2 px-5 py-1.5 text-sm bg-indigo-600 hover:bg-indigo-700 disabled:bg-gray-400 text-white rounded-sm transition-colors cursor-pointer"> <GiSave className="w-4 h-4" /> {isEditing ? 'Update Customer' : 'Save Customer'}</button>
               <button type="button" onClick={() => setShowForm(false)} className="px-3 py-1.5 bg-gray-600 text-white text-sm font-medium rounded-sm hover:bg-gray-700 transition-colors flex items-center gap-2"> <X className="w-4 h-4" /> Cancel</button>
             </div>
           </form>

@@ -2,9 +2,10 @@
 
 import { useEffect, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
-import { Building2, Save, ArrowLeft } from 'lucide-react';
+import { Building2, ArrowLeft } from 'lucide-react';
 import { notify } from '@/lib/notifications';
 import { tenantService } from '@/services/tenantService';
+import { GiSave } from 'react-icons/gi';
 import { BUSINESS_TYPES, SUBSCRIPTION_PLANS, SUBSCRIPTION_STATUSES } from '@/lib/constants';
 
 interface TenantEditFormData {
@@ -637,9 +638,9 @@ export default function TenantEditPage() {
               <button
                 type="submit"
                 disabled={isLoading}
-                className="flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 rounded-sm disabled:opacity-50 disabled:cursor-not-allowed"
+                className="flex items-center justify-center gap-2 px-5 py-1.5 text-sm bg-indigo-600 hover:bg-indigo-700 disabled:bg-gray-400 text-white rounded-sm transition-colors cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
               >
-                <Save className="w-3.5 h-3.5" />
+                <GiSave className="w-4 h-4" />
                 {isLoading ? 'Saving…' : 'Save Changes'}
               </button>
             </div>

@@ -22,4 +22,7 @@ export interface UpdatePermissionRequest {
 export interface Module {
   id: string;
   name: string;
+  created_at?: string;
+  updated_at?: string;
+  permissions_count?: number;
 }

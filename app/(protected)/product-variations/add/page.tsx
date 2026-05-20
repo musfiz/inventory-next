@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
-import { Package, Save, Plus, X, RefreshCw } from 'lucide-react';
+import { Package, Plus, X, RefreshCw } from 'lucide-react';
 import { notify } from '@/lib/notifications';
 import productVariationService from '@/services/productVariationService';
 import attributeService from '@/services/attributeService';
@@ -553,9 +553,9 @@ export default function AddProductVariationPage() {
                       type="button"
                       onClick={handleAddAttribute}
                       disabled={!selectedAttributeForAdd || !selectedValueForAdd}
-                      className="px-2.5 py-1.5 text-xs bg-indigo-600 hover:bg-indigo-700 disabled:bg-gray-400 text-white rounded-sm transition-colors flex items-center justify-center gap-1.5"
+                      className="flex items-center justify-center gap-2 px-5 py-1.5 text-sm bg-indigo-600 hover:bg-indigo-700 disabled:bg-gray-400 text-white rounded-sm transition-colors cursor-pointer"
                     >
-                      <Plus className="w-4 h-5" />
+                      <GiSave className="w-4 h-4" />
                       Add Attribute
                     </button>
                   </div>
@@ -618,11 +618,10 @@ export default function AddProductVariationPage() {
                     name="sku"
                     value={formData.sku}
                     onChange={handleInputChange}
-                    className={`flex-1 px-2.5 py-1 text-sm bg-white dark:bg-gray-700 border ${
-                      hasFieldError('sku')
+                    className={`flex-1 px-2.5 py-1 text-sm bg-white dark:bg-gray-700 border ${hasFieldError('sku')
                         ? 'border-red-500 focus:border-red-500'
                         : 'border-gray-300 dark:border-gray-600 focus:border-indigo-500 dark:focus:border-indigo-400'
-                    } rounded-sm text-gray-900 dark:text-gray-100 focus:outline-none`}
+                      } rounded-sm text-gray-900 dark:text-gray-100 focus:outline-none`}
                     placeholder="Enter SKU or generate one"
                   />
                   <button
@@ -663,11 +662,10 @@ export default function AddProductVariationPage() {
                   onChange={handleInputChange}
                   step="0.01"
                   min="0.01"
-                  className={`w-full px-2.5 py-1 text-sm bg-white dark:bg-gray-700 border ${
-                    hasFieldError('cost_price')
+                  className={`w-full px-2.5 py-1 text-sm bg-white dark:bg-gray-700 border ${hasFieldError('cost_price')
                       ? 'border-red-500 focus:border-red-500'
                       : 'border-gray-300 dark:border-gray-600 focus:border-indigo-500 dark:focus:border-indigo-400'
-                  } rounded-sm text-gray-900 dark:text-gray-100 focus:outline-none`}
+                    } rounded-sm text-gray-900 dark:text-gray-100 focus:outline-none`}
                   placeholder="0.00"
                 />
                 {hasFieldError('cost_price') && (
@@ -688,11 +686,10 @@ export default function AddProductVariationPage() {
                   onChange={handleInputChange}
                   step="0.01"
                   min="0.01"
-                  className={`w-full px-2.5 py-1 text-sm bg-white dark:bg-gray-700 border ${
-                    hasFieldError('selling_price')
+                  className={`w-full px-2.5 py-1 text-sm bg-white dark:bg-gray-700 border ${hasFieldError('selling_price')
                       ? 'border-red-500 focus:border-red-500'
                       : 'border-gray-300 dark:border-gray-600 focus:border-indigo-500 dark:focus:border-indigo-400'
-                  } rounded-sm text-gray-900 dark:text-gray-100 focus:outline-none`}
+                    } rounded-sm text-gray-900 dark:text-gray-100 focus:outline-none`}
                   placeholder="0.00"
                 />
                 {hasFieldError('selling_price') && (
@@ -742,9 +739,9 @@ export default function AddProductVariationPage() {
           <button
             type="submit"
             disabled={isLoading}
-            className="flex items-center gap-2 px-5 py-1.5 text-sm bg-indigo-600 hover:bg-indigo-700 disabled:bg-gray-400 text-white rounded-sm transition-colors cursor-pointer"
+            className="flex items-center justify-center gap-2 px-5 py-1.5 text-sm bg-indigo-600 hover:bg-indigo-700 disabled:bg-gray-400 text-white rounded-sm transition-colors cursor-pointer"
           >
-            <GiSave className="w-5 h-5" />
+            <GiSave className="w-4 h-4" />
             {isLoading ? 'Saving...' : 'Save Variation'}
           </button>
           <button

@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { List, Plus, Edit, X, Trash2 } from 'lucide-react';
+import { GiSave } from 'react-icons/gi';
 import { ColumnDef } from '@tanstack/react-table';
 import DataTable from '@/components/ui/datatable';
 import CustomSelect from '@/components/ui/custom-select';
@@ -448,9 +449,9 @@ export default function SupplierListPage() {
           <div className="flex gap-2 pt-2">
             <button
               type="submit"
-              className="px-3 py-1.5 bg-blue-600 text-white text-sm font-medium rounded-sm hover:bg-blue-700 transition-colors flex items-center gap-2 cursor-pointer"
+              className="flex items-center justify-center gap-2 px-5 py-1.5 text-sm bg-indigo-600 hover:bg-indigo-700 disabled:bg-gray-400 text-white rounded-sm transition-colors cursor-pointer"
             >
-              <Edit className="w-4 h-4" />
+                <GiSave className="w-4 h-4" />
               {isEditing ? 'Update Supplier' : 'Save Supplier'}
             </button>
             <button

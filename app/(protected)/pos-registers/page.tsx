@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { Plus, Edit, Trash2, X } from 'lucide-react';
+import { GiSave } from 'react-icons/gi';
 import { ColumnDef } from '@tanstack/react-table';
 import { notify, confirm } from '@/lib/notifications';
 import { posRegisterService, commonService, customerService, warehouseService } from '@/services';
@@ -38,7 +39,7 @@ export default function PosRegisterPage() {
     show_barcode?: boolean;
     is_active?: boolean;
     is_online?: boolean;
-    
+
   };
 
   const [formData, setFormData] = useState<FormDataType>({
@@ -62,8 +63,8 @@ export default function PosRegisterPage() {
     show_barcode: true,
     is_active: true,
     is_online: false,
-    
-      
+
+
   });
   const [formErrors, setFormErrors] = useState<{ [key: string]: string }>({});
   const [refreshKey, setRefreshKey] = useState(0);
@@ -176,8 +177,8 @@ export default function PosRegisterPage() {
       show_barcode: true,
       is_active: true,
       is_online: false,
-      
-      
+
+
     });
     setFormErrors({});
     setSelectedTenant(null);
@@ -292,35 +293,47 @@ export default function PosRegisterPage() {
   const columns: ColumnDef<PosRegister>[] = [
     { id: 'serial', header: 'SL', cell: ({ row, table }) => (table.getState().pagination.pageIndex * table.getState().pagination.pageSize + row.index + 1) },
     { accessorKey: 'code', header: 'Code', cell: ({ row }) => <div className="font-mono text-xs">{(row.original as any).code || '-'}</div> },
-    { accessorKey: 'name', header: 'Register Name', cell: ({ row }) => (
-      <div>
-        <div className="font-medium text-sm">{row.original.name}</div>
-        {(row.original as any).location && <div className="text-xs text-gray-500 dark:text-gray-400">{(row.original as any).location}</div>}
-      </div>
-    )},
-    { accessorKey: 'warehouse', header: 'Warehouse', cell: ({ row }) => {
-      const wh = (row.original as any).warehouse;
-      return wh ? <span className="text-xs">{wh.name} {wh.code ? `(${wh.code})` : ''}</span> : <span className="text-gray-400 text-xs">-</span>;
-    }},
-    { id: 'payment', header: 'Payment', cell: ({ row }) => (
-      <span className="px-1.5 py-0.5 bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 text-xs rounded">{(row.original as any).default_payment_method || '-'}</span>
-    )},
-    { id: 'online', header: 'Online', cell: ({ row }) => (
-      <span className={`px-2 py-0.5 text-xs rounded-full ${ (row.original as any).is_online ? 'bg-blue-100 dark:bg-blue-900/40 text-blue-700 dark:text-blue-400' : 'bg-gray-100 dark:bg-gray-700 text-gray-500 dark:text-gray-400'}`}>
-        {(row.original as any).is_online ? 'Online' : 'Offline'}
-      </span>
-    )},
-    { accessorKey: 'is_active', header: 'Status', cell: ({ row }) => (
-      <span className={`px-2 py-0.5 text-xs rounded-full ${row.original.is_active ? 'bg-green-100 dark:bg-green-900/40 text-green-700 dark:text-green-400' : 'bg-red-100 dark:bg-red-900/40 text-red-700 dark:text-red-400'}`}>
-        {row.original.is_active ? 'Active' : 'Inactive'}
-      </span>
-    )},
-    { id: 'actions', header: 'Actions', cell: ({ row }) => (
-      <div className="flex items-center gap-2">
-        <button onClick={() => handleEdit(row.original)} className="p-1 text-green-600 hover:text-green-700"><Edit className="w-4 h-4" /></button>
-        <button onClick={() => handleDelete(row.original)} className="p-1 text-red-600 hover:text-red-700"><Trash2 className="w-4 h-4" /></button>
-      </div>
-    )},
+    {
+      accessorKey: 'name', header: 'Register Name', cell: ({ row }) => (
+        <div>
+          <div className="font-medium text-sm">{row.original.name}</div>
+          {(row.original as any).location && <div className="text-xs text-gray-500 dark:text-gray-400">{(row.original as any).location}</div>}
+        </div>
+      )
+    },
+    {
+      accessorKey: 'warehouse', header: 'Warehouse', cell: ({ row }) => {
+        const wh = (row.original as any).warehouse;
+        return wh ? <span className="text-xs">{wh.name} {wh.code ? `(${wh.code})` : ''}</span> : <span className="text-gray-400 text-xs">-</span>;
+      }
+    },
+    {
+      id: 'payment', header: 'Payment', cell: ({ row }) => (
+        <span className="px-1.5 py-0.5 bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 text-xs rounded">{(row.original as any).default_payment_method || '-'}</span>
+      )
+    },
+    {
+      id: 'online', header: 'Online', cell: ({ row }) => (
+        <span className={`px-2 py-0.5 text-xs rounded-full ${(row.original as any).is_online ? 'bg-blue-100 dark:bg-blue-900/40 text-blue-700 dark:text-blue-400' : 'bg-gray-100 dark:bg-gray-700 text-gray-500 dark:text-gray-400'}`}>
+          {(row.original as any).is_online ? 'Online' : 'Offline'}
+        </span>
+      )
+    },
+    {
+      accessorKey: 'is_active', header: 'Status', cell: ({ row }) => (
+        <span className={`px-2 py-0.5 text-xs rounded-full ${row.original.is_active ? 'bg-green-100 dark:bg-green-900/40 text-green-700 dark:text-green-400' : 'bg-red-100 dark:bg-red-900/40 text-red-700 dark:text-red-400'}`}>
+          {row.original.is_active ? 'Active' : 'Inactive'}
+        </span>
+      )
+    },
+    {
+      id: 'actions', header: 'Actions', cell: ({ row }) => (
+        <div className="flex items-center gap-2">
+          <button onClick={() => handleEdit(row.original)} className="p-1 text-green-600 hover:text-green-700"><Edit className="w-4 h-4" /></button>
+          <button onClick={() => handleDelete(row.original)} className="p-1 text-red-600 hover:text-red-700"><Trash2 className="w-4 h-4" /></button>
+        </div>
+      )
+    },
   ];
 
   const buildApiEndpoint = () => `pos/registers`;
@@ -541,9 +554,9 @@ export default function PosRegisterPage() {
             <div className="flex gap-2 pt-2">
               <button
                 type="submit"
-                className="px-3 py-1.5 bg-blue-600 text-white text-sm font-medium rounded-sm hover:bg-blue-700 transition-colors flex items-center gap-2 cursor-pointer"
+                className="flex items-center justify-center gap-2 px-5 py-1.5 text-sm bg-indigo-600 hover:bg-indigo-700 disabled:bg-gray-400 text-white rounded-sm transition-colors cursor-pointer"
               >
-                <Edit className="w-4 h-4" />
+                <GiSave className="w-4 h-4" />
                 {isEditing ? 'Update Register' : 'Save Register'}
               </button>
               <button

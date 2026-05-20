@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { FolderOpen, Plus, Edit, Trash2, Eye, X, Download } from 'lucide-react';
+import { GiSave } from 'react-icons/gi';
 import { ColumnDef } from '@tanstack/react-table';
 import { notify } from '@/lib/notifications';
 import { categoryService } from '@/services';
@@ -237,11 +238,10 @@ export default function CategoriesPage() {
       header: 'Status',
       cell: ({ row }) => (
         <span
-          className={`px-2 py-1 text-xs rounded-full ${
-            row.original.is_active
+          className={`px-2 py-1 text-xs rounded-full ${row.original.is_active
               ? 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400'
               : 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400'
-          }`}
+            }`}
         >
           {row.original.is_active ? 'Active' : 'Inactive'}
         </span>
@@ -323,9 +323,8 @@ export default function CategoriesPage() {
                   placeholder="Enter category name"
                   value={formData.name}
                   onChange={e => setFormData({ ...formData, name: e.target.value })}
-                  className={`w-full px-2 py-1.25 text-sm border rounded-sm focus:outline-none focus:ring-1 focus:ring-blue-500 dark:focus:ring-blue-400 focus:border-transparent dark:bg-gray-700 dark:text-gray-100 ${
-                    formErrors.name ? 'border-red-500' : 'border-gray-300 dark:border-gray-600'
-                  }`}
+                  className={`w-full px-2 py-1.25 text-sm border rounded-sm focus:outline-none focus:ring-1 focus:ring-blue-500 dark:focus:ring-blue-400 focus:border-transparent dark:bg-gray-700 dark:text-gray-100 ${formErrors.name ? 'border-red-500' : 'border-gray-300 dark:border-gray-600'
+                    }`}
                   required
                 />
                 {formErrors.name && <p className="text-red-600 text-xs mt-1">{formErrors.name}</p>}
@@ -355,10 +354,10 @@ export default function CategoriesPage() {
                   value={
                     formData.parent_id
                       ? {
-                          value: formData.parent_id,
-                          label:
-                            parentCategories.find(cat => cat.id === formData.parent_id)?.name || '',
-                        }
+                        value: formData.parent_id,
+                        label:
+                          parentCategories.find(cat => cat.id === formData.parent_id)?.name || '',
+                      }
                       : null
                   }
                   onChange={option =>
@@ -403,9 +402,9 @@ export default function CategoriesPage() {
             <div className="flex gap-2 md:col-span-2 mt-1.5">
               <button
                 type="submit"
-                className="px-3 py-1.5 bg-blue-600 text-white text-sm font-medium rounded-sm hover:bg-blue-700 transition-colors flex items-center gap-2 cursor-pointer"
+                className="flex items-center justify-center gap-2 px-5 py-1.5 text-sm bg-indigo-600 hover:bg-indigo-700 disabled:bg-gray-400 text-white rounded-sm transition-colors cursor-pointer"
               >
-                <Edit className="w-4 h-4" />
+                <GiSave className="w-4 h-4" />
                 {isEditing ? 'Update Category' : 'Save Category'}
               </button>
               <button

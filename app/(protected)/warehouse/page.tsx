@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { Warehouse as WarehouseIcon, Plus, Edit, Trash2, X, MapPin } from 'lucide-react';
+import { GiSave } from 'react-icons/gi';
 import { ColumnDef } from '@tanstack/react-table';
 import { notify, confirm } from '@/lib/notifications';
 import { warehouseService, commonService } from '@/services';
@@ -275,16 +276,16 @@ export default function WarehousePage() {
     },
     ...(isSuperAdmin
       ? [
-          {
-            id: 'tenant',
-            header: 'Tenant',
-            cell: ({ row }: { row: any }) => (
-              <span className="px-2 py-1 text-xs rounded-full bg-purple-100 text-purple-800 dark:bg-purple-900/30 dark:text-purple-400">
-                {row.original.tenant?.business_name || '-'}
-              </span>
-            ),
-          },
-        ]
+        {
+          id: 'tenant',
+          header: 'Tenant',
+          cell: ({ row }: { row: any }) => (
+            <span className="px-2 py-1 text-xs rounded-full bg-purple-100 text-purple-800 dark:bg-purple-900/30 dark:text-purple-400">
+              {row.original.tenant?.business_name || '-'}
+            </span>
+          ),
+        },
+      ]
       : []),
     {
       id: 'location',
@@ -338,11 +339,10 @@ export default function WarehousePage() {
       header: 'Status',
       cell: ({ row }) => (
         <span
-          className={`px-2 py-1 text-xs rounded-full ${
-            row.original.is_active
+          className={`px-2 py-1 text-xs rounded-full ${row.original.is_active
               ? 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400'
               : 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400'
-          }`}
+            }`}
         >
           {row.original.is_active ? 'Active' : 'Inactive'}
         </span>
@@ -451,9 +451,8 @@ export default function WarehousePage() {
                       setFormErrors(rest);
                     }
                   }}
-                  className={`w-full px-2 py-1.25 text-sm border rounded-sm focus:outline-none focus:ring-1 focus:ring-blue-500 dark:focus:ring-blue-400 focus:border-transparent dark:bg-gray-700 dark:text-gray-100 ${
-                    formErrors.name ? 'border-red-500' : 'border-gray-300 dark:border-gray-600'
-                  }`}
+                  className={`w-full px-2 py-1.25 text-sm border rounded-sm focus:outline-none focus:ring-1 focus:ring-blue-500 dark:focus:ring-blue-400 focus:border-transparent dark:bg-gray-700 dark:text-gray-100 ${formErrors.name ? 'border-red-500' : 'border-gray-300 dark:border-gray-600'
+                    }`}
                 />
                 {formErrors.name && <p className="text-red-600 text-xs mt-1">{formErrors.name}</p>}
               </div>
@@ -474,9 +473,8 @@ export default function WarehousePage() {
                       setFormErrors(rest);
                     }
                   }}
-                  className={`w-full px-2 py-1.25 text-sm border rounded-sm focus:outline-none focus:ring-1 focus:ring-blue-500 dark:focus:ring-blue-400 focus:border-transparent dark:bg-gray-700 dark:text-gray-100 ${
-                    formErrors.code ? 'border-red-500' : 'border-gray-300 dark:border-gray-600'
-                  }`}
+                  className={`w-full px-2 py-1.25 text-sm border rounded-sm focus:outline-none focus:ring-1 focus:ring-blue-500 dark:focus:ring-blue-400 focus:border-transparent dark:bg-gray-700 dark:text-gray-100 ${formErrors.code ? 'border-red-500' : 'border-gray-300 dark:border-gray-600'
+                    }`}
                 />
                 {formErrors.code && <p className="text-red-600 text-xs mt-1">{formErrors.code}</p>}
               </div>
@@ -530,9 +528,8 @@ export default function WarehousePage() {
                       setFormErrors(rest);
                     }
                   }}
-                  className={`w-full px-2 py-1.25 text-sm border rounded-sm focus:outline-none focus:ring-1 focus:ring-blue-500 dark:focus:ring-blue-400 focus:border-transparent dark:bg-gray-700 dark:text-gray-100 ${
-                    formErrors.email ? 'border-red-500' : 'border-gray-300 dark:border-gray-600'
-                  }`}
+                  className={`w-full px-2 py-1.25 text-sm border rounded-sm focus:outline-none focus:ring-1 focus:ring-blue-500 dark:focus:ring-blue-400 focus:border-transparent dark:bg-gray-700 dark:text-gray-100 ${formErrors.email ? 'border-red-500' : 'border-gray-300 dark:border-gray-600'
+                    }`}
                 />
                 {formErrors.email && (
                   <p className="text-red-600 text-xs mt-1">{formErrors.email}</p>
@@ -665,9 +662,9 @@ export default function WarehousePage() {
             <div className="flex gap-2 pt-2">
               <button
                 type="submit"
-                className="px-3 py-1.5 bg-blue-600 text-white text-sm font-medium rounded-sm hover:bg-blue-700 transition-colors flex items-center gap-2 cursor-pointer"
+                className="flex items-center justify-center gap-2 px-5 py-1.5 text-sm bg-indigo-600 hover:bg-indigo-700 disabled:bg-gray-400 text-white rounded-sm transition-colors cursor-pointer"
               >
-                <Edit className="w-4 h-4" />
+                <GiSave className="w-4 h-4" />
                 {isEditing ? 'Update Warehouse' : 'Save Warehouse'}
               </button>
               <button

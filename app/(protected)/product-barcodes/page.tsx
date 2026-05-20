@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { Barcode as BarcodeIcon, Plus, Trash2, X } from 'lucide-react';
+import { GiSave } from 'react-icons/gi';
 import { ColumnDef } from '@tanstack/react-table';
 import { notify, confirm } from '@/lib/notifications';
 import { barcodeService } from '@/services';
@@ -312,9 +313,9 @@ export default function ProductBarcodesPage() {
                 type="button"
                 onClick={handleGenerateBarcodes}
                 disabled={isGenerating}
-                className="px-3 py-1.5 bg-blue-600 text-white text-sm font-medium rounded-sm hover:bg-blue-700 transition-colors flex items-center gap-2 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+                className="flex items-center justify-center gap-2 px-5 py-1.5 text-sm bg-indigo-600 hover:bg-indigo-700 disabled:bg-gray-400 text-white rounded-sm transition-colors cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
               >
-                <BarcodeIcon className="w-4 h-4" />
+                <GiSave className="w-4 h-4" />
                 {isGenerating ? 'Generating...' : 'Generate Barcodes'}
               </button>
               <button
