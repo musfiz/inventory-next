@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, Fragment } from 'react';
 import { useRouter } from 'next/navigation';
 import { Shield, Search, UserCheck, Check, X } from 'lucide-react';
 import CustomSelect from '@/components/ui/custom-select';
@@ -27,8 +27,18 @@ export default function UserPermissionsPage() {
   const [saving, setSaving] = useState(false);
   const [formErrors, setFormErrors] = useState<{ [key: string]: string }>({});
 
-  // Available permission actions
+  // Available permission actions — must match the normalized action values returned by the API
   const permissionActions = ['view', 'store', 'update', 'delete', 'PDF', 'XLSX'];
+
+  // Human-readable labels for each action column
+  const actionLabels: Record<string, string> = {
+    view: 'View',
+    store: 'Create',
+    update: 'Edit',
+    delete: 'Delete',
+    PDF: 'PDF',
+    XLSX: 'XLSX',
+  };
 
   // Filter users: if current user is tenant_admin, exclude other tenant_admins
   const filteredUsers = useMemo(() => {
@@ -150,6 +160,60 @@ export default function UserPermissionsPage() {
   const isModulePartiallyChecked = (module: UserPermissionModule): boolean => {
     const checked = module.permissions.filter(p => selectedPermissions.has(p.name)).length;
     return checked > 0 && checked < module.permissions.length;
+  };
+
+  // Maps each normalized API action to all name-prefixes that represent it.
+  // Backend normalizes: create/store/add → 'store', edit/update/modify → 'update', etc.
+  const ACTION_SYNONYMS: Record<string, string[]> = {
+    view:   ['view', 'show', 'index'],
+    store:  ['store', 'create', 'add'],
+    update: ['update', 'edit', 'modify'],
+    delete: ['delete', 'remove'],
+    PDF:    ['pdf'],
+    XLSX:   ['xlsx', 'excel'],
+  };
+
+  // Derive the page/resource name by stripping any known action-synonym prefix.
+  // e.g. action="store", name="create-product" → "product"
+  // e.g. action="update", name="edit-purchase-orders" → "purchase-orders"
+  const getPageName = (name: string, action: string): string => {
+    const nameLower = name.toLowerCase();
+    const synonyms = ACTION_SYNONYMS[action] ?? [action.toLowerCase()];
+    for (const prefix of synonyms) {
+      if (nameLower.startsWith(prefix + '-')) return name.slice(prefix.length + 1);
+    }
+    return name;
+  };
+
+  // Group a module's flat permissions array into pages.
+  const groupModuleByPage = (module: UserPermissionModule) => {
+    const pageMap = new Map<string, typeof module.permissions>();
+    module.permissions.forEach(permission => {
+      const page = getPageName(permission.name, permission.action);
+      if (!pageMap.has(page)) pageMap.set(page, []);
+      pageMap.get(page)!.push(permission);
+    });
+    return Array.from(pageMap.entries()).map(([page, permissions]) => ({ page, permissions }));
+  };
+
+  const formatPageName = (page: string): string =>
+    page.split('-').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ');
+
+  const toggleAllPagePermissions = (pagePerms: { name: string }[], checked: boolean) => {
+    const newPermissions = new Set(selectedPermissions);
+    pagePerms.forEach(p => {
+      if (checked) newPermissions.add(p.name);
+      else newPermissions.delete(p.name);
+    });
+    setSelectedPermissions(newPermissions);
+  };
+
+  const isPageFullyChecked = (pagePerms: { name: string }[]): boolean =>
+    pagePerms.length > 0 && pagePerms.every(p => selectedPermissions.has(p.name));
+
+  const isPagePartiallyChecked = (pagePerms: { name: string }[]): boolean => {
+    const checked = pagePerms.filter(p => selectedPermissions.has(p.name)).length;
+    return checked > 0 && checked < pagePerms.length;
   };
 
   const handleSavePermissions = async () => {
@@ -294,72 +358,96 @@ export default function UserPermissionsPage() {
                 <thead className="bg-gray-50 dark:bg-gray-700">
                   <tr>
                     <th className="px-4 py-3 text-left text-xs font-medium text-gray-700 dark:text-gray-300 uppercase tracking-wider w-1/4">
-                      Module
+                      Module / Page
                     </th>
-                    <th className="px-4 py-3 text-center text-xs font-medium text-gray-700 dark:text-gray-300 uppercase tracking-wider">
-                      View
-                    </th>
-                    <th className="px-4 py-3 text-center text-xs font-medium text-gray-700 dark:text-gray-300 uppercase tracking-wider">
-                      Create
-                    </th>
-                    <th className="px-4 py-3 text-center text-xs font-medium text-gray-700 dark:text-gray-300 uppercase tracking-wider">
-                      Edit
-                    </th>
-                    <th className="px-4 py-3 text-center text-xs font-medium text-gray-700 dark:text-gray-300 uppercase tracking-wider">
-                      Delete
-                    </th>
-                    <th className="px-4 py-3 text-center text-xs font-medium text-gray-700 dark:text-gray-300 uppercase tracking-wider">
-                      PDF
-                    </th>
-                    <th className="px-4 py-3 text-center text-xs font-medium text-gray-700 dark:text-gray-300 uppercase tracking-wider">
-                      XLSX
-                    </th>
+                    {permissionActions.map(action => (
+                      <th key={action} className="px-4 py-3 text-center text-xs font-medium text-gray-700 dark:text-gray-300 uppercase tracking-wider">
+                        {actionLabels[action] ?? action}
+                      </th>
+                    ))}
                     <th className="px-4 py-3 text-center text-xs font-medium text-gray-700 dark:text-gray-300 uppercase tracking-wider w-20">
                       All
                     </th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
-                  {filteredModules.map(module => (
-                    <tr key={module.module} className="hover:bg-gray-50 dark:hover:bg-gray-700/50">
-                      <td className="px-4 py-3">
-                        <div className="flex items-center">
-                          <MdViewModule className="w-4 h-4 mr-2 text-indigo-600 dark:text-indigo-400" />
-                          <span className="text-sm font-medium text-gray-900 dark:text-gray-100 capitalize">
-                            {module.module}
-                          </span>
-                        </div>
-                      </td>
-                      {permissionActions.map(action => {
-                        const permission = module.permissions.find(p => p.action === action);
-                        return (
-                          <td key={action} className="px-4 py-3 text-center">
-                            {permission ? (
+                  {filteredModules.map(module => {
+                    const pages = groupModuleByPage(module);
+                    return (
+                      <Fragment key={module.module}>
+                        {/* Module header row */}
+                        <tr className="bg-indigo-50 dark:bg-indigo-900/30 border-t-2 border-indigo-100 dark:border-indigo-800">
+                          <td colSpan={7} className="px-4 py-2">
+                            <div className="flex items-center gap-2">
+                              <MdViewModule className="w-4 h-4 text-indigo-600 dark:text-indigo-400" />
+                              <span className="text-sm font-semibold text-indigo-800 dark:text-indigo-200 capitalize">
+                                {module.module}
+                              </span>
+                              <span className="text-xs text-indigo-400 dark:text-indigo-500">
+                                ({pages.length} page{pages.length !== 1 ? 's' : ''})
+                              </span>
+                            </div>
+                          </td>
+                          <td className="px-4 py-2 text-center">
+                            <input
+                              type="checkbox"
+                              checked={isModuleFullyChecked(module)}
+                              ref={el => {
+                                if (el) el.indeterminate = isModulePartiallyChecked(module);
+                              }}
+                              onChange={e => toggleAllModulePermissions(module, e.target.checked)}
+                              className="w-4 h-4 text-indigo-600 bg-gray-100 border-gray-300 rounded dark:bg-gray-700 dark:border-gray-600 cursor-pointer"
+                              title={`Select all ${module.module} permissions`}
+                            />
+                          </td>
+                        </tr>
+                        {/* Page rows */}
+                        {pages.map(({ page, permissions: pagePerms }) => (
+                          <tr
+                            key={`${module.module}-${page}`}
+                            className="hover:bg-gray-50 dark:hover:bg-gray-700/50"
+                          >
+                            <td className="pl-8 pr-4 py-2.5">
+                              <div className="flex items-center gap-1.5">
+                                <span className="w-1.5 h-1.5 rounded-full bg-indigo-300 dark:bg-indigo-600 flex-shrink-0"></span>
+                                <span className="text-sm text-gray-700 dark:text-gray-300">
+                                  {formatPageName(page)}
+                                </span>
+                              </div>
+                            </td>
+                            {permissionActions.map(action => {
+                              const permission = pagePerms.find(p => p.action === action);
+                              return (
+                                <td key={action} className="px-4 py-2.5 text-center">
+                                  {permission ? (
+                                    <input
+                                      type="checkbox"
+                                      checked={selectedPermissions.has(permission.name)}
+                                      onChange={() => togglePermission(permission.name)}
+                                      className="w-4 h-4 text-indigo-600 bg-gray-100 border-gray-300 rounded dark:bg-gray-700 dark:border-gray-600 cursor-pointer"
+                                    />
+                                  ) : (
+                                    <span className="text-gray-300 dark:text-gray-700">—</span>
+                                  )}
+                                </td>
+                              );
+                            })}
+                            <td className="px-4 py-2.5 text-center">
                               <input
                                 type="checkbox"
-                                checked={selectedPermissions.has(permission.name)}
-                                onChange={() => togglePermission(permission.name)}
-                                className="w-4 h-4 text-indigo-600 bg-gray-100 border-gray-300 rounded focus:ring-indigo-500 dark:focus:ring-indigo-600 dark:ring-offset-gray-800 focus:ring-2 dark:bg-gray-700 dark:border-gray-600 cursor-pointer"
+                                checked={isPageFullyChecked(pagePerms)}
+                                ref={el => {
+                                  if (el) el.indeterminate = isPagePartiallyChecked(pagePerms);
+                                }}
+                                onChange={e => toggleAllPagePermissions(pagePerms, e.target.checked)}
+                                className="w-4 h-4 text-indigo-600 bg-gray-100 border-gray-300 rounded dark:bg-gray-700 dark:border-gray-600 cursor-pointer"
                               />
-                            ) : (
-                              <span className="text-gray-600 dark:text-gray-800">-</span>
-                            )}
-                          </td>
-                        );
-                      })}
-                      <td className="px-4 py-3 text-center">
-                        <input
-                          type="checkbox"
-                          checked={isModuleFullyChecked(module)}
-                          ref={el => {
-                            if (el) el.indeterminate = isModulePartiallyChecked(module);
-                          }}
-                          onChange={e => toggleAllModulePermissions(module, e.target.checked)}
-                          className="w-4 h-4 text-indigo-600 bg-gray-100 border-gray-300 rounded focus:ring-indigo-500 dark:focus:ring-indigo-600 dark:ring-offset-gray-800 focus:ring-2 dark:bg-gray-700 dark:border-gray-600 cursor-pointer"
-                        />
-                      </td>
-                    </tr>
-                  ))}
+                            </td>
+                          </tr>
+                        ))}
+                      </Fragment>
+                    );
+                  })}
                 </tbody>
               </table>
             </div>
@@ -380,7 +468,7 @@ export default function UserPermissionsPage() {
           <button
             onClick={handleSavePermissions}
             disabled={saving}
-            className="inline-flex items-center justify-center gap-2 px-5 py-1.5 border border-transparent text-sm font-medium rounded-sm text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            className="inline-flex items-center justify-center gap-2 px-5 py-1.5 border border-transparent text-sm font-medium rounded-sm text-white bg-indigo-600 hover:bg-indigo-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
           >
             {saving ? (
               <>
@@ -390,7 +478,7 @@ export default function UserPermissionsPage() {
             ) : (
               <>
                 <GiSave className="w-4 h-4" />
-                Save Permissions
+                Update Permission
               </>
             )}
           </button>

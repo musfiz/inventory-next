@@ -208,7 +208,7 @@ export default function PermissionsPage() {
         </div>
         <button
           onClick={handleAddPermission}
-          className="cursor-pointer inline-flex items-center px-4 py-1 border border-transparent text-sm font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 transition-colors"
+          className="cursor-pointer inline-flex items-center px-4 py-1 border border-transparent text-sm font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700 transition-colors"
         >
           <Plus className="w-4 h-4 mr-2" />
           Add Permission
@@ -263,7 +263,7 @@ export default function PermissionsPage() {
             <div className="flex gap-2 md:col-span-2">
               <button
                 type="submit"
-                className="mt-5.5 px-3 py-1 bg-indigo-600 text-white text-sm font-medium rounded-md hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 transition-colors flex items-center gap-2 h-8"
+                className="mt-5.5 px-3 py-1 bg-indigo-600 text-white text-sm font-medium rounded-md hover:bg-indigo-700 transition-colors flex items-center gap-2 h-8"
               >
                 <Edit className="w-4 h-4" />
                 {isEditing ? 'Update Permission' : 'Create Permission'}
@@ -271,7 +271,7 @@ export default function PermissionsPage() {
               <button
                 type="button"
                 onClick={() => setShowForm(false)}
-                className="mt-5.5 px-3 py-1 bg-gray-600 text-white text-sm font-medium rounded-md hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-500 transition-colors flex items-center gap-2 h-8"
+                className="mt-5.5 px-3 py-1 bg-gray-600 text-white text-sm font-medium rounded-md hover:bg-gray-700 transition-colors flex items-center gap-2 h-8"
               >
                 <X className="w-4 h-4" />
                 Cancel

@@ -68,9 +68,9 @@ const navigation: NavigationItem[] = [
   {
     name: 'User Management',
     icon: Users,
-    permission: 'view-users',
+    permission: 'view-user',
     children: [
-      { name: 'All Users', href: '/users', icon: List, permission: 'view-users' }
+      { name: 'All Users', href: '/users', icon: List, permission: 'view-user' }
     ],
   },
   {
@@ -85,51 +85,51 @@ const navigation: NavigationItem[] = [
   {
     name: 'Product Management',
     icon: AiOutlineProduct,
-    permission: 'view-products',
+    permissions: ['view-product', 'view-product-variation', 'view-product-barcode', 'view-product-image'],
     children: [
-      { name: 'Products', href: '/products', icon: List, permission: 'view-products' },
-      { name: 'Add Product', href: '/products/add', icon: UserPlus, permission: 'create-products' },
+      { name: 'Products', href: '/products', icon: List, permission: 'view-product' },
+      { name: 'Add Product', href: '/products/add', icon: UserPlus, permission: 'create-product' },
       {
         name: 'Product Variations',
         href: '/product-variations',
         icon: Tag,
-        permission: 'view-product-variations',
+        permission: 'view-product-variation',
       },
       {
         name: 'Add Product Variation',
         href: '/product-variations/add',
         icon: UserPlus,
-        permission: 'create-product-variations',
+        permission: 'create-product-variation',
       },
       {
         name: 'Product Barcodes',
         href: '/product-barcodes',
         icon: Barcode,
-        permission: 'view-product-barcodes',
+        permission: 'view-product-barcode',
       },
       {
         name: 'Product Image',
         href: '/products/images',
         icon: Image,
-        permission: 'view-product-images',
+        permission: 'view-product-image',
       },
     ],
   },
   {
     name: 'Stock Management',
     icon: CirclePile,
-    permission: 'view-stocks',
+    permissions: ['view-stock', 'create-stock', 'view-warehouse', 'view-bin'],
     children: [
-      { name: 'Stock List', href: '/stock', icon: List, permission: 'view-stocks' },
-      { name: 'Add Stock', href: '/stock/add', icon: LayersPlus, permission: 'create-stocks' },
-      { name: 'Warehouses', href: '/warehouse', icon: Warehouse, permission: 'view-warehouses' },
-      { name: 'Bins', href: '/bins', icon: Container, permission: 'view-bins' },
+      { name: 'Stock', href: '/stock', icon: List, permission: 'view-stock' },
+      { name: 'Add Stock', href: '/stock/add', icon: LayersPlus, permission: 'create-stock'},
+      { name: 'Warehouse', href: '/warehouse', icon: Warehouse, permission: 'view-warehouse'},
+      { name: 'Bins', href: '/bins', icon: Container, permission: 'view-bin'},
     ],
   },
   {
     name: 'Purchase Management',
     icon: ListMinus,
-    permission: 'view-purchases',
+    permission: 'view-purchase',
     children: [
       { name: 'Supplier List', href: '/suppliers', icon: PiUserListDuotone, permission: 'view-suppliers' },
       {
@@ -142,13 +142,13 @@ const navigation: NavigationItem[] = [
         name: 'Add Purchase Orders',
         href: '/purchase-orders/add',
         icon: SquarePlus,
-        permission: 'create-purchases',
+        permission: 'create-purchase',
       },
       {
         name: 'Purchase Orders Return',
         href: '/purchase-orders',
         icon: MdOutlineAssignmentReturn,
-        permission: 'view-purchases',
+        permission: 'view-purchase',
       },
     ],
   },
@@ -176,14 +176,15 @@ const navigation: NavigationItem[] = [
   {
     name: 'Report Management',
     icon: FileText,
-    permission: '',
+    permissions: [],
     children: [
-      { name: 'Purchase Report', href: '/reports/purchase-list', icon: FileSpreadsheet, permission: 'view-purchase-reports' },
+      { name: 'Purchase Report', href: '/reports/purchase-list', icon: FileSpreadsheet, permission: 'view-purchase-report' },
     ],
   },
   {
     name: 'Settings',
     icon: Settings,
+    superAdminOnly: true,
     children: [
       { name: 'Brands', href: '/brands', icon: Building2, superAdminOnly: true },
       { name: 'Units', href: '/units', icon: Package, superAdminOnly: true },
