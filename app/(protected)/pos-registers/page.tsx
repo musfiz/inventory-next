@@ -9,11 +9,19 @@ import { posRegisterService, commonService, customerService, warehouseService } 
 import type { PosRegister } from '@/services/posRegisterService';
 import DataTable from '@/components/ui/datatable';
 import CustomSelect from '@/components/ui/custom-select';
+import { useRouter } from 'next/navigation';
 import { usePermissions } from '@/hooks/use-permissions';
 import { useAuthStore } from '@/stores/auth-store';
 
 export default function PosRegisterPage() {
-  const { isSuperAdmin } = usePermissions();
+  const { isSuperAdmin, hasPermission, isHydrated } = usePermissions();
+  const router = useRouter();
+
+  useEffect(() => {
+    if (!isHydrated) return;
+    if (!hasPermission('view-pos-register')) router.replace('/dashboard');
+  }, [isHydrated, hasPermission, router]);
+
   const [showForm, setShowForm] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
   const [current, setCurrent] = useState<any>(null);

@@ -5,12 +5,19 @@ import { useAuthStore } from '@/stores/auth-store';
 import { notify } from '@/lib/notifications';
 import CustomSelect from '@/components/ui/custom-select';
 import { stockService, commonService } from '@/services';
+import { useRouter } from 'next/navigation';
 import { usePermissions } from '@/hooks/use-permissions';
 import { Package2, RefreshCcw } from 'lucide-react';
 import { GiSave } from 'react-icons/gi';
 
 export default function StockAddPage() {
-  const { isSuperAdmin } = usePermissions();
+  const { isSuperAdmin, hasPermission, isHydrated } = usePermissions();
+  const router = useRouter();
+
+  useEffect(() => {
+    if (!isHydrated) return;
+    if (!hasPermission('create-stocks')) router.replace('/dashboard');
+  }, [isHydrated, hasPermission, router]);
 
   const [selectedTenant, setSelectedTenant] = useState<any>(null);
   const [defaultTenantOptions, setDefaultTenantOptions] = useState<any[]>([]);

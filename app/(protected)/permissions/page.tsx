@@ -7,8 +7,17 @@ import DataTable from '@/components/ui/datatable';
 import { Permission, Module } from '@/types/permission.types';
 import { confirm, notify } from '@/lib/notifications';
 import permissionService from '@/services/permissionService';
+import { useRouter } from 'next/navigation';
+import { usePermissions } from '@/hooks/use-permissions';
 
 export default function PermissionsPage() {
+  const { isSuperAdmin, isHydrated } = usePermissions();
+  const router = useRouter();
+
+  useEffect(() => {
+    if (!isHydrated) return;
+    if (!isSuperAdmin) router.replace('/dashboard');
+  }, [isHydrated, isSuperAdmin, router]);
 
   const [modules, setModules] = useState<Module[]>([]);
   const [loadingModules, setLoadingModules] = useState(true);
@@ -277,6 +286,7 @@ export default function PermissionsPage() {
         key={refreshKey}
         columns={columns}
         apiEndpoint="permissions"
+        pageSize={15}
         enableSearch={true}
         searchPlaceholder="Search permissions or modules..."
       />

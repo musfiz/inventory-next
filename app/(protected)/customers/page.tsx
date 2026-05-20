@@ -8,12 +8,20 @@ import { notify, confirm } from '@/lib/notifications';
 import customerService from '@/services/customerService';
 import type { Customer } from '@/services/customerService';
 import DataTable from '@/components/ui/datatable';
+import { useRouter } from 'next/navigation';
 import { usePermissions } from '@/hooks/use-permissions';
 import TenantSelect from '@/components/ui/tenant-select';
 import { useAuthStore } from '@/stores/auth-store';
 
 export default function CustomersPage() {
-  const { isSuperAdmin } = usePermissions();
+  const { isSuperAdmin, hasPermission, isHydrated } = usePermissions();
+  const router = useRouter();
+
+  useEffect(() => {
+    if (!isHydrated) return;
+    if (!hasPermission('view-customer')) router.replace('/dashboard');
+  }, [isHydrated, hasPermission, router]);
+
   const authUser = useAuthStore(s => s.user);
   const [showForm, setShowForm] = useState(false);
   const [isEditing, setIsEditing] = useState(false);

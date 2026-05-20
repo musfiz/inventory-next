@@ -10,8 +10,18 @@ import { Brand } from '@/types';
 import { notify, confirm } from '@/lib/notifications';
 import brandService from '@/services/brandService';
 import { formatDate } from '@/lib/utils/date';
+import { useRouter } from 'next/navigation';
+import { usePermissions } from '@/hooks/use-permissions';
 
 export default function BrandsPage() {
+  const { isSuperAdmin, isHydrated } = usePermissions();
+  const router = useRouter();
+
+  useEffect(() => {
+    if (!isHydrated) return;
+    if (!isSuperAdmin) router.replace('/dashboard');
+  }, [isHydrated, isSuperAdmin, router]);
+
   const [businessTypeFilter, setBusinessTypeFilter] = useState<string>('');
 
   const [showForm, setShowForm] = useState(false);

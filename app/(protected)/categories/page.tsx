@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { FolderOpen, Plus, Edit, Trash2, Eye, X, Download } from 'lucide-react';
 import { GiSave } from 'react-icons/gi';
 import { ColumnDef } from '@tanstack/react-table';
@@ -11,8 +11,18 @@ import { Category } from '@/types/api.types';
 import DataTable from '@/components/ui/datatable';
 import CustomSelect from '@/components/ui/custom-select';
 import { BUSINESS_TYPES } from '@/lib/constants';
+import { useRouter } from 'next/navigation';
+import { usePermissions } from '@/hooks/use-permissions';
 
 export default function CategoriesPage() {
+  const { isSuperAdmin, isHydrated } = usePermissions();
+  const router = useRouter();
+
+  useEffect(() => {
+    if (!isHydrated) return;
+    if (!isSuperAdmin) router.replace('/dashboard');
+  }, [isHydrated, isSuperAdmin, router]);
+
   const [showForm, setShowForm] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
   const [currentCategory, setCurrentCategory] = useState<Category | null>(null);

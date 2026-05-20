@@ -9,6 +9,7 @@ import type { PosRefund } from '@/services/posRefundService';
 import DataTable from '@/components/ui/datatable';
 import CustomSelect from '@/components/ui/custom-select';
 import DateTimePicker from '@/components/ui/date-time-picker';
+import { useRouter } from 'next/navigation';
 import { usePermissions } from '@/hooks/use-permissions';
 import { useAuthStore } from '@/stores/auth-store';
 import apiClient from '@/lib/api/axios';
@@ -106,7 +107,14 @@ const emptyForm = (): RefundForm => ({
 // ─── Page ─────────────────────────────────────────────────────────────────────
 
 export default function PosRefundsPage() {
-  const { isSuperAdmin } = usePermissions();
+  const { isSuperAdmin, hasPermission, isHydrated } = usePermissions();
+  const router = useRouter();
+
+  useEffect(() => {
+    if (!isHydrated) return;
+    if (!hasPermission('view-pos-refund')) router.replace('/dashboard');
+  }, [isHydrated, hasPermission, router]);
+
   const authUser = useAuthStore(s => s.user);
 
   const [showForm, setShowForm]     = useState(false);

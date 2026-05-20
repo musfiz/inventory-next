@@ -11,8 +11,18 @@ import { notify, confirm } from '@/lib/notifications';
 import attributeValueService from '@/services/attributeValueService';
 import attributeService from '@/services/attributeService';
 import { formatDate } from '@/lib/utils/date';
+import { useRouter } from 'next/navigation';
+import { usePermissions } from '@/hooks/use-permissions';
 
 export default function AttributeValuesPage() {
+  const { isSuperAdmin, isHydrated } = usePermissions();
+  const router = useRouter();
+
+  useEffect(() => {
+    if (!isHydrated) return;
+    if (!isSuperAdmin) router.replace('/dashboard');
+  }, [isHydrated, isSuperAdmin, router]);
+
   const [showForm, setShowForm] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
   const [currentAttributeValue, setCurrentAttributeValue] = useState<AttributeValue | null>(null);

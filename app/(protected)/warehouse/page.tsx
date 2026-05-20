@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Warehouse as WarehouseIcon, Plus, Edit, Trash2, X, MapPin } from 'lucide-react';
 import { GiSave } from 'react-icons/gi';
 import { ColumnDef } from '@tanstack/react-table';
@@ -9,10 +9,18 @@ import { warehouseService, commonService } from '@/services';
 import type { Warehouse } from '@/services/warehouseService';
 import DataTable from '@/components/ui/datatable';
 import CustomSelect from '@/components/ui/custom-select';
+import { useRouter } from 'next/navigation';
 import { usePermissions } from '@/hooks/use-permissions';
 
 export default function WarehousePage() {
-  const { isSuperAdmin } = usePermissions();
+  const { isSuperAdmin, hasPermission, isHydrated } = usePermissions();
+  const router = useRouter();
+
+  useEffect(() => {
+    if (!isHydrated) return;
+    if (!hasPermission('view-warehouses')) router.replace('/dashboard');
+  }, [isHydrated, hasPermission, router]);
+
   const [showForm, setShowForm] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
   const [currentWarehouse, setCurrentWarehouse] = useState<Warehouse | null>(null);

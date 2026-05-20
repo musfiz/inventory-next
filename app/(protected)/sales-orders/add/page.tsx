@@ -12,6 +12,7 @@ import {
   productVariationService,
   commonService,
 } from '@/services';
+import { useRouter } from 'next/navigation';
 import { usePermissions } from '@/hooks/use-permissions';
 import { useAuthStore } from '@/stores/auth-store';
 import { GiSave } from 'react-icons/gi';
@@ -66,7 +67,14 @@ const selectCls = inputCls; // same visual as text input
 
 export default function AddSalesOrderPage() {
   const authUser = useAuthStore(s => s.user);
-  const { isSuperAdmin } = usePermissions();
+  const { isSuperAdmin, hasPermission, isHydrated } = usePermissions();
+  const router = useRouter();
+
+  useEffect(() => {
+    if (!isHydrated) return;
+    if (!hasPermission('create-sales')) router.replace('/dashboard');
+  }, [isHydrated, hasPermission, router]);
+
   const formRef = useRef<HTMLFormElement | null>(null);
 
   // ── Form state ──────────────────────────────────────────────────────────────

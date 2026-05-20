@@ -9,11 +9,19 @@ import { binService, commonService } from '@/services';
 import type { Bin } from '@/services/binService';
 import DataTable from '@/components/ui/datatable';
 import CustomSelect from '@/components/ui/custom-select';
+import { useRouter } from 'next/navigation';
 import { usePermissions } from '@/hooks/use-permissions';
 import { useAuthStore } from '@/stores/auth-store';
 
 export default function BinPage() {
-  const { isSuperAdmin } = usePermissions();
+  const { isSuperAdmin, hasPermission, isHydrated } = usePermissions();
+  const router = useRouter();
+
+  useEffect(() => {
+    if (!isHydrated) return;
+    if (!hasPermission('view-bins')) router.replace('/dashboard');
+  }, [isHydrated, hasPermission, router]);
+
   const authUser = useAuthStore(s => s.user);
   const [showForm, setShowForm] = useState(false);
   const [isEditing, setIsEditing] = useState(false);

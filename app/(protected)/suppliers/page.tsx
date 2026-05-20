@@ -7,12 +7,19 @@ import { ColumnDef } from '@tanstack/react-table';
 import DataTable from '@/components/ui/datatable';
 import CustomSelect from '@/components/ui/custom-select';
 import { supplierService, commonService } from '@/services';
+import { useRouter } from 'next/navigation';
 import { usePermissions } from '@/hooks/use-permissions';
 import { notify, confirm } from '@/lib/notifications';
 
 export default function SupplierListPage() {
   const [refreshKey, setRefreshKey] = useState(0);
-  const { isSuperAdmin } = usePermissions();
+  const { isSuperAdmin, hasPermission, isHydrated } = usePermissions();
+  const router = useRouter();
+
+  useEffect(() => {
+    if (!isHydrated) return;
+    if (!hasPermission('view-suppliers')) router.replace('/dashboard');
+  }, [isHydrated, hasPermission, router]);
 
   const [showForm, setShowForm] = useState(false);
   const [isEditing, setIsEditing] = useState(false);

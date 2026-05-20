@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { Eye, Edit, Trash2, Rows4, X, Building2, MapPin, FileText, CreditCard, Settings } from 'lucide-react';
 import { ColumnDef } from '@tanstack/react-table';

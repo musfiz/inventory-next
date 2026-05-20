@@ -9,6 +9,7 @@ import { posSessionService, posRegisterService, commonService } from '@/services
 import type { PosSession } from '@/services/posSessionService';
 import DataTable from '@/components/ui/datatable';
 import CustomSelect from '@/components/ui/custom-select';
+import { useRouter } from 'next/navigation';
 import { usePermissions } from '@/hooks/use-permissions';
 import { useAuthStore } from '@/stores/auth-store';
 import DateTimePicker from '@/components/ui/date-time-picker';
@@ -95,7 +96,14 @@ function fmtNum(n?: string | number | null) {
 // ─── Page ─────────────────────────────────────────────────────────────────────
 
 export default function PosSessionPage() {
-  const { isSuperAdmin } = usePermissions();
+  const { isSuperAdmin, hasPermission, isHydrated } = usePermissions();
+  const router = useRouter();
+
+  useEffect(() => {
+    if (!isHydrated) return;
+    if (!hasPermission('view-pos-session')) router.replace('/dashboard');
+  }, [isHydrated, hasPermission, router]);
+
   const authUser = useAuthStore(s => s.user);
 
   const [mode, setMode] = useState<Mode>(null);
