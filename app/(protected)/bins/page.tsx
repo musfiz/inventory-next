@@ -19,7 +19,7 @@ export default function BinPage() {
 
   useEffect(() => {
     if (!isHydrated) return;
-    if (!hasPermission('view-bins')) router.replace('/dashboard');
+    if (!hasPermission('view-bin')) router.replace('/dashboard');
   }, [isHydrated, hasPermission, router]);
 
   const authUser = useAuthStore(s => s.user);

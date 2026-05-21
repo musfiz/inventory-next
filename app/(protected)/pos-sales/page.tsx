@@ -100,7 +100,7 @@ export default function POSSalesPage() {
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>('cash');
   const [amountTendered, setAmountTendered] = useState<string>('');
   const [discount, setDiscount] = useState<number>(0);
-  const [discountType, setDiscountType] = useState<'percent' | 'amount'>('percent');
+  const [discountType, setDiscountType] = useState<'percent' | 'amount'>('amount');
   const [taxRate, setTaxRate] = useState<number>(0);
   const [note, setNote] = useState('');
   const [isLoading, setIsLoading] = useState(false);
@@ -152,7 +152,7 @@ export default function POSSalesPage() {
     return () => {
       if (searchDebounceRef.current) clearTimeout(searchDebounceRef.current);
     };
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [searchQuery]);
 
   // ── Data Loading ────────────────────────────────────────────────────────────
@@ -175,7 +175,7 @@ export default function POSSalesPage() {
       const variations: any[] = await posService.getProducts(params);
       const productList = variations || [];
       const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL || '';
-      
+
       // Helper function to construct full image URL
       const getImageUrl = (path: string | undefined) => {
         if (!path) return undefined;
@@ -188,22 +188,22 @@ export default function POSSalesPage() {
         // Construct full URL
         return `${backendUrl}/${cleanPath}`;
       };
-      
+
       const mapped = productList.map((v: any) => {
-        const productName = v.product?.name || 'Unknown Product';
+        const productName = v.product?.product?.product_name || v.product?.name || 'Unknown Product';
         const variantName = v.name || 'Default';
         const sellingPrice = parseFloat(v.selling_price ?? 0);
-        
+
         // Get first image URL
-        const firstImage = v.images && v.images.length > 0 
-          ? getImageUrl(v.images[0].file_url) 
+        const firstImage = v.images && v.images.length > 0
+          ? getImageUrl(v.images[0].file_url)
           : getImageUrl(v.product?.image);
-        
+
         // Get all image URLs
         const allImages = (v.images || [])
           .map((img: any) => getImageUrl(img.file_url))
           .filter((url: any) => url);
-        
+
         return {
           id: v.id,
           product_name: productName,
@@ -506,7 +506,7 @@ export default function POSSalesPage() {
                   timer: 2000,
                 });
               }}
-              className="px-3 py-1.5 text-sm font-medium text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-md hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
+              className="px-3 py-1.5 text-sm font-semibold text-white bg-amber-500 hover:bg-amber-600 dark:bg-amber-500 dark:hover:bg-amber-600 border border-amber-500 dark:border-amber-400 rounded-md shadow-sm transition-colors"
             >
               <GiSave className="w-4 h-4 inline mr-1" />
               Held Orders
@@ -556,11 +556,10 @@ export default function POSSalesPage() {
               {/* All button */}
               <button
                 onClick={() => { setSelectedCategory('all'); loadProducts(undefined, searchQuery || undefined); }}
-                className={`px-3 py-1 text-xs font-medium rounded-full whitespace-nowrap transition-colors ${
-                  selectedCategory === 'all'
-                    ? 'bg-blue-600 text-white'
-                    : 'bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700'
-                }`}
+                className={`px-3 py-1 text-xs font-medium rounded-full whitespace-nowrap transition-colors ${selectedCategory === 'all'
+                  ? 'bg-blue-600 text-white'
+                  : 'bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700'
+                  }`}
               >
                 All
               </button>
@@ -568,11 +567,10 @@ export default function POSSalesPage() {
                 <button
                   key={cat.id}
                   onClick={() => { setSelectedCategory(cat.id); loadProducts(cat.id, searchQuery || undefined); }}
-                  className={`px-3 py-1 text-xs font-medium rounded-full whitespace-nowrap transition-colors ${
-                    selectedCategory === cat.id
-                      ? 'bg-blue-600 text-white'
-                      : 'bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700'
-                  }`}
+                  className={`px-3 py-1 text-xs font-medium rounded-full whitespace-nowrap transition-colors ${selectedCategory === cat.id
+                    ? 'bg-blue-600 text-white'
+                    : 'bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700'
+                    }`}
                 >
                   {cat.name}
                 </button>
@@ -597,100 +595,100 @@ export default function POSSalesPage() {
               <>
                 <div className="grid grid-cols-5 gap-2">
                   {filteredProducts.map(product => {
-                const stockStatus =
-                  !product.stock || product.stock === 0
-                    ? 'out'
-                    : product.stock < 10
-                      ? 'low'
-                      : 'in';
+                    const stockStatus =
+                      !product.stock || product.stock === 0
+                        ? 'out'
+                        : product.stock < 10
+                          ? 'low'
+                          : 'in';
 
-                return (
-                  <button
-                    key={product.id}
-                    onClick={() => addToCart(product)}
-                    disabled={stockStatus === 'out'}
-                    className="group relative bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg p-2 hover:shadow-lg hover:scale-[1.02] transition-all disabled:opacity-50 disabled:cursor-not-allowed"
-                  >
-                    {/* Stock Badge */}
-                    <div className="absolute top-1 right-1 z-10">
-                      {stockStatus === 'in' && (
-                        <div className="w-2 h-2 bg-green-500 rounded-full" title="In Stock" />
-                      )}
-                      {stockStatus === 'low' && (
-                        <div className="flex items-center gap-1 px-1.5 py-0.5 bg-yellow-100 dark:bg-yellow-900/30 text-yellow-700 dark:text-yellow-400 text-xs rounded">
-                          <AlertCircle className="w-3 h-3" />
-                          Low
+                    return (
+                      <button
+                        key={product.id}
+                        onClick={() => addToCart(product)}
+                        disabled={stockStatus === 'out'}
+                        className="group relative bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg p-2 hover:shadow-lg hover:scale-[1.02] transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                      >
+                        {/* Stock Badge */}
+                        <div className="absolute top-1 right-1 z-10">
+                          {stockStatus === 'in' && (
+                            <div className="w-2 h-2 bg-green-500 rounded-full" title="In Stock" />
+                          )}
+                          {stockStatus === 'low' && (
+                            <div className="flex items-center gap-1 px-1.5 py-0.5 bg-yellow-100 dark:bg-yellow-900/30 text-yellow-700 dark:text-yellow-400 text-xs rounded">
+                              <AlertCircle className="w-3 h-3" />
+                              Low
+                            </div>
+                          )}
+                          {stockStatus === 'out' && (
+                            <div className="px-1.5 py-0.5 bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-400 text-xs rounded">
+                              Out
+                            </div>
+                          )}
                         </div>
-                      )}
-                      {stockStatus === 'out' && (
-                        <div className="px-1.5 py-0.5 bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-400 text-xs rounded">
-                          Out
-                        </div>
-                      )}
-                    </div>
 
-                    {/* Product Image */}
-                    <div className="aspect-square mb-1.5 bg-gray-100 dark:bg-gray-700 rounded-md overflow-hidden relative">
-                      {product.image ? (
-                        <img
-                          src={product.image}
-                          alt={product.product_name}
-                          className="w-full h-full object-cover"
-                          onError={(e) => {
-                            const target = e.target as HTMLImageElement;
-                            target.style.display = 'none';
-                            target.parentElement!.innerHTML = '<div class="w-full h-full flex items-center justify-center"><svg class="w-8 h-8 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"></path></svg></div>';
-                          }}
-                        />
-                      ) : (
-                        <div className="w-full h-full flex items-center justify-center">
-                          <Package className="w-8 h-8 text-gray-400" />
-                        </div>
-                      )}
-                    </div>
-
-                    {/* Thumbnails (if multiple images) */}
-                    {product.images && product.images.length > 1 && (
-                      <div className="flex items-center gap-0.5 mb-1">
-                        {product.images.slice(0, 4).map((img, i) => (
-                          <div
-                            key={i}
-                            className="w-6 h-6 bg-gray-100 dark:bg-gray-800 rounded overflow-hidden border border-gray-200 dark:border-gray-700"
-                          >
-                            <img 
-                              src={img} 
-                              alt={`${product.product_name} ${i}`} 
+                        {/* Product Image */}
+                        <div className="aspect-square mb-1.5 bg-gray-100 dark:bg-gray-700 rounded-md overflow-hidden relative">
+                          {product.image ? (
+                            <img
+                              src={product.image}
+                              alt={product.product_name}
                               className="w-full h-full object-cover"
                               onError={(e) => {
-                                (e.target as HTMLImageElement).style.display = 'none';
+                                const target = e.target as HTMLImageElement;
+                                target.style.display = 'none';
+                                target.parentElement!.innerHTML = '<div class="w-full h-full flex items-center justify-center"><svg class="w-8 h-8 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"></path></svg></div>';
                               }}
                             />
-                          </div>
-                        ))}
-                      </div>
-                    )}
+                          ) : (
+                            <div className="w-full h-full flex items-center justify-center">
+                              <Package className="w-8 h-8 text-gray-400" />
+                            </div>
+                          )}
+                        </div>
 
-                    {/* Product Info */}
-                    <div className="text-left">
-                      <h3 title={product.product_name } className="text-xs font-semibold text-gray-900 dark:text-gray-100 line-clamp-1 mb-0.5">
-                        {product.product_name}
-                      </h3>
-                      <p className="text-xs text-blue-600 dark:text-blue-400 font-medium line-clamp-1 mb-0.5">
-                        {product.variant_name}
-                      </p>
-                      <p className="text-xs text-gray-500 dark:text-gray-400 mb-1">
-                        SKU: {product.sku}
-                      </p>
-                      <div className="flex items-center justify-between">
-                        <span className="text-sm font-bold text-green-600 dark:text-green-400">
-                          ৳{product.selling_price.toFixed(2)}
-                        </span>
-                        <Plus className="w-3.5 h-3.5 text-green-600 dark:text-green-400 opacity-0 group-hover:opacity-100 transition-opacity" />
-                      </div>
-                    </div>
-                  </button>
-                );
-              })}
+                        {/* Thumbnails (if multiple images) */}
+                        {product.images && product.images.length > 1 && (
+                          <div className="flex items-center gap-0.5 mb-1">
+                            {product.images.slice(0, 4).map((img, i) => (
+                              <div
+                                key={i}
+                                className="w-6 h-6 bg-gray-100 dark:bg-gray-800 rounded overflow-hidden border border-gray-200 dark:border-gray-700"
+                              >
+                                <img
+                                  src={img}
+                                  alt={`${product.product_name} ${i}`}
+                                  className="w-full h-full object-cover"
+                                  onError={(e) => {
+                                    (e.target as HTMLImageElement).style.display = 'none';
+                                  }}
+                                />
+                              </div>
+                            ))}
+                          </div>
+                        )}
+
+                        {/* Product Info */}
+                        <div className="text-left">
+                          <h3 title={product.product_name} className="text-xs font-semibold text-gray-900 dark:text-gray-100 line-clamp-1 mb-0.5">
+                            {product.product_name}
+                          </h3>
+                          <p className="text-xs text-blue-600 dark:text-blue-400 font-medium line-clamp-1 mb-0.5">
+                            {product.variant_name}
+                          </p>
+                          <p className="text-xs text-gray-500 dark:text-gray-400 mb-1">
+                            SKU: {product.sku}
+                          </p>
+                          <div className="flex items-center justify-between">
+                            <span className="text-sm font-bold text-green-600 dark:text-green-400">
+                              ৳{product.selling_price.toFixed(2)}
+                            </span>
+                            <Plus className="w-3.5 h-3.5 text-green-600 dark:text-green-400 opacity-0 group-hover:opacity-100 transition-opacity" />
+                          </div>
+                        </div>
+                      </button>
+                    );
+                  })}
                 </div>
 
                 {filteredProducts.length === 0 && (
@@ -827,25 +825,25 @@ export default function POSSalesPage() {
 
           {/* Cart Actions - Always Visible */}
           <div className="p-2 border-t-2 border-gray-300 dark:border-gray-700 space-y-1.5 shrink-0 bg-white dark:bg-gray-900 shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.1)]">
-              <button
-                onClick={() => {
-                  Swal.fire({
-                    icon: 'info',
-                    title: 'Add Note',
-                    text: 'Note modal coming soon',
-                    toast: true,
-                    position: 'top-end',
-                    showConfirmButton: false,
-                    timer: 2000,
-                  });
-                }}
-                disabled={cart.length === 0}
-                className="w-full flex items-center justify-center gap-2 px-3 py-2 text-sm font-semibold text-gray-700 dark:text-gray-300 bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 rounded-lg transition-colors shadow-sm disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                <FileText className="w-4 h-4" />
-                Add Note
-              </button>
-            </div>
+            <button
+              onClick={() => {
+                Swal.fire({
+                  icon: 'info',
+                  title: 'Add Note',
+                  text: 'Note modal coming soon',
+                  toast: true,
+                  position: 'top-end',
+                  showConfirmButton: false,
+                  timer: 2000,
+                });
+              }}
+              disabled={cart.length === 0}
+              className="w-full flex items-center justify-center gap-2 px-3 py-2 text-sm font-semibold text-gray-700 dark:text-gray-300 bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 rounded-lg transition-colors shadow-sm disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              <FileText className="w-4 h-4" />
+              Add Note
+            </button>
+          </div>
         </div>
 
         {/* RIGHT: Order Summary & Payment (25%) - Independent Scroll */}
@@ -986,7 +984,7 @@ export default function POSSalesPage() {
             <button
               onClick={handlePayment}
               disabled={cart.length === 0 || isLoading}
-              className="w-full flex items-center justify-center gap-2 px-4 py-2.5 bg-green-600 hover:bg-green-700 text-white font-bold rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed text-sm shadow-md"
+              className="w-full flex items-center justify-center gap-2 px-4 py-2.5 bg-green-600 hover:bg-green-700 text-white font-bold rounded-sm transition-colors disabled:opacity-50 disabled:cursor-not-allowed text-sm shadow-md"
             >
               <CheckCircle className="w-4 h-4" />
               {isLoading ? 'Processing...' : 'PAY NOW'}
@@ -1004,17 +1002,17 @@ export default function POSSalesPage() {
             <button
               onClick={clearCart}
               disabled={cart.length === 0}
-              className="w-full flex items-center justify-center gap-2 px-4 py-1.5 bg-red-600 hover:bg-red-700 text-white font-semibold rounded-lg transition-colors disabled:opacity-50 text-sm shadow-md"
+              className="w-full flex items-center justify-center gap-2 px-4 py-1.5 bg-red-600 hover:bg-red-700 text-white font-semibold rounded-sm transition-colors disabled:opacity-50 text-sm shadow-md"
             >
               <XCircle className="w-4 h-4" />
               VOID
             </button>
 
-              className="flex items-center justify-center gap-2 px-5 py-1.5 text-sm bg-indigo-600 hover:bg-indigo-700 disabled:bg-gray-400 text-white rounded-sm transition-colors cursor-pointer"
+            <div className="flex items-center gap-2">
               <button
-              <GiSave className="w-4 h-4" />
+                onClick={printReceipt}
                 disabled={cart.length === 0}
-                className="flex items-center justify-center gap-1 px-2 py-1.5 text-xs bg-blue-600 hover:bg-blue-700 text-white rounded-md transition-colors disabled:opacity-50"
+                className="flex items-center justify-center gap-1 px-2 py-1.5 text-xs bg-blue-600 hover:bg-blue-700 text-white rounded-sm transition-colors disabled:opacity-50"
               >
                 <Printer className="w-3.5 h-3.5" />
                 Print
@@ -1032,7 +1030,7 @@ export default function POSSalesPage() {
                   });
                 }}
                 disabled={cart.length === 0}
-                className="flex items-center justify-center gap-1 px-2 py-1.5 text-xs bg-gray-600 hover:bg-gray-700 text-white rounded-md transition-colors disabled:opacity-50"
+                className="flex items-center justify-center gap-1 px-2 py-1.5 text-xs bg-gray-600 hover:bg-gray-700 text-white rounded-sm transition-colors disabled:opacity-50"
               >
                 <Mail className="w-3.5 h-3.5" />
                 Email
@@ -1158,7 +1156,8 @@ export default function POSSalesPage() {
             </div>
           </div>
         </div>
-      )}
-    </div>
+      )
+      }
+    </div >
   );
 }

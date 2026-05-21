@@ -18,7 +18,7 @@ export default function WarehousePage() {
 
   useEffect(() => {
     if (!isHydrated) return;
-    if (!hasPermission('view-warehouses')) router.replace('/dashboard');
+    if (!hasPermission('view-warehouse')) router.replace('/dashboard');
   }, [isHydrated, hasPermission, router]);
 
   const [showForm, setShowForm] = useState(false);
@@ -348,8 +348,8 @@ export default function WarehousePage() {
       cell: ({ row }) => (
         <span
           className={`px-2 py-1 text-xs rounded-full ${row.original.is_active
-              ? 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400'
-              : 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400'
+            ? 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400'
+            : 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400'
             }`}
         >
           {row.original.is_active ? 'Active' : 'Inactive'}
