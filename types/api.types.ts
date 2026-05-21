@@ -43,6 +43,7 @@ export interface User {
   user_type: 'super_admin' | 'tenant_admin' | 'tenant_user';
   tenant_id?: string;
   phone?: string;
+  avatar_url?: string;
   is_active: boolean;
   tenant?: Tenant;
   permissions?: string[];
@@ -466,6 +467,15 @@ export interface UpdateUserRequest {
   phone?: string;
   user_type?: 'tenant_admin' | 'tenant_user';
   is_active?: boolean;
+}
+
+export interface UpdateProfileRequest {
+  name?: string;
+  email?: string;
+  phone?: string;
+  password?: string;
+  password_confirmation?: string;
+  avatar?: File | null;
 }
 
 export interface ChangePasswordRequest {

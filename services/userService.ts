@@ -8,6 +8,7 @@ import type {
   UserListResponse,
   CreateUserRequest,
   UpdateUserRequest,
+  UpdateProfileRequest,
   ChangePasswordRequest,
   ApiResponse,
 } from '@/types/api.types';
@@ -70,6 +71,27 @@ class UserService {
       data
     );
     return response.data.data.user;
+  }
+
+  /**
+   * Update the currently logged-in user profile
+   * POST /api/v1/user/update
+   */
+  async updateProfile(data: UpdateProfileRequest): Promise<User> {
+    const formData = new FormData();
+
+    if (data.name !== undefined) formData.append('name', data.name);
+    if (data.email !== undefined) formData.append('email', data.email);
+    if (data.phone !== undefined) formData.append('phone', data.phone);
+    if (data.password) formData.append('password', data.password);
+    if (data.password_confirmation) {
+      formData.append('password_confirmation', data.password_confirmation);
+    }
+    if (data.avatar) formData.append('avatar', data.avatar);
+
+    const response = await apiClient.post<ApiResponse<User>>('/api/v1/user/update', formData);
+
+    return response.data.data;
   }
 
   /**

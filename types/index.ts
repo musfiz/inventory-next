@@ -42,6 +42,7 @@ export interface User {
   user_type: 'super_admin' | 'tenant_admin' | 'tenant_user';
   tenant_id?: string;
   phone?: string;
+  avatar_url?: string;
   is_active: boolean;
   permissions?: string[];
   tenant?: Tenant;
