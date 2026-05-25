@@ -34,7 +34,7 @@ export default function StockAddPage() {
 
   // Confirmation modal state (used when productByBrand is active)
   const [showConfirm, setShowConfirm] = useState(false);
-  const [confirmItems, setConfirmItems] = useState<Array<{sku: string; name: string; productName: string; qty: number}>>([]);
+  const [confirmItems, setConfirmItems] = useState<Array<{ sku: string; name: string; productName: string; qty: number }>>([]);
   const [pendingPayload, setPendingPayload] = useState<any>(null);
 
   // Computed: check if product selection is allowed
@@ -70,7 +70,7 @@ export default function StockAddPage() {
       notify.error('Please select a warehouse first');
       return [];
     }
-    
+
     const list = await commonService.getProductsForDropdown({ search: input }).catch(() => []);
     return (list || []).map((p: any) => ({ value: p.id, label: p.name }));
   };
@@ -132,15 +132,15 @@ export default function StockAddPage() {
       if (!selectedProduct) return;
       try {
         const warehouseId = selectedWarehouse?.value;
-        
+
         // Pass is_brand to backend - it will handle fetching all brand variations if true
         const items = await commonService
-          .getVariationsByProduct(selectedProduct.value, { 
+          .getVariationsByProduct(selectedProduct.value, {
             warehouse_id: warehouseId,
-            is_brand: productByBrand 
+            is_brand: productByBrand
           } as any)
           .catch(() => []);
-        
+
         setVariations(items || []);
         setStocks((items || []).map((v: any) => ({
           variation_id: v.id,
@@ -190,13 +190,13 @@ export default function StockAddPage() {
     if (!selectedProduct) {
       errors.product_id = 'Product is required';
     }
-    
+
     // Check if selected product has variations
     if (selectedProduct && variations.length === 0) {
       notify.error('Selected product have no variation, please add a variation first!');
       return;
     }
-    
+
     if (Object.keys(errors).length > 0) {
       setFormErrors(errors);
       return;
@@ -542,9 +542,17 @@ export default function StockAddPage() {
                         <td className="px-3 py-1">
                           <div className="flex items-center justify-center">
                             {v.stock ? (
-                              <span className="font-semibold text-sm text-gray-900 dark:text-gray-100">
-                                {Number(v.stock.quantity).toFixed(0)}
-                              </span>
+                              Number(v.stock.quantity) > 0 ? (
+                                <span className="inline-flex items-center gap-1 text-xs font-semibold text-green-600 dark:text-green-400">
+                                  <span className="w-1.5 h-1.5 rounded-full bg-green-500" />
+                                  {Number(v.stock.quantity).toFixed(0)}
+                                </span>
+                              ) : (
+                                <span className="inline-flex items-center gap-1 text-xs font-semibold text-red-500 dark:text-red-400">
+                                  <span className="w-1.5 h-1.5 rounded-full bg-red-500" />
+                                  Out of Stock
+                                </span>
+                              )
                             ) : (
                               <span className="text-xs text-gray-400 dark:text-gray-500">N/A</span>
                             )}

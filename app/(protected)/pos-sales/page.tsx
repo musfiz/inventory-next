@@ -105,8 +105,10 @@ export default function POSSalesPage() {
   const [note, setNote] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [productsLoading, setProductsLoading] = useState(false);
+  const [productsError, setProductsError] = useState<string | null>(null);
   const [orderNumber, setOrderNumber] = useState('');
   const searchDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const hasMountedRef = useRef(false);
 
   // ── Customer Dialog State ────────────────────────────────────────────────────
   const [showCustomerDialog, setShowCustomerDialog] = useState(false);
@@ -144,6 +146,11 @@ export default function POSSalesPage() {
 
   // Debounced server-side search: fires 400ms after the user stops typing
   useEffect(() => {
+    if (!hasMountedRef.current) {
+      hasMountedRef.current = true;
+      return;
+    }
+
     if (searchDebounceRef.current) clearTimeout(searchDebounceRef.current);
     searchDebounceRef.current = setTimeout(() => {
       const catId = selectedCategory === 'all' ? undefined : selectedCategory;
@@ -168,12 +175,17 @@ export default function POSSalesPage() {
 
   const loadProducts = async (categoryId?: number, search?: string) => {
     setProductsLoading(true);
+    setProductsError(null);
     try {
       const params: { per_page: number; category_id?: number; search?: string } = { per_page: 100 };
       if (categoryId) params.category_id = categoryId;
       if (search && search.trim()) params.search = search.trim();
-      const variations: any[] = await posService.getProducts(params);
-      const productList = variations || [];
+      const variations: any = await posService.getProducts(params);
+      const productList: any[] = Array.isArray(variations)
+        ? variations
+        : Array.isArray(variations?.data)
+          ? variations.data
+          : [];
       const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL || '';
 
       // Helper function to construct full image URL
@@ -190,8 +202,8 @@ export default function POSSalesPage() {
       };
 
       const mapped = productList.map((v: any) => {
-        const productName = v.product?.product?.product_name || v.product?.name || 'Unknown Product';
-        const variantName = v.name || 'Default';
+        const productName = v.product_name || v.product?.name || 'Unknown Product';
+        const variantName = v.variant_name || v.name || 'Default';
         const sellingPrice = parseFloat(v.selling_price ?? 0);
 
         // Get first image URL
@@ -223,7 +235,8 @@ export default function POSSalesPage() {
       setProducts(mapped);
       setFilteredProducts(mapped);
     } catch (error: any) {
-      notify.error('Failed to load products');
+      const msg = error?.response?.data?.message || error?.message || 'Failed to load products';
+      setProductsError(msg);
     } finally {
       setProductsLoading(false);
     }
@@ -580,7 +593,19 @@ export default function POSSalesPage() {
 
           {/* Product Grid - Scrollable */}
           <div className="flex-1 overflow-y-auto p-2 min-h-0 overscroll-contain scrollbar-thin">
-            {productsLoading ? (
+            {productsError && !productsLoading ? (
+              <div className="flex flex-col items-center justify-center h-64 text-red-500 dark:text-red-400">
+                <AlertCircle className="w-12 h-12 mb-3" />
+                <p className="text-sm font-medium mb-1">Failed to load products</p>
+                <p className="text-xs text-gray-500 dark:text-gray-400 mb-4 text-center px-4">{productsError}</p>
+                <button
+                  onClick={() => { const catId = selectedCategory === 'all' ? undefined : selectedCategory; loadProducts(catId, searchQuery || undefined); }}
+                  className="px-4 py-2 text-xs font-semibold text-white bg-blue-600 hover:bg-blue-700 rounded-md transition-colors"
+                >
+                  Retry
+                </button>
+              </div>
+            ) : productsLoading ? (
               <div className="grid grid-cols-4 gap-2">
                 {Array.from({ length: 12 }).map((_, i) => (
                   <div key={i} className="bg-gray-100 dark:bg-gray-800 rounded-lg p-2 animate-pulse">

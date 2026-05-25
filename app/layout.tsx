@@ -2,6 +2,7 @@ import type { Metadata } from 'next';
 import { Noto_Sans } from 'next/font/google';
 import './globals.css';
 import { ThemeProvider } from '@/contexts/ThemeContext';
+import NumberScrollGuard from '@/components/ui/number-scroll-guard';
 
 const notoSans = Noto_Sans({
   variable: '--font-noto-sans',
@@ -38,7 +39,10 @@ export default function RootLayout({
       <body
         className={`font-sans antialiased bg-white dark:bg-gray-950 text-gray-900 dark:text-gray-100`}
       >
-        <ThemeProvider>{children}</ThemeProvider>
+        <ThemeProvider>
+          <NumberScrollGuard />
+          {children}
+        </ThemeProvider>
       </body>
     </html>
   );

@@ -3,7 +3,7 @@
 import { forwardRef } from 'react';
 import ReactDatePicker from 'react-datepicker';
 import 'react-datepicker/dist/react-datepicker.css';
-import { Calendar } from 'lucide-react';
+import { Calendar, X } from 'lucide-react';
 
 interface DatePickerProps {
   value?: string;
@@ -53,8 +53,18 @@ export default function CustomDatePicker({
           onClick={onClick}
           placeholder={placeholder}
           readOnly
-          className={`w-full px-2 py-1.25 pr-8 text-sm border border-gray-300 rounded-sm focus:outline-none focus:ring-1 focus:ring-blue-500 dark:focus:ring-blue-400 focus:border-transparent dark:bg-gray-700 dark:text-gray-100 dark:border-gray-600 cursor-pointer ${className || ''}`}
+          className={`w-full px-2 py-1.25 text-sm border border-gray-300 rounded-sm focus:outline-none focus:ring-1 focus:ring-blue-500 dark:focus:ring-blue-400 focus:border-transparent dark:bg-gray-700 dark:text-gray-100 dark:border-gray-600 cursor-pointer ${value ? 'pr-14' : 'pr-8'} ${className || ''}`}
         />
+        {value && (
+          <button
+            type="button"
+            onClick={e => { e.stopPropagation(); onChange(''); }}
+            className="absolute right-7 top-1/2 -translate-y-1/2 w-4 h-4 flex items-center justify-center text-gray-400 hover:text-red-500 transition-colors"
+            tabIndex={-1}
+          >
+            <X className="w-3.5 h-3.5" />
+          </button>
+        )}
         <Calendar className="absolute right-2 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none" />
       </div>
     )

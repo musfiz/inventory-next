@@ -223,6 +223,14 @@ export const notify = {
       icon: 'error',
       timer: 3000,
     }),
+
+  warning: (message?: string) =>
+    notifications.toast({
+      title: 'Warning',
+      text: message || 'Please check your input.',
+      icon: 'warning',
+      timer: 3000,
+    }),
 };
 
 /*
