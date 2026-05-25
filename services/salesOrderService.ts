@@ -34,14 +34,14 @@ class SalesOrderService {
     return response.data;
   }
 
-  async getSalesOrderItems(salesOrderId: number) {
+  async getSalesOrderItems(salesOrderId: string) {
     const response = await apiClient.get<ApiResponse<any>>(
       `/api/v1/sales-order/${salesOrderId}/items`
     );
     return response.data.data;
   }
 
-  async getSalesOrder(salesOrderId: number) {
+  async getSalesOrder(salesOrderId: string) {
     const response = await apiClient.get<ApiResponse<any>>(
       `/api/v1/sales-order/${salesOrderId}`
     );
@@ -53,11 +53,16 @@ class SalesOrderService {
     return response.data.data;
   }
 
-  async deleteSalesOrder(id: number) {
+  async deleteSalesOrder(id: string) {
     await apiClient.get(`/api/v1/sales-order/delete/${id}`);
   }
 
-  async updateSalesOrderFromDetails(id: number, data: Record<string, any>) {
+  async updateSalesOrder(id: string, data: Record<string, any>) {
+    const response = await apiClient.post<ApiResponse<any>>(`/api/v1/sales-order/${id}/update`, data);
+    return response.data.data;
+  }
+
+  async updateSalesOrderFromDetails(id: string, data: Record<string, any>) {
     const response = await apiClient.post<ApiResponse<any>>(`/api/v1/sales-order/${id}/update/details`, data);
     return response.data.data;
   }

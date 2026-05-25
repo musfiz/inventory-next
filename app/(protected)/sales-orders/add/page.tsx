@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState, useRef } from 'react';
-import { ShoppingCart, Plus, Minus, RotateCcw, DollarSign, CreditCard, Smartphone, Building2, FileText, BadgeCheck, MoreHorizontal } from 'lucide-react';
+import { ShoppingCart, Plus, Minus, RotateCcw, DollarSign, CreditCard, Smartphone, Building2, FileText, BadgeCheck, MoreHorizontal, Lock } from 'lucide-react';
 import CustomSelect from '@/components/ui/custom-select';
 import CustomDatePicker from '@/components/ui/date-picker';
 import { notify } from '@/lib/notifications';
@@ -13,7 +13,7 @@ import {
   productVariationService,
   commonService,
 } from '@/services';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { usePermissions } from '@/hooks/use-permissions';
 import { useAuthStore } from '@/stores/auth-store';
 import { GiSave } from 'react-icons/gi';
@@ -79,17 +79,29 @@ const inputCls =
 
 const selectCls = inputCls; // same visual as text input
 
+// Shared class for the small numeric inputs inside the order summary card
+const summaryInputCls =
+  'w-24 px-2 py-1 text-xs text-right border border-gray-300 dark:border-gray-600 rounded-sm ' +
+  'bg-white dark:bg-gray-700 dark:text-gray-100 focus:outline-none focus:ring-1 focus:ring-blue-500 ' +
+  '[&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none';
+
 // ─── Component ────────────────────────────────────────────────────────────────
 
 export default function AddSalesOrderPage() {
   const authUser = useAuthStore(s => s.user);
-  const { isSuperAdmin, hasPermission, isHydrated } = usePermissions();
+  const { isSuperAdmin, isTenantAdmin, hasPermission, isHydrated } = usePermissions();
   const router = useRouter();
+  const searchParams = useSearchParams();
+
+  // ── Edit-mode detection ──────────────────────────────────────────────────────
+  const editId = searchParams.get('edit') || '';
+  const isEditMode = !!editId;
 
   useEffect(() => {
     if (!isHydrated) return;
-    if (!hasPermission('create-sales')) router.replace('/dashboard');
-  }, [isHydrated, hasPermission, router]);
+    const required = isEditMode ? 'edit-sales' : 'create-sales';
+    if (!hasPermission(required) && !isSuperAdmin) router.replace('/dashboard');
+  }, [isHydrated, hasPermission, isSuperAdmin, isEditMode, router]);
 
   const formRef = useRef<HTMLFormElement | null>(null);
 
@@ -135,6 +147,15 @@ export default function AddSalesOrderPage() {
   const [productDefaults, setProductDefaults] = useState<any[]>([]);
   const [tenantDefaults, setTenantDefaults] = useState<any[]>([]);
   const [selectedTenant, setSelectedTenant] = useState<any>(null);
+  const [selectedCustomer, setSelectedCustomer] = useState<any>(null);
+  const [selectedWarehouse, setSelectedWarehouse] = useState<any>(null);
+
+  // ── Edit-mode extra state ────────────────────────────────────────────────────
+  const [isLoadingOrder, setIsLoadingOrder] = useState(false);
+  const [originalStatus, setOriginalStatus] = useState('');
+  const [invoiceNumber, setInvoiceNumber] = useState('');
+
+  // ─── Derived financial values ─────────────────────────────────────────────────
 
   // ─── Derived financial values ─────────────────────────────────────────────────
 
@@ -154,6 +175,13 @@ export default function AddSalesOrderPage() {
   const shippingCost = Number(shipping) || 0;
   const grandTotal = subtotal - discountAmount + taxAmount + shippingCost;
   const changeAmount = Math.max(0, (parseFloat(tenderedAmount) || 0) - (parseFloat(paidAmount) || 0));
+
+  // Status locked for non-admin on cancelled/returned orders
+  const isLockedForNonAdmin =
+    isEditMode &&
+    ['returned', 'cancelled'].includes(originalStatus) &&
+    !isSuperAdmin &&
+    !isTenantAdmin;
 
   // ─── Micro-helpers ────────────────────────────────────────────────────────────
 
@@ -222,8 +250,9 @@ export default function AddSalesOrderPage() {
       setItemField(idx, 'stockQty', qty);
       if (qty === 0) {
         const item = items[idx];
-        notify.warning(
-          `Stock out: ${item?.product_name || 'Product'}${item?.variation_name ? ` – ${item.variation_name}` : ''}`
+        notify.error(
+          'Stock out',
+          `${item?.product_name || 'Product'}${item?.variation_name ? ` – ${item.variation_name}` : ''}`
         );
         setItemField(idx, 'unit_price', 0);
       }
@@ -265,20 +294,20 @@ export default function AddSalesOrderPage() {
     } catch { /* silent — variation preload failure is non-critical */ }
   };
 
-  const onVariationSelect = async (idx: number, variationId?: string, label?: string, sellingPrice?: number) => {
+  const onVariationSelect = (idx: number, variationId?: string, label?: string, sellingPrice?: number) => {
     setItemField(idx, 'variation_id', variationId);
     setItemField(idx, 'variation_name', label || '');
+
     if (sellingPrice !== undefined && sellingPrice > 0) {
       setItemField(idx, 'unit_price', sellingPrice);
     }
+
     if (variationId) {
-      // Read product_id from current state snapshot via setter callback
-      setItems(prev => {
-        const productId = prev[idx]?.product_id;
-        if (productId) checkStock(idx, productId, variationId);
-        return prev;
-      });
+      // items[idx].product_id is stable here — it was set in a prior interaction
+      const productId = items[idx]?.product_id;
+      if (productId) checkStock(idx, productId, variationId);
     } else {
+      // Variation cleared — reset stock state
       setItemField(idx, 'stockQty', null);
       setItemField(idx, 'stockChecking', false);
     }
@@ -417,6 +446,113 @@ export default function AddSalesOrderPage() {
     else setPaymentStatus('paid');
   }, [paidAmount, grandTotal]);
 
+  // ─── Load existing order in edit mode ─────────────────────────────────────────
+
+  // UUID v4 format regex
+  const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+  useEffect(() => {
+    if (!isEditMode || !isHydrated) return;
+    let mounted = true;
+
+    // Reject obviously invalid UUIDs before hitting the server
+    if (!UUID_REGEX.test(editId)) {
+      notify.error('Invalid Sales Order', 'The sales order ID in the URL is not valid.').then(() => {
+        router.replace('/sales-orders');
+      });
+      return;
+    }
+
+    setIsLoadingOrder(true);
+    (async () => {
+      try {
+        const so: any = await salesOrderService.getSalesOrder(editId);
+        if (!mounted) return;
+
+        // ── Core form fields ──
+        const tenant = so.tenant_id ? String(so.tenant_id) : undefined;
+        setFormData({
+          tenant_id: tenant,
+          customer_id: so.customer_id ? String(so.customer_id) : undefined,
+          warehouse_id: so.warehouse_id ? String(so.warehouse_id) : undefined,
+          order_date: so.order_date?.slice(0, 10) ?? '',
+          due_date: so.due_date?.slice(0, 10) ?? '',
+          status: so.status ?? 'draft',
+        });
+
+        // ── Tenant selector (super admin) ──
+        if (isSuperAdmin && so.tenant_id) {
+          setSelectedTenant({
+            value: String(so.tenant_id),
+            label: so.tenant?.business_name || `Tenant #${so.tenant_id}`,
+          });
+        }
+
+        // ── Customer & warehouse selectors ──
+        if (so.customer_id) {
+          const customerName = so.customer?.name
+            ? `${so.customer.name}${so.customer.company_name ? ` (${so.customer.company_name})` : ''}`
+            : `Customer #${so.customer_id}`;
+          setSelectedCustomer({ value: String(so.customer_id), label: customerName });
+        }
+        if (so.warehouse_id) {
+          setSelectedWarehouse({
+            value: String(so.warehouse_id),
+            label: so.warehouse?.name || so.warehouse?.code || `Warehouse #${so.warehouse_id}`,
+          });
+        }
+
+        // ── Invoice meta ──
+        setOriginalStatus(so.status ?? '');
+        setInvoiceNumber(so.invoice_number ?? '');
+
+        // ── Financial fields ──
+        const rawDiscountType = so.discount_type === 'percentage' ? 'percent' : 'amount';
+        setDiscountType(rawDiscountType as DiscountType);
+        setDiscount(String(so.discount_value ?? '0'));
+        setTax(String(
+          so.tax_amount && so.sub_total > 0
+            ? ((so.tax_amount / (so.sub_total - (so.discount_amount ?? 0))) * 100).toFixed(4)
+            : '0'
+        ));
+        setShipping(String(so.shipping_charge ?? '0'));
+        setPaidAmount(String(so.paid_amount ?? '0'));
+        setPaymentMethod((so.payment_method as PaymentMethod) ?? 'cash');
+        setNote(so.notes ?? '');
+
+        // ── Items ──
+        const loadedItems: OrderItem[] = (so.items ?? []).map((item: any) => ({
+          product_id: item.product_id ? String(item.product_id) : undefined,
+          product_name: item.product?.name || item.item_name || '',
+          variation_id: item.variation_id ? String(item.variation_id) : undefined,
+          variation_name: item.variation?.name || item.item_code || '',
+          quantity: Number(item.quantity) || 1,
+          unit_price: Number(item.unit_price) || 0,
+          // Seed options with the currently selected variation so the dropdown renders correctly
+          variationOptions: item.variation_id
+            ? [{ value: String(item.variation_id), label: item.variation?.name || item.item_code || '' }]
+            : [],
+          stockQty: null,
+          stockChecking: false,
+        }));
+        setItems(loadedItems);
+      } catch (e: any) {
+        if (!mounted) return;
+        const status = e?.response?.status;
+        const message = status === 404
+          ? 'Sales order not found. It may have been deleted or the ID is incorrect.'
+          : (e?.response?.data?.message || 'Failed to load sales order.');
+        await notify.error('Sales Order Not Found', message);
+        if (mounted) router.replace('/sales-orders');
+      } finally {
+        if (mounted) setIsLoadingOrder(false);
+      }
+    })();
+
+    return () => { mounted = false; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isEditMode, editId, isHydrated]);
+
   // ─── Validation ───────────────────────────────────────────────────────────────
 
   const validate = (): boolean => {
@@ -542,16 +678,25 @@ export default function AddSalesOrderPage() {
         ...(paymentNotes && { payment_notes: paymentNotes }),
       };
 
-      await salesOrderService.storeSalesOrder(payload);
-      notify.success('Sales order created successfully');
-      handleReset();
+      if (isEditMode) {
+        await salesOrderService.updateSalesOrder(editId, payload);
+        notify.success('Sales order updated successfully');
+        router.push('/sales-orders');
+      } else {
+        await salesOrderService.storeSalesOrder(payload);
+        notify.success('Sales order created successfully');
+        handleReset();
+      }
     } catch (error: any) {
       const serverErrors = error?.response?.data?.errors;
       if (serverErrors) {
         setErrors(serverErrors);
         formRef.current?.scrollIntoView({ behavior: 'smooth' });
       } else {
-        notify.error(error?.response?.data?.message || 'Failed to create sales order');
+        notify.error(
+          error?.response?.data?.message ||
+          (isEditMode ? 'Failed to update sales order' : 'Failed to create sales order')
+        );
       }
     } finally {
       setIsLoading(false);
@@ -564,6 +709,8 @@ export default function AddSalesOrderPage() {
       order_date: '', due_date: '', status: 'draft'
     });
     setSelectedTenant(null);
+    setSelectedCustomer(null);
+    setSelectedWarehouse(null);
     setItems([]);
     setNote('');
     setDiscount('0');
@@ -596,9 +743,35 @@ export default function AddSalesOrderPage() {
       <div className="flex items-center justify-between">
         <h1 className="text-base font-bold text-gray-900 dark:text-gray-100 flex items-center gap-2">
           <ShoppingCart className="w-5 h-5 text-blue-600 dark:text-blue-400" />
-          Add Sales Order
+          {isEditMode ? 'Edit Sales Order' : 'Add Sales Order'}
+          {isEditMode && invoiceNumber && (
+            <span className="ml-1 px-2 py-0.5 text-xs font-mono bg-gray-100 dark:bg-gray-700 text-gray-500 dark:text-gray-400 rounded border border-gray-200 dark:border-gray-600">
+              #{invoiceNumber}
+            </span>
+          )}
         </h1>
       </div>
+
+      {/* ── Loading skeleton ──────────────────────────────────────────────────── */}
+      {isLoadingOrder && (
+        <div className="bg-white dark:bg-gray-800 rounded-md border border-gray-200 dark:border-gray-700 p-6 flex items-center justify-center gap-3 text-sm text-gray-500 dark:text-gray-400">
+          <svg className="animate-spin w-5 h-5 text-blue-500" fill="none" viewBox="0 0 24 24">
+            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z" />
+          </svg>
+          Loading order...
+        </div>
+      )}
+
+      {/* ── Locked-status banner (non-admin editing cancelled/returned order) ── */}
+      {isLockedForNonAdmin && (
+        <div className="flex items-center gap-2 px-3 py-2 bg-amber-50 dark:bg-amber-900/20 border border-amber-300 dark:border-amber-600 rounded-md text-sm text-amber-800 dark:text-amber-300">
+          <Lock className="w-4 h-4 flex-shrink-0" />
+          <span>
+            This order is <strong className="capitalize">{originalStatus}</strong>. Only administrators can change its status.
+          </span>
+        </div>
+      )}
 
       <form ref={formRef} onSubmit={handleSubmit} className="space-y-2" autoComplete="off">
 
@@ -635,13 +808,11 @@ export default function AddSalesOrderPage() {
                 Customer <span className="text-red-500">*</span>
               </label>
               <CustomSelect
-                value={
-                  formData.customer_id
-                    ? (customerDefaults.find(o => o.value === formData.customer_id) ||
-                      { value: formData.customer_id, label: '' })
-                    : null
-                }
-                onChange={(o: any) => setField('customer_id', o?.value)}
+                value={selectedCustomer}
+                onChange={(o: any) => {
+                  setSelectedCustomer(o);
+                  setField('customer_id', o?.value);
+                }}
                 loadOptions={loadCustomers}
                 defaultOptions={customerDefaults}
                 placeholder="Select customer"
@@ -656,13 +827,11 @@ export default function AddSalesOrderPage() {
                 Warehouse <span className="text-red-500">*</span>
               </label>
               <CustomSelect
-                value={
-                  formData.warehouse_id
-                    ? (warehouseDefaults.find(o => o.value === formData.warehouse_id) ||
-                      { value: formData.warehouse_id, label: '' })
-                    : null
-                }
-                onChange={(o: any) => setField('warehouse_id', o?.value)}
+                value={selectedWarehouse}
+                onChange={(o: any) => {
+                  setSelectedWarehouse(o);
+                  setField('warehouse_id', o?.value);
+                }}
                 loadOptions={loadWarehouses}
                 defaultOptions={warehouseDefaults}
                 placeholder="Select warehouse"
@@ -703,7 +872,8 @@ export default function AddSalesOrderPage() {
               <select
                 value={formData.status}
                 onChange={e => setField('status', e.target.value)}
-                className={selectCls}
+                disabled={isLockedForNonAdmin}
+                className={`${selectCls} ${isLockedForNonAdmin ? 'opacity-50 cursor-not-allowed' : ''}`}
               >
                 {STATUS_LIST.map(s => (
                   <option key={s} value={s}>{s.charAt(0).toUpperCase() + s.slice(1)}</option>
@@ -748,7 +918,11 @@ export default function AddSalesOrderPage() {
               <button
                 type="button"
                 onClick={addItem}
-                className="flex items-center gap-1.5 px-3 py-1 bg-green-600 hover:bg-green-700 text-white text-xs font-medium rounded-sm transition-colors"
+                disabled={isEditMode}
+                className={`flex items-center gap-1.5 px-3 py-1 text-white text-xs font-medium rounded-sm transition-colors ${isEditMode
+                  ? 'bg-green-400 cursor-not-allowed opacity-50'
+                  : 'bg-green-600 hover:bg-green-700'
+                  }`}
               >
                 <Plus className="w-3.5 h-3.5" /> Add Item
               </button>
@@ -775,115 +949,113 @@ export default function AddSalesOrderPage() {
                 to begin.
               </div>
             ) : (
-              items.map((it, idx) => (
-                <div
-                  key={idx}
-                  className="grid grid-cols-24 gap-2 px-1 py-1 items-center hover:bg-blue-50/40 dark:hover:bg-gray-700/30 transition-colors"
-                >
-                  {/* Row number badge */}
-                  <div className="col-span-1 text-center">
-                    <span className="inline-flex items-center justify-center w-5 h-5 text-xs font-bold text-blue-600 dark:text-blue-400 bg-blue-100 dark:bg-blue-900/50 rounded-full">
-                      {idx + 1}
-                    </span>
-                  </div>
+              items.map((it, idx) => {
+                // Unit price is locked when no warehouse is selected or stock is confirmed zero
+                const isUnitPriceDisabled = !formData.warehouse_id || it.stockQty === 0;
 
-                  {/* Product */}
-                  <div className="col-span-8">
-                    <CustomSelect
-                      value={it.product_id ? { value: it.product_id, label: it.product_name || '' } : null}
-                      onChange={(o: any) => onProductSelect(idx, o?.value, o?.label)}
-                      loadOptions={loadProducts}
-                      defaultOptions={productDefaults}
-                      placeholder="Select product"
-                      isInvalid={hasErr(`items.${idx}.product_id`)}
-                    />
-                    {err(`items.${idx}.product_id`) && (
-                      <p className="text-red-600 text-xs mt-0.5">{err(`items.${idx}.product_id`)}</p>
-                    )}
-                  </div>
-
-                  {/* Variation + stock badge */}
-                  <div className="col-span-6">
-                    <CustomSelect
-                      value={it.variation_id ? { value: it.variation_id, label: it.variation_name || '' } : null}
-                      onChange={(o: any) => onVariationSelect(idx, o?.value, o?.label, o?.selling_price)}
-                      loadOptions={(search: string) =>
-                        it.product_id ? loadVariations(it.product_id, search) : Promise.resolve([])
-                      }
-                      defaultOptions={it.variationOptions || []}
-                      placeholder="Variation"
-                      isDisabled={!it.product_id}
-                      isInvalid={hasErr(`items.${idx}.variation_id`)}
-                    />
-                    {it.stockChecking && (
-                      <span className="inline-flex items-center gap-1 mt-0.5 text-[10px] font-medium text-gray-400 dark:text-gray-500">
-                        <span className="w-2 h-2 rounded-full bg-gray-300 dark:bg-gray-600 animate-pulse" />
-                        Checking…
+                return (
+                  <div
+                    key={idx}
+                    className="grid grid-cols-24 gap-2 px-1 py-1 items-center hover:bg-blue-50/40 dark:hover:bg-gray-700/30 transition-colors"
+                  >
+                    {/* Row number badge */}
+                    <div className="col-span-1 text-center">
+                      <span className="inline-flex items-center justify-center w-5 h-5 text-xs font-bold text-blue-600 dark:text-blue-400 bg-blue-100 dark:bg-blue-900/50 rounded-full">
+                        {idx + 1}
                       </span>
-                    )}
-                    {!it.stockChecking && it.stockQty !== null && it.stockQty !== undefined && it.stockQty > 0 && (
-                      <span className="inline-flex items-center gap-1 mt-0.5 text-[10px] font-semibold text-green-600 dark:text-green-400">
-                        <span className="w-1.5 h-1.5 rounded-full bg-green-500" />
-                        In Stock ({it.stockQty})
+                    </div>
+
+                    {/* Product */}
+                    <div className="col-span-8">
+                      <CustomSelect
+                        value={it.product_id ? { value: it.product_id, label: it.product_name || '' } : null}
+                        onChange={(o: any) => onProductSelect(idx, o?.value, o?.label)}
+                        loadOptions={loadProducts}
+                        defaultOptions={productDefaults}
+                        placeholder="Select product"
+                        isInvalid={hasErr(`items.${idx}.product_id`)}
+                      />
+                      {err(`items.${idx}.product_id`) && (
+                        <p className="text-red-600 text-xs mt-0.5">{err(`items.${idx}.product_id`)}</p>
+                      )}
+                    </div>
+
+                    {/* Variation + stock badge */}
+                    <div className="col-span-6">
+                      <CustomSelect
+                        value={it.variation_id ? { value: it.variation_id, label: it.variation_name || '' } : null}
+                        onChange={(o: any) => onVariationSelect(idx, o?.value, o?.label, o?.selling_price)}
+                        loadOptions={(search: string) =>
+                          it.product_id ? loadVariations(it.product_id, search) : Promise.resolve([])
+                        }
+                        defaultOptions={it.variationOptions || []}
+                        placeholder="Variation"
+                        isDisabled={!it.product_id}
+                        isInvalid={hasErr(`items.${idx}.variation_id`)}
+                      />
+
+                    </div>
+
+                    {/* Quantity */}
+                    <div className="col-span-2">
+                      <input
+                        type="number"
+                        step="1"
+                        min="1"
+                        value={it.quantity}
+                        onChange={e => setItemField(idx, 'quantity', e.target.value)}
+                        onKeyDown={preventMinus}
+                        onFocus={e => e.target.select()}
+                        placeholder="0"
+                        disabled={isEditMode}
+                        className={`${inputCls} text-right font-semibold [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none ${hasErr(`items.${idx}.quantity`) ? 'border-red-500' : ''} ${isEditMode ? 'opacity-50 cursor-not-allowed' : ''}`}
+                      />
+                      {err(`items.${idx}.quantity`) && (
+                        <p className="text-red-600 text-xs mt-0.5">{err(`items.${idx}.quantity`)}</p>
+                      )}
+                    </div>
+
+                    {/* Unit price */}
+                    <div className="col-span-4">
+                      <input
+                        type="number"
+                        step="0.01"
+                        min="0"
+                        value={it.unit_price}
+                        onChange={e => setItemField(idx, 'unit_price', e.target.value)}
+                        onKeyDown={preventMinus}
+                        onFocus={e => e.target.select()}
+                        placeholder="0.00"
+                        disabled={isUnitPriceDisabled}
+                        className={`${inputCls} text-right font-semibold [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none ${hasErr(`items.${idx}.unit_price`) ? 'border-red-500' : ''} ${isUnitPriceDisabled ? 'opacity-50 cursor-not-allowed' : ''}`}
+                      />
+                    </div>
+
+                    {/* Line total (computed) */}
+                    <div className="col-span-2 text-right pr-1">
+                      <span className="text-xs font-bold text-gray-800 dark:text-gray-200">
+                        {((Number(it.quantity) || 0) * (Number(it.unit_price) || 0)).toFixed(0)}
                       </span>
-                    )}
-                  </div>
+                    </div>
 
-                  {/* Quantity */}
-                  <div className="col-span-2">
-                    <input
-                      type="number"
-                      step="1"
-                      min="1"
-                      value={it.quantity}
-                      onChange={e => setItemField(idx, 'quantity', e.target.value)}
-                      onKeyDown={preventMinus}
-                      onFocus={e => e.target.select()}
-                      placeholder="0"
-                      className={`${inputCls} text-right font-semibold [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none ${hasErr(`items.${idx}.quantity`) ? 'border-red-500' : ''
-                        }`}
-                    />
-                    {err(`items.${idx}.quantity`) && (
-                      <p className="text-red-600 text-xs mt-0.5">{err(`items.${idx}.quantity`)}</p>
-                    )}
+                    {/* Delete button */}
+                    <div className="col-span-1 text-center">
+                      <button
+                        type="button"
+                        onClick={() => removeItem(idx)}
+                        disabled={isEditMode}
+                        title="Remove item"
+                        className={`inline-flex items-center justify-center w-6 h-6 rounded-sm transition-colors ${isEditMode
+                          ? 'bg-red-50 text-red-300 cursor-not-allowed opacity-50'
+                          : 'bg-red-100 hover:bg-red-600 text-red-600 hover:text-white'
+                          }`}
+                      >
+                        <Minus className="w-3.5 h-3.5" />
+                      </button>
+                    </div>
                   </div>
-
-                  {/* Unit price */}
-                  <div className="col-span-4">
-                    <input
-                      type="number"
-                      step="0.01"
-                      min="0"
-                      value={it.unit_price}
-                      onChange={e => setItemField(idx, 'unit_price', e.target.value)}
-                      onKeyDown={preventMinus}
-                      onFocus={e => e.target.select()}
-                      placeholder="0.00"
-                      disabled={!formData.warehouse_id || it.stockQty === 0}
-                      className={`${inputCls} text-right font-semibold [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none ${hasErr(`items.${idx}.unit_price`) ? 'border-red-500' : ''} ${(!formData.warehouse_id || it.stockQty === 0) ? 'opacity-50 cursor-not-allowed' : ''}`}
-                    />
-                  </div>
-
-                  {/* Line total (computed) */}
-                  <div className="col-span-2 text-right pr-1">
-                    <span className="text-xs font-bold text-gray-800 dark:text-gray-200">
-                      {((Number(it.quantity) || 0) * (Number(it.unit_price) || 0)).toFixed(0)}
-                    </span>
-                  </div>
-
-                  {/* Delete button */}
-                  <div className="col-span-1 text-center">
-                    <button
-                      type="button"
-                      onClick={() => removeItem(idx)}
-                      title="Remove item"
-                      className="inline-flex items-center justify-center w-6 h-6 bg-red-100 hover:bg-red-600 text-red-600 hover:text-white rounded-sm transition-colors"
-                    >
-                      <Minus className="w-3.5 h-3.5" />
-                    </button>
-                  </div>
-                </div>
-              ))
+                );
+              })
             )}
           </div>
 
@@ -955,7 +1127,7 @@ export default function AddSalesOrderPage() {
                         onChange={e => setDiscount(e.target.value)}
                         onKeyDown={preventMinus}
                         onFocus={e => e.target.select()}
-                        className="w-24 px-2 py-1 text-xs text-right border border-gray-300 dark:border-gray-600 rounded-sm bg-white dark:bg-gray-700 dark:text-gray-100 focus:outline-none focus:ring-1 focus:ring-blue-500 [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                        className={summaryInputCls}
                       />
                     </div>
 
@@ -977,7 +1149,7 @@ export default function AddSalesOrderPage() {
                         onChange={e => setTax(e.target.value)}
                         onKeyDown={preventMinus}
                         onFocus={e => e.target.select()}
-                        className="w-24 px-2 py-1 text-xs text-right border border-gray-300 dark:border-gray-600 rounded-sm bg-white dark:bg-gray-700 dark:text-gray-100 focus:outline-none focus:ring-1 focus:ring-blue-500 [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                        className={summaryInputCls}
                       />
                     </div>
 
@@ -999,7 +1171,7 @@ export default function AddSalesOrderPage() {
                         onChange={e => setShipping(e.target.value)}
                         onKeyDown={preventMinus}
                         onFocus={e => e.target.select()}
-                        className="w-24 px-2 py-1 text-xs text-right border border-gray-300 dark:border-gray-600 rounded-sm bg-white dark:bg-gray-700 dark:text-gray-100 focus:outline-none focus:ring-1 focus:ring-blue-500 [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                        className={summaryInputCls}
                       />
                     </div>
 
@@ -1297,16 +1469,29 @@ export default function AddSalesOrderPage() {
             className="flex items-center justify-center gap-2 px-5 py-1.5 text-sm bg-indigo-600 hover:bg-indigo-700 disabled:bg-gray-400 text-white rounded-sm transition-colors cursor-pointer disabled:opacity-60 disabled:cursor-not-allowed"
           >
             <GiSave className="w-4 h-4" />
-            {isLoading ? 'Creating...' : 'Create Sales Order'}
+            {isEditMode
+              ? (isLoading ? 'Updating...' : 'Update Sales Order')
+              : (isLoading ? 'Creating...' : 'Create Sales Order')}
           </button>
-          <button
-            type="button"
-            onClick={handleReset}
-            className="flex items-center gap-2 px-3 py-1.5 bg-gray-500 hover:bg-gray-600 text-white text-sm font-medium rounded-sm transition-colors"
-          >
-            <RotateCcw className="w-4 h-4" />
-            Reset
-          </button>
+          {!isEditMode && (
+            <button
+              type="button"
+              onClick={handleReset}
+              className="flex items-center gap-2 px-3 py-1.5 bg-gray-500 hover:bg-gray-600 text-white text-sm font-medium rounded-sm transition-colors"
+            >
+              <RotateCcw className="w-4 h-4" />
+              Reset
+            </button>
+          )}
+          {isEditMode && (
+            <button
+              type="button"
+              onClick={() => router.push('/sales-orders')}
+              className="flex items-center gap-2 px-3 py-1.5 bg-gray-500 hover:bg-gray-600 text-white text-sm font-medium rounded-sm transition-colors"
+            >
+              Cancel
+            </button>
+          )}
         </div>
 
       </form>

@@ -250,7 +250,6 @@ export default function StockAddPage() {
         const payload = {
           tenant_id: isSuperAdmin ? selectedTenant?.value : undefined,
           warehouse_id: selectedWarehouse.value,
-          product_id: selectedProduct.value,
           stocks: activeItems.map(({ s, i }) => buildEntry(s, i)),
         };
 
@@ -264,7 +263,6 @@ export default function StockAddPage() {
       const payload = {
         tenant_id: isSuperAdmin ? selectedTenant?.value : undefined,
         warehouse_id: selectedWarehouse.value,
-        product_id: selectedProduct.value,
         stocks: stocks.map((s, i) => buildEntry(s, i)),
       };
 

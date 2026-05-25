@@ -216,18 +216,22 @@ export const notify = {
       timer: 3000,
     }),
 
-  error: (message?: string) =>
+  // Single arg:  notify.error('message')            → title='Error',   text='message'
+  // Two args:    notify.error('Stock out', 'detail') → title='Stock out', text='detail'
+  error: (titleOrMessage?: string, text?: string) =>
     notifications.toast({
-      title: 'Error',
-      text: message || 'An error occurred. Please try again.',
+      title: text ? (titleOrMessage || 'Error') : 'Error',
+      text: text || titleOrMessage || 'An error occurred. Please try again.',
       icon: 'error',
       timer: 3000,
     }),
 
-  warning: (message?: string) =>
+  // Single arg:  notify.warning('message')           → title='Warning', text='message'
+  // Two args:    notify.warning('Title', 'detail')   → title='Title',   text='detail'
+  warning: (titleOrMessage?: string, text?: string) =>
     notifications.toast({
-      title: 'Warning',
-      text: message || 'Please check your input.',
+      title: text ? (titleOrMessage || 'Warning') : 'Warning',
+      text: text || titleOrMessage || 'Please check your input.',
       icon: 'warning',
       timer: 3000,
     }),

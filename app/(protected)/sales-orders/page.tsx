@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { ColumnDef } from '@tanstack/react-table';
-import { List, Plus, Edit, Trash2, Eye, Printer, ReceiptText } from 'lucide-react';
+import { List, Plus, Edit, Trash2, Eye, Printer, ReceiptText, X } from 'lucide-react';
 import DataTable from '@/components/ui/datatable';
 import { formatDate } from '@/lib/utils/date';
 import { notify, confirm } from '@/lib/notifications';
@@ -45,7 +45,7 @@ export default function SalesOrdersPage() {
     { value: 'overdue', label: 'Overdue' },
   ];
 
-  const loadItems = async (id: number) => {
+  const loadItems = async (id: string) => {
     try {
       setDetailLoading(true);
       const so = await salesOrderService.getSalesOrder(id);
@@ -73,7 +73,7 @@ export default function SalesOrdersPage() {
         payment_status: currentSO.payment_status,
         paid_amount: currentSO.paid_amount ?? 0,
       };
-      await salesOrderService.updateSalesOrderFromDetails(currentSO.id, payload);
+      await salesOrderService.updateSalesOrderFromDetails(currentSO.uuid, payload);
       notify.success('Sales order updated');
       setShowDetails(false);
       setRefreshKey(k => k + 1);
@@ -85,7 +85,7 @@ export default function SalesOrdersPage() {
   };
 
   const handleEdit = (row: any) => {
-    router.push(`/sales-orders/add?edit=${row.id}`);
+    router.push(`/sales-orders/add?edit=${row.uuid}`);
   };
 
   const handleDelete = async (row: any) => {
@@ -98,7 +98,7 @@ export default function SalesOrdersPage() {
     });
     if (!result.isConfirmed) return;
     try {
-      await salesOrderService.deleteSalesOrder(row.id);
+      await salesOrderService.deleteSalesOrder(row.uuid);
       notify.success('Sales order deleted');
       setRefreshKey(k => k + 1);
     } catch (err: any) {
@@ -106,7 +106,7 @@ export default function SalesOrdersPage() {
     }
   };
 
-  const handlePrint = async (id: number, mode: PrintMode = 'invoice') => {
+  const handlePrint = async (id: string, mode: PrintMode = 'invoice') => {
     try {
       const so = await salesOrderService.getSalesOrder(id);
       setPrintState({ mode, so });
@@ -131,7 +131,7 @@ export default function SalesOrdersPage() {
         </span>
       ),
     },
-    { accessorKey: 'order_number', header: 'Order Number' },
+    { accessorKey: 'invoice_number', header: 'Inv No.' },
     {
       accessorKey: 'customer',
       header: 'Customer',
@@ -179,6 +179,25 @@ export default function SalesOrdersPage() {
     },
     { accessorKey: 'grand_total', header: 'Total' },
     {
+      accessorKey: 'payment_status',
+      header: 'Payment',
+      cell: ({ row }) => {
+        const p = row.original.payment_status || '';
+        const map: Record<string, string> = {
+          pending: 'bg-yellow-100 text-yellow-800',
+          partial: 'bg-blue-100 text-blue-800',
+          paid: 'bg-emerald-100 text-emerald-800',
+          overdue: 'bg-red-100 text-red-800',
+        };
+        const cls = map[p] || 'bg-gray-100 text-gray-800';
+        return (
+          <span className={`px-2 py-0.5 rounded text-xs font-medium ${cls}`}>
+            {p.charAt(0).toUpperCase() + p.slice(1) || '-'}
+          </span>
+        );
+      },
+    },
+    {
       id: 'actions',
       header: 'Actions',
       meta: { width: '96px' },
@@ -186,25 +205,25 @@ export default function SalesOrdersPage() {
         <div className="flex items-center gap-2">
           <button
             title="Details"
-            onClick={() => loadItems(row.original.id)}
+            onClick={() => loadItems(row.original.uuid)}
             className="p-1 text-blue-600 hover:text-blue-800 cursor-pointer"
           >
             <Eye className="w-4 h-4" />
           </button>
           <button
             title="Print"
-            onClick={() => handlePrint(row.original.id, 'invoice')}
+            onClick={() => handlePrint(row.original.uuid, 'invoice')}
             className="p-1 text-gray-600 hover:text-gray-800 cursor-pointer"
           >
             <Printer className="w-4 h-4" />
           </button>
-          <button
+          {/* <button
             title="POS Print"
             onClick={() => handlePrint(row.original.id, 'pos')}
             className="p-1 text-amber-600 hover:text-amber-800 cursor-pointer"
           >
             <ReceiptText className="w-4 h-4" />
-          </button>
+          </button> */}
           <button
             title="Edit"
             onClick={() => handleEdit(row.original)}
@@ -251,162 +270,260 @@ export default function SalesOrdersPage() {
 
       {/* Details modal */}
       {showDetails && (
-        <div className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center">
-          <div className="bg-white dark:bg-gray-800 rounded-md w-11/12 md:w-3/4 lg:w-1/2 p-4">
-            <div className="flex items-center justify-between mb-3">
-              <h3 className="text-lg font-medium">Sales Order Details</h3>
-              <button
-                onClick={() => setShowDetails(false)}
-                className="px-2 py-1 text-sm bg-gray-200 rounded"
-              >
-                Close
-              </button>
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-3xl flex flex-col max-h-[90vh] overflow-hidden">
+
+            {/* Gradient header */}
+            <div className="bg-gradient-to-r from-blue-600 via-indigo-600 to-purple-600 px-6 py-4 text-white rounded-t-2xl flex items-start justify-between">
+              <div>
+                <p className="text-xs font-semibold uppercase tracking-widest opacity-75 mb-0.5">Sales Order</p>
+                <h2 className="text-xl font-bold leading-tight">{currentSO?.invoice_number || '—'}</h2>
+                <p className="text-sm opacity-80">{currentSO?.customer?.name || '—'}</p>
+              </div>
+              <div className="flex flex-col items-end gap-2">
+                <button
+                  onClick={() => setShowDetails(false)}
+                  className="w-8 h-8 rounded-full bg-white/20 hover:bg-white/30 flex items-center justify-center transition-colors"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+                {(() => {
+                  const s = currentSO?.status || '';
+                  const badgeMap: Record<string, string> = {
+                    draft: 'bg-gray-200 text-gray-800',
+                    pending: 'bg-yellow-200 text-yellow-900',
+                    confirmed: 'bg-blue-200 text-blue-900',
+                    processing: 'bg-indigo-200 text-indigo-900',
+                    ready: 'bg-cyan-200 text-cyan-900',
+                    shipped: 'bg-purple-200 text-purple-900',
+                    delivered: 'bg-teal-200 text-teal-900',
+                    cancelled: 'bg-red-200 text-red-900',
+                    returned: 'bg-orange-200 text-orange-900',
+                  };
+                  return (
+                    <span className={`text-xs font-semibold px-2.5 py-0.5 rounded-full ${badgeMap[s] || 'bg-gray-200 text-gray-800'}`}>
+                      {s.charAt(0).toUpperCase() + s.slice(1)}
+                    </span>
+                  );
+                })()}
+              </div>
             </div>
-            {detailLoading ? (
-              <div className="text-sm">Loading...</div>
-            ) : (
-              <div className="overflow-x-auto">
-                <div className="flex flex-col gap-3">
-                  {/* Header */}
-                  <div className="flex items-start justify-between">
-                    <div>
-                      <div className="text-sm font-semibold">{currentSO?.order_number || '-'}</div>
-                      <div className="text-xs text-gray-500">{currentSO?.customer?.name || '-'}</div>
-                      <div className="text-xs text-gray-500">
-                        Warehouse: {currentSO?.warehouse?.name || '-'}
-                      </div>
+
+            {/* Scrollable body */}
+            <div className="overflow-y-auto flex-1 px-5 py-3 space-y-3">
+              {detailLoading ? (
+                <div className="flex items-center justify-center py-12">
+                  <div className="animate-spin w-10 h-10 border-4 border-blue-500 border-t-transparent rounded-full" />
+                </div>
+              ) : (
+                <>
+                  {/* Info cards */}
+                  <div className="grid grid-cols-2 gap-2">
+                    <div className="bg-blue-50 border border-blue-100 rounded-xl p-3">
+                      <p className="text-xs font-semibold text-blue-500 uppercase tracking-wider mb-1.5">Customer Info</p>
+                      <p className="text-sm font-semibold text-gray-800 leading-tight">
+                        {currentSO?.customer?.name || '—'}
+                      </p>
+                      <p className="text-xs text-gray-500 mt-1">
+                        Warehouse:{' '}
+                        <span className="font-medium text-gray-700">
+                          {currentSO?.warehouse?.name || '—'}
+                        </span>
+                      </p>
+                      {currentSO?.shipping_address && (
+                        <p className="text-xs text-gray-400 mt-0.5">{currentSO.shipping_address}</p>
+                      )}
                     </div>
-                    <div className="text-right">
-                      <div className="text-xs">
-                        Order Date: {formatDate(currentSO?.order_date, 'DD/MM/YYYY')}
+                    <div className="bg-emerald-50 border border-emerald-100 rounded-xl p-3">
+                      <p className="text-xs font-semibold text-emerald-500 uppercase tracking-wider mb-1.5">Order Dates</p>
+                      <div className="space-y-1">
+                        <div className="flex justify-between text-xs">
+                          <span className="text-gray-500">Order Date</span>
+                          <span className="font-medium text-gray-800">
+                            {formatDate(currentSO?.order_date, 'DD/MM/YYYY')}
+                          </span>
+                        </div>
+                        <div className="flex justify-between text-xs">
+                          <span className="text-gray-500">Due Date</span>
+                          <span className="font-medium text-gray-800">
+                            {formatDate(currentSO?.due_date, 'DD/MM/YYYY')}
+                          </span>
+                        </div>
+                        <div className="flex justify-between text-xs items-center">
+                          <span className="text-gray-500">Payment</span>
+                          {(() => {
+                            const pm = currentSO?.payment_status || '';
+                            const pmMap: Record<string, string> = {
+                              pending: 'bg-yellow-100 text-yellow-700',
+                              partial: 'bg-blue-100 text-blue-700',
+                              paid: 'bg-emerald-100 text-emerald-700',
+                              overdue: 'bg-red-100 text-red-700',
+                            };
+                            return (
+                              <span className={`text-xs font-semibold px-2 py-0.5 rounded-full ${pmMap[pm] || 'bg-gray-100 text-gray-600'}`}>
+                                {pm.charAt(0).toUpperCase() + pm.slice(1)}
+                              </span>
+                            );
+                          })()}
+                        </div>
                       </div>
-                      <div className="text-xs">
-                        Due Date: {formatDate(currentSO?.due_date, 'DD/MM/YYYY')}
-                      </div>
-                      <div className="text-xs">
-                        Shipping: {Number(currentSO?.shipping_charge ?? 0).toFixed(2)}
-                      </div>
-                      <div className="text-xs">
-                        Tax: {Number(currentSO?.tax_amount ?? 0).toFixed(2)}
-                      </div>
-                      <div className="text-xs">
-                        Discount:{' '}
-                        {currentSO?.discount_type === 'percentage'
-                          ? `${currentSO.discount_value}%`
-                          : `${Number(currentSO?.discount_amount ?? 0).toFixed(2)}`}
-                      </div>
-                      <div className="text-sm font-bold">Total: {currentSO?.grand_total ?? '-'}</div>
                     </div>
                   </div>
 
-                  {/* Status controls */}
-                  <div className="flex items-center gap-3">
-                    <div>
-                      <label className="text-xs text-gray-600 mb-1 block">Status</label>
-                      <select
-                        value={currentSO?.status || 'draft'}
-                        onChange={e =>
-                          setCurrentSO((prev: any) =>
-                            prev ? { ...prev, status: e.target.value } : prev
-                          )
-                        }
-                        className="px-2 py-1 border border-gray-300 dark:border-gray-700 rounded text-sm focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
-                      >
-                        {STATUS_LIST.map(s => (
-                          <option key={s} value={s}>
-                            {s}
-                          </option>
-                        ))}
-                      </select>
+                  {/* Financial summary */}
+                  <div className="grid grid-cols-4 gap-2">
+                    <div className="bg-gradient-to-br from-blue-500 to-blue-600 rounded-xl p-2.5 text-white text-center shadow-sm">
+                      <p className="text-xs opacity-80 mb-0.5">Grand Total</p>
+                      <p className="text-base font-bold leading-tight">{Number(currentSO?.grand_total ?? 0).toFixed(2)}</p>
                     </div>
-                    <div>
-                      <label className="text-xs text-gray-600 mb-1 block">Payment Status</label>
-                      <select
-                        value={currentSO?.payment_status || 'pending'}
-                        onChange={e =>
-                          setCurrentSO((prev: any) =>
-                            prev ? { ...prev, payment_status: e.target.value } : prev
-                          )
-                        }
-                        className="px-2 py-1 border border-gray-300 dark:border-gray-700 rounded text-sm focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
-                      >
-                        {PAYMENT_STATUS_LIST.map(o => (
-                          <option key={o.value} value={o.value}>
-                            {o.label}
-                          </option>
-                        ))}
-                      </select>
+                    <div className="bg-gradient-to-br from-emerald-500 to-emerald-600 rounded-xl p-2.5 text-white text-center shadow-sm">
+                      <p className="text-xs opacity-80 mb-0.5">Paid</p>
+                      <p className="text-base font-bold leading-tight">{Number(currentSO?.paid_amount ?? 0).toFixed(2)}</p>
                     </div>
-                    <div>
-                      <label className="text-xs text-gray-600 mb-1 block">Paid Amount</label>
-                      <input
-                        type="number"
-                        step="0.01"
-                        value={currentSO?.paid_amount ?? 0}
-                        onChange={e =>
-                          setCurrentSO((prev: any) =>
-                            prev ? { ...prev, paid_amount: e.target.value } : prev
-                          )
-                        }
-                        onFocus={e => e.target.select()}
-                        onKeyDown={preventMinus}
-                        className="px-2 py-1 text-right border border-gray-300 dark:border-gray-700 rounded text-sm focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500 w-36 [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
-                      />
+                    <div className="bg-gradient-to-br from-amber-500 to-orange-500 rounded-xl p-2.5 text-white text-center shadow-sm">
+                      <p className="text-xs opacity-80 mb-0.5">Discount</p>
+                      <p className="text-base font-bold leading-tight">
+                        {currentSO?.discount_type === 'percentage'
+                          ? `${currentSO.discount_value}%`
+                          : Number(currentSO?.discount_amount ?? 0).toFixed(2)}
+                      </p>
                     </div>
-                    <div className="ml-auto">
+                    <div className="bg-gradient-to-br from-violet-500 to-purple-600 rounded-xl p-2.5 text-white text-center shadow-sm">
+                      <p className="text-xs opacity-80 mb-0.5">Tax + Ship</p>
+                      <p className="text-base font-bold leading-tight">
+                        {(Number(currentSO?.tax_amount ?? 0) + Number(currentSO?.shipping_charge ?? 0)).toFixed(2)}
+                      </p>
+                    </div>
+                  </div>
+
+                  {/* Status / payment controls */}
+                  <div className="bg-violet-50 border border-violet-100 rounded-xl p-3">
+                    <p className="text-xs font-semibold text-violet-500 uppercase tracking-wider mb-2">Update Order</p>
+                    <div className="flex flex-wrap items-end gap-2">
+                      <div className="flex-1 min-w-[120px]">
+                        <label className="text-xs font-medium text-gray-600 mb-1 block">Order Status</label>
+                        <select
+                          value={currentSO?.status || 'draft'}
+                          onChange={e =>
+                            setCurrentSO((prev: any) =>
+                              prev ? { ...prev, status: e.target.value } : prev
+                            )
+                          }
+                          className="w-full px-3 py-1.5 border border-violet-200 rounded-lg text-sm bg-white text-gray-800 focus:outline-none focus:ring-2 focus:ring-violet-400"
+                        >
+                          {STATUS_LIST.map(s => (
+                            <option key={s} value={s}>{s.charAt(0).toUpperCase() + s.slice(1)}</option>
+                          ))}
+                        </select>
+                      </div>
+                      <div className="flex-1 min-w-[120px]">
+                        <label className="text-xs font-medium text-gray-600 mb-1 block">Payment Status</label>
+                        <select
+                          value={currentSO?.payment_status || 'pending'}
+                          onChange={e =>
+                            setCurrentSO((prev: any) =>
+                              prev ? { ...prev, payment_status: e.target.value } : prev
+                            )
+                          }
+                          className="w-full px-3 py-1.5 border border-violet-200 rounded-lg text-sm bg-white text-gray-800 focus:outline-none focus:ring-2 focus:ring-violet-400"
+                        >
+                          {PAYMENT_STATUS_LIST.map(o => (
+                            <option key={o.value} value={o.value}>{o.label}</option>
+                          ))}
+                        </select>
+                      </div>
+                      <div className="min-w-[120px]">
+                        <label className="text-xs font-medium text-gray-600 mb-1 block">Paid Amount</label>
+                        <input
+                          type="number"
+                          step="0.01"
+                          value={currentSO?.paid_amount ?? 0}
+                          onChange={e =>
+                            setCurrentSO((prev: any) =>
+                              prev ? { ...prev, paid_amount: e.target.value } : prev
+                            )
+                          }
+                          onFocus={e => e.target.select()}
+                          onKeyDown={preventMinus}
+                          className="w-full px-3 py-1.5 text-right border border-violet-200 rounded-lg text-sm bg-white text-gray-800 focus:outline-none focus:ring-2 focus:ring-violet-400 [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                        />
+                      </div>
                       <button
                         onClick={handleUpdate}
                         disabled={updating}
-                        className="px-3 py-1 bg-blue-600 text-white rounded text-sm"
+                        className="px-5 py-1.5 bg-gradient-to-r from-violet-600 to-purple-600 hover:from-violet-700 hover:to-purple-700 disabled:opacity-60 text-white rounded-lg text-sm font-medium shadow-sm transition-all"
                       >
-                        {updating ? 'Saving...' : 'Save'}
+                        {updating ? 'Saving…' : 'Save Changes'}
                       </button>
                     </div>
                   </div>
 
-                  <table className="min-w-full text-sm">
-                    <thead>
-                      <tr className="text-left text-xs text-gray-600">
-                        <th className="px-2 py-1">#</th>
-                        <th className="px-2 py-1">Product</th>
-                        <th className="px-2 py-1">Variation</th>
-                        <th className="px-2 py-1">Quantity</th>
-                        <th className="px-2 py-1">Delivered</th>
-                        <th className="px-2 py-1">Unit Price</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {detailItems.length === 0 ? (
-                        <tr>
-                          <td className="px-2 py-3" colSpan={6}>
-                            No items found
-                          </td>
+                  {/* Items table */}
+                  <div className="rounded-xl overflow-hidden border border-blue-100 shadow-sm">
+                    <table className="min-w-full text-sm">
+                      <thead>
+                        <tr className="bg-gradient-to-r from-blue-600 to-indigo-600 text-white">
+                          <th className="px-3 py-2 text-left text-xs font-semibold">#</th>
+                          <th className="px-3 py-2 text-left text-xs font-semibold">Product</th>
+                          <th className="px-3 py-2 text-left text-xs font-semibold">Variation</th>
+                          <th className="px-3 py-2 text-center text-xs font-semibold">Qty</th>
+                          <th className="px-3 py-2 text-center text-xs font-semibold">Delivered</th>
+                          <th className="px-3 py-2 text-right text-xs font-semibold">Unit Price</th>
                         </tr>
-                      ) : (
-                        detailItems.map((it, idx) => (
-                          <tr key={it.id} className="border-t">
-                            <td className="px-2 py-2">{idx + 1}</td>
-                            <td className="px-2 py-2">
-                              {it.product?.name || it.product_name || '-'}
+                      </thead>
+                      <tbody className="divide-y divide-blue-50">
+                        {detailItems.length === 0 ? (
+                          <tr>
+                            <td colSpan={6} className="px-3 py-8 text-center text-gray-400 text-sm">
+                              No items found
                             </td>
-                            <td className="px-2 py-2">
-                              {it.variation?.name || it.variation_name || '-'}
-                            </td>
-                            <td className="px-2 py-2 text-center">
-                              {Math.abs(it.quantity)}
-                            </td>
-                            <td className="px-2 py-2 text-center">
-                              {Math.abs(it.delivered_quantity)}
-                            </td>
-                            <td className="px-2 py-2">{Number(it.unit_price ?? 0).toFixed(2)}</td>
                           </tr>
-                        ))
-                      )}
-                    </tbody>
-                  </table>
-                </div>
-              </div>
-            )}
+                        ) : (
+                          detailItems.map((it, idx) => (
+                            <tr
+                              key={it.id}
+                              className={idx % 2 === 0 ? 'bg-white' : 'bg-blue-50'}
+                            >
+                              <td className="px-3 py-2 text-gray-400 text-xs">{idx + 1}</td>
+                              <td className="px-3 py-2 font-medium text-gray-800">
+                                {it.product?.name || it.item_name || '-'}
+                              </td>
+                              <td className="px-3 py-2 text-gray-500">
+                                {it.variation?.name || '-'}
+                              </td>
+                              <td className="px-3 py-2 text-center">
+                                <span className="bg-blue-100 text-blue-700 px-2 py-0.5 rounded-full text-xs font-semibold">
+                                  {Math.abs(it.quantity)}
+                                </span>
+                              </td>
+                              <td className="px-3 py-2 text-center">
+                                <span className="bg-emerald-100 text-emerald-700 px-2 py-0.5 rounded-full text-xs font-semibold">
+                                  {Math.abs(it.delivered_quantity)}
+                                </span>
+                              </td>
+                              <td className="px-3 py-2 text-right font-semibold text-gray-800">
+                                {Number(it.unit_price ?? 0).toFixed(2)}
+                              </td>
+                            </tr>
+                          ))
+                        )}
+                      </tbody>
+                    </table>
+                  </div>
+                </>
+              )}
+            </div>
+
+            {/* Footer */}
+            <div className="px-5 py-2.5 border-t border-gray-100 flex justify-end bg-white rounded-b-2xl">
+              <button
+                onClick={() => setShowDetails(false)}
+                className="px-4 py-1.5 text-sm text-gray-600 hover:text-gray-900 bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors"
+              >
+                Close
+              </button>
+            </div>
+
           </div>
         </div>
       )}

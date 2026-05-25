@@ -12,6 +12,7 @@ interface DatePickerProps {
   placeholder?: string;
   minDate?: Date;
   maxDate?: Date;
+  disabled?: boolean;
 }
 
 export default function CustomDatePicker({
@@ -21,6 +22,7 @@ export default function CustomDatePicker({
   placeholder = 'DD/MM/YYYY',
   minDate,
   maxDate,
+  disabled = false,
 }: DatePickerProps) {
   const date = value ? new Date(value + 'T00:00:00') : null;
 
@@ -50,10 +52,11 @@ export default function CustomDatePicker({
         <input
           ref={ref}
           value={value}
-          onClick={onClick}
+          onClick={disabled ? undefined : onClick}
           placeholder={placeholder}
           readOnly
-          className={`w-full px-2 py-1.25 text-sm border border-gray-300 rounded-sm focus:outline-none focus:ring-1 focus:ring-blue-500 dark:focus:ring-blue-400 focus:border-transparent dark:bg-gray-700 dark:text-gray-100 dark:border-gray-600 cursor-pointer ${value ? 'pr-14' : 'pr-8'} ${className || ''}`}
+          disabled={disabled}
+          className={`w-full px-2 py-1.25 text-sm border border-gray-300 rounded-sm focus:outline-none focus:ring-1 focus:ring-blue-500 dark:focus:ring-blue-400 focus:border-transparent dark:bg-gray-700 dark:text-gray-100 dark:border-gray-600 ${disabled ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'} ${value ? 'pr-14' : 'pr-8'} ${className || ''}`}
         />
         {value && (
           <button
@@ -82,6 +85,7 @@ export default function CustomDatePicker({
         minDate={minDate}
         maxDate={maxDate}
         placeholderText={placeholder}
+        disabled={disabled}
         peekNextMonth
         showMonthDropdown
         showYearDropdown
