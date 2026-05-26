@@ -31,11 +31,11 @@ export default function DateTimePicker({
 
   const handleChange = (d: Date | null) => {
     if (!d) { onChange(''); return; }
-    const year  = d.getFullYear();
+    const year = d.getFullYear();
     const month = String(d.getMonth() + 1).padStart(2, '0');
-    const day   = String(d.getDate()).padStart(2, '0');
+    const day = String(d.getDate()).padStart(2, '0');
     const hours = String(d.getHours()).padStart(2, '0');
-    const mins  = String(d.getMinutes()).padStart(2, '0');
+    const mins = String(d.getMinutes()).padStart(2, '0');
     onChange(`${year}-${month}-${day}T${hours}:${mins}`);
   };
 
@@ -79,7 +79,11 @@ export default function DateTimePicker({
         peekNextMonth
         showMonthDropdown
         showYearDropdown
+        scrollableYearDropdown
+        yearDropdownItemNumber={100}
         dropdownMode="select"
+        portalId="datepicker-root-portal"
+        popperProps={{ strategy: 'fixed' }}
       />
       <style jsx global>{`
         .react-datepicker-wrapper {
@@ -87,6 +91,13 @@ export default function DateTimePicker({
         }
         .react-datepicker__time-container {
           width: 100px;
+        }
+        #datepicker-root-portal {
+          z-index: 9999;
+          position: relative;
+        }
+        #datepicker-root-portal .react-datepicker-popper {
+          z-index: 9999 !important;
         }
       `}</style>
     </div>

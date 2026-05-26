@@ -27,8 +27,10 @@ class PosRegisterService {
     await apiClient.get(`/api/v1/pos/registers/delete/${id}`);
   }
 
-  async dropdown() {
-    const response = await apiClient.get<ApiResponse<any>>('/api/v1/pos/registers/dropdown');
+  async dropdown(tenantId?: string | number) {
+    const response = await apiClient.get<ApiResponse<any>>('/api/v1/pos/registers/dropdown', {
+      params: tenantId ? { tenant_id: tenantId } : undefined,
+    });
     return response.data.data;
   }
 }
