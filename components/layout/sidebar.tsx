@@ -29,6 +29,7 @@ import {
   SquarePlus,
   FileText,
   FileSpreadsheet,
+  History,
 } from 'lucide-react';
 import { MdOutlineAssignmentReturn, MdOutlinePointOfSale, MdOutlinePostAdd, MdSupervisedUserCircle } from 'react-icons/md';
 import { BsFilePost, BsReceiptCutoff } from 'react-icons/bs';
@@ -118,12 +119,13 @@ const navigation: NavigationItem[] = [
   {
     name: 'Stock Management',
     icon: CirclePile,
-    permissions: ['view-stock', 'create-stock', 'view-warehouse', 'view-bin'],
+    permissions: ['view-stocks', 'create-stocks', 'view-warehouse', 'view-bin'],
     children: [
-      { name: 'Stock', href: '/stock', icon: List, permission: 'view-stock' },
-      { name: 'Add Stock', href: '/stock/add', icon: LayersPlus, permission: 'create-stock'},
-      { name: 'Warehouse', href: '/warehouse', icon: Warehouse, permission: 'view-warehouse'},
-      { name: 'Bins', href: '/bins', icon: Container, permission: 'view-bin'},
+      { name: 'Stock', href: '/stock', icon: List, permission: 'view-stocks' },
+      { name: 'Add Stock', href: '/stock/add', icon: LayersPlus, permission: 'create-stocks' },
+      { name: 'Stock Movement', href: '/stock/movement', icon: History },
+      { name: 'Warehouse', href: '/warehouse', icon: Warehouse, permission: 'view-warehouse' },
+      { name: 'Bins', href: '/bins', icon: Container, permission: 'view-bin' },
     ],
   },
   {

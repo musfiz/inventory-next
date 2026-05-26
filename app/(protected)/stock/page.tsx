@@ -1,5 +1,6 @@
 'use client';
 
+import Link from 'next/link';
 import { useState } from 'react';
 import { Package2 } from 'lucide-react';
 import { ColumnDef } from '@tanstack/react-table';
@@ -71,11 +72,25 @@ export default function StockListPage() {
 
   return (
     <div className="space-y-2">
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-between gap-3 flex-wrap">
         <h1 className="text-xl font-bold flex items-center gap-2">
           {' '}
           <Package2 className="w-5 h-5 text-blue-600" /> Stocks
         </h1>
+        <div className="flex items-center gap-2">
+          <Link
+            href="/stock/add"
+            className="inline-flex items-center px-3 py-1.5 rounded-md bg-blue-600 text-white text-sm font-medium hover:bg-blue-700 transition-colors"
+          >
+            Add Stock
+          </Link>
+          <Link
+            href="/stock/movements"
+            className="inline-flex items-center px-3 py-1.5 rounded-md bg-slate-100 text-slate-700 text-sm font-medium hover:bg-slate-200 transition-colors dark:bg-slate-800 dark:text-slate-200 dark:hover:bg-slate-700"
+          >
+            Stock Movement
+          </Link>
+        </div>
       </div>
 
       <DataTable
