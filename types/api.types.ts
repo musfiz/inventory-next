@@ -484,6 +484,33 @@ export interface ChangePasswordRequest {
   password_confirmation: string;
 }
 
+export interface StockMovement {
+  id: number;
+  uuid: string;
+  tenant_id: number;
+  product_id: number;
+  variation_id?: number;
+  warehouse_id: number;
+  batch_id?: number;
+  movement_type: 'purchase' | 'sales' | 'return' | 'adjustment' | 'transfer_in' | 'transfer_out' | 'production' | 'consumption' | 'damage' | 'expiry';
+  reference_type?: string;
+  reference_id?: number;
+  reference_number?: string;
+  quantity_before: number;
+  quantity_change: number;
+  quantity_after: number;
+  unit_cost?: number;
+  total_cost?: number;
+  reason?: string;
+  notes?: string;
+  created_by?: number;
+  created_at: string;
+  product?: { id: number; name: string; sku?: string };
+  variation?: { id: number; name?: string; sku?: string };
+  warehouse?: { id: number; name: string; code?: string };
+  creator?: { id: number; name: string };
+}
+
 // API Response wrapper
 export interface ApiResponse<T = any> {
   success: boolean;

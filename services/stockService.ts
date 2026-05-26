@@ -16,9 +16,26 @@ export interface StockEntry {
   average_cost?: number | string | null;
 }
 
+export interface StockMovementSummary {
+  total: number;
+  inbound: number;
+  outbound: number;
+  adjustment: number;
+}
+
 class StockService {
   async getStocks(params?: Record<string, any>) {
     const response = await apiClient.get<ApiResponse<any>>('/api/v1/stocks', { params });
+    return response.data.data;
+  }
+
+  async getStockMovements(params?: Record<string, any>) {
+    const response = await apiClient.get<ApiResponse<any>>('/api/v1/stocks/movements', { params });
+    return response.data.data;
+  }
+
+  async getStockMovementsSummary(): Promise<StockMovementSummary> {
+    const response = await apiClient.get<ApiResponse<StockMovementSummary>>('/api/v1/stocks/movements/summary');
     return response.data.data;
   }
 

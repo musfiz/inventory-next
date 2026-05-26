@@ -85,7 +85,7 @@ export default function StockListPage() {
             Add Stock
           </Link>
           <Link
-            href="/stock/movements"
+            href="/stock/movement"
             className="inline-flex items-center px-3 py-1.5 rounded-md bg-slate-100 text-slate-700 text-sm font-medium hover:bg-slate-200 transition-colors dark:bg-slate-800 dark:text-slate-200 dark:hover:bg-slate-700"
           >
             Stock Movement
