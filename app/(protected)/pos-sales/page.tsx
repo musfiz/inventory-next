@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState, useRef } from 'react';
+import { useRouter } from 'next/navigation';
 import {
   Search,
   Barcode,
@@ -20,12 +21,16 @@ import {
   Package,
   AlertCircle,
   CheckCircle,
+  Building2,
+  Settings,
 } from 'lucide-react';
 import { GiSave } from 'react-icons/gi';
 import { notify } from '@/lib/notifications';
-import { posService } from '@/services';
+import { posService, posSessionService, posRegisterService, commonService } from '@/services';
 import customerService from '@/services/customerService';
 import { useAuthStore } from '@/stores/auth-store';
+import { usePermissions } from '@/hooks/use-permissions';
+import CustomSelect from '@/components/ui/custom-select';
 import Swal from 'sweetalert2';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -87,6 +92,8 @@ const PAYMENT_METHODS = [
 
 export default function POSSalesPage() {
   const authUser = useAuthStore(s => s.user);
+  const { isSuperAdmin, isHydrated } = usePermissions();
+  const router = useRouter();
   const searchInputRef = useRef<HTMLInputElement>(null);
 
   // ── State ───────────────────────────────────────────────────────────────────
@@ -121,6 +128,22 @@ export default function POSSalesPage() {
   const [customerCreateLoading, setCustomerCreateLoading] = useState(false);
   const customerSearchDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
+  // ── Session / Context State ──────────────────────────────────────────────────
+  const [sessionLoading, setSessionLoading] = useState(true);
+  const [activeSession, setActiveSession] = useState<any>(null);
+  const [activeTenant, setActiveTenant] = useState<{ id: string | number; name: string } | null>(null);
+  const [activeRegister, setActiveRegister] = useState<{ id: string | number; name: string } | null>(null);
+  const [showContextDialog, setShowContextDialog] = useState(false);
+  // Super admin dialog state
+  const [dialogTenant, setDialogTenant] = useState<any>(null);
+  const [dialogRegister, setDialogRegister] = useState<any>(null);
+  const [dialogSession, setDialogSession] = useState<any>(null);
+  const [dialogTenantOptions, setDialogTenantOptions] = useState<any[]>([]);
+  const [dialogRegisterOptions, setDialogRegisterOptions] = useState<any[]>([]);
+  const [dialogSessionOptions, setDialogSessionOptions] = useState<any[]>([]);
+  const [dialogRegisterLoading, setDialogRegisterLoading] = useState(false);
+  const [dialogSessionLoading, setDialogSessionLoading] = useState(false);
+
   // ── Effects ─────────────────────────────────────────────────────────────────
 
   // Hide parent scrollbar for full-screen POS
@@ -139,10 +162,68 @@ export default function POSSalesPage() {
   }, []);
 
   useEffect(() => {
-    loadProducts();
-    loadCategories();
     generateOrderNumber();
+    loadCategories();
   }, []);
+
+  // Session gate — runs after auth is hydrated
+  useEffect(() => {
+    if (!isHydrated) return;
+
+    if (isSuperAdmin) {
+      // Always load tenant options for the dialog
+      commonService.getTenantsForDropdown({})
+        .then((list: any[]) => setDialogTenantOptions((list || []).map((t: any) => ({ value: t.id, label: t.business_name }))))
+        .catch(() => { });
+
+      // Try to restore last-used context from localStorage
+      const saved = (() => {
+        try { return JSON.parse(localStorage.getItem('pos_context') || ''); } catch { return null; }
+      })();
+
+      if (saved?.tenantId && saved?.registerId) {
+        posSessionService.current({ tenant_id: saved.tenantId, register_id: saved.registerId })
+          .then((session: any) => {
+            if (session && session.id) {
+              // Auto-confirm — skip the dialog entirely
+              setActiveSession(session);
+              setActiveTenant({ id: saved.tenantId, name: saved.tenantName });
+              setActiveRegister({ id: saved.registerId, name: saved.registerName });
+              loadProducts(undefined, undefined, saved.tenantId);
+            } else {
+              // Session expired/closed — pre-fill dialog with last tenant & register
+              setDialogTenant({ value: saved.tenantId, label: saved.tenantName });
+              setDialogRegister({ value: saved.registerId, label: saved.registerName });
+              posRegisterService.dropdown(saved.tenantId)
+                .then((list: any[]) => setDialogRegisterOptions((list || []).map((r: any) => ({ value: r.id, label: r.name }))))
+                .catch(() => { });
+              setShowContextDialog(true);
+            }
+          })
+          .catch(() => setShowContextDialog(true))
+          .finally(() => setSessionLoading(false));
+      } else {
+        setSessionLoading(false);
+        setShowContextDialog(true);
+      }
+    } else {
+      // Regular user: must have any open session (not restricted to today)
+      posSessionService.current({})
+        .then((session: any) => {
+          if (session && session.id) {
+            setActiveSession(session);
+            setActiveTenant({ id: authUser?.tenant_id ?? '', name: '' });
+            setActiveRegister(session.register ?? null);
+            loadProducts(undefined, undefined, authUser?.tenant_id);
+          } else {
+            router.replace('/pos-session');
+          }
+        })
+        .catch(() => router.replace('/pos-session'))
+        .finally(() => setSessionLoading(false));
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isHydrated, isSuperAdmin]);
 
   // Debounced server-side search: fires 400ms after the user stops typing
   useEffect(() => {
@@ -173,13 +254,15 @@ export default function POSSalesPage() {
     }
   };
 
-  const loadProducts = async (categoryId?: number, search?: string) => {
+  const loadProducts = async (categoryId?: number, search?: string, tenantId?: string | number) => {
     setProductsLoading(true);
     setProductsError(null);
     try {
-      const params: { per_page: number; category_id?: number; search?: string } = { per_page: 100 };
+      const tid = tenantId ?? activeTenant?.id ?? (isSuperAdmin ? undefined : authUser?.tenant_id);
+      const params: { per_page: number; category_id?: number; search?: string; tenant_id?: string | number } = { per_page: 100 };
       if (categoryId) params.category_id = categoryId;
       if (search && search.trim()) params.search = search.trim();
+      if (tid) params.tenant_id = tid;
       const variations: any = await posService.getProducts(params);
       const productList: any[] = Array.isArray(variations)
         ? variations
@@ -312,7 +395,73 @@ export default function POSSalesPage() {
     setOrderNumber(`POS${date.getTime()}${random}`);
   };
 
-  // ── Cart Operations ─────────────────────────────────────────────────────────
+  // ── Super Admin Context Dialog Handlers ──────────────────────────────────────
+
+  const handleDialogTenantChange = (opt: any) => {
+    setDialogTenant(opt);
+    setDialogRegister(null);
+    setDialogSession(null);
+    setDialogRegisterOptions([]);
+    setDialogSessionOptions([]);
+    if (opt?.value) {
+      setDialogRegisterLoading(true);
+      posRegisterService.dropdown(opt.value)
+        .then((list: any[]) => setDialogRegisterOptions((list || []).map((r: any) => ({ value: r.id, label: r.name }))))
+        .catch(() => { })
+        .finally(() => setDialogRegisterLoading(false));
+    }
+  };
+
+  const handleDialogRegisterChange = (opt: any) => {
+    setDialogRegister(opt);
+    setDialogSession(null);
+    setDialogSessionOptions([]);
+    if (opt?.value && dialogTenant?.value) {
+      setDialogSessionLoading(true);
+      posSessionService.list({ tenant_id: dialogTenant.value, register_id: opt.value, not_closed: 1, per_page: 20 })
+        .then((res: any) => {
+          const items: any[] = res?.data?.data ?? res?.data ?? [];
+          setDialogSessionOptions(items.map((s: any) => ({
+            value: s.id,
+            label: `${s.session_number} (${s.register?.name ?? 'Register'})`,
+            session: s,
+          })));
+        })
+        .catch(() => { })
+        .finally(() => setDialogSessionLoading(false));
+    }
+  };
+
+  const handleConfirmContext = () => {
+    if (!dialogTenant || !dialogRegister || !dialogSession) return;
+    const session = dialogSession.session ?? { id: dialogSession.value };
+    setActiveSession(session);
+    setActiveTenant({ id: dialogTenant.value, name: dialogTenant.label });
+    setActiveRegister({ id: dialogRegister.value, name: dialogRegister.label });
+    setShowContextDialog(false);
+    setCart([]);
+    loadProducts(undefined, undefined, dialogTenant.value);
+    // Persist context so it auto-restores on next page load / browser refresh
+    try {
+      localStorage.setItem('pos_context', JSON.stringify({
+        tenantId: dialogTenant.value,
+        tenantName: dialogTenant.label,
+        registerId: dialogRegister.value,
+        registerName: dialogRegister.label,
+      }));
+    } catch { }
+  };
+
+  const handleChangeContext = () => {
+    // Reset all dialog selections so the user picks tenant → register → session from scratch
+    setDialogTenant(null);
+    setDialogRegister(null);
+    setDialogSession(null);
+    setDialogRegisterOptions([]);
+    setDialogSessionOptions([]);
+    setShowContextDialog(true);
+    setCart([]);
+  };
 
   const addToCart = (product: Product) => {
     const existingItem = cart.find(item => item.product_id === product.id);
@@ -418,7 +567,10 @@ export default function POSSalesPage() {
       notify.error('Cart is empty');
       return;
     }
-
+    if (!activeSession?.id) {
+      notify.error('No active session. Please select a session first.');
+      return;
+    }
     if (paymentMethod === 'cash' && (!amountTendered || parseFloat(amountTendered) < grandTotal)) {
       notify.error('Amount tendered is less than grand total');
       return;
@@ -426,15 +578,34 @@ export default function POSSalesPage() {
 
     setIsLoading(true);
     try {
-      // Simulate API call
-      await new Promise(resolve => setTimeout(resolve, 1000));
+      const payload: any = {
+        session_id: activeSession.id,
+        register_id: activeRegister?.id ?? activeSession.register_id,
+        customer_id: customer.id ?? undefined,
+        customer_name: customer.name,
+        customer_phone: customer.phone ?? undefined,
+        payment_method: paymentMethod,
+        tendered_amount: amountTendered ? parseFloat(amountTendered) : grandTotal,
+        discount_type: discountType,
+        discount_value: discount,
+        notes: note || undefined,
+        items: cart.map(item => ({
+          variation_id: item.product_id,
+          quantity: item.quantity,
+          unit_price: item.unit_price,
+          discount: item.discount,
+          tax_rate: item.tax_rate,
+        })),
+      };
+      if (isSuperAdmin && activeTenant?.id) {
+        payload.tenant_id = activeTenant.id;
+      }
 
+      await posService.createOrder(payload);
       notify.success('Payment successful!');
-
-      // Print receipt
       printReceipt();
 
-      // Reset
+      // Reset cart
       setCart([]);
       setCustomer({ name: 'Walk-in Customer' });
       setDiscount(0);
@@ -442,7 +613,13 @@ export default function POSSalesPage() {
       setAmountTendered('');
       generateOrderNumber();
     } catch (error: any) {
-      notify.error('Payment failed');
+      const msg = error?.response?.data?.message || error?.response?.data?.errors;
+      if (typeof msg === 'object') {
+        const first = Object.values(msg as Record<string, any>).flat()[0];
+        notify.error(String(first || 'Payment failed'));
+      } else {
+        notify.error(String(msg || 'Payment failed'));
+      }
     } finally {
       setIsLoading(false);
     }
@@ -492,8 +669,110 @@ export default function POSSalesPage() {
 
   // ─── Render ─────────────────────────────────────────────────────────────────
 
+  // Session loading spinner
+  if (sessionLoading) {
+    return (
+      <div className="h-full w-full flex flex-col items-center justify-center bg-gray-50 dark:bg-gray-950">
+        <svg className="w-10 h-10 text-blue-500 animate-spin mb-3" fill="none" viewBox="0 0 24 24">
+          <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+          <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z" />
+        </svg>
+        <p className="text-sm text-gray-500 dark:text-gray-400">Checking session...</p>
+      </div>
+    );
+  }
+
   return (
     <div className="h-full w-full flex flex-col bg-gray-50 dark:bg-gray-950 overflow-hidden">
+      {/* Super Admin Context Dialog (non-dismissable until confirmed) */}
+      {showContextDialog && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm">
+          <div className="bg-white dark:bg-gray-800 rounded-xl shadow-2xl w-full max-w-md p-6">
+            <div className="flex items-center gap-3 mb-5">
+              <div className="p-2 bg-blue-100 dark:bg-blue-900/30 rounded-lg">
+                <Building2 className="w-6 h-6 text-blue-600 dark:text-blue-400" />
+              </div>
+              <div>
+                <h2 className="text-lg font-bold text-gray-900 dark:text-gray-100">Select POS Context</h2>
+                <p className="text-xs text-gray-500 dark:text-gray-400">Choose tenant, register, and session to proceed</p>
+              </div>
+            </div>
+
+            <div className="space-y-4">
+              {/* Tenant */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Tenant <span className="text-red-500">*</span></label>
+                <CustomSelect
+                  value={dialogTenant}
+                  onChange={handleDialogTenantChange}
+                  defaultOptions={dialogTenantOptions}
+                  loadOptions={async (input: string) => {
+                    const list = await commonService.getTenantsForDropdown({ search: input }).catch(() => []);
+                    return (list || []).map((t: any) => ({ value: t.id, label: t.business_name }));
+                  }}
+                  placeholder="Select tenant"
+                  className="text-sm"
+                />
+              </div>
+
+              {/* Register */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Register <span className="text-red-500">*</span></label>
+                <CustomSelect
+                  key={`reg-${dialogTenant?.value ?? 'none'}`}
+                  value={dialogRegister}
+                  onChange={handleDialogRegisterChange}
+                  defaultOptions={dialogRegisterOptions}
+                  loadOptions={async (input: string) => {
+                    if (!dialogTenant?.value) return [];
+                    const list = await posRegisterService.dropdown(dialogTenant.value).catch(() => []);
+                    return (list || []).map((r: any) => ({ value: r.id, label: r.name }));
+                  }}
+                  placeholder={dialogTenant ? (dialogRegisterLoading ? 'Loading...' : 'Select register') : 'Select tenant first'}
+                  isDisabled={!dialogTenant}
+                  className="text-sm"
+                />
+              </div>
+
+              {/* Session */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Session <span className="text-red-500">*</span></label>
+                <CustomSelect
+                  key={`ses-${dialogRegister?.value ?? 'none'}`}
+                  value={dialogSession}
+                  onChange={(opt: any) => setDialogSession(opt)}
+                  options={dialogSessionOptions}
+                  isLoading={dialogSessionLoading}
+                  placeholder={dialogRegister ? (dialogSessionLoading ? 'Loading sessions...' : 'Select open session') : 'Select register first'}
+                  isDisabled={!dialogRegister || dialogSessionLoading}
+                  className="text-sm"
+                />
+                {dialogRegister && !dialogSessionLoading && dialogSessionOptions.length === 0 && (
+                  <p className="text-xs text-amber-600 dark:text-amber-400 mt-1">
+                    No active sessions found for this register.{' '}
+                    <button
+                      type="button"
+                      onClick={() => router.push('/pos-session')}
+                      className="underline font-semibold hover:text-amber-700 dark:hover:text-amber-300"
+                    >
+                      Open a session →
+                    </button>
+                  </p>
+                )}
+              </div>
+            </div>
+
+            <button
+              onClick={handleConfirmContext}
+              disabled={!dialogTenant || !dialogRegister || !dialogSession}
+              className="mt-6 w-full px-4 py-2.5 bg-blue-600 hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed text-white font-semibold rounded-lg transition-colors"
+            >
+              Start POS Session
+            </button>
+          </div>
+        </div>
+      )}
+
       {/* Header - Fixed */}
       <div className="bg-white dark:bg-gray-900 border-b-2 border-gray-300 dark:border-gray-700 px-4 py-2 shrink-0 shadow-sm">
         <div className="flex items-center justify-between">
@@ -505,8 +784,35 @@ export default function POSSalesPage() {
               <h1 className="text-xl font-bold text-gray-900 dark:text-gray-100">POS Sales</h1>
               <p className="text-xs text-gray-500 dark:text-gray-400">Order #{orderNumber}</p>
             </div>
+            {/* Context info bar */}
+            {activeSession && (
+              <div className="flex items-center gap-2 ml-3 pl-3 border-l border-gray-200 dark:border-gray-700">
+                {isSuperAdmin && activeTenant && (
+                  <span className="flex items-center gap-1 px-2 py-0.5 bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-300 text-xs rounded-full font-medium">
+                    <Building2 className="w-3 h-3" />{activeTenant.name}
+                  </span>
+                )}
+                {activeRegister && (
+                  <span className="px-2 py-0.5 bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 text-xs rounded-full font-medium">
+                    {activeRegister.name}
+                  </span>
+                )}
+                <span className="px-2 py-0.5 bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-300 text-xs rounded-full font-medium">
+                  {activeSession.session_number ?? `Session #${activeSession.id}`}
+                </span>
+              </div>
+            )}
           </div>
           <div className="flex items-center gap-2">
+            {isSuperAdmin && activeSession && (
+              <button
+                onClick={handleChangeContext}
+                className="px-3 py-1.5 text-sm font-medium text-gray-600 dark:text-gray-300 bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 border border-gray-300 dark:border-gray-600 rounded-md transition-colors flex items-center gap-1.5"
+              >
+                <Settings className="w-3.5 h-3.5" />
+                Change
+              </button>
+            )}
             <button
               onClick={() => {
                 Swal.fire({
