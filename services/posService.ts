@@ -1,14 +1,13 @@
 import apiClient from '@/lib/api/axios';
+import type { Payment, PosPaymentFields } from '@/types/api.types';
 
-export interface PosOrderPayload {
+export interface PosOrderPayload extends PosPaymentFields {
   session_id: string | number;
   register_id: string | number;
   tenant_id?: string | number;
   customer_id?: string | number;
   customer_name?: string;
   customer_phone?: string;
-  payment_method: string;
-  tendered_amount?: number;
   discount_type?: 'percent' | 'amount';
   discount_value?: number;
   notes?: string;
@@ -19,6 +18,22 @@ export interface PosOrderPayload {
     discount?: number;
     tax_rate?: number;
   }[];
+}
+
+export interface PosOrderResponse {
+  id: string;
+  invoice_number: string;
+  grand_total: number;
+  payment_method: string;
+  status: string;
+  items?: unknown[];
+}
+
+export interface CreateOrderResult {
+  order: PosOrderResponse;
+  payment: Payment;
+  balance_due: number;
+  is_partial: boolean;
 }
 
 class PosService {
@@ -50,9 +65,14 @@ class PosService {
    * Create a POS order
    * POST /api/v1/pos/orders
    */
-  async createOrder(data: PosOrderPayload) {
+  async createOrder(data: PosOrderPayload): Promise<CreateOrderResult> {
     const response = await apiClient.post(`/api/v1/pos/orders`, data);
-    return response.data.data;
+    return {
+      order: response.data.data,
+      payment: response.data.payment,
+      balance_due: response.data.balance_due ?? 0,
+      is_partial: response.data.is_partial ?? false,
+    };
   }
 }
 

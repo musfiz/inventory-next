@@ -569,3 +569,78 @@ export interface ProductVariationListResponse {
   data: ProductVariation[];
   meta: PaginationMeta;
 }
+
+// ─── Payment Types ────────────────────────────────────────────────────────────
+
+export type PaymentMethod =
+  | 'cash'
+  | 'card'
+  | 'bkash'
+  | 'nagad'
+  | 'rocket'
+  | 'bank_transfer'
+  | 'check'
+  | 'credit'
+  | 'other';
+
+export type PaymentStatus = 'pending' | 'completed' | 'failed' | 'cancelled' | 'refunded';
+
+export type PaymentReferenceType = 'purchase' | 'sale' | 'pos' | 'expense' | 'refund' | 'other';
+
+export interface Payment {
+  id: string;
+  uuid: string;
+  tenant_id: string;
+  receipt_number: string;
+  payment_date: string;
+  payment_method: PaymentMethod;
+  reference_type: PaymentReferenceType;
+  sales_order_id?: string | null;
+  pos_order_id?: string | null;
+  session_id?: string | null;
+  amount: number;
+  tax_amount?: number;
+  tendered_amount?: number;
+  change_amount?: number;
+  processing_fee?: number;
+  total_amount: number;
+  status: PaymentStatus;
+  transaction_id?: string | null;
+  transaction_reference?: string | null;
+  bank_name?: string | null;
+  bank_account?: string | null;
+  check_number?: string | null;
+  check_date?: string | null;
+  card_last_four?: string | null;
+  mobile_number?: string | null;
+  mobile_transaction_id?: string | null;
+  notes?: string | null;
+  created_by?: string | null;
+  approved_by?: string | null;
+  created_at?: string;
+  updated_at?: string;
+}
+
+/** Fields sent to POST /api/v1/pos/orders for payment */
+export interface PosPaymentFields {
+  payment_method: PaymentMethod;
+  payment_date?: string;
+  payment_notes?: string;
+  // Cash
+  tendered_amount?: number;
+  is_partial?: boolean;
+  payment_due_date?: string;
+  // Card
+  card_last_four?: string;
+  processing_fee?: number;
+  transaction_reference?: string;
+  // Mobile money (bKash / Nagad / Rocket)
+  mobile_number?: string;
+  mobile_transaction_id?: string;
+  // Bank transfer
+  bank_name?: string;
+  bank_account?: string;
+  // Check
+  check_number?: string;
+  check_date?: string;
+}
