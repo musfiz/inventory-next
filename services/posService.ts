@@ -1,5 +1,5 @@
 import apiClient from '@/lib/api/axios';
-import type { Payment, PosPaymentFields } from '@/types/api.types';
+import type { Payment, PosHeldOrder, PosHoldPayload, PosOrderListItem, PosPaymentFields } from '@/types/api.types';
 
 export interface PosOrderPayload extends PosPaymentFields {
   session_id: string | number;
@@ -8,7 +8,7 @@ export interface PosOrderPayload extends PosPaymentFields {
   customer_id?: string | number;
   customer_name?: string;
   customer_phone?: string;
-  discount_type?: 'percent' | 'amount';
+  discount_type?: 'percentage' | 'fixed';
   discount_value?: number;
   notes?: string;
   items: {
@@ -73,6 +73,57 @@ class PosService {
       balance_due: response.data.balance_due ?? 0,
       is_partial: response.data.is_partial ?? false,
     };
+  }
+
+  /**
+   * Get paginated POS orders list
+   * GET /api/v1/pos/orders
+   */
+  async getOrders(params?: {
+    page?: number;
+    per_page?: number;
+    tenant_id?: string | number;
+    session_id?: string | number;
+    register_id?: string | number;
+    payment_status?: string;
+    payment_method?: string;
+    date_from?: string;
+    date_to?: string;
+    search?: string;
+  }): Promise<{ data: PosOrderListItem[]; total: number; current_page: number; last_page: number }> {
+    const response = await apiClient.get(`/api/v1/pos/orders`, { params });
+    const page = response.data.data;
+    return {
+      data: page.data ?? [],
+      total: page.total ?? 0,
+      current_page: page.current_page ?? 1,
+      last_page: page.last_page ?? 1,
+    };
+  }
+
+  // ─── Hold Orders ─────────────────────────────────────────────────────────────
+
+  /** Save current cart as a hold order */
+  async holdOrder(data: PosHoldPayload): Promise<{ id: number; hold_number: string }> {
+    const response = await apiClient.post(`/api/v1/pos/hold-orders`, data);
+    return response.data.data;
+  }
+
+  /** List active hold orders for a session */
+  async getHeldOrders(params?: { session_id?: string | number; register_id?: string | number }): Promise<PosHeldOrder[]> {
+    const response = await apiClient.get(`/api/v1/pos/hold-orders`, { params });
+    return response.data.data ?? [];
+  }
+
+  /** Restore a hold order — returns order_data */
+  async restoreHeldOrder(id: number): Promise<PosHoldPayload['order_data']> {
+    const response = await apiClient.post(`/api/v1/pos/hold-orders/${id}/restore`);
+    return response.data.data;
+  }
+
+  /** Cancel a hold order */
+  async cancelHeldOrder(id: number): Promise<void> {
+    await apiClient.delete(`/api/v1/pos/hold-orders/${id}`);
   }
 }
 

@@ -172,6 +172,7 @@ const navigation: NavigationItem[] = [
       { name: 'POS Register', href: '/pos-registers', icon: MdOutlinePostAdd, permission: 'view-pos-register' },
       { name: 'POS Session', href: '/pos-session', icon: VscEditSession, permission: 'view-pos-session' },
       { name: 'POS Sales', href: '/pos-sales', icon: MdOutlinePointOfSale, permission: 'view-pos-sales' },
+      { name: 'POS Orders', href: '/pos-orders', icon: BsReceiptCutoff, permission: 'view-pos-sales' },
       { name: 'POS Refund', href: '/pos-refunds', icon: TbCreditCardRefund, permission: 'view-pos-refund' },
     ],
   },

@@ -644,3 +644,50 @@ export interface PosPaymentFields {
   check_number?: string;
   check_date?: string;
 }
+
+/** Payload for saving a hold order */
+export interface PosHoldPayload {
+  session_id: string | number;
+  register_id: string | number;
+  tenant_id?: string | number;
+  customer_id?: string | number;
+  customer_name?: string;
+  customer_phone?: string;
+  order_data: {
+    cart: unknown[];
+    customer: { id?: string; name: string; phone?: string; email?: string };
+    discount: number;
+    discountType: 'percent' | 'amount';
+    note: string;
+  };
+}
+
+/** A held order returned from GET /api/v1/pos/hold-orders */
+export interface PosHeldOrder {
+  id: number;
+  uuid: string;
+  hold_number: string;
+  customer_name?: string;
+  customer_phone?: string;
+  order_data: PosHoldPayload['order_data'];
+  expires_at?: string;
+  created_at?: string;
+}
+
+/** A POS order returned from GET /api/v1/pos/orders */
+export interface PosOrderListItem {
+  id: number;
+  uuid: string;
+  invoice_number: string;
+  customer_name?: string;
+  customer_phone?: string;
+  order_date: string;
+  payment_method: PaymentMethod;
+  payment_status: 'paid' | 'partial' | 'pending' | 'failed';
+  grand_total: number;
+  paid_amount?: number;
+  is_paid: boolean;
+  session?: { id: number; session_number: string };
+  register?: { id: number; name: string };
+  created_at: string;
+}

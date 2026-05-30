@@ -214,7 +214,7 @@ export default function PaymentModal({
       customer_name: customer.name,
       customer_phone: customer.phone,
       payment_method: method,
-      discount_type: discountType,
+      discount_type: discountType === 'percent' ? 'percentage' : 'fixed',
       discount_value: discountValue,
       notes: notes || undefined,
       payment_notes: paymentNotes || undefined,

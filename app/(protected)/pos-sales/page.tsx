@@ -29,6 +29,7 @@ import { useAuthStore } from '@/stores/auth-store';
 import { usePermissions } from '@/hooks/use-permissions';
 import CustomSelect from '@/components/ui/custom-select';
 import PaymentModal from '@/components/pos/PaymentModal';
+import HeldOrdersDialog from '@/components/pos/HeldOrdersDialog';
 import type { Payment } from '@/types/api.types';
 import Swal from 'sweetalert2';
 
@@ -92,6 +93,7 @@ export default function POSSalesPage() {
   const [categories, setCategories] = useState<PosCategory[]>([]);
   const [customer, setCustomer] = useState<Customer>({ name: 'Walk-in Customer' });
   const [showPaymentModal, setShowPaymentModal] = useState(false);
+  const [showHeldOrdersDialog, setShowHeldOrdersDialog] = useState(false);
   const [discount, setDiscount] = useState<number>(0);
   const [discountType, setDiscountType] = useState<'percent' | 'amount'>('amount');
   const [taxRate, setTaxRate] = useState<number>(0);
@@ -359,9 +361,11 @@ export default function POSSalesPage() {
     }
     setCustomerCreateLoading(true);
     try {
+      const resolvedTenantId = activeTenant?.id || authUser?.tenant_id;
       const res = await customerService.storeCustomer({
         name: newCustomerName.trim(),
         phone: newCustomerPhone.trim() || undefined,
+        tenant_id: String(resolvedTenantId),
       });
       const created = res?.data || res;
       selectCustomer(created);
@@ -570,33 +574,45 @@ export default function POSSalesPage() {
     generateOrderNumber();
   };
 
-  const holdOrder = () => {
+  const holdOrder = async () => {
     if (cart.length === 0) {
       notify.error('Cart is empty');
       return;
     }
+    if (!activeSession?.id) {
+      notify.error('No active session. Please select a session first.');
+      return;
+    }
 
-    // Save to localStorage
-    const heldOrders = JSON.parse(localStorage.getItem('heldOrders') || '[]');
-    heldOrders.push({
-      id: Date.now().toString(),
-      orderNumber,
-      cart,
-      customer,
-      discount,
-      discountType,
-      note,
-      date: new Date().toISOString(),
-    });
-    localStorage.setItem('heldOrders', JSON.stringify(heldOrders));
+    try {
+      await posService.holdOrder({
+        session_id: activeSession.id,
+        register_id: activeRegister?.id ?? activeSession?.register_id,
+        tenant_id: activeTenant?.id || undefined,
+        customer_id: customer.id ? customer.id : undefined,
+        customer_name: customer.name !== 'Walk-in Customer' ? customer.name : undefined,
+        customer_phone: customer.phone,
+        order_data: { cart, customer, discount, discountType, note },
+      });
 
-    setCart([]);
-    setCustomer({ name: 'Walk-in Customer' });
-    setDiscount(0);
-    setNote('');
+      setCart([]);
+      setCustomer({ name: 'Walk-in Customer' });
+      setDiscount(0);
+      setNote('');
+      generateOrderNumber();
+      notify.success('Order held successfully');
+    } catch {
+      notify.error('Failed to hold order. Please try again.');
+    }
+  };
+
+  const handleRestoreHeldOrder = (orderData: { cart: any[]; customer: any; discount: number; discountType: 'percent' | 'amount'; note: string }) => {
+    setCart(orderData.cart ?? []);
+    setCustomer(orderData.customer ?? { name: 'Walk-in Customer' });
+    setDiscount(orderData.discount ?? 0);
+    setDiscountType(orderData.discountType ?? 'amount');
+    setNote(orderData.note ?? '');
     generateOrderNumber();
-
-    notify.success('Order held successfully');
   };
 
   const printReceipt = () => {
@@ -759,17 +775,7 @@ export default function POSSalesPage() {
               </button>
             )}
             <button
-              onClick={() => {
-                Swal.fire({
-                  icon: 'info',
-                  title: 'Held Orders',
-                  text: 'View held orders feature coming soon',
-                  toast: true,
-                  position: 'top-end',
-                  showConfirmButton: false,
-                  timer: 2000,
-                });
-              }}
+              onClick={() => setShowHeldOrdersDialog(true)}
               className="px-3 py-1.5 text-sm font-semibold text-white bg-amber-500 hover:bg-amber-600 dark:bg-amber-500 dark:hover:bg-amber-600 border border-amber-500 dark:border-amber-400 rounded-md shadow-sm transition-colors"
             >
               <GiSave className="w-4 h-4 inline mr-1" />
@@ -1272,6 +1278,15 @@ export default function POSSalesPage() {
         notes={note || undefined}
         onSuccess={handlePaymentSuccess}
         onCancel={() => setShowPaymentModal(false)}
+      />
+
+      {/* Held Orders Dialog */}
+      <HeldOrdersDialog
+        open={showHeldOrdersDialog}
+        sessionId={activeSession?.id ?? ''}
+        registerId={activeRegister?.id ?? activeSession?.register_id ?? ''}
+        onClose={() => setShowHeldOrdersDialog(false)}
+        onRestore={handleRestoreHeldOrder}
       />
 
       {/* Customer Search & Quick-Create Dialog */}
