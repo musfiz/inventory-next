@@ -1,5 +1,5 @@
 import apiClient from '@/lib/api/axios';
-import type { ApiResponse } from '@/types/api.types';
+import type { ApiResponse, PosOrderItemForRefund } from '@/types/api.types';
 
 export interface PosRefund {
   id: number;
@@ -60,6 +60,25 @@ class PosRefundService {
   async destroy(id: number | string) {
     const response = await apiClient.get(`/api/v1/pos/refunds/delete/${id}`);
     return response.data;
+  }
+
+  /** Create a refund + counter-order in one step (item-level partial/full refund) */
+  async quickCreate(data: {
+    original_order_id: number | string;
+    refund_reason: string;
+    refund_method: string;
+    reason_details?: string;
+    tenant_id?: number | string;
+    items: Array<{ variation_id: number | string; quantity: number }>;
+  }) {
+    const response = await apiClient.post<ApiResponse<PosRefund>>('/api/v1/pos/refunds/quick-create', data);
+    return response.data.data;
+  }
+
+  /** Fetch items of a POS order for refund selection */
+  async getOrderItems(orderId: number | string) {
+    const response = await apiClient.get<ApiResponse<PosOrderItemForRefund[]>>(`/api/v1/pos/orders/${orderId}/items`);
+    return response.data.data;
   }
 }
 

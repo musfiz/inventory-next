@@ -162,6 +162,7 @@ const navigation: NavigationItem[] = [
       { name: 'Customer', href: '/customers', icon: MdSupervisedUserCircle, permission: 'view-customer' },
       { name: 'Sales Orders', href: '/sales-orders', icon: BsReceiptCutoff, permission: 'view-sales' },
       { name: 'Add Sales Order', href: '/sales-orders/add', icon: MdOutlinePostAdd, permission: 'create-sales' },
+      { name: 'Sales Returns', href: '/sales-returns', icon: MdOutlineAssignmentReturn, permission: 'view-sales-return' },
     ],
   },
   {
@@ -182,6 +183,19 @@ const navigation: NavigationItem[] = [
     permissions: [],
     children: [
       { name: 'Purchase Report', href: '/reports/purchase-list', icon: FileSpreadsheet, permission: 'view-purchase-report' },
+    ],
+  },
+  {
+    name: 'Accounting',
+    icon: FileSpreadsheet,
+    permission: 'view-accounts',
+    children: [
+      { name: 'Chart of Accounts', href: '/accounts', icon: LayersPlus, permission: 'view-accounts' },
+      { name: 'Expenses', href: '/expenses', icon: FileText, permission: 'view-expenses' },
+      { name: 'Journal Entries', href: '/journal-entries', icon: History, permission: 'view-journal-entries' },
+      { name: 'Account Ledger', href: '/reports/ledger', icon: FileSpreadsheet, permission: 'view-accounts' },
+      { name: 'Profit & Loss', href: '/reports/profit-loss', icon: FileText, permission: 'view-reports' },
+      { name: 'Cash Flow', href: '/reports/cash-flow', icon: FileText, permission: 'view-reports' },
     ],
   },
   {

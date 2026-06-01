@@ -1,58 +1,51 @@
 'use client';
 
-import { useEffect, useState } from 'react';
-import { Plus, X, CheckCircle, Check } from 'lucide-react';
+import { useEffect, useRef, useState } from 'react';
+import { Plus, X, CheckCircle, Check, Printer } from 'lucide-react';
 import { ColumnDef } from '@tanstack/react-table';
 import { notify, confirm } from '@/lib/notifications';
-import { posRefundService, commonService, userService } from '@/services';
+import { posRefundService, commonService } from '@/services';
 import type { PosRefund } from '@/services/posRefundService';
+import type { PosOrderItemForRefund } from '@/types/api.types';
 import DataTable from '@/components/ui/datatable';
 import CustomSelect from '@/components/ui/custom-select';
-import DateTimePicker from '@/components/ui/date-time-picker';
 import { useRouter } from 'next/navigation';
 import { usePermissions } from '@/hooks/use-permissions';
 import { useAuthStore } from '@/stores/auth-store';
 import apiClient from '@/lib/api/axios';
+import { PosRefundCreditNote } from '@/components/invoices/CreditNote';
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
 const REFUND_REASONS = [
-  { value: 'return',                   label: 'Return' },
-  { value: 'damaged',                  label: 'Damaged' },
-  { value: 'wrong_item',               label: 'Wrong Item' },
+  { value: 'return', label: 'Return' },
+  { value: 'damaged', label: 'Damaged' },
+  { value: 'wrong_item', label: 'Wrong Item' },
   { value: 'customer_dissatisfaction', label: 'Customer Dissatisfaction' },
-  { value: 'expired',                  label: 'Expired' },
-  { value: 'exchange',                 label: 'Exchange' },
-  { value: 'other',                    label: 'Other' },
+  { value: 'expired', label: 'Expired' },
+  { value: 'exchange', label: 'Exchange' },
+  { value: 'other', label: 'Other' },
 ];
 
 const REFUND_METHODS = [
-  { value: 'cash',          label: 'Cash' },
-  { value: 'card',          label: 'Card' },
-  { value: 'bkash',         label: 'bKash' },
-  { value: 'nagad',         label: 'Nagad' },
-  { value: 'rocket',        label: 'Rocket' },
+  { value: 'cash', label: 'Cash' },
+  { value: 'card', label: 'Card' },
+  { value: 'bkash', label: 'bKash' },
+  { value: 'nagad', label: 'Nagad' },
+  { value: 'rocket', label: 'Rocket' },
   { value: 'bank_transfer', label: 'Bank Transfer' },
-  { value: 'store_credit',  label: 'Store Credit' },
-  { value: 'exchange',      label: 'Exchange' },
-];
-
-const STATUSES = [
-  { value: 'pending',   label: 'Pending' },
-  { value: 'approved',  label: 'Approved' },
-  { value: 'completed', label: 'Completed' },
-  { value: 'rejected',  label: 'Rejected' },
-  { value: 'cancelled', label: 'Cancelled' },
+  { value: 'store_credit', label: 'Store Credit' },
+  { value: 'exchange', label: 'Exchange' },
 ];
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
 function statusBadge(status?: string) {
   const map: Record<string, string> = {
-    pending:   'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200',
-    approved:  'bg-blue-100   text-blue-800   dark:bg-blue-900   dark:text-blue-200',
+    pending: 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200',
+    approved: 'bg-blue-100   text-blue-800   dark:bg-blue-900   dark:text-blue-200',
     completed: 'bg-green-100  text-green-800  dark:bg-green-900  dark:text-green-200',
-    rejected:  'bg-red-100    text-red-800    dark:bg-red-900    dark:text-red-200',
+    rejected: 'bg-red-100    text-red-800    dark:bg-red-900    dark:text-red-200',
     cancelled: 'bg-gray-100   text-gray-700   dark:bg-gray-700   dark:text-gray-300',
   };
   const cls = map[status ?? ''] ?? 'bg-gray-100 text-gray-600';
@@ -77,32 +70,15 @@ function methodLabel(v?: string) {
   return REFUND_METHODS.find(r => r.value === v)?.label ?? v ?? '-';
 }
 
-// ─── Form type ────────────────────────────────────────────────────────────────
+// ─── Types ────────────────────────────────────────────────────────────────────
 
-interface RefundForm {
-  id: string;
-  tenant_id: string;
-  original_order_id: string;
-  refund_order_id: string;
-  refund_number: string;
-  refund_date: string;
-  refund_reason: string;
-  reason_details: string;
-  total_refund_amount: string;
-  refund_method: string;
-  status: string;
-  approved_by: string;
-  approved_at: string;
-  completed_at: string;
+interface RefundLine {
+  variation_id: number;
+  quantity: number;
+  max_returnable: number;
+  item_name: string;
+  unit_price: number;
 }
-
-const emptyForm = (): RefundForm => ({
-  id: '', tenant_id: '', original_order_id: '', refund_order_id: '',
-  refund_number: '', refund_date: '',
-  refund_reason: 'return', reason_details: '',
-  total_refund_amount: '', refund_method: 'cash', status: 'pending',
-  approved_by: '', approved_at: '', completed_at: '',
-});
 
 // ─── Page ─────────────────────────────────────────────────────────────────────
 
@@ -117,21 +93,26 @@ export default function PosRefundsPage() {
 
   const authUser = useAuthStore(s => s.user);
 
-  const [showForm, setShowForm]     = useState(false);
+  const [showForm, setShowForm] = useState(false);
   const [refreshKey, setRefreshKey] = useState(0);
   const [submitting, setSubmitting] = useState(false);
-  const [errors, setErrors]         = useState<Record<string, string>>({});
+  const [errors, setErrors] = useState<Record<string, string>>({});
 
-  const [form, setForm]                               = useState<RefundForm>(emptyForm());
-  const [selectedTenant, setSelectedTenant]           = useState<any>(null);
-  const [selectedOrder, setSelectedOrder]             = useState<any>(null);
-  const [selectedRefundOrder, setSelectedRefundOrder] = useState<any>(null);
-  const [selectedApprovedBy, setSelectedApprovedBy]   = useState<any>(null);
-  const [defaultOrderOptions, setDefaultOrderOptions] = useState<any[]>([]);
+  // Form fields
+  const [tenantId, setTenantId] = useState('');
+  const [selectedTenant, setSelectedTenant] = useState<any>(null);
+  const [selectedOrder, setSelectedOrder] = useState<any>(null);
+  const [refundReason, setRefundReason] = useState('return');
+  const [refundMethod, setRefundMethod] = useState('cash');
+  const [reasonDetails, setReasonDetails] = useState('');
+  const [orderItems, setOrderItems] = useState<PosOrderItemForRefund[]>([]);
+  const [refundLines, setRefundLines] = useState<RefundLine[]>([]);
+  const [loadingItems, setLoadingItems] = useState(false);
 
-  const sf = (field: keyof RefundForm) =>
-    (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) =>
-      setForm(f => ({ ...f, [field]: e.target.value }));
+  // Print
+  const [printRefund, setPrintRefund] = useState<PosRefund | null>(null);
+  const [printItems, setPrintItems] = useState<any[]>([]);
+  const printRef = useRef<HTMLDivElement>(null);
 
   // ── Dropdown loaders ──────────────────────────────────────────────────────
 
@@ -145,82 +126,84 @@ export default function PosRefundsPage() {
     try {
       const res = await apiClient.get('/api/v1/pos/orders', { params: { search: input, per_page: 20 } });
       const items = res.data?.data?.data ?? res.data?.data ?? [];
-      return items.map((o: any) => ({ value: o.id, label: o.order_number || `#${o.id}` }));
-    } catch {
-      return [];
-    }
+      return items.map((o: any) => ({
+        value: o.id,
+        label: o.invoice_number ?? o.order_number ?? `#${o.id}`,
+      }));
+    } catch { return []; }
   };
 
-  const loadUserOptions = async (input: string) => {
+  // When order selected: load its items
+  const handleOrderChange = async (opt: any) => {
+    setSelectedOrder(opt);
+    setRefundLines([]);
+    setOrderItems([]);
+    if (!opt?.value) return;
+    setLoadingItems(true);
     try {
-      const res = await userService.getUsers({ search: input, per_page: 20 });
-      return (res.users || []).map((u: any) => ({ value: u.id, label: u.name || u.email }));
-    } catch {
-      return [];
-    }
+      const items = await posRefundService.getOrderItems(opt.value);
+      const arr: PosOrderItemForRefund[] = Array.isArray(items) ? items : [];
+      setOrderItems(arr);
+      const lines: RefundLine[] = arr
+        .filter(i => i.max_returnable > 0)
+        .map(i => ({
+          variation_id: i.variation_id,
+          quantity: i.max_returnable,
+          max_returnable: i.max_returnable,
+          item_name: i.item_name,
+          unit_price: i.unit_price,
+        }));
+      setRefundLines(lines);
+    } catch { notify.error('Failed to load order items'); }
+    finally { setLoadingItems(false); }
   };
 
-  useEffect(() => {
-    loadOrderOptions('').then(setDefaultOrderOptions).catch(() => {});
-  }, []);
+  const updateLine = (idx: number, quantity: number) => {
+    setRefundLines(lines => lines.map((l, i) => i === idx ? { ...l, quantity } : l));
+  };
+
+  const removeLine = (idx: number) => {
+    setRefundLines(lines => lines.filter((_, i) => i !== idx));
+  };
+
+  const totalRefund = refundLines.reduce(
+    (sum, l) => sum + Number(l.quantity) * Number(l.unit_price), 0
+  );
 
   // ── Validation ────────────────────────────────────────────────────────────
 
   const validateForm = (): boolean => {
     const errs: Record<string, string> = {};
-    if (isSuperAdmin && !form.id && !form.tenant_id) errs.tenant_id = 'Tenant is required';
-    if (!form.original_order_id) errs.original_order_id = 'Original order is required';
-    if (!form.refund_reason)     errs.refund_reason      = 'Refund reason is required';
-    if (!form.total_refund_amount || Number(form.total_refund_amount) < 0)
-                                 errs.total_refund_amount = 'Refund amount must be ≥ 0';
-    if (!form.refund_method)     errs.refund_method       = 'Refund method is required';
+    if (isSuperAdmin && !tenantId) errs.tenant_id = 'Tenant is required';
+    if (!selectedOrder?.value) errs.original_order_id = 'Original order is required';
+    if (!refundReason) errs.refund_reason = 'Refund reason is required';
+    if (!refundMethod) errs.refund_method = 'Refund method is required';
+    if (refundLines.length === 0) errs.items = 'Add at least one item to refund';
+    refundLines.forEach((line, i) => {
+      if (!line.quantity || Number(line.quantity) <= 0)
+        errs[`items.${i}.qty`] = 'Qty must be > 0';
+      if (Number(line.quantity) > line.max_returnable)
+        errs[`items.${i}.qty`] = `Max returnable: ${line.max_returnable}`;
+    });
     setErrors(errs);
     return Object.keys(errs).length === 0;
   };
 
   // ── Handlers ─────────────────────────────────────────────────────────────
 
-  const handleAdd = () => {
-    setForm({ ...emptyForm(), tenant_id: isSuperAdmin ? '' : (authUser?.tenant_id ?? '') });
+  const resetForm = () => {
+    setTenantId(isSuperAdmin ? '' : (authUser?.tenant_id ?? ''));
     setSelectedTenant(null);
     setSelectedOrder(null);
-    setSelectedRefundOrder(null);
-    setSelectedApprovedBy(null);
+    setRefundReason('return');
+    setRefundMethod('cash');
+    setReasonDetails('');
+    setOrderItems([]);
+    setRefundLines([]);
     setErrors({});
-    setShowForm(true);
   };
 
-  const handleEdit = (refund: PosRefund) => {
-    setForm({
-      id:                   String(refund.id),
-      tenant_id:            String(refund.tenant_id           ?? ''),
-      original_order_id:    String(refund.original_order_id   ?? ''),
-      refund_order_id:      String(refund.refund_order_id     ?? ''),
-      refund_number:        String(refund.refund_number        ?? ''),
-      refund_date:          refund.refund_date  ? new Date(refund.refund_date).toISOString().slice(0, 16)  : '',
-      refund_reason:        String(refund.refund_reason        ?? 'return'),
-      reason_details:       String(refund.reason_details       ?? ''),
-      total_refund_amount:  String(refund.total_refund_amount  ?? ''),
-      refund_method:        String(refund.refund_method        ?? 'cash'),
-      status:               String(refund.status               ?? 'pending'),
-      approved_by:          String(refund.approved_by          ?? ''),
-      approved_at:          refund.approved_at  ? new Date(refund.approved_at).toISOString().slice(0, 16)  : '',
-      completed_at:         refund.completed_at ? new Date(refund.completed_at).toISOString().slice(0, 16) : '',
-    });
-    setSelectedTenant(null);
-    setSelectedOrder(refund.original_order
-      ? { value: refund.original_order.id, label: refund.original_order.order_number }
-      : null);
-    setSelectedRefundOrder(refund.refund_order
-      ? { value: refund.refund_order.id, label: refund.refund_order.order_number }
-      : null);
-    setSelectedApprovedBy((refund as any).approved_by_user
-      ? { value: (refund as any).approved_by_user.id, label: (refund as any).approved_by_user.name }
-      : null);
-    setErrors({});
-    setShowForm(true);
-  };
-
+  const handleAdd = () => { resetForm(); setShowForm(true); };
   const handleCancel = () => { setShowForm(false); setErrors({}); };
 
   const handleError = (err: any) => {
@@ -229,9 +212,7 @@ export default function PosRefundsPage() {
       const flat: Record<string, string> = {};
       Object.entries(msg).forEach(([k, v]) => { flat[k] = Array.isArray(v) ? v[0] as string : String(v); });
       setErrors(flat);
-    } else {
-      notify.error(String(msg || 'An error occurred'));
-    }
+    } else { notify.error(String(msg || 'An error occurred')); }
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -239,24 +220,15 @@ export default function PosRefundsPage() {
     if (!validateForm()) return;
     setSubmitting(true);
     try {
-      const payload: Record<string, any> = {
-        tenant_id:           form.tenant_id          || undefined,
-        original_order_id:   form.original_order_id  || undefined,
-        refund_order_id:     form.refund_order_id     || undefined,
-        refund_number:       form.refund_number       || undefined,
-        refund_date:         form.refund_date         || undefined,
-        refund_reason:       form.refund_reason,
-        reason_details:      form.reason_details      || undefined,
-        total_refund_amount: Number(form.total_refund_amount),
-        refund_method:       form.refund_method,
-        status:              form.status,
-        approved_by:         form.approved_by         || undefined,
-        approved_at:         form.approved_at         || undefined,
-        completed_at:        form.completed_at        || undefined,
-      };
-      if (form.id) payload.id = form.id;
-      await posRefundService.store(payload);
-      notify.success(form.id ? 'Refund updated successfully' : 'Refund created successfully');
+      await posRefundService.quickCreate({
+        original_order_id: selectedOrder!.value,
+        refund_reason: refundReason,
+        refund_method: refundMethod,
+        reason_details: reasonDetails || undefined,
+        tenant_id: isSuperAdmin ? tenantId : undefined,
+        items: refundLines.map(l => ({ variation_id: l.variation_id, quantity: Number(l.quantity) })),
+      });
+      notify.success('Refund created successfully');
       setShowForm(false);
       setRefreshKey(k => k + 1);
     } catch (err: any) { handleError(err); }
@@ -274,25 +246,21 @@ export default function PosRefundsPage() {
       await posRefundService.approve(refund.id);
       notify.success('Refund approved');
       setRefreshKey(k => k + 1);
-    } catch (err: any) {
-      notify.error(err?.response?.data?.message || 'Failed to approve');
-    }
+    } catch (err: any) { notify.error(err?.response?.data?.message || 'Failed to approve'); }
   };
 
   const handleComplete = async (refund: PosRefund) => {
     const result = await confirm({
       title: 'Complete Refund',
-      html: `Mark refund <strong>${refund.refund_number}</strong> as completed?`,
-      confirmButtonText: 'Complete', cancelButtonText: 'Cancel', icon: 'question',
+      html: `Mark refund <strong>${refund.refund_number}</strong> as completed? Stock will be restored.`,
+      confirmButtonText: 'Complete & Restock', cancelButtonText: 'Cancel', icon: 'warning',
     });
     if (!result.isConfirmed) return;
     try {
       await posRefundService.complete(refund.id);
-      notify.success('Refund completed');
+      notify.success('Refund completed — stock restored');
       setRefreshKey(k => k + 1);
-    } catch (err: any) {
-      notify.error(err?.response?.data?.message || 'Failed to complete');
-    }
+    } catch (err: any) { notify.error(err?.response?.data?.message || 'Failed to complete'); }
   };
 
   const handleDelete = async (refund: PosRefund) => {
@@ -306,9 +274,37 @@ export default function PosRefundsPage() {
       await posRefundService.destroy(refund.id);
       notify.success('Refund deleted');
       setRefreshKey(k => k + 1);
-    } catch (err: any) {
-      notify.error(err?.response?.data?.message || 'Failed to delete');
-    }
+    } catch (err: any) { notify.error(err?.response?.data?.message || 'Failed to delete'); }
+  };
+
+  const handlePrint = async (refund: PosRefund) => {
+    try {
+      const full = await posRefundService.show(refund.id);
+      if (!full) return;
+      const items: any[] = [];
+      if (full.refund_order_id) {
+        try {
+          const res = await apiClient.get(`/api/v1/pos/orders/${full.refund_order_id}/items`);
+          items.push(...(res.data?.data ?? []));
+        } catch { /* non-critical */ }
+      }
+      setPrintRefund(full);
+      setPrintItems(items);
+      setTimeout(() => {
+        if (printRef.current) {
+          const win = window.open('', '_blank');
+          if (win) {
+            win.document.write(`<html><head><title>Credit Note</title>
+              <style>body{font-family:sans-serif;margin:0;padding:16px}@media print{body{padding:0}}</style>
+              </head><body>${printRef.current.innerHTML}</body></html>`);
+            win.document.close();
+            win.focus();
+            win.print();
+            win.close();
+          }
+        }
+      }, 150);
+    } catch { notify.error('Failed to load refund details'); }
   };
 
   // ── Columns ───────────────────────────────────────────────────────────────
@@ -324,11 +320,9 @@ export default function PosRefundsPage() {
     },
     {
       accessorKey: 'original_order_id', header: 'Original Order',
-      cell: ({ row }) => <span className="text-xs">{(row.original as any).original_order?.order_number ?? row.original.original_order_id ?? '-'}</span>,
-    },
-    {
-      accessorKey: 'refund_order_id', header: 'Refund Order',
-      cell: ({ row }) => <span className="text-xs">{(row.original as any).refund_order?.order_number ?? (row.original.refund_order_id ? `#${row.original.refund_order_id}` : '-')}</span>,
+      cell: ({ row }) => (
+        <span className="text-xs">{(row.original as any).original_order?.order_number ?? row.original.original_order_id ?? '-'}</span>
+      ),
     },
     {
       accessorKey: 'refund_date', header: 'Refund Date',
@@ -355,16 +349,8 @@ export default function PosRefundsPage() {
       cell: ({ row }) => <span className="text-xs">{(row.original as any).approved_by_user?.name ?? '-'}</span>,
     },
     {
-      accessorKey: 'approved_at', header: 'Approved At',
-      cell: ({ row }) => <span className="text-xs">{fmtDate(row.original.approved_at)}</span>,
-    },
-    {
       accessorKey: 'completed_at', header: 'Completed At',
       cell: ({ row }) => <span className="text-xs">{fmtDate(row.original.completed_at)}</span>,
-    },
-    {
-      accessorKey: 'created_by', header: 'Created By',
-      cell: ({ row }) => <span className="text-xs">{(row.original as any).created_by_user?.name ?? '-'}</span>,
     },
     {
       id: 'actions', header: 'Actions',
@@ -373,38 +359,51 @@ export default function PosRefundsPage() {
         return (
           <div className="flex items-center gap-1">
             {r.status === 'pending' && (
-              <button onClick={() => handleApprove(r)} title="Approve" className="p-1 rounded text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/30 cursor-pointer">
+              <button onClick={() => handleApprove(r)} title="Approve"
+                className="p-1 rounded text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/30 cursor-pointer">
                 <CheckCircle className="w-4 h-4" />
               </button>
             )}
             {r.status === 'approved' && (
-              <button onClick={() => handleComplete(r)} title="Mark Complete" className="p-1 rounded text-green-600 hover:bg-green-50 dark:hover:bg-green-900/30 cursor-pointer">
+              <button onClick={() => handleComplete(r)} title="Complete & Restock"
+                className="p-1 rounded text-green-600 hover:bg-green-50 dark:hover:bg-green-900/30 cursor-pointer">
                 <Check className="w-4 h-4" />
               </button>
             )}
-            <button onClick={() => handleEdit(r)} title="Edit" className="p-1 rounded text-yellow-600 hover:bg-yellow-50 dark:hover:bg-yellow-900/30 cursor-pointer">
-              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" /></svg>
-            </button>
-            <button onClick={() => handleDelete(r)} title="Delete" className="p-1 rounded text-red-600 hover:bg-red-50 dark:hover:bg-red-900/30 cursor-pointer">
-              <X className="w-4 h-4" />
-            </button>
+            {r.status === 'completed' && (
+              <button onClick={() => handlePrint(r)} title="Print Credit Note"
+                className="p-1 rounded text-purple-600 hover:bg-purple-50 dark:hover:bg-purple-900/30 cursor-pointer">
+                <Printer className="w-4 h-4" />
+              </button>
+            )}
+            {r.status === 'pending' && (
+              <button onClick={() => handleDelete(r)} title="Delete"
+                className="p-1 rounded text-red-600 hover:bg-red-50 dark:hover:bg-red-900/30 cursor-pointer">
+                <X className="w-4 h-4" />
+              </button>
+            )}
           </div>
         );
       },
     },
   ];
 
-  // ── Shared styles ─────────────────────────────────────────────────────────
+  // ── Styles ────────────────────────────────────────────────────────────────
 
-  const inputCls   = 'w-full px-2 py-1.5 text-sm border rounded-sm focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-transparent border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100';
-  const labelCls   = 'block text-sm font-medium text-gray-700 dark:text-gray-300 mb-0.5';
-  const errCls     = 'text-xs text-red-500 mt-0.5';
+  const inputCls = 'w-full px-2 py-1.5 text-sm border rounded-sm focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-transparent border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100';
+  const labelCls = 'block text-sm font-medium text-gray-700 dark:text-gray-300 mb-0.5';
+  const errCls = 'text-xs text-red-500 mt-0.5';
   const sectionCls = 'text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400 border-b border-gray-200 dark:border-gray-600 pb-1 mb-2 mt-3';
 
   // ── Render ────────────────────────────────────────────────────────────────
 
   return (
     <div className="space-y-2">
+      {/* Hidden print area */}
+      <div ref={printRef} style={{ display: 'none' }}>
+        {printRefund && <PosRefundCreditNote refund={printRefund} items={printItems} />}
+      </div>
+
       {/* Header */}
       <div className="flex items-center justify-between">
         <h1 className="text-xl font-bold text-gray-900 dark:text-gray-100">POS Refunds</h1>
@@ -412,7 +411,7 @@ export default function PosRefundsPage() {
           onClick={handleAdd}
           className="flex items-center gap-2 px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium rounded-sm transition-colors cursor-pointer"
         >
-          <Plus className="w-4 h-4" /> Add Refund
+          <Plus className="w-4 h-4" /> Create Refund
         </button>
       </div>
 
@@ -421,7 +420,7 @@ export default function PosRefundsPage() {
         <div className="bg-white dark:bg-gray-800 rounded-md shadow-sm p-4">
           <div className="flex items-center justify-between mb-3">
             <h2 className="text-base font-semibold text-gray-900 dark:text-gray-100">
-              {form.id ? `Edit Refund — ${form.refund_number}` : 'Add New Refund'}
+              Create POS Refund
             </h2>
             <button onClick={handleCancel} className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 cursor-pointer">
               <X className="w-5 h-5" />
@@ -430,15 +429,15 @@ export default function PosRefundsPage() {
 
           <form onSubmit={handleSubmit} className="space-y-2">
 
-            {/* ── Basic Info ── */}
-            <p className={sectionCls}>Basic Info</p>
-            <div className="grid grid-cols-1 md:grid-cols-4 gap-2">
-              {isSuperAdmin && !form.id && (
+            {/* ── Order Selection ── */}
+            <p className={sectionCls}>Original POS Order</p>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+              {isSuperAdmin && (
                 <div>
                   <label className={labelCls}>Tenant <span className="text-red-500">*</span></label>
                   <CustomSelect
                     value={selectedTenant}
-                    onChange={opt => { setSelectedTenant(opt); setForm(f => ({ ...f, tenant_id: opt?.value ?? '' })); }}
+                    onChange={opt => { setSelectedTenant(opt); setTenantId(opt?.value ?? ''); }}
                     loadOptions={loadTenantOptions}
                     placeholder="Select tenant"
                     className="text-sm"
@@ -446,49 +445,93 @@ export default function PosRefundsPage() {
                   {errors.tenant_id && <p className={errCls}>{errors.tenant_id}</p>}
                 </div>
               )}
-
               <div>
-                <label className={labelCls}>Original Order <span className="text-red-500">*</span></label>
+                <label className={labelCls}>POS Order <span className="text-red-500">*</span></label>
                 <CustomSelect
                   value={selectedOrder}
-                  onChange={opt => { setSelectedOrder(opt); setForm(f => ({ ...f, original_order_id: opt?.value ?? '' })); }}
+                  onChange={handleOrderChange}
                   loadOptions={loadOrderOptions}
-                  defaultOptions={defaultOrderOptions}
-                  placeholder="Select POS order"
+                  placeholder="Search by order / invoice #…"
                   className="text-sm"
                 />
                 {errors.original_order_id && <p className={errCls}>{errors.original_order_id}</p>}
               </div>
-
-              <div>
-                <label className={labelCls}>Refund Order <span className="text-gray-400 text-xs">(optional)</span></label>
-                <CustomSelect
-                  value={selectedRefundOrder}
-                  onChange={opt => { setSelectedRefundOrder(opt); setForm(f => ({ ...f, refund_order_id: opt?.value ?? '' })); }}
-                  loadOptions={loadOrderOptions}
-                  defaultOptions={defaultOrderOptions}
-                  placeholder="Linked refund order"
-                  className="text-sm"
-                />
-              </div>
-
-              <div>
-                <label className={labelCls}>Refund #</label>
-                <input type="text" value={form.refund_number} onChange={sf('refund_number')} placeholder="Auto-generated if blank" className={inputCls} />
-              </div>
             </div>
+
+            {/* ── Items to Refund ── */}
+            {(loadingItems || refundLines.length > 0) && (
+              <>
+                <p className={sectionCls}>Items to Refund</p>
+                {loadingItems ? (
+                  <p className="text-sm text-gray-500 py-2">Loading order items…</p>
+                ) : (
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-xs border-collapse">
+                      <thead>
+                        <tr className="bg-gray-50 dark:bg-gray-700">
+                          <th className="text-left px-2 py-1.5 border border-gray-200 dark:border-gray-600">Item</th>
+                          <th className="text-center px-2 py-1.5 border border-gray-200 dark:border-gray-600 w-24">Max Returnable</th>
+                          <th className="text-center px-2 py-1.5 border border-gray-200 dark:border-gray-600 w-28">Refund Qty <span className="text-red-500">*</span></th>
+                          <th className="text-right px-2 py-1.5 border border-gray-200 dark:border-gray-600 w-24">Unit Price</th>
+                          <th className="text-right px-2 py-1.5 border border-gray-200 dark:border-gray-600 w-24">Line Total</th>
+                          <th className="px-2 py-1.5 border border-gray-200 dark:border-gray-600 w-8"></th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {refundLines.map((line, i) => (
+                          <tr key={`${line.variation_id}-${i}`} className="even:bg-gray-50 dark:even:bg-gray-700/40">
+                            <td className="px-2 py-1 border border-gray-200 dark:border-gray-600">{line.item_name}</td>
+                            <td className="px-2 py-1 border border-gray-200 dark:border-gray-600 text-center text-gray-500">
+                              {line.max_returnable}
+                            </td>
+                            <td className="px-2 py-1 border border-gray-200 dark:border-gray-600">
+                              <input
+                                type="number" step="0.001" min="0" max={line.max_returnable}
+                                value={line.quantity}
+                                onChange={e => updateLine(i, Number(e.target.value))}
+                                className={`${inputCls} text-center`}
+                              />
+                              {errors[`items.${i}.qty`] && <p className={errCls}>{errors[`items.${i}.qty`]}</p>}
+                            </td>
+                            <td className="px-2 py-1 border border-gray-200 dark:border-gray-600 text-right font-mono">
+                              {Number(line.unit_price).toFixed(2)}
+                            </td>
+                            <td className="px-2 py-1 border border-gray-200 dark:border-gray-600 text-right font-mono font-semibold">
+                              {(Number(line.quantity) * Number(line.unit_price)).toFixed(2)}
+                            </td>
+                            <td className="px-2 py-1 border border-gray-200 dark:border-gray-600 text-center">
+                              <button type="button" onClick={() => removeLine(i)}
+                                className="text-red-500 hover:text-red-700 cursor-pointer">
+                                <X className="w-3.5 h-3.5" />
+                              </button>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                      <tfoot>
+                        <tr className="bg-gray-100 dark:bg-gray-700 font-semibold">
+                          <td colSpan={4} className="px-2 py-1.5 text-right text-xs border border-gray-200 dark:border-gray-600">
+                            Refund Total
+                          </td>
+                          <td className="px-2 py-1.5 text-right font-mono text-sm border border-gray-200 dark:border-gray-600">
+                            {totalRefund.toFixed(2)}
+                          </td>
+                          <td className="border border-gray-200 dark:border-gray-600"></td>
+                        </tr>
+                      </tfoot>
+                    </table>
+                  </div>
+                )}
+                {errors.items && <p className={errCls}>{errors.items}</p>}
+              </>
+            )}
 
             {/* ── Refund Details ── */}
             <p className={sectionCls}>Refund Details</p>
-            <div className="grid grid-cols-1 md:grid-cols-4 gap-2">
-              <div>
-                <label className={labelCls}>Refund Date</label>
-                <DateTimePicker value={form.refund_date} onChange={v => setForm(f => ({ ...f, refund_date: v }))} placeholder="Select refund date" />
-              </div>
-
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
               <div>
                 <label className={labelCls}>Refund Reason <span className="text-red-500">*</span></label>
-                <select value={form.refund_reason} onChange={sf('refund_reason')} className={inputCls}>
+                <select value={refundReason} onChange={e => setRefundReason(e.target.value)} className={inputCls}>
                   {REFUND_REASONS.map(r => <option key={r.value} value={r.value}>{r.label}</option>)}
                 </select>
                 {errors.refund_reason && <p className={errCls}>{errors.refund_reason}</p>}
@@ -496,70 +539,27 @@ export default function PosRefundsPage() {
 
               <div>
                 <label className={labelCls}>Refund Method <span className="text-red-500">*</span></label>
-                <select value={form.refund_method} onChange={sf('refund_method')} className={inputCls}>
+                <select value={refundMethod} onChange={e => setRefundMethod(e.target.value)} className={inputCls}>
                   {REFUND_METHODS.map(m => <option key={m.value} value={m.value}>{m.label}</option>)}
                 </select>
                 {errors.refund_method && <p className={errCls}>{errors.refund_method}</p>}
               </div>
 
               <div>
-                <label className={labelCls}>Total Refund Amount <span className="text-red-500">*</span></label>
-                <input type="number" step="0.01" min="0" value={form.total_refund_amount} onChange={sf('total_refund_amount')} className={inputCls} placeholder="0.00" />
-                {errors.total_refund_amount && <p className={errCls}>{errors.total_refund_amount}</p>}
-              </div>
-            </div>
-
-            <div>
-              <label className={labelCls}>Reason Details</label>
-              <textarea rows={2} value={form.reason_details} onChange={sf('reason_details')} className={inputCls} placeholder="Additional details about the reason for refund..." />
-            </div>
-
-            {/* ── Status & Approval ── */}
-            <p className={sectionCls}>Status & Approval</p>
-            <div className="grid grid-cols-1 md:grid-cols-4 gap-2">
-              <div>
-                <label className={labelCls}>Status</label>
-                <select value={form.status} onChange={sf('status')} className={inputCls}>
-                  {STATUSES.map(s => <option key={s.value} value={s.value}>{s.label}</option>)}
-                </select>
-              </div>
-
-              <div>
-                <label className={labelCls}>Approved By</label>
-                <CustomSelect
-                  value={selectedApprovedBy}
-                  onChange={opt => { setSelectedApprovedBy(opt); setForm(f => ({ ...f, approved_by: opt?.value ?? '' })); }}
-                  loadOptions={loadUserOptions}
-                  placeholder="Select user"
-                  className="text-sm"
-                />
-              </div>
-
-              <div>
-                <label className={labelCls}>Approved At</label>
-                <DateTimePicker value={form.approved_at} onChange={v => setForm(f => ({ ...f, approved_at: v }))} placeholder="Select approved date" />
-              </div>
-
-              <div>
-                <label className={labelCls}>Completed At</label>
-                <DateTimePicker value={form.completed_at} onChange={v => setForm(f => ({ ...f, completed_at: v }))} placeholder="Select completed date" />
+                <label className={labelCls}>Reason Details</label>
+                <textarea rows={2} value={reasonDetails} onChange={e => setReasonDetails(e.target.value)}
+                  className={inputCls} placeholder="Additional details…" />
               </div>
             </div>
 
             {/* Buttons */}
             <div className="flex gap-2 pt-2">
-              <button
-                type="submit"
-                disabled={submitting}
-                className="px-4 py-1.5 bg-blue-600 text-white text-sm font-medium rounded-sm hover:bg-blue-700 transition-colors cursor-pointer disabled:opacity-60"
-              >
-                {submitting ? 'Saving…' : form.id ? 'Update Refund' : 'Save Refund'}
+              <button type="submit" disabled={submitting}
+                className="px-4 py-1.5 bg-blue-600 text-white text-sm font-medium rounded-sm hover:bg-blue-700 transition-colors cursor-pointer disabled:opacity-60">
+                {submitting ? 'Saving…' : 'Submit Refund'}
               </button>
-              <button
-                type="button"
-                onClick={handleCancel}
-                className="px-4 py-1.5 bg-gray-500 text-white text-sm font-medium rounded-sm hover:bg-gray-600 transition-colors cursor-pointer"
-              >
+              <button type="button" onClick={handleCancel}
+                className="px-4 py-1.5 bg-gray-500 text-white text-sm font-medium rounded-sm hover:bg-gray-600 transition-colors cursor-pointer">
                 Cancel
               </button>
             </div>

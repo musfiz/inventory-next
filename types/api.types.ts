@@ -691,3 +691,90 @@ export interface PosOrderListItem {
   register?: { id: number; name: string };
   created_at: string;
 }
+
+// ─── Sales Return Types ───────────────────────────────────────────────────────
+
+export type SalesReturnStatus = 'pending' | 'approved' | 'completed' | 'cancelled';
+
+export type SalesReturnReason =
+  | 'defective'
+  | 'wrong_item'
+  | 'not_as_described'
+  | 'damaged_in_transit'
+  | 'customer_changed_mind'
+  | 'overcharged'
+  | 'other';
+
+export type SalesReturnRefundMethod =
+  | 'cash'
+  | 'card'
+  | 'bkash'
+  | 'nagad'
+  | 'rocket'
+  | 'bank_transfer'
+  | 'store_credit'
+  | 'exchange';
+
+export type SalesReturnItemCondition = 'good' | 'damaged' | 'defective';
+
+export interface SalesReturnItem {
+  id: number;
+  uuid?: string;
+  tenant_id?: number;
+  sales_return_id: number;
+  sales_order_item_id: number;
+  product_id?: number;
+  variation_id?: number;
+  quantity_returned: number;
+  unit_price: number;
+  condition: SalesReturnItemCondition;
+  batch_id?: number | null;
+  reason?: string | null;
+  line_total?: number;
+  product?: { id: number; name: string; code?: string };
+  variation?: { id: number; name?: string; sku?: string };
+  sales_order_item?: { id: number; quantity: number; quantity_returned?: number };
+}
+
+export interface SalesReturn {
+  id: number;
+  uuid?: string;
+  tenant_id?: number | string;
+  return_number: string;
+  return_date?: string;
+  sales_order_id: number | string;
+  customer_id?: number | string;
+  warehouse_id?: number | string;
+  reason: SalesReturnReason;
+  notes?: string | null;
+  total_amount: number;
+  refund_amount: number;
+  refund_method: SalesReturnRefundMethod;
+  status: SalesReturnStatus;
+  approved_by?: number | string | null;
+  created_by?: number | string | null;
+  created_at?: string;
+  updated_at?: string;
+  items?: SalesReturnItem[];
+  sales_order?: { id: number; invoice_number: string; order_number?: string };
+  customer?: { id: number; name: string; phone?: string; email?: string };
+  approver?: { id: number; name: string } | null;
+  creator?: { id: number; name: string } | null;
+}
+
+/** Item row returned from GET /api/v1/pos/orders/{id}/items */
+export interface PosOrderItemForRefund {
+  id: number;
+  product_id: number;
+  variation_id: number;
+  item_name: string;
+  item_code?: string;
+  barcode?: string;
+  unit_type?: string;
+  quantity: number;
+  returned_quantity: number;
+  max_returnable: number;
+  unit_price: number;
+  product?: { id: number; name: string; code?: string };
+  variation?: { id: number; name?: string; sku?: string };
+}
