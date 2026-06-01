@@ -4,11 +4,12 @@ import { useEffect, useRef, useState } from 'react';
 import { Plus, X, CheckCircle, Check, Printer } from 'lucide-react';
 import { ColumnDef } from '@tanstack/react-table';
 import { notify, confirm } from '@/lib/notifications';
-import { posRefundService, commonService } from '@/services';
+import { posRefundService } from '@/services';
 import type { PosRefund } from '@/services/posRefundService';
-import type { PosOrderItemForRefund } from '@/types/api.types';
+import type { PosOrderItemForRefund, PosRefundItem } from '@/types/api.types';
 import DataTable from '@/components/ui/datatable';
 import CustomSelect from '@/components/ui/custom-select';
+import TenantSelect from '@/components/ui/tenant-select';
 import { useRouter } from 'next/navigation';
 import { usePermissions } from '@/hooks/use-permissions';
 import { useAuthStore } from '@/stores/auth-store';
@@ -100,7 +101,6 @@ export default function PosRefundsPage() {
 
   // Form fields
   const [tenantId, setTenantId] = useState('');
-  const [selectedTenant, setSelectedTenant] = useState<any>(null);
   const [selectedOrder, setSelectedOrder] = useState<any>(null);
   const [refundReason, setRefundReason] = useState('return');
   const [refundMethod, setRefundMethod] = useState('cash');
@@ -111,20 +111,14 @@ export default function PosRefundsPage() {
 
   // Print
   const [printRefund, setPrintRefund] = useState<PosRefund | null>(null);
-  const [printItems, setPrintItems] = useState<any[]>([]);
+  const [printItems, setPrintItems] = useState<PosRefundItem[]>([]);
   const printRef = useRef<HTMLDivElement>(null);
 
   // ── Dropdown loaders ──────────────────────────────────────────────────────
 
-  const loadTenantOptions = async (input: string) => {
-    if (!isSuperAdmin) return [];
-    const list = await commonService.getTenantsForDropdown({ search: input }).catch(() => []);
-    return (list || []).map((t: any) => ({ value: t.id, label: t.business_name }));
-  };
-
   const loadOrderOptions = async (input: string) => {
     try {
-      const res = await apiClient.get('/api/v1/pos/orders', { params: { search: input, per_page: 20 } });
+      const res = await apiClient.get('/api/v1/pos/orders', { params: { search: input, per_page: input ? 20 : 10 } });
       const items = res.data?.data?.data ?? res.data?.data ?? [];
       return items.map((o: any) => ({
         value: o.id,
@@ -193,7 +187,6 @@ export default function PosRefundsPage() {
 
   const resetForm = () => {
     setTenantId(isSuperAdmin ? '' : (authUser?.tenant_id ?? ''));
-    setSelectedTenant(null);
     setSelectedOrder(null);
     setRefundReason('return');
     setRefundMethod('cash');
@@ -281,13 +274,7 @@ export default function PosRefundsPage() {
     try {
       const full = await posRefundService.show(refund.id);
       if (!full) return;
-      const items: any[] = [];
-      if (full.refund_order_id) {
-        try {
-          const res = await apiClient.get(`/api/v1/pos/orders/${full.refund_order_id}/items`);
-          items.push(...(res.data?.data ?? []));
-        } catch { /* non-critical */ }
-      }
+      const items: PosRefundItem[] = full.items ?? [];
       setPrintRefund(full);
       setPrintItems(items);
       setTimeout(() => {
@@ -319,9 +306,9 @@ export default function PosRefundsPage() {
       cell: ({ row }) => <span className="font-mono text-xs font-semibold">{row.original.refund_number ?? '-'}</span>,
     },
     {
-      accessorKey: 'original_order_id', header: 'Original Order',
+      accessorKey: 'pos_order_id', header: 'POS Order',
       cell: ({ row }) => (
-        <span className="text-xs">{(row.original as any).original_order?.order_number ?? row.original.original_order_id ?? '-'}</span>
+        <span className="text-xs">{(row.original as any).pos_order?.invoice_number ?? (row.original as any).pos_order?.order_number ?? row.original.pos_order_id ?? '-'}</span>
       ),
     },
     {
@@ -429,28 +416,32 @@ export default function PosRefundsPage() {
 
           <form onSubmit={handleSubmit} className="space-y-2">
 
-            {/* ── Order Selection ── */}
-            <p className={sectionCls}>Original POS Order</p>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
-              {isSuperAdmin && (
+            {/* ── Tenant Selection - Only for Super Admin ── */}
+            {isSuperAdmin && (
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
                 <div>
                   <label className={labelCls}>Tenant <span className="text-red-500">*</span></label>
-                  <CustomSelect
-                    value={selectedTenant}
-                    onChange={opt => { setSelectedTenant(opt); setTenantId(opt?.value ?? ''); }}
-                    loadOptions={loadTenantOptions}
+                  <TenantSelect
+                    value={tenantId}
+                    onChange={(tid) => setTenantId(tid || '')}
                     placeholder="Select tenant"
-                    className="text-sm"
+                    isInvalid={!!errors.tenant_id}
                   />
                   {errors.tenant_id && <p className={errCls}>{errors.tenant_id}</p>}
                 </div>
-              )}
+              </div>
+            )}
+
+            {/* ── Order Selection ── */}
+            <p className={sectionCls}>Original POS Order</p>
+            <div className="grid grid-cols-1 gap-2">
               <div>
                 <label className={labelCls}>POS Order <span className="text-red-500">*</span></label>
                 <CustomSelect
                   value={selectedOrder}
                   onChange={handleOrderChange}
                   loadOptions={loadOrderOptions}
+                  defaultOptions={true}
                   placeholder="Search by order / invoice #…"
                   className="text-sm"
                 />

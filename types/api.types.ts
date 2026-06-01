@@ -778,3 +778,18 @@ export interface PosOrderItemForRefund {
   product?: { id: number; name: string; code?: string };
   variation?: { id: number; name?: string; sku?: string };
 }
+
+/** Individual item row stored in a POS refund */
+export interface PosRefundItem {
+  id: number;
+  uuid?: string;
+  pos_refund_id: number;
+  pos_order_item_id?: number | null;
+  product_id?: number | null;
+  variation_id?: number | null;
+  quantity_returned: number;
+  unit_price: number;
+  batch_id?: number | null;
+  product?: { id: number; name: string } | null;
+  variation?: { id: number; name?: string; sku?: string } | null;
+}

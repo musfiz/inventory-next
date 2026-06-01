@@ -1,12 +1,11 @@
 import apiClient from '@/lib/api/axios';
-import type { ApiResponse, PosOrderItemForRefund } from '@/types/api.types';
+import type { ApiResponse, PosOrderItemForRefund, PosRefundItem } from '@/types/api.types';
 
 export interface PosRefund {
   id: number;
   uuid?: string;
   tenant_id?: number | string;
-  original_order_id?: number | string;
-  refund_order_id?: number | string | null;
+  pos_order_id?: number | string;
   refund_number?: string;
   refund_date?: string;
   refund_reason?: 'return' | 'damaged' | 'wrong_item' | 'customer_dissatisfaction' | 'expired' | 'exchange' | 'other';
@@ -20,8 +19,8 @@ export interface PosRefund {
   completed_at?: string | null;
   created_at?: string;
   updated_at?: string;
-  original_order?: { id: number | string; order_number: string };
-  refund_order?: { id: number | string; order_number: string } | null;
+  pos_order?: { id: number | string; invoice_number?: string; order_number?: string } | null;
+  items?: PosRefundItem[];
   approved_by_user?: { id: number | string; name: string } | null;
   created_by_user?: { id: number | string; name: string } | null;
 }
@@ -62,7 +61,7 @@ class PosRefundService {
     return response.data;
   }
 
-  /** Create a refund + counter-order in one step (item-level partial/full refund) */
+  /** Create a refund with dedicated item records in one step */
   async quickCreate(data: {
     original_order_id: number | string;
     refund_reason: string;

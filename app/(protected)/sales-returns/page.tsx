@@ -4,10 +4,11 @@ import { useEffect, useRef, useState } from 'react';
 import { Plus, X, CheckCircle, Check, Printer, Ban } from 'lucide-react';
 import { ColumnDef } from '@tanstack/react-table';
 import { notify, confirm } from '@/lib/notifications';
-import { salesReturnService, salesOrderService, commonService } from '@/services';
+import { salesReturnService, salesOrderService } from '@/services';
 import type { SalesReturn, SalesReturnReason, SalesReturnRefundMethod } from '@/types/api.types';
 import DataTable from '@/components/ui/datatable';
 import CustomSelect from '@/components/ui/custom-select';
+import TenantSelect from '@/components/ui/tenant-select';
 import { useRouter } from 'next/navigation';
 import { usePermissions } from '@/hooks/use-permissions';
 import { useAuthStore } from '@/stores/auth-store';
@@ -134,7 +135,6 @@ export default function SalesReturnsPage() {
   const [errors, setErrors] = useState<Record<string, string>>({});
 
   const [form, setForm] = useState<ReturnForm>(emptyForm());
-  const [selectedTenant, setSelectedTenant] = useState<any>(null);
   const [selectedOrder, setSelectedOrder] = useState<any>(null);
   const [orderItems, setOrderItems] = useState<OrderItem[]>([]);
   const [returnLines, setReturnLines] = useState<ReturnLineItem[]>([]);
@@ -150,16 +150,10 @@ export default function SalesReturnsPage() {
 
   // ── Dropdown loaders ──────────────────────────────────────────────────────
 
-  const loadTenantOptions = async (input: string) => {
-    if (!isSuperAdmin) return [];
-    const list = await commonService.getTenantsForDropdown({ search: input }).catch(() => []);
-    return (list || []).map((t: any) => ({ value: t.id, label: t.business_name }));
-  };
-
   const loadOrderOptions = async (input: string) => {
     try {
       const res = await apiClient.get('/api/v1/sales-order', {
-        params: { search: input, per_page: 20, status: 'delivered,completed,returned' },
+        params: { search: input, per_page: input ? 20 : 10, status: 'delivered,completed,returned' },
       });
       const items = res.data?.data?.data ?? res.data?.data ?? [];
       return items.map((o: any) => ({
@@ -245,7 +239,6 @@ export default function SalesReturnsPage() {
 
   const handleAdd = () => {
     setForm({ ...emptyForm(), tenant_id: isSuperAdmin ? '' : (authUser?.tenant_id ?? '') });
-    setSelectedTenant(null);
     setSelectedOrder(null);
     setOrderItems([]);
     setReturnLines([]);
@@ -262,7 +255,6 @@ export default function SalesReturnsPage() {
       notes: ret.notes ?? '',
       refund_method: ret.refund_method ?? 'cash',
     });
-    setSelectedTenant(null);
     setSelectedOrder(ret.sales_order
       ? { value: ret.sales_order.id, label: ret.sales_order.invoice_number }
       : null
@@ -555,29 +547,32 @@ export default function SalesReturnsPage() {
 
           <form onSubmit={handleSubmit} className="space-y-2">
 
-            {/* ── Order Selection ── */}
-            <p className={sectionCls}>Original Sales Order</p>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
-              {isSuperAdmin && !form.id && (
+            {/* ── Tenant Selection - Only for Super Admin ── */}
+            {isSuperAdmin && !form.id && (
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
                 <div>
                   <label className={labelCls}>Tenant <span className="text-red-500">*</span></label>
-                  <CustomSelect
-                    value={selectedTenant}
-                    onChange={opt => { setSelectedTenant(opt); setForm(f => ({ ...f, tenant_id: opt?.value ?? '' })); }}
-                    loadOptions={loadTenantOptions}
+                  <TenantSelect
+                    value={form.tenant_id}
+                    onChange={(tid) => setForm(f => ({ ...f, tenant_id: tid || '' }))}
                     placeholder="Select tenant"
-                    className="text-sm"
+                    isInvalid={!!errors.tenant_id}
                   />
                   {errors.tenant_id && <p className={errCls}>{errors.tenant_id}</p>}
                 </div>
-              )}
+              </div>
+            )}
 
-              <div className={isSuperAdmin && !form.id ? '' : 'md:col-span-2'}>
+            {/* ── Order Selection ── */}
+            <p className={sectionCls}>Original Sales Order</p>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
+              <div className="md:col-span-2">
                 <label className={labelCls}>Sales Order <span className="text-red-500">*</span></label>
                 <CustomSelect
                   value={selectedOrder}
                   onChange={handleOrderChange}
                   loadOptions={loadOrderOptions}
+                  defaultOptions={!form.id}
                   placeholder="Search by invoice # or customer…"
                   className="text-sm"
                   isDisabled={!!form.id}

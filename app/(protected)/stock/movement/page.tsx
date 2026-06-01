@@ -13,7 +13,7 @@ import apiClient from '@/lib/api/axios';
 const MOVEMENT_TYPES = [
   { value: '', label: 'All Types' },
   { value: 'purchase', label: 'Purchase' },
-  { value: 'sales', label: 'Sale' },
+  { value: 'sales', label: 'Sales' },
   { value: 'return', label: 'Return' },
   { value: 'adjustment', label: 'Adjustment' },
   { value: 'transfer_in', label: 'Transfer In' },
