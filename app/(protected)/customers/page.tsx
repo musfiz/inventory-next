@@ -1,12 +1,12 @@
 "use client";
 
 import { useState, useEffect } from 'react';
-import { Users as UsersIcon, Plus, Edit, Trash2, X } from 'lucide-react';
+import { Users as UsersIcon, Plus, Edit, Trash2, X, Eye } from 'lucide-react';
 import { GiSave } from 'react-icons/gi';
 import { ColumnDef } from '@tanstack/react-table';
 import { notify, confirm } from '@/lib/notifications';
 import customerService from '@/services/customerService';
-import type { Customer } from '@/services/customerService';
+import type { Customer, CustomerStatementResponse } from '@/services/customerService';
 import DataTable from '@/components/ui/datatable';
 import { useRouter } from 'next/navigation';
 import { usePermissions } from '@/hooks/use-permissions';
@@ -43,6 +43,17 @@ export default function CustomersPage() {
   });
   const [formErrors, setFormErrors] = useState<{ [key: string]: string }>({});
   const [refreshKey, setRefreshKey] = useState(0);
+  const [showStatement, setShowStatement] = useState(false);
+  const [statementLoading, setStatementLoading] = useState(false);
+  const [statementData, setStatementData] = useState<CustomerStatementResponse | null>(null);
+  const [statementTarget, setStatementTarget] = useState<Customer | null>(null);
+  const [payAmount, setPayAmount] = useState('');
+  const [payMethod, setPayMethod] = useState('cash');
+  const [payNotes, setPayNotes] = useState('');
+  const [recordingPayment, setRecordingPayment] = useState(false);
+
+  const fmtMoney = (v?: number | string | null) => Number(v ?? 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  const fmtDate = (v?: string | null) => (v ? new Date(v).toLocaleDateString() : '-');
 
   // tenant select handled by TenantSelect component
 
@@ -172,6 +183,54 @@ export default function CustomersPage() {
     }
   };
 
+  const openStatement = async (customer: Customer) => {
+    try {
+      setStatementLoading(true);
+      setStatementTarget(customer);
+      setShowStatement(true);
+      const data = await customerService.getCustomerStatement(customer.id);
+      setStatementData(data);
+      setPayAmount('');
+      setPayMethod('cash');
+      setPayNotes('');
+    } catch (error: unknown) {
+      const axiosError = error as { response?: { data?: { message?: string } } };
+      notify.error(axiosError.response?.data?.message || 'Failed to load statement');
+      setShowStatement(false);
+      setStatementTarget(null);
+    } finally {
+      setStatementLoading(false);
+    }
+  };
+
+  const recordPayment = async () => {
+    if (!statementTarget) return;
+    const amount = Number(payAmount);
+    if (!amount || amount <= 0) {
+      notify.error('Amount must be greater than 0');
+      return;
+    }
+    try {
+      setRecordingPayment(true);
+      await customerService.recordCustomerPayment(statementTarget.id, {
+        amount,
+        payment_method: payMethod,
+        notes: payNotes || undefined,
+      });
+      notify.success('Customer payment recorded successfully');
+      const data = await customerService.getCustomerStatement(statementTarget.id);
+      setStatementData(data);
+      setPayAmount('');
+      setPayNotes('');
+      setRefreshKey(prev => prev + 1);
+    } catch (error: unknown) {
+      const axiosError = error as { response?: { data?: { message?: string } } };
+      notify.error(axiosError.response?.data?.message || 'Failed to record payment');
+    } finally {
+      setRecordingPayment(false);
+    }
+  };
+
   const columns: ColumnDef<Customer>[] = [];
 
   // Serial column
@@ -229,7 +288,28 @@ export default function CustomersPage() {
     id: 'balance',
     header: 'Balance',
     cell: ({ row }) => (
-      <span className="text-sm">{row.original.current_balance ?? 0}</span>
+      <span className="text-sm font-medium">{fmtMoney(row.original.current_balance ?? 0)}</span>
+    ),
+  });
+
+  columns.push({
+    id: 'outstanding',
+    header: 'Outstanding',
+    cell: ({ row }) => {
+      const outstanding = Number(row.original.outstanding_balance ?? 0);
+      return (
+        <span className={`text-sm font-semibold ${outstanding > 0 ? 'text-red-600' : 'text-emerald-600'}`}>
+          {fmtMoney(outstanding)}
+        </span>
+      );
+    },
+  });
+
+  columns.push({
+    id: 'type',
+    header: 'Type',
+    cell: ({ row }) => (
+      <span className="text-xs text-gray-600 dark:text-gray-300 capitalize">{row.original.type || '-'}</span>
     ),
   });
 
@@ -250,6 +330,13 @@ export default function CustomersPage() {
     header: 'Actions',
     cell: ({ row }) => (
       <div className="flex items-center gap-2">
+        <button
+          onClick={() => openStatement(row.original)}
+          className="p-1 text-blue-600 hover:text-blue-800 cursor-pointer"
+          title="Statement"
+        >
+          <Eye className="w-4 h-4" />
+        </button>
         <button
           onClick={() => handleEditCustomer(row.original)}
           className="p-1 text-green-600 hover:text-green-800 cursor-pointer"
@@ -406,6 +493,145 @@ export default function CustomersPage() {
       )}
 
       <DataTable key={refreshKey} columns={columns} apiEndpoint={buildApiEndpoint()} pageSize={15} enableSearch={true} searchPlaceholder="Search by customer name, tenant_id, phone..." />
+
+      {showStatement && (
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="w-full max-w-4xl bg-white dark:bg-gray-800 rounded-xl shadow-2xl overflow-hidden">
+            <div className="bg-gradient-to-r from-blue-600 to-indigo-600 px-5 py-4 text-white flex items-center justify-between">
+              <div>
+                <h3 className="text-lg font-bold">Customer Statement</h3>
+                <p className="text-sm opacity-80">{statementData?.customer?.name || statementTarget?.name || '-'}</p>
+              </div>
+              <button
+                onClick={() => {
+                  setShowStatement(false);
+                  setStatementData(null);
+                  setStatementTarget(null);
+                }}
+                className="p-1 rounded-full hover:bg-white/20"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <div className="p-5 space-y-4 max-h-[75vh] overflow-y-auto">
+              {statementLoading ? (
+                <div className="py-12 flex items-center justify-center">
+                  <div className="animate-spin w-8 h-8 border-2 border-blue-500 border-t-transparent rounded-full" />
+                </div>
+              ) : (
+                <>
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                    <div className="bg-gray-50 dark:bg-gray-700/60 rounded-lg p-3">
+                      <p className="text-xs text-gray-500 dark:text-gray-400">Credit Limit</p>
+                      <p className="font-semibold text-gray-800 dark:text-gray-100">{fmtMoney(statementData?.customer?.credit_limit ?? 0)}</p>
+                    </div>
+                    <div className="bg-blue-50 dark:bg-blue-900/30 rounded-lg p-3">
+                      <p className="text-xs text-blue-500">Current Balance</p>
+                      <p className="font-semibold text-blue-700 dark:text-blue-200">{fmtMoney(statementData?.customer?.current_balance ?? 0)}</p>
+                    </div>
+                    <div className="bg-red-50 dark:bg-red-900/30 rounded-lg p-3">
+                      <p className="text-xs text-red-500">Outstanding</p>
+                      <p className="font-bold text-red-700 dark:text-red-200 text-lg">{fmtMoney(statementData?.summary?.total_outstanding ?? 0)}</p>
+                    </div>
+                  </div>
+
+                  <div className="rounded-lg border border-gray-200 dark:border-gray-700 overflow-hidden">
+                    <table className="w-full text-xs">
+                      <thead className="bg-gray-50 dark:bg-gray-700/70">
+                        <tr>
+                          <th className="px-3 py-2 text-left font-semibold">Invoice</th>
+                          <th className="px-3 py-2 text-left font-semibold">Date</th>
+                          <th className="px-3 py-2 text-right font-semibold">Total</th>
+                          <th className="px-3 py-2 text-right font-semibold">Returned</th>
+                          <th className="px-3 py-2 text-right font-semibold">Paid</th>
+                          <th className="px-3 py-2 text-right font-semibold">Due</th>
+                          <th className="px-3 py-2 text-center font-semibold">Payment</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-gray-100 dark:divide-gray-700">
+                        {(statementData?.orders?.data ?? []).length === 0 ? (
+                          <tr>
+                            <td colSpan={7} className="px-3 py-6 text-center text-gray-400">No orders found</td>
+                          </tr>
+                        ) : (
+                          (statementData?.orders?.data ?? []).map((o) => (
+                            <tr key={o.id} className="bg-white dark:bg-gray-800">
+                              <td className="px-3 py-2 font-mono text-gray-700 dark:text-gray-200">{o.invoice_number || '-'}</td>
+                              <td className="px-3 py-2 text-gray-500 dark:text-gray-300">{fmtDate(o.order_date)}</td>
+                              <td className="px-3 py-2 text-right text-gray-700 dark:text-gray-200">{fmtMoney(o.grand_total ?? 0)}</td>
+                              <td className="px-3 py-2 text-right text-orange-600">{fmtMoney(o.returned_amount ?? 0)}</td>
+                              <td className="px-3 py-2 text-right text-emerald-600">{fmtMoney(o.paid_amount ?? 0)}</td>
+                              <td className="px-3 py-2 text-right font-semibold text-red-600">{fmtMoney(o.due_amount ?? 0)}</td>
+                              <td className="px-3 py-2 text-center">
+                                <span className={`px-2 py-0.5 rounded-full text-[10px] font-semibold ${String(o.payment_status) === 'paid'
+                                  ? 'bg-emerald-100 text-emerald-700'
+                                  : String(o.payment_status) === 'partial'
+                                    ? 'bg-blue-100 text-blue-700'
+                                    : 'bg-yellow-100 text-yellow-700'
+                                  }`}>
+                                  {o.payment_status || '-'}
+                                </span>
+                              </td>
+                            </tr>
+                          ))
+                        )}
+                      </tbody>
+                    </table>
+                  </div>
+
+                  {Number(statementData?.summary?.total_outstanding ?? 0) > 0 && (
+                    <div className="rounded-lg border border-emerald-200 dark:border-emerald-800 bg-emerald-50/70 dark:bg-emerald-900/20 p-3 space-y-2">
+                      <p className="text-xs font-semibold uppercase tracking-wide text-emerald-700 dark:text-emerald-300">Record Customer Payment</p>
+                      <div className="grid grid-cols-1 md:grid-cols-4 gap-2">
+                        <input
+                          type="number"
+                          min="0.01"
+                          step="0.01"
+                          value={payAmount}
+                          onChange={(e) => setPayAmount(e.target.value)}
+                          placeholder="Amount"
+                          className="w-full px-2 py-1.5 text-sm border rounded-sm border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100"
+                        />
+                        <select
+                          value={payMethod}
+                          onChange={(e) => setPayMethod(e.target.value)}
+                          className="w-full px-2 py-1.5 text-sm border rounded-sm border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100"
+                        >
+                          <option value="cash">Cash</option>
+                          <option value="card">Card</option>
+                          <option value="bkash">bKash</option>
+                          <option value="nagad">Nagad</option>
+                          <option value="rocket">Rocket</option>
+                          <option value="bank_transfer">Bank Transfer</option>
+                          <option value="check">Check</option>
+                          <option value="other">Other</option>
+                        </select>
+                        <input
+                          type="text"
+                          value={payNotes}
+                          onChange={(e) => setPayNotes(e.target.value)}
+                          placeholder="Notes (optional)"
+                          className="w-full px-2 py-1.5 text-sm border rounded-sm border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 md:col-span-2"
+                        />
+                      </div>
+                      <div className="flex justify-end">
+                        <button
+                          onClick={recordPayment}
+                          disabled={recordingPayment}
+                          className="px-4 py-1.5 text-sm bg-emerald-600 hover:bg-emerald-700 disabled:opacity-60 text-white rounded-sm font-medium"
+                        >
+                          {recordingPayment ? 'Recording...' : 'Record Payment'}
+                        </button>
+                      </div>
+                    </div>
+                  )}
+                </>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

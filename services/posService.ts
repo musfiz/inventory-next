@@ -1,5 +1,5 @@
 import apiClient from '@/lib/api/axios';
-import type { Payment, PosHeldOrder, PosHoldPayload, PosOrderListItem, PosPaymentFields } from '@/types/api.types';
+import type { Payment, PosHeldOrder, PosHoldPayload, PosOrderDetail, PosOrderListItem, PosPaymentFields } from '@/types/api.types';
 
 export interface PosOrderPayload extends PosPaymentFields {
   session_id: string | number;
@@ -124,6 +124,30 @@ class PosService {
   /** Cancel a hold order */
   async cancelHeldOrder(id: number): Promise<void> {
     await apiClient.delete(`/api/v1/pos/hold-orders/${id}`);
+  }
+
+  // ─── Order Detail ─────────────────────────────────────────────────────────────
+
+  /**
+   * Get a single POS order with full details (items, payments, session, register, customer)
+   * GET /api/v1/pos/orders/{uuid}
+   */
+  async getPosOrder(uuid: string): Promise<PosOrderDetail> {
+    const response = await apiClient.get(`/api/v1/pos/orders/${uuid}`);
+    return response.data.data;
+  }
+
+  /**
+   * Record a partial/due payment against a POS order
+   * POST /api/v1/pos/orders/{uuid}/record-payment
+   */
+  async recordDuePayment(uuid: string, data: {
+    amount: number;
+    payment_method: string;
+    notes?: string;
+  }): Promise<PosOrderDetail> {
+    const response = await apiClient.post(`/api/v1/pos/orders/${uuid}/record-payment`, data);
+    return response.data.data;
   }
 }
 

@@ -20,7 +20,7 @@ export default function LedgerPage() {
     if (q.length < 1) { setAccountOptions([]); return; }
     try {
       const res = await accountService.list({ search: q, per_page: 20 });
-      setAccountOptions(res.data?.data?.data ?? []);
+      setAccountOptions(res.data ?? []);
     } catch { /* ignore */ }
   };
 
@@ -29,7 +29,7 @@ export default function LedgerPage() {
     setLoading(true);
     try {
       const res = await accountService.ledger(selectedAccount.id, { start_date: startDate, end_date: endDate });
-      setLedgerData(res.data?.data ?? null);
+      setLedgerData(res);
     } catch {
       notify.error('Failed to load ledger');
     } finally {

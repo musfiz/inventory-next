@@ -1,7 +1,7 @@
 'use client';
 
-import { useEffect, useState } from 'react';
-import { Plus, Pencil, Trash2, RefreshCw, ChevronRight, ChevronDown } from 'lucide-react';
+import { Fragment, useEffect, useState } from 'react';
+import { Plus, Pencil, Trash2, RefreshCw, ChevronRight, ChevronDown, Search, Layers3 } from 'lucide-react';
 import { notify, confirm } from '@/lib/notifications';
 import accountService from '@/services/accountService';
 import type { Account, AccountFormData, AccountType, AccountSubtype } from '@/types/accounting.types';
@@ -74,22 +74,27 @@ export default function AccountsPage() {
   const { hasPermission } = usePermissions();
   const [accounts, setAccounts] = useState<Account[]>([]);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [showForm, setShowForm] = useState(false);
   const [editAccount, setEditAccount] = useState<Account | null>(null);
   const [form, setForm] = useState<AccountFormData>(emptyForm);
   const [saving, setSaving] = useState(false);
   const [seeding, setSeeding] = useState(false);
   const [expandedTypes, setExpandedTypes] = useState<Record<string, boolean>>({
-    asset: true, liability: true, equity: true, revenue: true, expense: true, contra: false,
+    asset: false, liability: false, equity: false, revenue: false, expense: false, contra: false,
   });
   const [search, setSearch] = useState('');
 
   const fetchAccounts = async () => {
     setLoading(true);
+    setLoadError(null);
     try {
       const res = await accountService.list({ per_page: 200, search });
-      setAccounts(res.data?.data?.data ?? res.data?.data ?? []);
-    } catch {
+      setAccounts(res.data ?? []);
+    } catch (error) {
+      console.error('Failed to load accounts', error);
+      setAccounts([]);
+      setLoadError('Failed to load chart of accounts. Please try again.');
       notify.error('Failed to load accounts');
     } finally {
       setLoading(false);
@@ -174,118 +179,176 @@ export default function AccountsPage() {
 
   const subtypeOptions = SUBTYPES_BY_TYPE[form.account_type] ?? [];
 
+  const totalAccounts = accounts.length;
+  const systemAccounts = accounts.filter(account => account.is_system).length;
+  const activeAccounts = accounts.filter(account => account.is_active).length;
+
   return (
-    <div className="p-4 space-y-4">
-      {/* Header */}
-      <div className="flex items-center justify-between flex-wrap gap-2">
-        <div>
-          <h1 className="text-xl font-bold text-gray-900 dark:text-white">Chart of Accounts</h1>
-          <p className="text-sm text-gray-500">Manage your accounting structure</p>
-        </div>
-        <div className="flex gap-2">
-          <input
-            type="search"
-            placeholder="Search accounts..."
-            value={search}
-            onChange={e => setSearch(e.target.value)}
-            className="border rounded px-3 py-1.5 text-sm dark:bg-gray-800 dark:border-gray-600 dark:text-white"
-          />
-          <button
-            onClick={handleSeedDefaults}
-            disabled={seeding}
-            className="flex items-center gap-1.5 px-3 py-1.5 text-sm bg-gray-100 hover:bg-gray-200 dark:bg-gray-700 dark:hover:bg-gray-600 text-gray-700 dark:text-gray-200 rounded"
-          >
-            <RefreshCw size={14} className={seeding ? 'animate-spin' : ''} />
-            Seed Defaults
-          </button>
-          {hasPermission('create_accounts') && (
+    <div className="space-y-4 p-4">
+      <div className="rounded-xl border border-gray-200 bg-white px-4 py-4 shadow-sm dark:border-gray-700 dark:bg-gray-900">
+        <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+          <div className="space-y-2">
+            <div className="flex items-center gap-2 text-xs uppercase tracking-[0.2em] text-gray-500 dark:text-gray-400">
+              <Layers3 className="h-4 w-4 text-blue-600 dark:text-blue-400" />
+              Accounting
+            </div>
+            <div>
+              <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Chart of Accounts</h1>
+              <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
+                Manage the account structure, balances, and default seed accounts.
+              </p>
+            </div>
+          </div>
+
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-end">
+            <div className="relative w-full sm:w-72">
+              <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400 dark:text-gray-500" />
+              <input
+                type="search"
+                placeholder="Search accounts..."
+                value={search}
+                onChange={e => setSearch(e.target.value)}
+                className="w-full rounded-lg border border-gray-300 bg-white py-2 pl-9 pr-3 text-sm text-gray-900 outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 dark:border-gray-600 dark:bg-gray-800 dark:text-white"
+              />
+            </div>
             <button
-              onClick={openCreate}
-              className="flex items-center gap-1.5 px-3 py-1.5 text-sm bg-blue-600 hover:bg-blue-700 text-white rounded"
+              onClick={handleSeedDefaults}
+              disabled={seeding}
+              className="inline-flex items-center justify-center gap-2 rounded-lg border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 transition hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-60 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-200 dark:hover:bg-gray-700"
             >
-              <Plus size={14} />
-              New Account
+              <RefreshCw size={14} className={seeding ? 'animate-spin' : ''} />
+              Seed Defaults
             </button>
-          )}
+            {hasPermission('create_accounts') && (
+              <button
+                onClick={openCreate}
+                className="inline-flex items-center justify-center gap-2 rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white transition hover:bg-blue-700"
+              >
+                <Plus size={14} />
+                New Account
+              </button>
+            )}
+          </div>
+        </div>
+
+        <div className="mt-4 grid gap-3 sm:grid-cols-3">
+          <div className="rounded-lg border border-gray-200 bg-gray-50 px-4 py-3 dark:border-gray-700 dark:bg-gray-800/60">
+            <div className="text-xs uppercase tracking-wide text-gray-500 dark:text-gray-400">Total Accounts</div>
+            <div className="mt-1 text-2xl font-bold text-gray-900 dark:text-white">{totalAccounts}</div>
+          </div>
+          <div className="rounded-lg border border-gray-200 bg-gray-50 px-4 py-3 dark:border-gray-700 dark:bg-gray-800/60">
+            <div className="text-xs uppercase tracking-wide text-gray-500 dark:text-gray-400">Active Accounts</div>
+            <div className="mt-1 text-2xl font-bold text-gray-900 dark:text-white">{activeAccounts}</div>
+          </div>
+          <div className="rounded-lg border border-gray-200 bg-gray-50 px-4 py-3 dark:border-gray-700 dark:bg-gray-800/60">
+            <div className="text-xs uppercase tracking-wide text-gray-500 dark:text-gray-400">System Accounts</div>
+            <div className="mt-1 text-2xl font-bold text-gray-900 dark:text-white">{systemAccounts}</div>
+          </div>
         </div>
       </div>
 
       {/* Account Tree */}
       {loading ? (
-        <div className="text-center py-10 text-gray-400">Loading…</div>
+        <div className="rounded-xl border border-gray-200 bg-white py-12 text-center text-sm text-gray-500 shadow-sm dark:border-gray-700 dark:bg-gray-900 dark:text-gray-400">
+          Loading accounts...
+        </div>
       ) : (
-        <div className="bg-white dark:bg-gray-900 rounded-lg border dark:border-gray-700 overflow-hidden">
-          <table className="w-full text-sm">
-            <thead className="bg-gray-50 dark:bg-gray-800">
-              <tr>
-                <th className="px-4 py-2 text-left font-semibold text-gray-600 dark:text-gray-300">Code</th>
-                <th className="px-4 py-2 text-left font-semibold text-gray-600 dark:text-gray-300">Account Name</th>
-                <th className="px-4 py-2 text-left font-semibold text-gray-600 dark:text-gray-300">Type</th>
-                <th className="px-4 py-2 text-right font-semibold text-gray-600 dark:text-gray-300">Balance</th>
-                <th className="px-4 py-2 text-center font-semibold text-gray-600 dark:text-gray-300">Active</th>
-                <th className="px-4 py-2 text-right font-semibold text-gray-600 dark:text-gray-300">Actions</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-gray-100 dark:divide-gray-800">
-              {ACCOUNT_TYPES.map(type => (
-                <>
-                  {/* Type header row */}
-                  <tr
-                    key={`header-${type}`}
-                    className="bg-gray-50 dark:bg-gray-800/50 cursor-pointer select-none"
-                    onClick={() => toggleType(type)}
-                  >
-                    <td colSpan={6} className="px-4 py-2">
-                      <div className="flex items-center gap-2">
-                        {expandedTypes[type] ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
-                        <span className={`font-semibold capitalize text-sm ${TYPE_COLORS[type]}`}>{type}s</span>
-                        <span className="text-xs text-gray-400">({grouped[type]?.length ?? 0})</span>
-                      </div>
-                    </td>
+        <div className="overflow-hidden rounded-xl border border-gray-200 bg-white shadow-sm dark:border-gray-700 dark:bg-gray-900">
+          {loadError ? (
+            <div className="border-b border-gray-200 bg-red-50 px-4 py-3 text-sm text-red-700 dark:border-gray-700 dark:bg-red-950/30 dark:text-red-300">
+              {loadError}
+            </div>
+          ) : null}
+
+          {accounts.length === 0 ? (
+            <div className="px-6 py-14 text-center">
+              <div className="text-sm font-medium text-gray-900 dark:text-white">No accounts found</div>
+              <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
+                Seed the default chart or refine your search to populate the table.
+              </p>
+            </div>
+          ) : (
+            <div className="overflow-x-auto">
+              <table className="min-w-full divide-y divide-gray-200 text-sm dark:divide-gray-700">
+                <thead className="bg-gray-50 dark:bg-gray-800/60">
+                  <tr>
+                    <th className="px-4 py-3 text-left font-semibold text-gray-600 dark:text-gray-300">Code</th>
+                    <th className="px-4 py-3 text-left font-semibold text-gray-600 dark:text-gray-300">Account Name</th>
+                    <th className="px-4 py-3 text-left font-semibold text-gray-600 dark:text-gray-300">Type</th>
+                    <th className="px-4 py-3 text-right font-semibold text-gray-600 dark:text-gray-300">Balance</th>
+                    <th className="px-4 py-3 text-center font-semibold text-gray-600 dark:text-gray-300">Active</th>
+                    <th className="px-4 py-3 text-right font-semibold text-gray-600 dark:text-gray-300">Actions</th>
                   </tr>
-                  {/* Account rows */}
-                  {expandedTypes[type] && grouped[type]?.map(account => (
-                    <tr key={account.id} className="hover:bg-gray-50 dark:hover:bg-gray-800/40">
-                      <td className="px-4 py-2 font-mono text-xs text-gray-600 dark:text-gray-400">{account.code}</td>
-                      <td className="px-4 py-2">
-                        <span className="text-gray-900 dark:text-white">{account.name}</span>
-                        {account.is_system && (
-                          <span className="ml-1 text-xs text-gray-400">(system)</span>
-                        )}
-                      </td>
-                      <td className="px-4 py-2">{typeBadge(account.account_type)}</td>
-                      <td className="px-4 py-2 text-right font-mono text-xs">
-                        {Number(account.balance).toFixed(2)}
-                      </td>
-                      <td className="px-4 py-2 text-center">
-                        <span className={`w-2 h-2 rounded-full inline-block ${account.is_active ? 'bg-green-500' : 'bg-gray-300'}`} />
-                      </td>
-                      <td className="px-4 py-2 text-right">
-                        <div className="flex justify-end gap-1">
-                          <button
-                            onClick={() => openEdit(account)}
-                            disabled={account.is_system}
-                            className="p-1 text-gray-400 hover:text-blue-600 disabled:opacity-30"
-                            title="Edit"
-                          >
-                            <Pencil size={14} />
-                          </button>
-                          <button
-                            onClick={() => handleDelete(account)}
-                            disabled={account.is_system}
-                            className="p-1 text-gray-400 hover:text-red-600 disabled:opacity-30"
-                            title="Delete"
-                          >
-                            <Trash2 size={14} />
-                          </button>
-                        </div>
-                      </td>
-                    </tr>
+                </thead>
+                <tbody className="divide-y divide-gray-100 dark:divide-gray-800">
+                  {ACCOUNT_TYPES.map(type => (
+                    <Fragment key={type}>
+                      <tr
+                        className="cursor-pointer select-none bg-gray-50/80 transition-colors hover:bg-gray-100 dark:bg-gray-800/40 dark:hover:bg-gray-800"
+                        onClick={() => toggleType(type)}
+                      >
+                        <td colSpan={6} className="px-4 py-3">
+                          <div className="flex items-center gap-2">
+                            {expandedTypes[type] ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
+                            <span className={`text-sm font-semibold capitalize ${TYPE_COLORS[type]}`}>{type}s</span>
+                            <span className="text-xs text-gray-400">({grouped[type]?.length ?? 0})</span>
+                          </div>
+                        </td>
+                      </tr>
+                      {expandedTypes[type] && grouped[type]?.map(account => (
+                        <tr key={account.id} className="transition-colors hover:bg-gray-50 dark:hover:bg-gray-800/40">
+                          <td className="px-4 py-3 font-mono text-xs text-gray-600 dark:text-gray-400">{account.code}</td>
+                          <td className="px-4 py-3">
+                            <div className="flex flex-col gap-0.5">
+                              <span className="font-medium text-gray-900 dark:text-white">{account.name}</span>
+                              <div className="flex flex-wrap items-center gap-2 text-xs text-gray-500 dark:text-gray-400">
+                                <span>{account.account_subtype.replace(/_/g, ' ')}</span>
+                                {account.is_system && (
+                                  <span className="rounded-full bg-gray-100 px-2 py-0.5 text-[11px] font-medium text-gray-500 dark:bg-gray-800 dark:text-gray-300">
+                                    System
+                                  </span>
+                                )}
+                              </div>
+                            </div>
+                          </td>
+                          <td className="px-4 py-3">{typeBadge(account.account_type)}</td>
+                          <td className="px-4 py-3 text-right font-mono text-xs text-gray-700 dark:text-gray-300">
+                            {Number(account.balance).toFixed(2)}
+                          </td>
+                          <td className="px-4 py-3 text-center">
+                            <span
+                              className={`inline-block h-2.5 w-2.5 rounded-full ${account.is_active ? 'bg-emerald-500' : 'bg-gray-300 dark:bg-gray-600'}`}
+                              title={account.is_active ? 'Active' : 'Inactive'}
+                            />
+                          </td>
+                          <td className="px-4 py-3 text-right">
+                            <div className="flex justify-end gap-1">
+                              <button
+                                onClick={() => openEdit(account)}
+                                disabled={account.is_system}
+                                className="inline-flex h-8 w-8 items-center justify-center rounded-md border border-transparent text-gray-400 transition hover:border-blue-200 hover:bg-blue-50 hover:text-blue-600 disabled:cursor-not-allowed disabled:opacity-30 dark:hover:border-blue-900 dark:hover:bg-blue-950/40"
+                                title="Edit"
+                              >
+                                <Pencil size={14} />
+                              </button>
+                              <button
+                                onClick={() => handleDelete(account)}
+                                disabled={account.is_system}
+                                className="inline-flex h-8 w-8 items-center justify-center rounded-md border border-transparent text-gray-400 transition hover:border-red-200 hover:bg-red-50 hover:text-red-600 disabled:cursor-not-allowed disabled:opacity-30 dark:hover:border-red-900 dark:hover:bg-red-950/40"
+                                title="Delete"
+                              >
+                                <Trash2 size={14} />
+                              </button>
+                            </div>
+                          </td>
+                        </tr>
+                      ))}
+                    </Fragment>
                   ))}
-                </>
-              ))}
-            </tbody>
-          </table>
+                </tbody>
+              </table>
+            </div>
+          )}
         </div>
       )}
 

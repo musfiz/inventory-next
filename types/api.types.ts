@@ -686,10 +686,70 @@ export interface PosOrderListItem {
   payment_status: 'paid' | 'partial' | 'pending' | 'failed';
   grand_total: number;
   paid_amount?: number;
+  due_amount?: number;
   is_paid: boolean;
   session?: { id: number; session_number: string };
   register?: { id: number; name: string };
   created_at: string;
+}
+
+export interface PosOrderDetailItem {
+  id: number;
+  product_id: number;
+  variation_id?: number;
+  item_name: string;
+  quantity: number;
+  unit_price: number;
+  discount?: number;
+  tax_rate?: number;
+  line_total: number;
+  product?: { id: number; name: string; code?: string };
+  variation?: { id: number; name?: string; sku?: string };
+}
+
+export interface PosOrderDetail {
+  id: number;
+  uuid: string;
+  invoice_number: string;
+  tenant_id?: number;
+  customer_id?: number;
+  customer_name?: string;
+  customer_phone?: string;
+  order_date: string;
+  status: string;
+  type?: string;
+  sub_total: number;
+  discount_type?: string;
+  discount_value?: number;
+  discount_amount: number;
+  tax_amount: number;
+  rounding_adjustment?: number;
+  grand_total: number;
+  paid_amount: number;
+  due_amount: number;
+  change_amount?: number;
+  tendered_amount?: number;
+  payment_status: 'paid' | 'partial' | 'pending' | 'failed';
+  payment_method: PaymentMethod;
+  is_paid: boolean;
+  payment_due_date?: string;
+  notes?: string;
+  paid_at?: string;
+  created_at: string;
+  session?: { id: number; session_number: string };
+  register?: { id: number; name: string };
+  customer?: { id: number; name: string; phone?: string; email?: string };
+  tenant?: { id: number; business_name: string };
+  items: PosOrderDetailItem[];
+  payments: {
+    id: number;
+    receipt_number: string;
+    payment_method: string;
+    amount: number;
+    status: string;
+    payment_date?: string;
+    notes?: string;
+  }[];
 }
 
 // ─── Sales Return Types ───────────────────────────────────────────────────────
@@ -736,6 +796,21 @@ export interface SalesReturnItem {
   sales_order_item?: { id: number; quantity: number; quantity_returned?: number };
 }
 
+export interface SalesReturnSettlementPayment {
+  id: number;
+  tenant_id?: number;
+  sales_return_id: number;
+  sales_order_id: number;
+  action: 'refund' | 'collect';
+  amount: number;
+  payment_method: string;
+  notes?: string | null;
+  created_by?: number | null;
+  created_at?: string;
+  updated_at?: string;
+  creator?: { id: number; name: string } | null;
+}
+
 export interface SalesReturn {
   id: number;
   uuid?: string;
@@ -756,10 +831,19 @@ export interface SalesReturn {
   created_at?: string;
   updated_at?: string;
   items?: SalesReturnItem[];
-  sales_order?: { id: number; invoice_number: string; order_number?: string };
+  sales_order?: {
+    id: number;
+    invoice_number: string;
+    order_number?: string;
+    grand_total?: number;
+    paid_amount?: number;
+    returned_amount?: number;
+    payment_status?: string;
+  };
   customer?: { id: number; name: string; phone?: string; email?: string };
   approver?: { id: number; name: string } | null;
   creator?: { id: number; name: string } | null;
+  settlement_payments?: SalesReturnSettlementPayment[];
 }
 
 /** Item row returned from GET /api/v1/pos/orders/{id}/items */

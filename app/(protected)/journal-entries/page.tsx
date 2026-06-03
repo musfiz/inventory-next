@@ -52,7 +52,7 @@ export default function JournalEntriesPage() {
     setLoadingAccounts(true);
     try {
       const res = await accountService.dropdown();
-      setAccountOptions(res.data?.data ?? []);
+      setAccountOptions(res);
     } finally {
       setLoadingAccounts(false);
     }

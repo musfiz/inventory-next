@@ -29,7 +29,7 @@ export default function ProfitLossPage() {
     setLoading(true);
     try {
       const res = await accountService.profitLoss({ start_date: startDate, end_date: endDate });
-      setReport(res.data?.data ?? null);
+      setReport(res);
     } catch {
       notify.error('Failed to load P&L report');
     } finally {

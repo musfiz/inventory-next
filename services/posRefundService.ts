@@ -19,7 +19,7 @@ export interface PosRefund {
   completed_at?: string | null;
   created_at?: string;
   updated_at?: string;
-  pos_order?: { id: number | string; invoice_number?: string; order_number?: string } | null;
+  pos_order?: { id: number | string; invoice_number?: string; order_number?: string; grand_total?: number | string; paid_amount?: number | string; returned_amount?: number | string; payment_status?: string } | null;
   items?: PosRefundItem[];
   approved_by_user?: { id: number | string; name: string } | null;
   created_by_user?: { id: number | string; name: string } | null;
@@ -63,7 +63,7 @@ class PosRefundService {
 
   /** Create a refund with dedicated item records in one step */
   async quickCreate(data: {
-    original_order_id: number | string;
+    pos_order_id: number | string;
     refund_reason: string;
     refund_method: string;
     reason_details?: string;
@@ -78,6 +78,12 @@ class PosRefundService {
   async getOrderItems(orderId: number | string) {
     const response = await apiClient.get<ApiResponse<PosOrderItemForRefund[]>>(`/api/v1/pos/orders/${orderId}/items`);
     return response.data.data;
+  }
+
+  /** Settle payment after a completed refund (refund overpayment or collect remaining due) */
+  async settlePayment(id: number | string, data: { action: string; amount: string | number; payment_method: string; notes?: string }) {
+    const response = await apiClient.post<ApiResponse<any>>(`/api/v1/pos/refunds/${id}/settle-payment`, data);
+    return response.data;
   }
 }
 

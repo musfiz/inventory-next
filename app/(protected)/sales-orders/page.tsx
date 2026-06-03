@@ -371,7 +371,7 @@ export default function SalesOrdersPage() {
                   </div>
 
                   {/* Financial summary */}
-                  <div className="grid grid-cols-4 gap-2">
+                  <div className="grid grid-cols-5 gap-2">
                     <div className="bg-gradient-to-br from-blue-500 to-blue-600 rounded-xl p-2.5 text-white text-center shadow-sm">
                       <p className="text-xs opacity-80 mb-0.5">Grand Total</p>
                       <p className="text-base font-bold leading-tight">{Number(currentSO?.grand_total ?? 0).toFixed(2)}</p>
@@ -379,6 +379,10 @@ export default function SalesOrdersPage() {
                     <div className="bg-gradient-to-br from-emerald-500 to-emerald-600 rounded-xl p-2.5 text-white text-center shadow-sm">
                       <p className="text-xs opacity-80 mb-0.5">Paid</p>
                       <p className="text-base font-bold leading-tight">{Number(currentSO?.paid_amount ?? 0).toFixed(2)}</p>
+                    </div>
+                    <div className={`bg-gradient-to-br ${Number(currentSO?.returned_amount ?? 0) > 0 ? 'from-orange-500 to-red-500' : 'from-gray-400 to-gray-500'} rounded-xl p-2.5 text-white text-center shadow-sm`}>
+                      <p className="text-xs opacity-80 mb-0.5">Returned</p>
+                      <p className="text-base font-bold leading-tight">{Number(currentSO?.returned_amount ?? 0).toFixed(2)}</p>
                     </div>
                     <div className="bg-gradient-to-br from-amber-500 to-orange-500 rounded-xl p-2.5 text-white text-center shadow-sm">
                       <p className="text-xs opacity-80 mb-0.5">Discount</p>
@@ -459,57 +463,261 @@ export default function SalesOrdersPage() {
                   </div>
 
                   {/* Items table */}
-                  <div className="rounded-xl overflow-hidden border border-blue-100 shadow-sm">
-                    <table className="min-w-full text-sm">
-                      <thead>
-                        <tr className="bg-gradient-to-r from-blue-600 to-indigo-600 text-white">
-                          <th className="px-3 py-2 text-left text-xs font-semibold">#</th>
-                          <th className="px-3 py-2 text-left text-xs font-semibold">Product</th>
-                          <th className="px-3 py-2 text-left text-xs font-semibold">Variation</th>
-                          <th className="px-3 py-2 text-center text-xs font-semibold">Qty</th>
-                          <th className="px-3 py-2 text-center text-xs font-semibold">Delivered</th>
-                          <th className="px-3 py-2 text-right text-xs font-semibold">Unit Price</th>
-                        </tr>
-                      </thead>
-                      <tbody className="divide-y divide-blue-50">
-                        {detailItems.length === 0 ? (
-                          <tr>
-                            <td colSpan={6} className="px-3 py-8 text-center text-gray-400 text-sm">
-                              No items found
-                            </td>
-                          </tr>
-                        ) : (
-                          detailItems.map((it, idx) => (
-                            <tr
-                              key={it.id}
-                              className={idx % 2 === 0 ? 'bg-white' : 'bg-blue-50'}
-                            >
-                              <td className="px-3 py-2 text-gray-400 text-xs">{idx + 1}</td>
-                              <td className="px-3 py-2 font-medium text-gray-800">
-                                {it.product?.name || it.item_name || '-'}
-                              </td>
-                              <td className="px-3 py-2 text-gray-500">
-                                {it.variation?.name || '-'}
-                              </td>
-                              <td className="px-3 py-2 text-center">
-                                <span className="bg-blue-100 text-blue-700 px-2 py-0.5 rounded-full text-xs font-semibold">
-                                  {Math.abs(it.quantity)}
-                                </span>
-                              </td>
-                              <td className="px-3 py-2 text-center">
-                                <span className="bg-emerald-100 text-emerald-700 px-2 py-0.5 rounded-full text-xs font-semibold">
-                                  {Math.abs(it.delivered_quantity)}
-                                </span>
-                              </td>
-                              <td className="px-3 py-2 text-right font-semibold text-gray-800">
-                                {Number(it.unit_price ?? 0).toFixed(2)}
-                              </td>
-                            </tr>
-                          ))
+                  {(() => {
+                    const itemsSubtotal = detailItems.reduce(
+                      (sum, it) => sum + Number(it.quantity ?? 0) * Number(it.unit_price ?? 0), 0
+                    );
+                    const returns: any[] = currentSO?.returns ?? [];
+                    const returnsTotal = returns.reduce(
+                      (sum, r) => sum + Number(r.refund_amount ?? r.total_amount ?? 0), 0
+                    );
+                    const net = itemsSubtotal - returnsTotal;
+                    const paidAmount = Number(currentSO?.paid_amount ?? 0);
+                    const balanceDue = net - paidAmount;
+                    const balanceAmount = Math.abs(balanceDue).toFixed(2);
+                    const balanceText =
+                      balanceDue > 0 ? 'Amount Due' : balanceDue < 0 ? 'Customer Return' : 'Settled';
+
+                    return (
+                      <>
+                        <div className="rounded-xl overflow-hidden border border-blue-100 shadow-sm">
+                          <table className="min-w-full text-sm">
+                            <thead>
+                              <tr className="bg-gradient-to-r from-blue-600 to-indigo-600 text-white">
+                                <th className="px-3 py-2 text-left text-xs font-semibold">#</th>
+                                <th className="px-3 py-2 text-left text-xs font-semibold">Product</th>
+                                <th className="px-3 py-2 text-left text-xs font-semibold">Variation</th>
+                                <th className="px-3 py-2 text-center text-xs font-semibold">Qty</th>
+                                <th className="px-3 py-2 text-center text-xs font-semibold">Delivered</th>
+                                <th className="px-3 py-2 text-center text-xs font-semibold">Returned</th>
+                                <th className="px-3 py-2 text-right text-xs font-semibold">Unit Price</th>
+                                <th className="px-3 py-2 text-right text-xs font-semibold">Line Total</th>
+                              </tr>
+                            </thead>
+                            <tbody className="divide-y divide-blue-50">
+                              {detailItems.length === 0 ? (
+                                <tr>
+                                  <td colSpan={8} className="px-3 py-8 text-center text-gray-400 text-sm">
+                                    No items found
+                                  </td>
+                                </tr>
+                              ) : (
+                                detailItems.map((it, idx) => (
+                                  <tr
+                                    key={it.id}
+                                    className={idx % 2 === 0 ? 'bg-white' : 'bg-blue-50'}
+                                  >
+                                    <td className="px-3 py-2 text-gray-400 text-xs">{idx + 1}</td>
+                                    <td className="px-3 py-2 font-medium text-gray-800">
+                                      {it.product?.name || it.item_name || '-'}
+                                    </td>
+                                    <td className="px-3 py-2 text-gray-500">
+                                      {it.variation?.name || '-'}
+                                    </td>
+                                    <td className="px-3 py-2 text-center">
+                                      <span className="bg-blue-100 text-blue-700 px-2 py-0.5 rounded-full text-xs font-semibold">
+                                        {Math.abs(it.quantity)}
+                                      </span>
+                                    </td>
+                                    <td className="px-3 py-2 text-center">
+                                      <span className="bg-emerald-100 text-emerald-700 px-2 py-0.5 rounded-full text-xs font-semibold">
+                                        {Math.abs(it.delivered_quantity)}
+                                      </span>
+                                    </td>
+                                    <td className="px-3 py-2 text-center">
+                                      <span className={`px-2 py-0.5 rounded-full text-xs font-semibold ${Number(it.quantity_returned) > 0
+                                        ? 'bg-orange-100 text-orange-700'
+                                        : 'bg-gray-100 text-gray-400'
+                                        }`}>
+                                        {Math.abs(Number(it.quantity_returned ?? 0))}
+                                      </span>
+                                    </td>
+                                    <td className="px-3 py-2 text-right font-semibold text-gray-800">
+                                      {Number(it.unit_price ?? 0).toFixed(2)}
+                                    </td>
+                                    <td className="px-3 py-2 text-right font-semibold text-gray-800">
+                                      {(Number(it.quantity ?? 0) * Number(it.unit_price ?? 0)).toFixed(2)}
+                                    </td>
+                                  </tr>
+                                ))
+                              )}
+                            </tbody>
+                            {detailItems.length > 0 && (
+                              <tfoot>
+                                <tr className="bg-blue-50 border-t-2 border-blue-200">
+                                  <td colSpan={7} className="px-3 py-2 text-right text-xs font-semibold text-blue-700 uppercase tracking-wide">
+                                    Items Subtotal
+                                  </td>
+                                  <td className="px-3 py-2 text-right font-bold text-blue-800 text-sm">
+                                    {itemsSubtotal.toFixed(2)}
+                                  </td>
+                                </tr>
+                              </tfoot>
+                            )}
+                          </table>
+                        </div>
+
+                        {/* Sales Returns section */}
+                        {returns.length > 0 && (
+                          <div className="space-y-2">
+                            <p className="text-xs font-semibold uppercase tracking-wide text-orange-600 border-b border-orange-100 pb-1">
+                              Sales Returns ({returns.length})
+                            </p>
+                            {returns.map((ret: any) => {
+                              const statusMap: Record<string, string> = {
+                                pending: 'bg-yellow-100 text-yellow-800',
+                                approved: 'bg-blue-100 text-blue-800',
+                                completed: 'bg-emerald-100 text-emerald-800',
+                                cancelled: 'bg-gray-100 text-gray-600',
+                                rejected: 'bg-red-100 text-red-800',
+                              };
+                              const retItems: any[] = ret.items ?? [];
+                              const retSubtotal = retItems.reduce(
+                                (s: number, ri: any) => s + Number(ri.quantity_returned ?? 0) * Number(ri.unit_price ?? 0), 0
+                              );
+                              return (
+                                <div key={ret.id} className="rounded-xl border border-orange-100 overflow-hidden shadow-sm">
+                                  {/* Return header */}
+                                  <div className="flex items-center justify-between bg-orange-50 px-3 py-2">
+                                    <div className="flex items-center gap-2">
+                                      <span className="font-mono text-xs font-bold text-orange-700">{ret.return_number}</span>
+                                      <span className={`px-2 py-0.5 rounded-full text-xs font-medium capitalize ${statusMap[ret.status] ?? 'bg-gray-100 text-gray-600'}`}>
+                                        {ret.status}
+                                      </span>
+                                    </div>
+                                    <div className="flex items-center gap-3 text-xs text-gray-500">
+                                      {ret.return_date && (
+                                        <span>{new Date(ret.return_date).toLocaleDateString()}</span>
+                                      )}
+                                      {ret.reason && (
+                                        <span className="capitalize">{String(ret.reason).replace(/_/g, ' ')}</span>
+                                      )}
+                                      <span className="font-semibold text-orange-700">
+                                        Refund: {Number(ret.refund_amount ?? ret.total_amount ?? 0).toFixed(2)}
+                                      </span>
+                                    </div>
+                                  </div>
+                                  {/* Return items */}
+                                  {retItems.length > 0 && (
+                                    <table className="min-w-full text-xs">
+                                      <thead>
+                                        <tr className="bg-orange-100/60">
+                                          <th className="px-3 py-1.5 text-left font-semibold text-orange-700">Product</th>
+                                          <th className="px-3 py-1.5 text-left font-semibold text-orange-700">Variation</th>
+                                          <th className="px-3 py-1.5 text-center font-semibold text-orange-700">Qty Returned</th>
+                                          <th className="px-3 py-1.5 text-right font-semibold text-orange-700">Unit Price</th>
+                                          <th className="px-3 py-1.5 text-right font-semibold text-orange-700">Line Total</th>
+                                        </tr>
+                                      </thead>
+                                      <tbody className="divide-y divide-orange-50">
+                                        {retItems.map((ri: any, ri_idx: number) => (
+                                          <tr key={ri.id ?? ri_idx} className="bg-white">
+                                            <td className="px-3 py-1.5 font-medium text-gray-800">
+                                              {ri.product?.name ?? '-'}
+                                            </td>
+                                            <td className="px-3 py-1.5 text-gray-500">
+                                              {ri.variation?.name ?? '-'}
+                                            </td>
+                                            <td className="px-3 py-1.5 text-center">
+                                              <span className="bg-orange-100 text-orange-700 px-2 py-0.5 rounded-full font-semibold">
+                                                {Number(ri.quantity_returned ?? 0)}
+                                              </span>
+                                            </td>
+                                            <td className="px-3 py-1.5 text-right text-gray-700">
+                                              {Number(ri.unit_price ?? 0).toFixed(2)}
+                                            </td>
+                                            <td className="px-3 py-1.5 text-right font-semibold text-gray-800">
+                                              {(Number(ri.quantity_returned ?? 0) * Number(ri.unit_price ?? 0)).toFixed(2)}
+                                            </td>
+                                          </tr>
+                                        ))}
+                                      </tbody>
+                                      <tfoot>
+                                        <tr className="bg-orange-50 border-t border-orange-200">
+                                          <td colSpan={4} className="px-3 py-1.5 text-right text-xs font-semibold text-orange-700">
+                                            Return Subtotal
+                                          </td>
+                                          <td className="px-3 py-1.5 text-right font-bold text-orange-800">
+                                            {retSubtotal.toFixed(2)}
+                                          </td>
+                                        </tr>
+                                      </tfoot>
+                                    </table>
+                                  )}
+                                </div>
+                              );
+                            })}
+                          </div>
                         )}
-                      </tbody>
-                    </table>
-                  </div>
+
+                        {/* Net financial summary */}
+                        {detailItems.length > 0 && (
+                          <div className="rounded-xl border border-gray-200 overflow-hidden">
+                            <table className="w-full text-sm">
+                              <tbody>
+                                <tr className="border-b border-gray-100">
+                                  <td className="px-4 py-2 text-gray-500 text-xs">Items Subtotal</td>
+                                  <td className="px-4 py-2 text-right font-semibold text-gray-800">{itemsSubtotal.toFixed(2)}</td>
+                                </tr>
+                                {Number(currentSO?.discount_amount ?? 0) > 0 && (
+                                  <tr className="border-b border-gray-100">
+                                    <td className="px-4 py-2 text-gray-500 text-xs">
+                                      Discount
+                                      {currentSO?.discount_type === 'percentage' ? ` (${currentSO.discount_value}%)` : ''}
+                                    </td>
+                                    <td className="px-4 py-2 text-right font-semibold text-amber-600">
+                                      − {Number(currentSO?.discount_amount ?? 0).toFixed(2)}
+                                    </td>
+                                  </tr>
+                                )}
+                                {(Number(currentSO?.tax_amount ?? 0) + Number(currentSO?.shipping_charge ?? 0)) > 0 && (
+                                  <tr className="border-b border-gray-100">
+                                    <td className="px-4 py-2 text-gray-500 text-xs">Tax + Shipping</td>
+                                    <td className="px-4 py-2 text-right font-semibold text-gray-600">
+                                      + {(Number(currentSO?.tax_amount ?? 0) + Number(currentSO?.shipping_charge ?? 0)).toFixed(2)}
+                                    </td>
+                                  </tr>
+                                )}
+                                <tr className="border-b border-gray-100 bg-blue-50">
+                                  <td className="px-4 py-2 text-blue-700 text-xs font-semibold">Grand Total</td>
+                                  <td className="px-4 py-2 text-right font-bold text-blue-800">{Number(currentSO?.grand_total ?? 0).toFixed(2)}</td>
+                                </tr>
+                                {returnsTotal > 0 && (
+                                  <tr className="border-b border-gray-100">
+                                    <td className="px-4 py-2 text-orange-600 text-xs font-semibold">
+                                      Returns ({returns.length} return{returns.length > 1 ? 's' : ''})
+                                    </td>
+                                    <td className="px-4 py-2 text-right font-bold text-orange-600">
+                                      − {returnsTotal.toFixed(2)}
+                                    </td>
+                                  </tr>
+                                )}
+                                {returnsTotal > 0 && (
+                                  <tr className="border-b border-gray-100 bg-indigo-50">
+                                    <td className="px-4 py-2 text-indigo-700 text-xs font-semibold">Net Order Total</td>
+                                    <td className="px-4 py-2 text-right font-bold text-indigo-800">{Math.max(0, net).toFixed(2)}</td>
+                                  </tr>
+                                )}
+                                <tr className="border-b border-gray-100">
+                                  <td className="px-4 py-2 text-emerald-600 text-xs font-semibold">Paid</td>
+                                  <td className="px-4 py-2 text-right font-bold text-emerald-700">{paidAmount.toFixed(2)}</td>
+                                </tr>
+                                <tr className={`${balanceDue > 0 ? 'bg-red-50' : balanceDue < 0 ? 'bg-emerald-50' : 'bg-gray-50'}`}>
+                                  <td className="px-4 py-2 text-xs font-bold text-gray-700">Balance Due</td>
+                                  <td className={`px-4 py-2 text-right font-bold text-base ${balanceDue > 0 ? 'text-red-600' : balanceDue < 0 ? 'text-emerald-600' : 'text-gray-600'}`}>
+                                    <span>{balanceAmount}</span>
+                                    <span className="ml-2 text-xs font-semibold uppercase tracking-wide">
+                                      {balanceText}
+                                    </span>
+                                  </td>
+                                </tr>
+                              </tbody>
+                            </table>
+                          </div>
+                        )}
+                      </>
+                    );
+                  })()}
                 </>
               )}
             </div>

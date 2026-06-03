@@ -18,7 +18,34 @@ export interface Customer {
   type?: 'retail' | 'wholesale' | 'corporate' | 'dealer';
   credit_limit?: number;
   current_balance?: number;
+  outstanding_balance?: number;
   status?: 'active' | 'inactive' | 'blacklisted';
+}
+
+export interface CustomerStatementOrder {
+  id: number;
+  invoice_number?: string;
+  order_date?: string;
+  grand_total?: number;
+  paid_amount?: number;
+  returned_amount?: number;
+  due_amount?: number;
+  payment_status?: string;
+}
+
+export interface CustomerStatementResponse {
+  customer: Customer;
+  summary: {
+    total_outstanding: number;
+    orders_count: number;
+  };
+  orders: {
+    data: CustomerStatementOrder[];
+    current_page: number;
+    last_page: number;
+    per_page: number;
+    total: number;
+  };
 }
 
 class CustomerService {
@@ -29,6 +56,16 @@ class CustomerService {
 
   async getCustomer(id: number) {
     const response = await apiClient.get<ApiResponse<Customer>>(`/api/v1/customers/${id}`);
+    return response.data.data;
+  }
+
+  async getCustomerStatement(id: number, params?: Record<string, any>) {
+    const response = await apiClient.get<ApiResponse<CustomerStatementResponse>>(`/api/v1/customers/${id}/statement`, { params });
+    return response.data.data;
+  }
+
+  async recordCustomerPayment(id: number, data: { amount: number | string; payment_method: string; notes?: string; payment_date?: string }) {
+    const response = await apiClient.post<ApiResponse<any>>(`/api/v1/customers/${id}/record-payment`, data);
     return response.data.data;
   }
 

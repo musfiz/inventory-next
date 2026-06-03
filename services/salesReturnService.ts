@@ -46,6 +46,11 @@ class SalesReturnService {
     const response = await apiClient.get<ApiResponse<SalesReturn[]>>(`/api/v1/sales-order/${salesOrderId}/returns`);
     return response.data.data;
   }
+
+  async settlePayment(id: number | string, data: { action: string; amount: string | number; payment_method: string; notes?: string }) {
+    const response = await apiClient.post<ApiResponse<any>>(`/api/v1/sales-returns/${id}/settle-payment`, data);
+    return response.data;
+  }
 }
 
 export default new SalesReturnService();

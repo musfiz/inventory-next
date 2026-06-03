@@ -111,8 +111,14 @@ export default function PosRefundsPage() {
 
   // Print
   const [printRefund, setPrintRefund] = useState<PosRefund | null>(null);
-  const [printItems, setPrintItems] = useState<PosRefundItem[]>([]);
+  const [printItems, setPrintItems] = useState<Array<{ item_name: string; item_code?: string; quantity: number; unit_price: number; variation?: { sku?: string; name?: string } }>>([]);
   const printRef = useRef<HTMLDivElement>(null);
+
+  // Settle
+  const [showSettleDialog, setShowSettleDialog] = useState(false);
+  const [settleTarget, setSettleTarget] = useState<PosRefund | null>(null);
+  const [settleForm, setSettleForm] = useState({ action: 'collect', amount: '', payment_method: 'cash', notes: '' });
+  const [settling, setSettling] = useState(false);
 
   // ── Dropdown loaders ──────────────────────────────────────────────────────
 
@@ -169,7 +175,7 @@ export default function PosRefundsPage() {
   const validateForm = (): boolean => {
     const errs: Record<string, string> = {};
     if (isSuperAdmin && !tenantId) errs.tenant_id = 'Tenant is required';
-    if (!selectedOrder?.value) errs.original_order_id = 'Original order is required';
+    if (!selectedOrder?.value) errs.pos_order_id = 'POS order is required';
     if (!refundReason) errs.refund_reason = 'Refund reason is required';
     if (!refundMethod) errs.refund_method = 'Refund method is required';
     if (refundLines.length === 0) errs.items = 'Add at least one item to refund';
@@ -214,7 +220,7 @@ export default function PosRefundsPage() {
     setSubmitting(true);
     try {
       await posRefundService.quickCreate({
-        original_order_id: selectedOrder!.value,
+        pos_order_id: selectedOrder!.value,
         refund_reason: refundReason,
         refund_method: refundMethod,
         reason_details: reasonDetails || undefined,
@@ -230,16 +236,17 @@ export default function PosRefundsPage() {
 
   const handleApprove = async (refund: PosRefund) => {
     const result = await confirm({
-      title: 'Approve Refund',
-      html: `Approve refund <strong>${refund.refund_number}</strong>?`,
-      confirmButtonText: 'Approve', cancelButtonText: 'Cancel', icon: 'question',
+      title: 'Approve & Restock',
+      html: `Approve refund <strong>${refund.refund_number}</strong> and restore stock immediately?`,
+      confirmButtonText: 'Approve & Restock', cancelButtonText: 'Cancel', icon: 'question',
     });
     if (!result.isConfirmed) return;
     try {
       await posRefundService.approve(refund.id);
-      notify.success('Refund approved');
+      await posRefundService.complete(refund.id);
+      notify.success('Refund approved & stock restored');
       setRefreshKey(k => k + 1);
-    } catch (err: any) { notify.error(err?.response?.data?.message || 'Failed to approve'); }
+    } catch (err: any) { notify.error(err?.response?.data?.message || 'Failed to approve refund'); }
   };
 
   const handleComplete = async (refund: PosRefund) => {
@@ -274,7 +281,13 @@ export default function PosRefundsPage() {
     try {
       const full = await posRefundService.show(refund.id);
       if (!full) return;
-      const items: PosRefundItem[] = full.items ?? [];
+      const items = (full.items ?? []).map((item: PosRefundItem) => ({
+        item_name: (item.product as any)?.name ?? `Product #${item.product_id}`,
+        item_code: undefined,
+        quantity: Number(item.quantity_returned),
+        unit_price: Number(item.unit_price),
+        variation: item.variation ?? undefined,
+      }));
       setPrintRefund(full);
       setPrintItems(items);
       setTimeout(() => {
@@ -292,6 +305,44 @@ export default function PosRefundsPage() {
         }
       }, 150);
     } catch { notify.error('Failed to load refund details'); }
+  };
+
+  const openSettle = (refund: PosRefund) => {
+    const po = refund.pos_order as any;
+    const grandTotal = Number(po?.grand_total ?? 0);
+    const returnedAmount = Number(po?.returned_amount ?? 0);
+    const paidAmount = Number(po?.paid_amount ?? 0);
+    const effectiveTotal = Math.max(0, grandTotal - returnedAmount);
+    const balance = effectiveTotal - paidAmount;
+    setSettleTarget(refund);
+    setSettleForm({
+      action: balance >= 0 ? 'collect' : 'refund',
+      amount: Math.abs(balance).toFixed(2),
+      payment_method: 'cash',
+      notes: '',
+    });
+    setShowSettleDialog(true);
+  };
+
+  const handleSettleSubmit = async () => {
+    if (!settleTarget) return;
+    setSettling(true);
+    try {
+      await posRefundService.settlePayment(settleTarget.id, {
+        action: settleForm.action,
+        amount: settleForm.amount,
+        payment_method: settleForm.payment_method,
+        notes: settleForm.notes || undefined,
+      });
+      notify.success(settleForm.action === 'refund' ? 'Refund issued successfully' : 'Payment recorded successfully');
+      setShowSettleDialog(false);
+      setSettleTarget(null);
+      setRefreshKey(k => k + 1);
+    } catch (err: any) {
+      notify.error(err?.response?.data?.message || 'Failed to settle payment');
+    } finally {
+      setSettling(false);
+    }
   };
 
   // ── Columns ───────────────────────────────────────────────────────────────
@@ -361,6 +412,16 @@ export default function PosRefundsPage() {
               <button onClick={() => handlePrint(r)} title="Print Credit Note"
                 className="p-1 rounded text-purple-600 hover:bg-purple-50 dark:hover:bg-purple-900/30 cursor-pointer">
                 <Printer className="w-4 h-4" />
+              </button>
+            )}
+            {r.status === 'completed' && (
+              <button onClick={() => openSettle(r)} title="Settle Payment"
+                className="p-1 rounded text-emerald-600 hover:bg-emerald-50 dark:hover:bg-emerald-900/30 cursor-pointer">
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-4 h-4">
+                  <circle cx="12" cy="12" r="10" />
+                  <path d="M12 6v6l4 2" />
+                  <path d="M9 15l2 2 4-4" />
+                </svg>
               </button>
             )}
             {r.status === 'pending' && (
@@ -445,7 +506,7 @@ export default function PosRefundsPage() {
                   placeholder="Search by order / invoice #…"
                   className="text-sm"
                 />
-                {errors.original_order_id && <p className={errCls}>{errors.original_order_id}</p>}
+                {errors.pos_order_id && <p className={errCls}>{errors.pos_order_id}</p>}
               </div>
             </div>
 
@@ -567,6 +628,122 @@ export default function PosRefundsPage() {
         enableSearch
         searchPlaceholder="Search refunds…"
       />
+
+      {/* Settle Payment Dialog */}
+      {showSettleDialog && settleTarget && (() => {
+        const po = settleTarget.pos_order as any;
+        const grandTotal = Number(po?.grand_total ?? 0);
+        const returnedAmount = Number(po?.returned_amount ?? 0);
+        const paidAmount = Number(po?.paid_amount ?? 0);
+        const effectiveTotal = Math.max(0, grandTotal - returnedAmount);
+        const balance = effectiveTotal - paidAmount;
+        return (
+          <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+            <div className="bg-white dark:bg-gray-800 rounded-xl shadow-2xl w-full max-w-md flex flex-col">
+              {/* Header */}
+              <div className="bg-gradient-to-r from-emerald-600 to-teal-600 px-5 py-4 rounded-t-xl flex items-center justify-between text-white">
+                <div>
+                  <h2 className="font-bold text-lg">Settle Payment</h2>
+                  <p className="text-sm opacity-80">{settleTarget.refund_number} · {po?.invoice_number ?? po?.order_number ?? '-'}</p>
+                </div>
+                <button onClick={() => setShowSettleDialog(false)}
+                  className="rounded-full p-1 hover:bg-white/20 transition-colors">
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+
+              {/* Summary cards */}
+              <div className="p-5 space-y-3">
+                <div className="grid grid-cols-2 gap-2 text-sm">
+                  <div className="bg-blue-50 dark:bg-blue-900/30 rounded-lg p-3">
+                    <p className="text-xs text-gray-500 dark:text-gray-400 mb-0.5">Order Total</p>
+                    <p className="font-semibold text-gray-800 dark:text-gray-100">{fmtNum(grandTotal)}</p>
+                  </div>
+                  <div className="bg-orange-50 dark:bg-orange-900/30 rounded-lg p-3">
+                    <p className="text-xs text-gray-500 dark:text-gray-400 mb-0.5">Refunded</p>
+                    <p className="font-semibold text-orange-600">{fmtNum(returnedAmount)}</p>
+                  </div>
+                  <div className="bg-indigo-50 dark:bg-indigo-900/30 rounded-lg p-3">
+                    <p className="text-xs text-gray-500 dark:text-gray-400 mb-0.5">Net Order</p>
+                    <p className="font-semibold text-indigo-600">{fmtNum(effectiveTotal)}</p>
+                  </div>
+                  <div className="bg-emerald-50 dark:bg-emerald-900/30 rounded-lg p-3">
+                    <p className="text-xs text-gray-500 dark:text-gray-400 mb-0.5">Paid</p>
+                    <p className="font-semibold text-emerald-600">{fmtNum(paidAmount)}</p>
+                  </div>
+                </div>
+
+                {/* Balance banner */}
+                <div className={`rounded-lg p-3 text-center ${balance === 0
+                    ? 'bg-green-100 dark:bg-green-900/40 text-green-800 dark:text-green-200'
+                    : balance > 0
+                      ? 'bg-amber-100 dark:bg-amber-900/40 text-amber-800 dark:text-amber-200'
+                      : 'bg-red-100 dark:bg-red-900/40 text-red-800 dark:text-red-200'
+                  }`}>
+                  {balance === 0 ? (
+                    <p className="font-semibold text-sm">Order is fully settled — no action needed</p>
+                  ) : (
+                    <>
+                      <p className="text-xs mb-0.5">{balance > 0 ? 'Customer still owes' : 'Refund due to customer'}</p>
+                      <p className="font-bold text-xl">{fmtNum(Math.abs(balance))}</p>
+                    </>
+                  )}
+                </div>
+
+                {/* Settlement form */}
+                {balance !== 0 && (
+                  <div className="space-y-3">
+                    <div>
+                      <label className={labelCls}>Action</label>
+                      <select value={settleForm.action}
+                        onChange={e => setSettleForm(f => ({ ...f, action: e.target.value }))}
+                        className={inputCls}>
+                        <option value="collect">Collect Payment from Customer</option>
+                        <option value="refund">Issue Refund to Customer</option>
+                      </select>
+                    </div>
+                    <div>
+                      <label className={labelCls}>Amount</label>
+                      <input type="number" step="0.01" min="0.01"
+                        value={settleForm.amount}
+                        onChange={e => setSettleForm(f => ({ ...f, amount: e.target.value }))}
+                        className={inputCls} />
+                    </div>
+                    <div>
+                      <label className={labelCls}>Payment Method</label>
+                      <select value={settleForm.payment_method}
+                        onChange={e => setSettleForm(f => ({ ...f, payment_method: e.target.value }))}
+                        className={inputCls}>
+                        {REFUND_METHODS.map(m => <option key={m.value} value={m.value}>{m.label}</option>)}
+                      </select>
+                    </div>
+                    <div>
+                      <label className={labelCls}>Notes <span className="text-gray-400 font-normal">(optional)</span></label>
+                      <input type="text" value={settleForm.notes}
+                        onChange={e => setSettleForm(f => ({ ...f, notes: e.target.value }))}
+                        className={inputCls} placeholder="e.g. Refunded via cash" />
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              {/* Footer */}
+              <div className="px-5 pb-5 flex justify-end gap-2">
+                <button onClick={() => setShowSettleDialog(false)}
+                  className="px-4 py-1.5 text-sm border border-gray-300 dark:border-gray-600 rounded-sm text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors">
+                  {balance === 0 ? 'Close' : 'Cancel'}
+                </button>
+                {balance !== 0 && (
+                  <button onClick={handleSettleSubmit} disabled={settling}
+                    className="px-4 py-1.5 text-sm bg-emerald-600 hover:bg-emerald-700 disabled:opacity-60 text-white rounded-sm font-medium transition-colors">
+                    {settling ? 'Processing…' : settleForm.action === 'refund' ? 'Issue Refund' : 'Record Payment'}
+                  </button>
+                )}
+              </div>
+            </div>
+          </div>
+        );
+      })()}
     </div>
   );
 }

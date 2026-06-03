@@ -164,7 +164,7 @@ export function PosRefundCreditNote({ refund, items = [] }: PosRefundCreditNoteP
       <div className="bg-gray-50 rounded p-3 mb-5 grid grid-cols-2 gap-2 text-xs">
         <div>
           <span className="text-gray-500">Original Order:</span>{' '}
-          <span className="font-semibold">{refund.original_order?.order_number ?? `#${refund.original_order_id}`}</span>
+          <span className="font-semibold">{refund.pos_order?.order_number ?? `#${refund.pos_order_id}`}</span>
         </div>
         <div>
           <span className="text-gray-500">Refund Method:</span>{' '}

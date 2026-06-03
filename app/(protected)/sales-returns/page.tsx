@@ -144,9 +144,31 @@ export default function SalesReturnsPage() {
   const [printReturn, setPrintReturn] = useState<SalesReturn | null>(null);
   const printRef = useRef<HTMLDivElement>(null);
 
+  // Settle payment dialog
+  const [showSettleDialog, setShowSettleDialog] = useState(false);
+  const [settleTarget, setSettleTarget] = useState<SalesReturn | null>(null);
+  const [settleForm, setSettleForm] = useState({ action: 'collect', amount: '', payment_method: 'cash', notes: '' });
+  const [settleLoading, setSettleLoading] = useState(false);
+  const [settling, setSettling] = useState(false);
+
   const sf = (field: keyof ReturnForm) =>
     (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) =>
       setForm(f => ({ ...f, [field]: e.target.value }));
+
+  const getOrderBalance = (ret: SalesReturn) => {
+    const so = (ret as any).sales_order;
+    const grandTotal = Number(so?.grand_total ?? 0);
+    const returnedAmount = Number(so?.returned_amount ?? 0);
+    const paidAmount = Number(so?.paid_amount ?? 0);
+    const effectiveTotal = Math.max(0, grandTotal - returnedAmount);
+    return {
+      grandTotal,
+      returnedAmount,
+      paidAmount,
+      effectiveTotal,
+      balance: effectiveTotal - paidAmount,
+    };
+  };
 
   // ── Dropdown loaders ──────────────────────────────────────────────────────
 
@@ -187,7 +209,9 @@ export default function SalesReturnsPage() {
             unit_price: Number(item.unit_price),
             condition: 'good',
             reason: '',
-            item_name: item.item_name ?? item.product?.name ?? '-',
+            item_name: (item.product?.name
+              ? `${item.product.name}${item.variation?.name ? ` - ${item.variation.name}` : ''}`
+              : item.item_name) || '-',
             max_returnable: max,
           };
         })
@@ -202,12 +226,20 @@ export default function SalesReturnsPage() {
 
   // ── Line item updaters ────────────────────────────────────────────────────
 
-  const updateLine = (idx: number, field: keyof ReturnLineItem, value: any) => {
-    setReturnLines(lines => lines.map((l, i) => i === idx ? { ...l, [field]: value } : l));
+  const updateLine = (id: number, field: keyof ReturnLineItem, value: any) => {
+    setReturnLines(lines => lines.map(l => l.sales_order_item_id === id ? { ...l, [field]: value } : l));
   };
 
-  const removeLine = (idx: number) => {
-    setReturnLines(lines => lines.filter((_, i) => i !== idx));
+  const removeLine = (id: number) => {
+    setReturnLines(lines => lines.filter(l => l.sales_order_item_id !== id));
+    // Clear all item-level errors to prevent stale messages appearing on shifted rows
+    setErrors(prev => {
+      const next: Record<string, string> = {};
+      Object.entries(prev).forEach(([k, v]) => {
+        if (!k.startsWith('items.')) next[k] = v;
+      });
+      return next;
+    });
   };
 
   const totalRefund = returnLines.reduce(
@@ -269,15 +301,16 @@ export default function SalesReturnsPage() {
       const lines: ReturnLineItem[] = (ret.items ?? []).map(ri => {
         const orderItem = itemArr.find(oi => oi.id === ri.sales_order_item_id);
         const soldQty = Number(orderItem?.quantity ?? ri.quantity_returned);
-        const prevReturned = Number(orderItem?.quantity_returned ?? 0);
         return {
           sales_order_item_id: ri.sales_order_item_id,
           quantity_returned: Number(ri.quantity_returned),
           unit_price: Number(ri.unit_price),
           condition: ri.condition ?? 'good',
           reason: ri.reason ?? '',
-          item_name: ri.product?.name ?? orderItem?.item_name ?? '-',
-          max_returnable: Number(ri.quantity_returned) + (soldQty - prevReturned),
+          item_name: (orderItem?.product?.name
+            ? `${orderItem.product.name}${orderItem.variation?.name ? ` - ${orderItem.variation.name}` : ''}`
+            : (ri.product?.name ?? orderItem?.item_name ?? '-')),
+          max_returnable: soldQty,
         };
       });
       setReturnLines(lines);
@@ -409,6 +442,50 @@ export default function SalesReturnsPage() {
     } catch { notify.error('Failed to load return details'); }
   };
 
+  const openSettle = async (ret: SalesReturn) => {
+    try {
+      setSettleLoading(true);
+      setShowSettleDialog(true);
+
+      const full = await salesReturnService.show(ret.id);
+      const target = full ?? ret;
+      const { balance } = getOrderBalance(target);
+
+      setSettleTarget(target);
+      setSettleForm({
+        action: balance >= 0 ? 'collect' : 'refund',
+        amount: Math.abs(balance).toFixed(2),
+        payment_method: 'cash',
+        notes: '',
+      });
+    } catch (err: any) {
+      setShowSettleDialog(false);
+      notify.error(err?.response?.data?.message || 'Failed to load settlement details');
+    } finally {
+      setSettleLoading(false);
+    }
+  };
+
+  const handleSettleSubmit = async () => {
+    if (!settleTarget) return;
+    if (!settleForm.amount || Number(settleForm.amount) <= 0) {
+      notify.error('Amount must be greater than 0');
+      return;
+    }
+    try {
+      setSettling(true);
+      await salesReturnService.settlePayment(settleTarget.id, settleForm);
+      notify.success(settleForm.action === 'refund' ? 'Refund issued successfully' : 'Payment collected successfully');
+      setShowSettleDialog(false);
+      setSettleTarget(null);
+      setRefreshKey(k => k + 1);
+    } catch (err: any) {
+      notify.error(err?.response?.data?.message || 'Failed to settle payment');
+    } finally {
+      setSettling(false);
+    }
+  };
+
   // ── Columns ───────────────────────────────────────────────────────────────
 
   const columns: ColumnDef<SalesReturn>[] = [
@@ -428,6 +505,24 @@ export default function SalesReturnsPage() {
       ),
     },
     {
+      id: 'order_payment_status', header: 'Order Payment',
+      cell: ({ row }) => {
+        const payment = String((row.original as any).sales_order?.payment_status ?? '').toLowerCase();
+        if (!payment) return <span className="text-xs text-gray-400">-</span>;
+        const map: Record<string, string> = {
+          pending: 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200',
+          partial: 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200',
+          paid: 'bg-emerald-100 text-emerald-800 dark:bg-emerald-900 dark:text-emerald-200',
+          overdue: 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200',
+        };
+        return (
+          <span className={`px-2 py-0.5 text-xs rounded-full font-medium capitalize ${map[payment] ?? 'bg-gray-100 text-gray-600'}`}>
+            {payment}
+          </span>
+        );
+      },
+    },
+    {
       accessorKey: 'customer_id', header: 'Customer',
       cell: ({ row }) => <span className="text-xs">{(row.original as any).customer?.name ?? '-'}</span>,
     },
@@ -442,6 +537,22 @@ export default function SalesReturnsPage() {
     {
       accessorKey: 'refund_amount', header: 'Refund Total',
       cell: ({ row }) => <span className="font-mono text-xs font-semibold">{fmtNum(row.original.refund_amount)}</span>,
+    },
+    {
+      id: 'order_balance', header: 'Balance',
+      cell: ({ row }) => {
+        const r = row.original;
+        if (r.status !== 'completed') return <span className="text-xs text-gray-400">-</span>;
+        const { balance } = getOrderBalance(r);
+        if (balance === 0) {
+          return <span className="text-xs font-semibold text-emerald-600">Settled</span>;
+        }
+        return (
+          <span className={`text-xs font-semibold ${balance > 0 ? 'text-amber-600' : 'text-red-600'}`}>
+            {balance > 0 ? 'Collect: ' : 'Refund: '}{fmtNum(Math.abs(balance))}
+          </span>
+        );
+      },
     },
     {
       accessorKey: 'refund_method', header: 'Method',
@@ -474,10 +585,19 @@ export default function SalesReturnsPage() {
               </button>
             )}
             {r.status === 'completed' && (
-              <button onClick={() => handlePrint(r)} title="Print Credit Note"
-                className="p-1 rounded text-purple-600 hover:bg-purple-50 dark:hover:bg-purple-900/30 cursor-pointer">
-                <Printer className="w-4 h-4" />
-              </button>
+              <>
+                <button onClick={() => handlePrint(r)} title="Print Credit Note"
+                  className="p-1 rounded text-purple-600 hover:bg-purple-50 dark:hover:bg-purple-900/30 cursor-pointer">
+                  <Printer className="w-4 h-4" />
+                </button>
+                <button onClick={() => openSettle(r)} title="Settle Payment"
+                  className="p-1 rounded text-emerald-600 hover:bg-emerald-50 dark:hover:bg-emerald-900/30 cursor-pointer">
+                  <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
+                      d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  </svg>
+                </button>
+              </>
             )}
             {r.status === 'pending' && (
               <button onClick={() => handleEdit(r)} title="Edit"
@@ -615,7 +735,7 @@ export default function SalesReturnsPage() {
                               <input
                                 type="number" step="0.001" min="0" max={line.max_returnable}
                                 value={line.quantity_returned}
-                                onChange={e => updateLine(i, 'quantity_returned', e.target.value)}
+                                onChange={e => updateLine(line.sales_order_item_id, 'quantity_returned', e.target.value)}
                                 className={`${inputCls} text-center`}
                               />
                               {errors[`items.${i}.qty`] && <p className={errCls}>{errors[`items.${i}.qty`]}</p>}
@@ -624,14 +744,14 @@ export default function SalesReturnsPage() {
                               <input
                                 type="number" step="0.01" min="0"
                                 value={line.unit_price}
-                                onChange={e => updateLine(i, 'unit_price', e.target.value)}
+                                onChange={e => updateLine(line.sales_order_item_id, 'unit_price', e.target.value)}
                                 className={`${inputCls} text-right`}
                               />
                             </td>
                             <td className="px-2 py-1 border border-gray-200 dark:border-gray-600">
                               <select
                                 value={line.condition}
-                                onChange={e => updateLine(i, 'condition', e.target.value)}
+                                onChange={e => updateLine(line.sales_order_item_id, 'condition', e.target.value)}
                                 className={inputCls}
                               >
                                 {CONDITIONS.map(c => <option key={c.value} value={c.value}>{c.label}</option>)}
@@ -641,7 +761,7 @@ export default function SalesReturnsPage() {
                               <input
                                 type="text"
                                 value={line.reason}
-                                onChange={e => updateLine(i, 'reason', e.target.value)}
+                                onChange={e => updateLine(line.sales_order_item_id, 'reason', e.target.value)}
                                 placeholder="Optional note"
                                 className={inputCls}
                               />
@@ -650,7 +770,7 @@ export default function SalesReturnsPage() {
                               {(Number(line.quantity_returned) * Number(line.unit_price)).toFixed(2)}
                             </td>
                             <td className="px-2 py-1 border border-gray-200 dark:border-gray-600 text-center">
-                              <button type="button" onClick={() => removeLine(i)}
+                              <button type="button" onClick={() => removeLine(line.sales_order_item_id)}
                                 className="text-red-500 hover:text-red-700 cursor-pointer">
                                 <X className="w-3.5 h-3.5" />
                               </button>
@@ -729,6 +849,169 @@ export default function SalesReturnsPage() {
         enableSearch
         searchPlaceholder="Search returns…"
       />
+
+      {/* Settle Payment Dialog */}
+      {showSettleDialog && (() => {
+        if (settleLoading) {
+          return (
+            <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+              <div className="bg-white dark:bg-gray-800 rounded-xl shadow-2xl w-full max-w-md p-6">
+                <div className="flex items-center gap-3 text-gray-700 dark:text-gray-200">
+                  <div className="animate-spin w-5 h-5 border-2 border-emerald-500 border-t-transparent rounded-full" />
+                  <span className="text-sm font-medium">Loading settlement details...</span>
+                </div>
+              </div>
+            </div>
+          );
+        }
+
+        if (!settleTarget) return null;
+
+        const so = (settleTarget as any).sales_order;
+        const grandTotal = Number(so?.grand_total ?? 0);
+        const returnedAmount = Number(so?.returned_amount ?? 0);
+        const paidAmount = Number(so?.paid_amount ?? 0);
+        const effectiveTotal = Math.max(0, grandTotal - returnedAmount);
+        const balance = effectiveTotal - paidAmount;
+        const settlements = ((settleTarget as any).settlement_payments ?? []) as Array<any>;
+        return (
+          <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+            <div className="bg-white dark:bg-gray-800 rounded-xl shadow-2xl w-full max-w-md flex flex-col">
+              {/* Header */}
+              <div className="bg-gradient-to-r from-emerald-600 to-teal-600 px-5 py-4 rounded-t-xl flex items-center justify-between text-white">
+                <div>
+                  <h2 className="font-bold text-lg">Settle Payment</h2>
+                  <p className="text-sm opacity-80">{settleTarget.return_number} · {so?.invoice_number ?? '-'}</p>
+                </div>
+                <button onClick={() => setShowSettleDialog(false)}
+                  className="rounded-full p-1 hover:bg-white/20 transition-colors">
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+
+              {/* Summary cards */}
+              <div className="p-5 space-y-3">
+                <div className="grid grid-cols-2 gap-2 text-sm">
+                  <div className="bg-blue-50 dark:bg-blue-900/30 rounded-lg p-3">
+                    <p className="text-xs text-gray-500 dark:text-gray-400 mb-0.5">Invoice Total</p>
+                    <p className="font-semibold text-gray-800 dark:text-gray-100">{fmtNum(grandTotal)}</p>
+                  </div>
+                  <div className="bg-orange-50 dark:bg-orange-900/30 rounded-lg p-3">
+                    <p className="text-xs text-gray-500 dark:text-gray-400 mb-0.5">Returned</p>
+                    <p className="font-semibold text-orange-600">{fmtNum(returnedAmount)}</p>
+                  </div>
+                  <div className="bg-indigo-50 dark:bg-indigo-900/30 rounded-lg p-3">
+                    <p className="text-xs text-gray-500 dark:text-gray-400 mb-0.5">Net Order</p>
+                    <p className="font-semibold text-indigo-600">{fmtNum(effectiveTotal)}</p>
+                  </div>
+                  <div className="bg-emerald-50 dark:bg-emerald-900/30 rounded-lg p-3">
+                    <p className="text-xs text-gray-500 dark:text-gray-400 mb-0.5">Paid</p>
+                    <p className="font-semibold text-emerald-600">{fmtNum(paidAmount)}</p>
+                  </div>
+                </div>
+
+                {/* Net balance banner */}
+                <div className={`rounded-lg p-3 text-center ${balance === 0
+                  ? 'bg-green-100 dark:bg-green-900/40 text-green-800 dark:text-green-200'
+                  : balance > 0
+                    ? 'bg-amber-100 dark:bg-amber-900/40 text-amber-800 dark:text-amber-200'
+                    : 'bg-red-100 dark:bg-red-900/40 text-red-800 dark:text-red-200'
+                  }`}>
+                  {balance === 0 ? (
+                    <p className="font-semibold text-sm">Order is fully settled — no action needed</p>
+                  ) : (
+                    <>
+                      <p className="text-xs mb-0.5">{balance > 0 ? 'Customer still owes' : 'Refund due to customer'}</p>
+                      <p className="font-bold text-xl">{fmtNum(Math.abs(balance))}</p>
+                    </>
+                  )}
+                </div>
+
+                {/* Settlement form */}
+                {balance !== 0 && (
+                  <div className="space-y-3">
+                    <div>
+                      <label className={labelCls}>Action</label>
+                      <select value={settleForm.action}
+                        onChange={e => setSettleForm(f => ({ ...f, action: e.target.value }))}
+                        className={inputCls}>
+                        <option value="collect">Collect Payment from Customer</option>
+                        <option value="refund">Issue Refund to Customer</option>
+                      </select>
+                    </div>
+                    <div>
+                      <label className={labelCls}>Amount</label>
+                      <input type="number" step="0.01" min="0.01"
+                        value={settleForm.amount}
+                        onChange={e => setSettleForm(f => ({ ...f, amount: e.target.value }))}
+                        className={inputCls} />
+                    </div>
+                    <div>
+                      <label className={labelCls}>Payment Method</label>
+                      <select value={settleForm.payment_method}
+                        onChange={e => setSettleForm(f => ({ ...f, payment_method: e.target.value }))}
+                        className={inputCls}>
+                        {REFUND_METHODS.map(m => <option key={m.value} value={m.value}>{m.label}</option>)}
+                      </select>
+                    </div>
+                    <div>
+                      <label className={labelCls}>Notes <span className="text-gray-400 font-normal">(optional)</span></label>
+                      <input type="text" value={settleForm.notes}
+                        onChange={e => setSettleForm(f => ({ ...f, notes: e.target.value }))}
+                        className={inputCls} placeholder="e.g. Refunded via cash on delivery" />
+                    </div>
+                  </div>
+                )}
+
+                {/* Previous settlements */}
+                {settlements.length > 0 && (
+                  <div className="space-y-2 border-t border-gray-100 dark:border-gray-700 pt-3">
+                    <p className="text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">
+                      Settlement History
+                    </p>
+                    <div className="max-h-32 overflow-y-auto space-y-1.5">
+                      {settlements.map((p, idx) => (
+                        <div key={p.id ?? idx} className="text-xs bg-gray-50 dark:bg-gray-700/40 rounded-md px-2.5 py-2 flex items-start justify-between gap-2">
+                          <div>
+                            <p className="font-semibold text-gray-700 dark:text-gray-200 capitalize">
+                              {p.action} via {String(p.payment_method ?? '-').replace('_', ' ')}
+                            </p>
+                            <p className="text-gray-500 dark:text-gray-400">
+                              {p.created_at ? new Date(p.created_at).toLocaleString() : '-'}
+                              {p.creator?.name ? ` • ${p.creator.name}` : ''}
+                            </p>
+                            {p.notes && <p className="text-gray-500 dark:text-gray-400 mt-0.5">{p.notes}</p>}
+                          </div>
+                          <p className={`font-bold ${p.action === 'refund' ? 'text-red-600' : 'text-emerald-600'}`}>
+                            {p.action === 'refund' ? '-' : '+'}{fmtNum(p.amount)}
+                          </p>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              {/* Footer */}
+              <div className="px-5 pb-5 flex justify-end gap-2">
+                <button onClick={() => {
+                  setShowSettleDialog(false);
+                  setSettleTarget(null);
+                }}
+                  className="px-4 py-1.5 text-sm border border-gray-300 dark:border-gray-600 rounded-sm text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors">
+                  {balance === 0 ? 'Close' : 'Cancel'}
+                </button>
+                {balance !== 0 && (
+                  <button onClick={handleSettleSubmit} disabled={settling}
+                    className="px-4 py-1.5 text-sm bg-emerald-600 hover:bg-emerald-700 disabled:opacity-60 text-white rounded-sm font-medium transition-colors">
+                    {settling ? 'Processing…' : settleForm.action === 'refund' ? 'Issue Refund' : 'Record Payment'}
+                  </button>
+                )}
+              </div>
+            </div>
+          </div>
+        );
+      })()}
     </div>
   );
 }
