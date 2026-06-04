@@ -258,22 +258,26 @@ export default function PosOrdersPage() {
             // "Record Due Payment" is the action for collecting the
             // remaining balance from a customer. The right state is:
             //   - the customer has paid *something* (paid > 0)
-            //   - the customer still owes the *rest* (paid < grand)
-            //   - the order is NOT a refund (status !== refunded,
-            //     partially_refunded) — when the store owes the
-            //     customer back, the correct flow is the refund's
-            //     "Settle Payment" dialog with action=refund.
+            //   - the customer still owes the *rest* (due > 0)
             //
-            // The list endpoint doesn't return `due_amount` directly,
-            // so we derive it from grand_total - paid_amount and use
-            // the order's `status` field to filter out refund cases.
-            const grand  = Number(row.original.grand_total ?? 0);
-            const paid   = Number(row.original.paid_amount ?? 0);
-            const status = (row.original.status ?? '').toLowerCase();
-            const due    = grand - paid;
-            const isPartial = paid > 0 && due > 0;
-            const isRefund  = status === 'refunded' || status === 'partially_refunded';
-            if (! isPartial || isRefund) return null;
+            // The list endpoint returns `returned_amount` and
+            // `grand_total` / `paid_amount` so we can compute the
+            // backend's authoritative `due_amount`:
+            //     due = grand_total - returned_amount - paid_amount
+            // (matches `PosOrder::getDueAmountAttribute()`).
+            //
+            // We do NOT blanket-hide on status='refunded' /
+            // 'partially_refunded' — a partially-refunded order can
+            // still have an outstanding client balance, and the
+            // fully-refunded case returns returned_amount == grand,
+            // which makes due <= 0 anyway. When the store owes the
+            // client, the right flow is the pos-refund "Settle
+            // Payment" dialog (action=refund) — not this button.
+            const grand    = Number(row.original.grand_total     ?? 0);
+            const paid     = Number(row.original.paid_amount     ?? 0);
+            const returned = Number(row.original.returned_amount ?? 0);
+            const due      = grand - returned - paid;
+            if (!(paid > 0 && due > 0)) return null;
             return (
               <button
                 title="Record Due Payment"
@@ -565,21 +569,40 @@ export default function PosOrdersPage() {
                     <div className="bg-gray-50 border border-gray-200 rounded-xl p-3">
                       <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2">Payment History</p>
                       <div className="space-y-1.5">
-                        {detailOrder.payments.map((p) => (
-                          <div key={p.id} className="flex items-center justify-between text-xs bg-white rounded-lg px-3 py-1.5 border border-gray-100">
-                            <div className="flex items-center gap-2">
-                              <span className="text-gray-400 font-mono">{p.receipt_number}</span>
-                              <span className="capitalize text-gray-600">{(p.payment_method || '').replace(/_/g, ' ')}</span>
+                        {detailOrder.payments.map((p) => {
+                          // Per-payment status badge. The Payment row's
+                          // own status is the cashier-facing "what state
+                          // is THIS receipt in?" — independent of the
+                          // order's overall payment_status. A partial
+                          // cash sale records one Payment row with
+                          // status='pending' (awaiting the rest); a
+                          // full sale records status='completed'.
+                          // We surface them distinctly so the cashier
+                          // doesn't read the plain "pending" text and
+                          // think something is broken.
+                          const statusCls =
+                            p.status === 'completed' ? 'bg-emerald-100 text-emerald-700' :
+                            p.status === 'pending'   ? 'bg-amber-100 text-amber-700' :
+                            p.status === 'refunded'  ? 'bg-purple-100 text-purple-700' :
+                            p.status === 'failed'    ? 'bg-red-100 text-red-700' :
+                            p.status === 'cancelled' ? 'bg-gray-200 text-gray-700' :
+                                                       'bg-gray-100 text-gray-600';
+                          return (
+                            <div key={p.id} className="flex items-center justify-between text-xs bg-white rounded-lg px-3 py-1.5 border border-gray-100">
+                              <div className="flex items-center gap-2">
+                                <span className="text-gray-400 font-mono">{p.receipt_number}</span>
+                                <span className="capitalize text-gray-600">{(p.payment_method || '').replace(/_/g, ' ')}</span>
+                              </div>
+                              <div className="flex items-center gap-2">
+                                {p.notes && <span className="text-gray-400 italic truncate max-w-[100px]">{p.notes}</span>}
+                                <span className="font-semibold text-gray-800">৳{Number(p.amount ?? 0).toFixed(2)}</span>
+                                <span className={`px-1.5 py-0.5 rounded-full font-medium ${statusCls}`}>
+                                  {p.status}
+                                </span>
+                              </div>
                             </div>
-                            <div className="flex items-center gap-2">
-                              {p.notes && <span className="text-gray-400 italic truncate max-w-[100px]">{p.notes}</span>}
-                              <span className="font-semibold text-gray-800">৳{Number(p.amount ?? 0).toFixed(2)}</span>
-                              <span className={`px-1.5 py-0.5 rounded-full font-medium ${p.status === 'completed' ? 'bg-emerald-100 text-emerald-700' : 'bg-gray-100 text-gray-600'}`}>
-                                {p.status}
-                              </span>
-                            </div>
-                          </div>
-                        ))}
+                          );
+                        })}
                       </div>
                     </div>
                   )}

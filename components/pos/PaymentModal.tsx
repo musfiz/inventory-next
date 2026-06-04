@@ -228,13 +228,22 @@ export default function PaymentModal({
     };
 
     // Method-specific fields
-    if (method === 'cash') {
+    // `is_partial` and `tendered_amount` apply to ANY method, not just
+    // cash. Previously these were set only inside the `method === 'cash'`
+    // branch, so a partial bKash / card / cheque sale silently fell
+    // through to `is_partial=false` on the backend — which then wrote
+    // `paid_amount = grand_total` and a Payment row with `amount = 0`
+    // even though the customer only paid a fraction. That was a
+    // revenue bug, not just a display bug.
+    if (allowDue && tendered > 0 && tendered < grandTotal) {
+      payload.is_partial = true;
       payload.tendered_amount = tendered;
-      if (allowDue && tendered < grandTotal) {
-        payload.is_partial = true;
-        if (paymentDueDate) payload.payment_due_date = toIsoDate(paymentDueDate);
-      }
-    } else if (method === 'card') {
+      if (paymentDueDate) payload.payment_due_date = toIsoDate(paymentDueDate);
+    } else if (method === 'cash') {
+      payload.tendered_amount = tendered;
+    }
+
+    if (method === 'card') {
       if (cardLastFour) payload.card_last_four = cardLastFour;
       if (processingFee) payload.processing_fee = parseFloat(processingFee);
       if (txnReference) payload.transaction_reference = txnReference;

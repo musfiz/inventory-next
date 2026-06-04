@@ -28,6 +28,7 @@ export { default as supplierService } from './supplierService';
 export { default as purchaseOrderService } from './purchaseOrderService';
 export { default as salesOrderService } from './salesOrderService';
 export { default as salesReturnService } from './salesReturnService';
+export { default as paymentService } from './paymentService';
 export { default as customerService } from './customerService';
 export { default as dashboardService } from './dashboardService';
 export { default as accountService } from './accountService';

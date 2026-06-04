@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
-import { Plus, X, CheckCircle, Check, Printer, RefreshCw, AlertTriangle, Ban } from 'lucide-react';
+import { Plus, X, CheckCircle, Check, Printer, RefreshCw, AlertTriangle, Ban, Undo2, FileText, Receipt, ListChecks, Info } from 'lucide-react';
 import { ColumnDef } from '@tanstack/react-table';
 import { notify, confirm, info as notifyInfo } from '@/lib/notifications';
 import { posRefundService } from '@/services';
@@ -16,6 +16,7 @@ import { usePermissions } from '@/hooks/use-permissions';
 import { useAuthStore } from '@/stores/auth-store';
 import apiClient from '@/lib/api/axios';
 import { PosRefundCreditNote } from '@/components/invoices/CreditNote';
+import { GiSave } from 'react-icons/gi';
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
@@ -194,6 +195,23 @@ export default function PosRefundsPage() {
       }
     } catch { notify.error('Failed to load order items'); }
     finally { setLoadingItems(false); }
+  };
+
+  // Clear the currently selected POS order and its loaded items.
+  // Used by the inline Cancel button beside the order input so the
+  // cashier can wipe a wrong selection without re-opening the form.
+  const handleOrderClear = () => {
+    setSelectedOrder(null);
+    setOrderItems([]);
+    setRefundLines([]);
+    setErrors(prev => {
+      const next = { ...prev };
+      delete next.pos_order_id;
+      // Drop any per-line errors from the previously-loaded order
+      Object.keys(next).forEach(k => { if (k.startsWith('items.')) delete next[k]; });
+      delete next.items;
+      return next;
+    });
   };
 
   const updateLine = (idx: number, quantity: number) => {
@@ -700,10 +718,20 @@ export default function PosRefundsPage() {
 
   // ── Styles ────────────────────────────────────────────────────────────────
 
-  const inputCls = 'w-full px-2 py-1.5 text-sm border rounded-sm focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-transparent border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100';
-  const labelCls = 'block text-sm font-medium text-gray-700 dark:text-gray-300 mb-0.5';
-  const errCls = 'text-xs text-red-500 mt-0.5';
-  const sectionCls = 'text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400 border-b border-gray-200 dark:border-gray-600 pb-1 mb-2 mt-3';
+  // Inputs/selects/textarea — match the tenant-registration form style: tight,
+  // rounded-sm, indigo focus border. Mirrors the rest of the app's register
+  // pages so cashiers get a consistent feel across modules.
+  const inputCls =
+    'w-full px-2.5 py-1 text-sm bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 ' +
+    'rounded-sm text-gray-900 dark:text-gray-100 focus:outline-none focus:border-indigo-500 ' +
+    'dark:focus:border-indigo-400 transition-colors';
+  const labelCls = 'block text-xs font-medium text-gray-700 dark:text-gray-300 mb-2';
+  const errCls = 'mt-1 text-xs text-red-600 dark:text-red-400';
+  // Section header — same icon+label pattern as the POS Orders filter card
+  // so the form feels native to the rest of the project.
+  const sectionCls =
+    'text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide ' +
+    'flex items-center gap-1.5 mt-4 mb-2';
 
   // ── Render ────────────────────────────────────────────────────────────────
 
@@ -716,23 +744,33 @@ export default function PosRefundsPage() {
 
       {/* Header */}
       <div className="flex items-center justify-between">
-        <h1 className="text-xl font-bold text-gray-900 dark:text-gray-100">POS Refunds</h1>
-        <button
-          onClick={handleAdd}
-          className="flex items-center gap-2 px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium rounded-sm transition-colors cursor-pointer"
-        >
-          <Plus className="w-4 h-4" /> Create Refund
-        </button>
+        <h1 className="text-base font-bold text-gray-900 dark:text-gray-100 flex items-center gap-2">
+          <Undo2 className="w-5 h-5 text-indigo-600 dark:text-indigo-400" /> POS Refunds
+        </h1>
+        <div className="flex items-center gap-2">
+          <button
+            onClick={handleAdd}
+            className="flex items-center justify-center gap-2 px-5 py-1.5 text-sm bg-indigo-600 hover:bg-indigo-700 disabled:bg-gray-400 text-white rounded-sm transition-colors cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            <Plus className="w-4 h-4" />
+            Create Refund
+          </button>
+        </div>
       </div>
 
       {/* Form */}
       {showForm && (
-        <div className="bg-white dark:bg-gray-800 rounded-md shadow-sm p-4">
-          <div className="flex items-center justify-between mb-3">
-            <h2 className="text-base font-semibold text-gray-900 dark:text-gray-100">
-              Create POS Refund
+        <div className="bg-white dark:bg-gray-800 rounded-md shadow-sm border border-gray-200 dark:border-gray-700 p-3">
+          {/* Form header — flat, matches tenant registration card style */}
+          <div className="flex items-center justify-between mb-2">
+            <h2 className="text-base font-semibold text-gray-900 dark:text-gray-100 flex items-center gap-2">
+              <FileText className="w-4 h-4 text-indigo-600 dark:text-indigo-400" /> Create Refund
             </h2>
-            <button onClick={handleCancel} className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 cursor-pointer">
+            <button
+              onClick={handleCancel}
+              aria-label="Close create refund form"
+              className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 cursor-pointer"
+            >
               <X className="w-5 h-5" />
             </button>
           </div>
@@ -756,12 +794,12 @@ export default function PosRefundsPage() {
             )}
 
             {/* ── Order Selection ── */}
-            <p className={sectionCls}>Original POS Order</p>
+            <p className={sectionCls}><Receipt className="w-3.5 h-3.5" /> POS Order</p>
             <div className="grid grid-cols-1 gap-2">
               <div>
                 <label className={labelCls}>POS Order <span className="text-red-500">*</span></label>
                 <div className="flex items-end gap-2">
-                  <div className="flex-1">
+                  <div className="w-1/2">
                     <CustomSelect
                       value={selectedOrder}
                       onChange={handleOrderChange}
@@ -777,16 +815,33 @@ export default function PosRefundsPage() {
                       refunds before submitting. Same code path as
                       selecting the order again. */}
                   {selectedOrder?.value && (
-                    <button
-                      type="button"
-                      onClick={() => handleOrderChange(selectedOrder)}
-                      disabled={loadingItems}
-                      className="px-2.5 py-1.5 text-xs rounded border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-700 disabled:opacity-50"
-                      title="Re-check available quantities"
-                      aria-label="Re-check available quantities"
-                    >
-                      <RefreshCw className={`w-3.5 h-3.5 ${loadingItems ? 'animate-spin' : ''}`} />
-                    </button>
+                    <>
+                      <button
+                        type="button"
+                        onClick={() => handleOrderChange(selectedOrder)}
+                        disabled={loadingItems}
+                        title="Re-check available quantities"
+                        aria-label="Re-check available quantities"
+                        className="inline-flex items-center justify-center gap-2 h-[34px] px-2 rounded-sm border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors cursor-pointer"
+                      >
+                        <RefreshCw className={`w-4 h-4 ${loadingItems ? 'animate-spin' : ''}`} />
+                        <span className="text-sm font-medium">Refresh</span>
+                      </button>
+                      {/* Cancel selection: wipes the chosen order and any
+                          loaded items/lines so the cashier can re-pick
+                          without closing the whole form. Same gray style
+                          as the bottom-of-form Cancel button. */}
+                      <button
+                        type="button"
+                        onClick={handleOrderClear}
+                        title="Clear order selection"
+                        aria-label="Clear order selection"
+                        className="inline-flex items-center justify-center gap-2 h-[34px] px-2 rounded-sm bg-gray-500 text-white text-sm font-medium hover:bg-gray-600 transition-colors cursor-pointer"
+                      >
+                        <Ban className="w-4 h-4" />
+                        <span>Cancel</span>
+                      </button>
+                    </>
                   )}
                 </div>
               </div>
@@ -795,7 +850,7 @@ export default function PosRefundsPage() {
             {/* ── Items to Refund ── */}
             {(loadingItems || refundLines.length > 0) && (
               <>
-                <p className={sectionCls}>Items to Refund</p>
+                <p className={sectionCls}><ListChecks className="w-3.5 h-3.5" /> Items to Refund</p>
                 {/* P0-6: persistent in-flight refunds warning. Shown when
                     the server reports `current_pending_refunds > 0` on
                     any line. Stays visible while the cashier composes
@@ -827,28 +882,31 @@ export default function PosRefundsPage() {
                   </div>
                 </div>
                 {loadingItems ? (
-                  <p className="text-sm text-gray-500 py-2">Loading order items…</p>
+                  <div className="flex items-center justify-center py-6 text-sm text-gray-500">
+                    <div className="animate-spin w-5 h-5 border-2 border-blue-500 border-t-transparent rounded-full mr-2" />
+                    Loading order items…
+                  </div>
                 ) : (
-                  <div className="overflow-x-auto">
+                  <div className="overflow-x-auto rounded-lg border border-gray-200 dark:border-gray-600">
                     <table className="w-full text-xs border-collapse">
                       <thead>
-                        <tr className="bg-gray-50 dark:bg-gray-700">
-                          <th className="text-left px-2 py-1.5 border border-gray-200 dark:border-gray-600">Item</th>
-                          <th className="text-center px-2 py-1.5 border border-gray-200 dark:border-gray-600 w-24">Max Returnable</th>
-                          <th className="text-center px-2 py-1.5 border border-gray-200 dark:border-gray-600 w-28">Refund Qty <span className="text-red-500">*</span></th>
-                          <th className="text-right px-2 py-1.5 border border-gray-200 dark:border-gray-600 w-24">Unit Price</th>
-                          <th className="text-right px-2 py-1.5 border border-gray-200 dark:border-gray-600 w-24">Line Total</th>
-                          <th className="px-2 py-1.5 border border-gray-200 dark:border-gray-600 w-8"></th>
+                        <tr className="bg-gradient-to-r from-blue-600 to-indigo-600 text-white">
+                          <th className="text-left px-3 py-2 font-semibold">Item</th>
+                          <th className="text-center px-3 py-2 font-semibold w-40">Max Returnable</th>
+                          <th className="text-center px-3 py-2 font-semibold w-28">Refund Qty <span className="text-red-200">*</span></th>
+                          <th className="text-right px-3 py-2 font-semibold w-24">Unit Price</th>
+                          <th className="text-right px-3 py-2 font-semibold w-24">Line Total</th>
+                          <th className="px-3 py-2 font-semibold w-10"></th>
                         </tr>
                       </thead>
                       <tbody>
                         {refundLines.map((line, i) => (
-                          <tr key={`${line.variation_id}-${i}`} className="even:bg-gray-50 dark:even:bg-gray-700/40">
-                            <td className="px-2 py-1 border border-gray-200 dark:border-gray-600">{line.item_name}</td>
-                            <td className="px-2 py-1 border border-gray-200 dark:border-gray-600 text-center text-gray-500">
+                          <tr key={`${line.variation_id}-${i}`} className={i % 2 === 0 ? 'bg-white dark:bg-gray-800' : 'bg-blue-50/50 dark:bg-gray-700/30'}>
+                            <td className="px-3 py-2 border-t border-gray-200 dark:border-gray-600">{line.item_name}</td>
+                            <td className="px-3 py-2 border-t border-gray-200 dark:border-gray-600 text-center text-gray-500">
                               {line.max_returnable}
                             </td>
-                            <td className="px-2 py-1 border border-gray-200 dark:border-gray-600">
+                            <td className="px-3 py-2 border-t border-gray-200 dark:border-gray-600">
                               <input
                                 ref={el => { qtyInputRefs.current[i] = el; }}
                                 type="number" step="0.001" min="0" max={line.max_returnable}
@@ -860,15 +918,17 @@ export default function PosRefundsPage() {
                               />
                               {errors[`items.${i}.qty`] && <p className={errCls}>{errors[`items.${i}.qty`]}</p>}
                             </td>
-                            <td className="px-2 py-1 border border-gray-200 dark:border-gray-600 text-right font-mono">
+                            <td className="px-3 py-2 border-t border-gray-200 dark:border-gray-600 text-right font-mono">
                               {Number(line.unit_price).toFixed(2)}
                             </td>
-                            <td className="px-2 py-1 border border-gray-200 dark:border-gray-600 text-right font-mono font-semibold">
+                            <td className="px-3 py-2 border-t border-gray-200 dark:border-gray-600 text-right font-mono font-semibold">
                               {(Number(line.quantity) * Number(line.unit_price)).toFixed(2)}
                             </td>
-                            <td className="px-2 py-1 border border-gray-200 dark:border-gray-600 text-center">
+                            <td className="px-3 py-2 border-t border-gray-200 dark:border-gray-600 text-center">
                               <button type="button" onClick={() => removeLine(i)}
-                                className="text-red-500 hover:text-red-700 cursor-pointer">
+                                className="text-red-500 hover:text-red-700 hover:bg-red-50 dark:hover:bg-red-900/20 rounded p-1 cursor-pointer"
+                                title="Remove line"
+                                aria-label="Remove refund line">
                                 <X className="w-3.5 h-3.5" />
                               </button>
                             </td>
@@ -876,14 +936,14 @@ export default function PosRefundsPage() {
                         ))}
                       </tbody>
                       <tfoot>
-                        <tr className="bg-gray-100 dark:bg-gray-700 font-semibold">
-                          <td colSpan={4} className="px-2 py-1.5 text-right text-xs border border-gray-200 dark:border-gray-600">
+                        <tr className="bg-blue-50 dark:bg-blue-900/20 font-semibold">
+                          <td colSpan={4} className="px-3 py-2 text-right text-xs border-t border-gray-200 dark:border-gray-600">
                             Refund Total
                           </td>
-                          <td className="px-2 py-1.5 text-right font-mono text-sm border border-gray-200 dark:border-gray-600">
+                          <td className="px-3 py-2 text-right font-mono text-sm border-t border-gray-200 dark:border-gray-600 text-blue-700 dark:text-blue-300">
                             {totalRefund.toFixed(2)}
                           </td>
-                          <td className="border border-gray-200 dark:border-gray-600"></td>
+                          <td className="border-t border-gray-200 dark:border-gray-600"></td>
                         </tr>
                       </tfoot>
                     </table>
@@ -894,7 +954,7 @@ export default function PosRefundsPage() {
             )}
 
             {/* ── Refund Details ── */}
-            <p className={sectionCls}>Refund Details</p>
+            <p className={sectionCls}><Info className="w-3.5 h-3.5" /> Refund Details</p>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
               <div>
                 <label className={labelCls}>Refund Reason <span className="text-red-500">*</span></label>
@@ -914,15 +974,16 @@ export default function PosRefundsPage() {
 
               <div>
                 <label className={labelCls}>Reason Details</label>
-                <textarea rows={2} value={reasonDetails} onChange={e => setReasonDetails(e.target.value)}
+                <textarea rows={1} value={reasonDetails} onChange={e => setReasonDetails(e.target.value)}
                   className={inputCls} placeholder="Additional details…" />
               </div>
             </div>
 
             {/* Buttons */}
-            <div className="flex gap-2 pt-2">
+            <div className="flex gap-2 pt-3">
               <button type="submit" disabled={submitting}
-                className="px-4 py-1.5 bg-blue-600 text-white text-sm font-medium rounded-sm hover:bg-blue-700 transition-colors cursor-pointer disabled:opacity-60">
+                className="flex items-center justify-center gap-2 px-5 py-1.5 text-sm bg-indigo-600 hover:bg-indigo-700 disabled:bg-gray-400 text-white rounded-sm transition-colors cursor-pointer disabled:opacity-60 disabled:cursor-not-allowed">
+                <GiSave className="w-4 h-4" />
                 {submitting ? 'Saving…' : 'Submit Refund'}
               </button>
               <button type="button" onClick={handleCancel}

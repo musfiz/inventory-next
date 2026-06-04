@@ -572,54 +572,8 @@ export interface ProductVariationListResponse {
 
 // ─── Payment Types ────────────────────────────────────────────────────────────
 
-export type PaymentMethod =
-  | 'cash'
-  | 'card'
-  | 'bkash'
-  | 'nagad'
-  | 'rocket'
-  | 'bank_transfer'
-  | 'check'
-  | 'credit'
-  | 'other';
-
-export type PaymentStatus = 'pending' | 'completed' | 'failed' | 'cancelled' | 'refunded';
-
-export type PaymentReferenceType = 'purchase' | 'sale' | 'pos' | 'expense' | 'refund' | 'other';
-
-export interface Payment {
-  id: string;
-  uuid: string;
-  tenant_id: string;
-  receipt_number: string;
-  payment_date: string;
-  payment_method: PaymentMethod;
-  reference_type: PaymentReferenceType;
-  sales_order_id?: string | null;
-  pos_order_id?: string | null;
-  session_id?: string | null;
-  amount: number;
-  tax_amount?: number;
-  tendered_amount?: number;
-  change_amount?: number;
-  processing_fee?: number;
-  total_amount: number;
-  status: PaymentStatus;
-  transaction_id?: string | null;
-  transaction_reference?: string | null;
-  bank_name?: string | null;
-  bank_account?: string | null;
-  check_number?: string | null;
-  check_date?: string | null;
-  card_last_four?: string | null;
-  mobile_number?: string | null;
-  mobile_transaction_id?: string | null;
-  notes?: string | null;
-  created_by?: string | null;
-  approved_by?: string | null;
-  created_at?: string;
-  updated_at?: string;
-}
+// (Payment / PaymentMethod / PaymentStatus / PaymentReferenceType are
+// defined at the bottom of this file in the unified-payments block.)
 
 /** Fields sent to POST /api/v1/pos/orders for payment */
 export interface PosPaymentFields {
@@ -889,4 +843,60 @@ export interface PosRefundItem {
   batch_id?: number | null;
   product?: { id: number; name: string } | null;
   variation?: { id: number; name?: string; sku?: string } | null;
+}
+
+// ── Payments (unified `payments` table) ────────────────────────────────────
+
+export type PaymentMethod =
+  | 'cash' | 'card' | 'bkash' | 'nagad' | 'rocket'
+  | 'bank_transfer' | 'check' | 'credit' | 'other';
+
+export type PaymentStatus =
+  | 'pending' | 'completed' | 'failed' | 'cancelled' | 'refunded';
+
+export type PaymentReferenceType =
+  | 'purchase' | 'sale' | 'pos' | 'expense' | 'refund' | 'other';
+
+export interface Payment {
+  id: number;
+  uuid?: string;
+  tenant_id?: number | string;
+  receipt_number: string;
+  payment_date?: string;
+  payment_method: PaymentMethod;
+
+  reference_type?: PaymentReferenceType | null;
+  sales_order_id?: number | null;
+  pos_order_id?: number | null;
+  session_id?: number | null;
+
+  amount: number;
+  tax_amount?: number;
+  tendered_amount?: number;
+  change_amount?: number;
+  processing_fee?: number;
+  total_amount: number;
+
+  transaction_id?: string | null;
+  transaction_reference?: string | null;
+  bank_name?: string | null;
+  bank_account?: string | null;
+  check_number?: string | null;
+  check_date?: string | null;
+  card_last_four?: string | null;
+  mobile_number?: string | null;
+  mobile_transaction_id?: string | null;
+
+  status: PaymentStatus;
+  notes?: string | null;
+  created_by?: number | string | null;
+  approved_by?: number | string | null;
+  created_at?: string;
+  updated_at?: string;
+
+  tenant?: { id: number; business_name: string; logo_url?: string; address?: string; city?: string; country?: string; phone?: string; email?: string; tin_number?: string; bin_number?: string; vat_number?: string } | null;
+  salesOrder?: { id: number; invoice_number: string; grand_total?: number; paid_amount?: number; returned_amount?: number; payment_status?: string; customer_id?: number } | null;
+  posOrder?: { id: number; order_number?: string; invoice_number?: string; grand_total?: number; paid_amount?: number; returned_amount?: number; payment_status?: string; customer_name?: string } | null;
+  creator?: { id: number; name: string } | null;
+  approver?: { id: number; name: string } | null;
 }

@@ -4,6 +4,7 @@
   "private": true,
   "scripts": {
     "dev": "next dev",
+    "local": "next dev --port 9000",
     "host": "next dev --hostname inventory.io --port 9000",
     "build": "next build",
     "start": "next start",
