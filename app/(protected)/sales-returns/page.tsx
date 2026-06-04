@@ -942,9 +942,14 @@ export default function SalesReturnsPage() {
                     <div>
                       <label className={labelCls}>Amount</label>
                       <input type="number" step="0.01" min="0.01"
+                        max={Math.abs(balance) || undefined}
                         value={settleForm.amount}
                         onChange={e => setSettleForm(f => ({ ...f, amount: e.target.value }))}
                         className={inputCls} />
+                      <p className="text-[10px] text-gray-500 mt-0.5">
+                        Max: ৳{(Math.abs(balance) || 0).toFixed(2)}
+      {settleLoading ? ' · loading fresh balance…' : ''}
+                      </p>
                     </div>
                     <div>
                       <label className={labelCls}>Payment Method</label>
@@ -1001,12 +1006,21 @@ export default function SalesReturnsPage() {
                   className="px-4 py-1.5 text-sm border border-gray-300 dark:border-gray-600 rounded-sm text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors">
                   {balance === 0 ? 'Close' : 'Cancel'}
                 </button>
-                {balance !== 0 && (
-                  <button onClick={handleSettleSubmit} disabled={settling}
-                    className="px-4 py-1.5 text-sm bg-emerald-600 hover:bg-emerald-700 disabled:opacity-60 text-white rounded-sm font-medium transition-colors">
-                    {settling ? 'Processing…' : settleForm.action === 'refund' ? 'Issue Refund' : 'Record Payment'}
-                  </button>
-                )}
+                {balance !== 0 && (() => {
+                  // P0-5: cap client-side. Disable submit when the typed
+                  // amount is invalid, missing, zero, or larger than the
+                  // current balance. The server still enforces the real
+                  // cap; this is a UX guard.
+                  const amt = Number(settleForm.amount);
+                  const outOfRange = !settleForm.amount || !Number.isFinite(amt) || amt <= 0 || amt > Math.abs(balance);
+                  return (
+                    <button onClick={handleSettleSubmit}
+                      disabled={settling || settleLoading || outOfRange}
+                      className="px-4 py-1.5 text-sm bg-emerald-600 hover:bg-emerald-700 disabled:opacity-60 text-white rounded-sm font-medium transition-colors">
+                      {settling ? 'Processing…' : settleForm.action === 'refund' ? 'Issue Refund' : 'Record Payment'}
+                    </button>
+                  );
+                })()}
               </div>
             </div>
           </div>

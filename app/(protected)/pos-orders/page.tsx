@@ -182,6 +182,11 @@ export default function PosOrdersPage() {
       },
     },
     {
+      accessorKey: 'status',
+      header: 'Status',
+      cell: ({ row }) => orderStatusBadge(row.original.status),
+    },
+    {
       accessorKey: 'payment_status',
       header: 'Payment',
       cell: ({ row }) => {
@@ -203,11 +208,24 @@ export default function PosOrdersPage() {
     {
       accessorKey: 'grand_total',
       header: 'Total (৳)',
-      cell: ({ row }) => (
-        <span className="font-semibold">
-          ৳{Number(row.original.grand_total ?? 0).toFixed(2)}
-        </span>
-      ),
+      cell: ({ row }) => {
+        const r = row.original;
+        const total = Number(r.grand_total ?? 0);
+        const returned = Number(r.returned_amount ?? 0);
+        if (returned > 0) {
+          return (
+            <div className="flex flex-col">
+              <span className={`font-semibold ${r.status === 'refunded' ? 'line-through text-gray-400' : 'text-gray-800'}`}>
+                ৳{total.toFixed(2)}
+              </span>
+              <span className="text-[10px] font-medium text-purple-600">
+                −৳{returned.toFixed(2)} returned
+              </span>
+            </div>
+          );
+        }
+        return <span className="font-semibold">৳{total.toFixed(2)}</span>;
+      },
     },
     {
       accessorKey: 'created_at',
@@ -236,15 +254,36 @@ export default function PosOrdersPage() {
           >
             <Eye className="w-4 h-4" />
           </button>
-          {row.original.payment_status !== 'paid' && (
-            <button
-              title="Record Due Payment"
-              onClick={() => openPayment(row.original.uuid)}
-              className="p-1 text-emerald-600 hover:text-emerald-800 cursor-pointer"
-            >
-              <CreditCard className="w-4 h-4" />
-            </button>
-          )}
+          {(() => {
+            // "Record Due Payment" is the action for collecting the
+            // remaining balance from a customer. The right state is:
+            //   - the customer has paid *something* (paid > 0)
+            //   - the customer still owes the *rest* (paid < grand)
+            //   - the order is NOT a refund (status !== refunded,
+            //     partially_refunded) — when the store owes the
+            //     customer back, the correct flow is the refund's
+            //     "Settle Payment" dialog with action=refund.
+            //
+            // The list endpoint doesn't return `due_amount` directly,
+            // so we derive it from grand_total - paid_amount and use
+            // the order's `status` field to filter out refund cases.
+            const grand  = Number(row.original.grand_total ?? 0);
+            const paid   = Number(row.original.paid_amount ?? 0);
+            const status = (row.original.status ?? '').toLowerCase();
+            const due    = grand - paid;
+            const isPartial = paid > 0 && due > 0;
+            const isRefund  = status === 'refunded' || status === 'partially_refunded';
+            if (! isPartial || isRefund) return null;
+            return (
+              <button
+                title="Record Due Payment"
+                onClick={() => openPayment(row.original.uuid)}
+                className="p-1 text-emerald-600 hover:text-emerald-800 cursor-pointer"
+              >
+                <CreditCard className="w-4 h-4" />
+              </button>
+            );
+          })()}
         </div>
       ),
     },
@@ -262,6 +301,29 @@ export default function PosOrdersPage() {
     return (
       <span className={`text-xs font-semibold px-2 py-0.5 rounded-full ${map[status] || 'bg-gray-100 text-gray-600'}`}>
         {status.charAt(0).toUpperCase() + status.slice(1)}
+      </span>
+    );
+  };
+
+  // ── Order lifecycle status badge (refund-aware) ────────────────────────────
+
+  const orderStatusBadge = (status?: string) => {
+    // The order lifecycle reflects refunds: 'refunded' (all qty returned)
+    // and 'partially_refunded' (some qty returned). Cashier must see this
+    // distinctly from the payment badge above.
+    const s = (status ?? '').toLowerCase();
+    const map: Record<string, string> = {
+      completed:           'bg-gray-100 text-gray-700',
+      confirmed:           'bg-blue-100 text-blue-700',
+      pending:             'bg-yellow-100 text-yellow-700',
+      cancelled:           'bg-red-100 text-red-700',
+      refunded:            'bg-purple-100 text-purple-700',
+      partially_refunded:  'bg-amber-100 text-amber-700',
+    };
+    const label = s ? s.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase()) : '—';
+    return (
+      <span className={`text-xs font-semibold px-2 py-0.5 rounded-full ${map[s] || 'bg-gray-100 text-gray-600'}`}>
+        {label}
       </span>
     );
   };
@@ -341,7 +403,12 @@ export default function PosOrdersPage() {
                 >
                   <X className="w-4 h-4" />
                 </button>
-                {detailOrder && paymentStatusBadge(detailOrder.payment_status)}
+                {detailOrder && (
+                  <div className="flex items-center gap-1.5">
+                    {orderStatusBadge(detailOrder.status)}
+                    {paymentStatusBadge(detailOrder.payment_status)}
+                  </div>
+                )}
               </div>
             </div>
 
@@ -410,11 +477,17 @@ export default function PosOrdersPage() {
                   </div>
 
                   {/* Financial summary */}
-                  <div className="grid grid-cols-4 gap-2">
+                  <div className={`grid gap-2 ${Number(detailOrder.returned_amount ?? 0) > 0 ? 'grid-cols-5' : 'grid-cols-4'}`}>
                     <div className="bg-gradient-to-br from-blue-500 to-blue-600 rounded-xl p-2.5 text-white text-center shadow-sm">
                       <p className="text-xs opacity-80 mb-0.5">Grand Total</p>
-                      <p className="text-base font-bold leading-tight">৳{Number(detailOrder.grand_total ?? 0).toFixed(2)}</p>
+                      <p className={`text-base font-bold leading-tight ${detailOrder.status === 'refunded' ? 'line-through opacity-70' : ''}`}>৳{Number(detailOrder.grand_total ?? 0).toFixed(2)}</p>
                     </div>
+                    {Number(detailOrder.returned_amount ?? 0) > 0 && (
+                      <div className="bg-gradient-to-br from-purple-500 to-purple-600 rounded-xl p-2.5 text-white text-center shadow-sm">
+                        <p className="text-xs opacity-80 mb-0.5">Returned</p>
+                        <p className="text-base font-bold leading-tight">৳{Number(detailOrder.returned_amount ?? 0).toFixed(2)}</p>
+                      </div>
+                    )}
                     <div className="bg-gradient-to-br from-emerald-500 to-emerald-600 rounded-xl p-2.5 text-white text-center shadow-sm">
                       <p className="text-xs opacity-80 mb-0.5">Paid</p>
                       <p className="text-base font-bold leading-tight">৳{Number(detailOrder.paid_amount ?? 0).toFixed(2)}</p>
@@ -438,6 +511,7 @@ export default function PosOrdersPage() {
                           <th className="px-3 py-2 text-left text-xs font-semibold">Product</th>
                           <th className="px-3 py-2 text-left text-xs font-semibold">Variation</th>
                           <th className="px-3 py-2 text-center text-xs font-semibold">Qty</th>
+                          <th className="px-3 py-2 text-center text-xs font-semibold">Returned</th>
                           <th className="px-3 py-2 text-right text-xs font-semibold">Unit Price</th>
                           <th className="px-3 py-2 text-right text-xs font-semibold">Total</th>
                         </tr>
@@ -445,10 +519,13 @@ export default function PosOrdersPage() {
                       <tbody className="divide-y divide-blue-50">
                         {detailOrder.items.length === 0 ? (
                           <tr>
-                            <td colSpan={6} className="px-3 py-8 text-center text-gray-400 text-sm">No items found</td>
+                            <td colSpan={7} className="px-3 py-8 text-center text-gray-400 text-sm">No items found</td>
                           </tr>
                         ) : (
-                          detailOrder.items.map((it, idx) => (
+                          detailOrder.items.map((it, idx) => {
+                            const returned = Number(it.returned_quantity ?? 0);
+                            const qty = Number(it.quantity ?? 0);
+                            return (
                             <tr key={it.id} className={idx % 2 === 0 ? 'bg-white' : 'bg-blue-50'}>
                               <td className="px-3 py-2 text-gray-400 text-xs">{idx + 1}</td>
                               <td className="px-3 py-2 font-medium text-gray-800">
@@ -456,9 +533,18 @@ export default function PosOrdersPage() {
                               </td>
                               <td className="px-3 py-2 text-gray-500">{it.variation?.name || '—'}</td>
                               <td className="px-3 py-2 text-center">
-                                <span className="bg-blue-100 text-blue-700 px-2 py-0.5 rounded-full text-xs font-semibold">
+                                <span className={`px-2 py-0.5 rounded-full text-xs font-semibold ${returned > 0 && returned >= qty ? 'bg-gray-100 text-gray-500 line-through' : 'bg-blue-100 text-blue-700'}`}>
                                   {it.quantity}
                                 </span>
+                              </td>
+                              <td className="px-3 py-2 text-center">
+                                {returned > 0 ? (
+                                  <span className="bg-purple-100 text-purple-700 px-2 py-0.5 rounded-full text-xs font-semibold" title={`${returned} of ${qty} returned`}>
+                                    {returned}
+                                  </span>
+                                ) : (
+                                  <span className="text-gray-300 text-xs">—</span>
+                                )}
                               </td>
                               <td className="px-3 py-2 text-right text-gray-800">
                                 ৳{Number(it.unit_price ?? 0).toFixed(2)}
@@ -467,7 +553,8 @@ export default function PosOrdersPage() {
                                 ৳{Number(it.line_total ?? 0).toFixed(2)}
                               </td>
                             </tr>
-                          ))
+                            );
+                          })
                         )}
                       </tbody>
                     </table>

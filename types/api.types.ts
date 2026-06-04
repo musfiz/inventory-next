@@ -684,8 +684,11 @@ export interface PosOrderListItem {
   order_date: string;
   payment_method: PaymentMethod;
   payment_status: 'paid' | 'partial' | 'pending' | 'failed';
+  // Order lifecycle: 'draft' | 'pending' | 'confirmed' | 'completed' | 'cancelled' | 'refunded' | 'partially_refunded'
+  status?: string;
   grand_total: number;
   paid_amount?: number;
+  returned_amount?: number;
   due_amount?: number;
   is_paid: boolean;
   session?: { id: number; session_number: string };
@@ -699,6 +702,7 @@ export interface PosOrderDetailItem {
   variation_id?: number;
   item_name: string;
   quantity: number;
+  returned_quantity?: number;
   unit_price: number;
   discount?: number;
   tax_rate?: number;
@@ -726,6 +730,7 @@ export interface PosOrderDetail {
   rounding_adjustment?: number;
   grand_total: number;
   paid_amount: number;
+  returned_amount?: number;
   due_amount: number;
   change_amount?: number;
   tendered_amount?: number;
@@ -861,6 +866,14 @@ export interface PosOrderItemForRefund {
   unit_price: number;
   product?: { id: number; name: string; code?: string };
   variation?: { id: number; name?: string; sku?: string };
+  /**
+   * P0-6: server-side snapshot of refunds-in-flight (status pending or
+   * approved) on this order line. Present when the caller passes
+   * `?include=current_refunds`. Used to recompute `max_returnable`
+   * authoritatively so two concurrent cashiers can't both pass the
+   * local check and double-refund the same line.
+   */
+  current_pending_refunds?: number;
 }
 
 /** Individual item row stored in a POS refund */

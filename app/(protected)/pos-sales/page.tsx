@@ -723,13 +723,28 @@ export default function POSSalesPage() {
               </div>
             </div>
 
-            <button
-              onClick={handleConfirmContext}
-              disabled={!dialogTenant || !dialogRegister || !dialogSession}
-              className="mt-6 w-full px-4 py-2.5 bg-blue-600 hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed text-white font-semibold rounded-lg transition-colors"
-            >
-              Start POS Session
-            </button>
+            <div className="mt-6 flex items-center gap-2">
+              <button
+                type="button"
+                onClick={() => {
+                  // Close the context dialog and take the user back to
+                  // the POS session list so they can pick a different
+                  // tenant / register / session, or back out entirely.
+                  setShowContextDialog(false);
+                  router.push('/pos-orders');
+                }}
+                className="flex-1 px-4 py-2.5 bg-gray-100 hover:bg-gray-200 dark:bg-gray-700 dark:hover:bg-gray-600 text-gray-700 dark:text-gray-200 font-semibold rounded-lg transition-colors"
+              >
+                Back
+              </button>
+              <button
+                onClick={handleConfirmContext}
+                disabled={!dialogTenant || !dialogRegister || !dialogSession}
+                className="flex-1 px-4 py-2.5 bg-blue-600 hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed text-white font-semibold rounded-lg transition-colors"
+              >
+                Start POS Session
+              </button>
+            </div>
           </div>
         </div>
       )}

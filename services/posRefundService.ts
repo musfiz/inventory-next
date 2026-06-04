@@ -36,13 +36,16 @@ class PosRefundService {
     return response.data.data;
   }
 
+  /**
+   * Upsert. The backend's `/pos/refunds/store` endpoint accepts
+   * both create and update — if `data.id` is present, it updates;
+   * otherwise it creates. The page is responsible for setting
+   * `data.id` when editing an existing refund. There is no separate
+   * `update()` method on purpose; one upsert endpoint is simpler
+   * than a create+update pair and matches the backend contract.
+   */
   async store(data: Record<string, any>) {
     const response = await apiClient.post<ApiResponse<PosRefund>>('/api/v1/pos/refunds/store', data);
-    return response.data.data;
-  }
-
-  async update(id: number | string, data: Record<string, any>) {
-    const response = await apiClient.post<ApiResponse<PosRefund>>('/api/v1/pos/refunds/store', { ...data, id });
     return response.data.data;
   }
 
@@ -53,6 +56,28 @@ class PosRefundService {
 
   async complete(id: number | string) {
     const response = await apiClient.post<ApiResponse<PosRefund>>(`/api/v1/pos/refunds/${id}/complete`);
+    return response.data.data;
+  }
+
+  /**
+   * P0-3: cancel a pending or approved refund. Backend flips the
+   * status to `cancelled`; the row stays in the DB for audit but
+   * is hidden from active lists. Idempotent.
+   */
+  async cancel(id: number | string) {
+    const response = await apiClient.post<ApiResponse<PosRefund>>(`/api/v1/pos/refunds/${id}/cancel`);
+    return response.data.data;
+  }
+
+  /**
+   * P0-1: Try the combined approve+complete endpoint that wraps both transitions
+   * in a single backend transaction. If the backend has not yet shipped it
+   * (404), callers should fall back to sequential `approve()` + `complete()`.
+   */
+  async approveAndComplete(id: number | string) {
+    const response = await apiClient.post<ApiResponse<PosRefund>>(
+      `/api/v1/pos/refunds/${id}/approve-and-complete`
+    );
     return response.data.data;
   }
 
@@ -74,9 +99,23 @@ class PosRefundService {
     return response.data.data;
   }
 
-  /** Fetch items of a POS order for refund selection */
-  async getOrderItems(orderId: number | string) {
-    const response = await apiClient.get<ApiResponse<PosOrderItemForRefund[]>>(`/api/v1/pos/orders/${orderId}/items`);
+  /**
+   * Fetch items of a POS order for refund selection.
+   *
+   * P0-6: pass `include: 'current_refunds'` so the server can recompute
+   * `max_returnable` against any in-flight refunds on the same order.
+   * Without this, two concurrent refunds can both pass the local
+   * `max_returnable` check and the second one fails on the server with
+   * a generic 422. The server is the only place that knows about both
+   * refunds atomically; we ask it for an authoritative snapshot.
+   */
+  async getOrderItems(orderId: number | string, opts: { includeCurrentRefunds?: boolean } = {}) {
+    const params: Record<string, any> = {};
+    if (opts.includeCurrentRefunds) params.include = 'current_refunds';
+    const response = await apiClient.get<ApiResponse<PosOrderItemForRefund[]>>(
+      `/api/v1/pos/orders/${orderId}/items`,
+      { params }
+    );
     return response.data.data;
   }
 

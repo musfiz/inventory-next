@@ -12,13 +12,16 @@ class SalesReturnService {
     return response.data.data;
   }
 
+  /**
+   * Upsert. The backend's `/sales-returns/store` endpoint accepts
+   * both create and update — if `data.id` is present, it updates;
+   * otherwise it creates. The page is responsible for setting
+   * `data.id` when editing an existing return. There is no separate
+   * `update()` method on purpose; one upsert endpoint is simpler
+   * than a create+update pair and matches the backend contract.
+   */
   async store(data: Record<string, any>) {
     const response = await apiClient.post<ApiResponse<SalesReturn>>('/api/v1/sales-returns/store', data);
-    return response.data.data;
-  }
-
-  async update(id: number | string, data: Record<string, any>) {
-    const response = await apiClient.post<ApiResponse<SalesReturn>>('/api/v1/sales-returns/store', { ...data, id });
     return response.data.data;
   }
 

@@ -1,10 +1,11 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
-import { Plus, X, CheckCircle, Check, Printer } from 'lucide-react';
+import { Plus, X, CheckCircle, Check, Printer, RefreshCw, AlertTriangle, Ban } from 'lucide-react';
 import { ColumnDef } from '@tanstack/react-table';
-import { notify, confirm } from '@/lib/notifications';
+import { notify, confirm, info as notifyInfo } from '@/lib/notifications';
 import { posRefundService } from '@/services';
+import Swal from 'sweetalert2';
 import type { PosRefund } from '@/services/posRefundService';
 import type { PosOrderItemForRefund, PosRefundItem } from '@/types/api.types';
 import DataTable from '@/components/ui/datatable';
@@ -99,6 +100,12 @@ export default function PosRefundsPage() {
   const [submitting, setSubmitting] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
 
+  // Refs to the qty inputs so we can auto-focus the first one when
+  // the form opens. Cashier should be able to start typing immediately,
+  // and clicking an existing value should select-all so they can overwrite
+  // it (e.g. default 5 → they want 1, just type 1 — no manual clearing).
+  const qtyInputRefs = useRef<(HTMLInputElement | null)[]>([]);
+
   // Form fields
   const [tenantId, setTenantId] = useState('');
   const [selectedOrder, setSelectedOrder] = useState<any>(null);
@@ -108,6 +115,22 @@ export default function PosRefundsPage() {
   const [orderItems, setOrderItems] = useState<PosOrderItemForRefund[]>([]);
   const [refundLines, setRefundLines] = useState<RefundLine[]>([]);
   const [loadingItems, setLoadingItems] = useState(false);
+
+  // Auto-focus the first quantity input when refund lines first appear
+  // (i.e. after the order's items have been loaded). Cashier can then
+  // start typing or tab between lines without clicking first.
+  useEffect(() => {
+    if (refundLines.length > 0 && qtyInputRefs.current[0]) {
+      // Defer to a microtask so the input is mounted before we focus.
+      // The default value is `max_returnable`; selecting it lets the
+      // cashier type a new value immediately, or hit Backspace to clear.
+      const t = setTimeout(() => {
+        qtyInputRefs.current[0]?.focus();
+        qtyInputRefs.current[0]?.select();
+      }, 0);
+      return () => clearTimeout(t);
+    }
+  }, [refundLines.length]);
 
   // Print
   const [printRefund, setPrintRefund] = useState<PosRefund | null>(null);
@@ -119,6 +142,7 @@ export default function PosRefundsPage() {
   const [settleTarget, setSettleTarget] = useState<PosRefund | null>(null);
   const [settleForm, setSettleForm] = useState({ action: 'collect', amount: '', payment_method: 'cash', notes: '' });
   const [settling, setSettling] = useState(false);
+  const [settleLoading, setSettleLoading] = useState(false);
 
   // ── Dropdown loaders ──────────────────────────────────────────────────────
 
@@ -141,7 +165,10 @@ export default function PosRefundsPage() {
     if (!opt?.value) return;
     setLoadingItems(true);
     try {
-      const items = await posRefundService.getOrderItems(opt.value);
+      // P0-6: ask the server for an authoritative snapshot of refunds-in-flight
+      // so two concurrent cashiers can't both pass the local `max_returnable`
+      // check and double-refund the same line. See getOrderItems() doc.
+      const items = await posRefundService.getOrderItems(opt.value, { includeCurrentRefunds: true });
       const arr: PosOrderItemForRefund[] = Array.isArray(items) ? items : [];
       setOrderItems(arr);
       const lines: RefundLine[] = arr
@@ -154,6 +181,17 @@ export default function PosRefundsPage() {
           unit_price: i.unit_price,
         }));
       setRefundLines(lines);
+
+      // P0-6: surface a soft warning if the server reports in-flight refunds
+      // on this order, so the cashier knows numbers may shift during their
+      // session and to watch for the refresh hint on submit.
+      const hasInFlight = arr.some(i => (i.current_pending_refunds ?? 0) > 0);
+      if (hasInFlight) {
+        notifyInfo(
+          'Refunds in progress',
+          'This order has refunds being processed. Available quantities may change — refresh before submitting.'
+        );
+      }
     } catch { notify.error('Failed to load order items'); }
     finally { setLoadingItems(false); }
   };
@@ -230,8 +268,80 @@ export default function PosRefundsPage() {
       notify.success('Refund created successfully');
       setShowForm(false);
       setRefreshKey(k => k + 1);
-    } catch (err: any) { handleError(err); }
-    finally { setSubmitting(false); }
+    } catch (err: any) {
+      // P0-6: another cashier approved/completed a refund on this order
+      // between the moment we loaded the items and the moment we submitted.
+      // The local `max_returnable` was stale; the server is the only
+      // authority. Detect the race and offer a one-click refresh + retry.
+      if (isReturnableRace(err)) {
+        await handleReturnableRace(err);
+        return;
+      }
+      handleError(err);
+    } finally { setSubmitting(false); }
+  };
+
+  /**
+   * P0-6: detect the server-side race-rejection shape. Backend is
+   * expected to return a 422/409 with a message containing
+   * "no longer returnable" (or one of the documented variants) and a
+   * structured `errors.items.<idx>.qty` field. The exact wording is
+   * documented in P0_correctness.md acceptance criteria; the check is
+   * intentionally permissive so message tweaks don't silently bypass it.
+   */
+  const isReturnableRace = (err: any): boolean => {
+    const data = err?.response?.data;
+    if (!data) return false;
+    const message = String(data.message ?? '').toLowerCase();
+    if (message.includes('no longer returnable')) return true;
+    if (message.includes('not returnable')) return true;
+    if (message.includes('exceeds max')) return true;
+    const errors = data.errors;
+    if (errors && typeof errors === 'object') {
+      const flat = JSON.stringify(errors).toLowerCase();
+      if (flat.includes('max_returnable')) return true;
+      if (flat.includes('returnable')) return true;
+    }
+    return false;
+  };
+
+  /**
+   * P0-6: race-recovery. Re-fetch the order's items with the
+   * authoritative `current_refunds` snapshot, update the lines, and
+   * show a clear refresh-and-retry prompt. We don't auto-resubmit
+   * because the cashier's qty choices may need to be re-made.
+   */
+  const handleReturnableRace = async (err: any) => {
+    const serverMessage = String(err?.response?.data?.message ?? '');
+    notify.warning(
+      serverMessage ||
+        'This item is no longer fully returnable — another refund was just recorded on this order.'
+    );
+    if (!selectedOrder?.value) return;
+    try {
+      const items = await posRefundService.getOrderItems(selectedOrder.value, { includeCurrentRefunds: true });
+      const arr: PosOrderItemForRefund[] = Array.isArray(items) ? items : [];
+      setOrderItems(arr);
+      // Re-clamp each existing line to the new `max_returnable`. If the
+      // server now reports `max_returnable === 0` for a line, drop it
+      // — that quantity is gone and the cashier should re-pick.
+      setRefundLines(prev => prev
+        .map(l => {
+          const fresh = arr.find(i => i.variation_id === l.variation_id);
+          if (!fresh) return l;
+          return {
+            ...l,
+            max_returnable: fresh.max_returnable,
+            quantity: Math.min(Number(l.quantity) || 0, fresh.max_returnable),
+          };
+        })
+        .filter(l => l.max_returnable > 0)
+      );
+    } catch {
+      // If the re-fetch itself fails, the cashier still has the warning
+      // banner and the form's local `max_returnable` values are now
+      // potentially optimistic — they should re-select the order.
+    }
   };
 
   const handleApprove = async (refund: PosRefund) => {
@@ -241,12 +351,66 @@ export default function PosRefundsPage() {
       confirmButtonText: 'Approve & Restock', cancelButtonText: 'Cancel', icon: 'question',
     });
     if (!result.isConfirmed) return;
+
+    // P0-1: try the combined endpoint first (single backend transaction).
+    // If the backend has not yet shipped it (404), fall back to the safe
+    // two-call sequence with a partial-failure recovery path.
     try {
-      await posRefundService.approve(refund.id);
-      await posRefundService.complete(refund.id);
+      try {
+        await posRefundService.approveAndComplete(refund.id);
+      } catch (combinedErr: any) {
+        const status = combinedErr?.response?.status;
+        if (status !== 404 && status !== 405) throw combinedErr; // unexpected — surface to outer catch
+        await runSequentialApproveAndComplete(refund.id);
+      }
       notify.success('Refund approved & stock restored');
       setRefreshKey(k => k + 1);
-    } catch (err: any) { notify.error(err?.response?.data?.message || 'Failed to approve refund'); }
+    } catch (err: any) {
+      handleApproveFailure(refund, err);
+    }
+  };
+
+  // P0-1: sequential fallback when the combined endpoint is unavailable.
+  // If `complete` fails after `approve` succeeded, the row is left in
+  // `approved` with stock unrestored — we must not claim success.
+  const runSequentialApproveAndComplete = async (id: number | string) => {
+    await posRefundService.approve(id);
+    try {
+      await posRefundService.complete(id);
+    } catch (completeErr: any) {
+      // Re-throw with context so the caller can show a non-green banner
+      // and offer a "Retry Complete" action.
+      const err: any = new Error('Approved but stock restoration failed');
+      err.code = 'PARTIAL_APPROVE';
+      err.cause = completeErr;
+      throw err;
+    }
+  };
+
+  // P0-1: best-effort recovery — used both after a partial failure and as
+  // the explicit "Retry Complete" row action while the row is `approved`.
+  const handleRetryComplete = async (refund: PosRefund) => {
+    try {
+      await posRefundService.complete(refund.id);
+      notify.success('Refund completed — stock restored');
+      setRefreshKey(k => k + 1);
+    } catch (err: any) {
+      notify.error(err?.response?.data?.message || 'Stock restoration still failing — please contact support');
+    }
+  };
+
+  const handleApproveFailure = (refund: PosRefund, err: any) => {
+    if (err?.code === 'PARTIAL_APPROVE') {
+      notify.warning(
+        'Approved but stock restoration failed',
+        `Refund ${refund.refund_number} was approved, but the stock-restock step failed. Use the "Retry Complete" action on the row to recover.`
+      );
+      // Surface the current state so the row's status flips to `approved`
+      // and the Retry Complete button appears.
+      setRefreshKey(k => k + 1);
+      return;
+    }
+    notify.error(err?.response?.data?.message || err?.message || 'Failed to approve refund');
   };
 
   const handleComplete = async (refund: PosRefund) => {
@@ -275,6 +439,70 @@ export default function PosRefundsPage() {
       notify.success('Refund deleted');
       setRefreshKey(k => k + 1);
     } catch (err: any) { notify.error(err?.response?.data?.message || 'Failed to delete'); }
+  };
+
+  // P0-3: cancel a pending or approved refund. Approved refunds get
+  // a typed-confirmation dialog because the original review flagged
+  // them as risky (approval may have triggered side effects in other
+  // implementations). Pending refunds get a standard confirm.
+  const handleCancelRefund = async (refund: PosRefund) => {
+    if (refund.status === 'approved') {
+      // Stronger prompt for approved — typed confirmation so a stray
+      // double-click can't cancel it. The label is short and the
+      // receiver is the refund number so the user can verify.
+      const { value: confirmText } = await Swal.fire({
+        title: 'Cancel approved refund?',
+        html: `
+          <div class="text-left text-sm space-y-2">
+            <p>
+              Refund <strong>${refund.refund_number}</strong> has been
+              <strong>approved</strong>. Cancelling it abandons the
+              refund — the stock and journal will not be applied
+              (those only happen on <em>Complete</em>, which this
+              action prevents).
+            </p>
+            <p class="text-gray-600">
+              This is safe in the current build but is reserved for
+              cases where the approval was made by mistake. If you
+              really want to cancel an approved refund, type the
+              refund number below to confirm.
+            </p>
+          </div>
+        `,
+        input: 'text',
+        inputPlaceholder: refund.refund_number ?? '',
+        inputAttributes: { 'aria-label': 'Type the refund number to confirm' },
+        icon: 'warning',
+        showCancelButton: true,
+        confirmButtonText: 'Cancel refund',
+        cancelButtonText: 'Keep refund',
+        confirmButtonColor: '#dc2626',
+        preConfirm: (v: string) => {
+          if ((v ?? '').trim() !== (refund.refund_number ?? '').trim()) {
+            Swal.showValidationMessage('Refund number does not match');
+            return false;
+          }
+          return true;
+        },
+      });
+      if (!confirmText) return;
+    } else {
+      // Pending: standard confirm. Same shape as the delete dialog.
+      const result = await confirm({
+        title: 'Cancel refund',
+        html: `Cancel pending refund <strong>${refund.refund_number}</strong>? The row will be kept for audit but the refund will not proceed.`,
+        confirmButtonText: 'Cancel refund', cancelButtonText: 'Keep', icon: 'warning',
+      });
+      if (!result.isConfirmed) return;
+    }
+
+    try {
+      await posRefundService.cancel(refund.id);
+      notify.success('Refund cancelled');
+      setRefreshKey(k => k + 1);
+    } catch (err: any) {
+      notify.error(err?.response?.data?.message || 'Failed to cancel refund');
+    }
   };
 
   const handlePrint = async (refund: PosRefund) => {
@@ -307,21 +535,40 @@ export default function PosRefundsPage() {
     } catch { notify.error('Failed to load refund details'); }
   };
 
-  const openSettle = (refund: PosRefund) => {
-    const po = refund.pos_order as any;
-    const grandTotal = Number(po?.grand_total ?? 0);
-    const returnedAmount = Number(po?.returned_amount ?? 0);
-    const paidAmount = Number(po?.paid_amount ?? 0);
-    const effectiveTotal = Math.max(0, grandTotal - returnedAmount);
-    const balance = effectiveTotal - paidAmount;
-    setSettleTarget(refund);
-    setSettleForm({
-      action: balance >= 0 ? 'collect' : 'refund',
-      amount: Math.abs(balance).toFixed(2),
-      payment_method: 'cash',
-      notes: '',
-    });
+  // P0-4: open the settle dialog with a fresh server read of the
+  // refund. The list row omits `pos_order.paid_amount` updates
+  // from any settlements that just happened, so using it directly
+  // makes the cashier see a stale balance (e.g. they just settled
+  // and reopened — old row still shows the pre-settle balance).
+  // The pattern matches sales-returns: open the dialog immediately
+  // with a loading state, then replace settleTarget with the fresh
+  // row from show() once it lands.
+  const openSettle = async (refund: PosRefund) => {
+    setSettleLoading(true);
     setShowSettleDialog(true);
+    try {
+      const full = await posRefundService.show(refund.id);
+      const target = full ?? refund;
+      const po = (target as any).pos_order ?? (refund as any).pos_order;
+      const grandTotal     = Number(po?.grand_total ?? 0);
+      const returnedAmount = Number(po?.returned_amount ?? 0);
+      const paidAmount     = Number(po?.paid_amount ?? 0);
+      const effectiveTotal = Math.max(0, grandTotal - returnedAmount);
+      const balance = effectiveTotal - paidAmount;
+
+      setSettleTarget(target);
+      setSettleForm({
+        action: balance >= 0 ? 'collect' : 'refund',
+        amount: Math.abs(balance).toFixed(2),
+        payment_method: 'cash',
+        notes: '',
+      });
+    } catch (err: any) {
+      setShowSettleDialog(false);
+      notify.error(err?.response?.data?.message || 'Failed to load settlement details');
+    } finally {
+      setSettleLoading(false);
+    }
   };
 
   const handleSettleSubmit = async () => {
@@ -408,6 +655,13 @@ export default function PosRefundsPage() {
                 <Check className="w-4 h-4" />
               </button>
             )}
+            {r.status === 'approved' && (
+              <button onClick={() => handleRetryComplete(r)} title="Retry stock restoration"
+                aria-label="Retry stock restoration for refund"
+                className="p-1 rounded text-amber-600 hover:bg-amber-50 dark:hover:bg-amber-900/30 cursor-pointer">
+                <RefreshCw className="w-4 h-4" />
+              </button>
+            )}
             {r.status === 'completed' && (
               <button onClick={() => handlePrint(r)} title="Print Credit Note"
                 className="p-1 rounded text-purple-600 hover:bg-purple-50 dark:hover:bg-purple-900/30 cursor-pointer">
@@ -428,6 +682,14 @@ export default function PosRefundsPage() {
               <button onClick={() => handleDelete(r)} title="Delete"
                 className="p-1 rounded text-red-600 hover:bg-red-50 dark:hover:bg-red-900/30 cursor-pointer">
                 <X className="w-4 h-4" />
+              </button>
+            )}
+            {(r.status === 'pending' || r.status === 'approved') && (
+              <button onClick={() => handleCancelRefund(r)}
+                title={r.status === 'approved' ? 'Cancel approved refund (typed confirmation)' : 'Cancel pending refund'}
+                aria-label={`Cancel refund ${r.refund_number}`}
+                className="p-1 rounded text-orange-600 hover:bg-orange-50 dark:hover:bg-orange-900/30 cursor-pointer">
+                <Ban className="w-4 h-4" />
               </button>
             )}
           </div>
@@ -498,15 +760,35 @@ export default function PosRefundsPage() {
             <div className="grid grid-cols-1 gap-2">
               <div>
                 <label className={labelCls}>POS Order <span className="text-red-500">*</span></label>
-                <CustomSelect
-                  value={selectedOrder}
-                  onChange={handleOrderChange}
-                  loadOptions={loadOrderOptions}
-                  defaultOptions={true}
-                  placeholder="Search by order / invoice #…"
-                  className="text-sm"
-                />
-                {errors.pos_order_id && <p className={errCls}>{errors.pos_order_id}</p>}
+                <div className="flex items-end gap-2">
+                  <div className="flex-1">
+                    <CustomSelect
+                      value={selectedOrder}
+                      onChange={handleOrderChange}
+                      loadOptions={loadOrderOptions}
+                      defaultOptions={true}
+                      placeholder="Search by order / invoice #…"
+                      className="text-sm"
+                    />
+                    {errors.pos_order_id && <p className={errCls}>{errors.pos_order_id}</p>}
+                  </div>
+                  {/* P0-6: manual refresh of the order items. The cashier
+                      can re-pull a fresh server snapshot of in-flight
+                      refunds before submitting. Same code path as
+                      selecting the order again. */}
+                  {selectedOrder?.value && (
+                    <button
+                      type="button"
+                      onClick={() => handleOrderChange(selectedOrder)}
+                      disabled={loadingItems}
+                      className="px-2.5 py-1.5 text-xs rounded border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-700 disabled:opacity-50"
+                      title="Re-check available quantities"
+                      aria-label="Re-check available quantities"
+                    >
+                      <RefreshCw className={`w-3.5 h-3.5 ${loadingItems ? 'animate-spin' : ''}`} />
+                    </button>
+                  )}
+                </div>
               </div>
             </div>
 
@@ -514,6 +796,36 @@ export default function PosRefundsPage() {
             {(loadingItems || refundLines.length > 0) && (
               <>
                 <p className={sectionCls}>Items to Refund</p>
+                {/* P0-6: persistent in-flight refunds warning. Shown when
+                    the server reports `current_pending_refunds > 0` on
+                    any line. Stays visible while the cashier composes
+                    the form so they know numbers may shift. */}
+                {orderItems.some(i => (i.current_pending_refunds ?? 0) > 0) && (
+                  <div
+                    className="flex items-start gap-2 p-2.5 rounded-md bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 text-amber-800 dark:text-amber-200 text-xs"
+                    role="status"
+                    aria-live="polite"
+                  >
+                    <AlertTriangle className="w-4 h-4 mt-0.5 shrink-0" />
+                    <div>
+                      <strong className="font-semibold">Refunds in progress:</strong>{' '}
+                      Another cashier is processing a refund on this order. Available
+                      quantities may change — re-select the order to refresh before submitting.
+                    </div>
+                  </div>
+                )}
+                {/* Caution: the cashier is about to refund these items.
+                    Restock happens on completion (P0-1) but the user
+                    should double-check qty before submitting. */}
+                <div className="flex items-start gap-2 p-2.5 rounded-md bg-rose-50 dark:bg-rose-900/20 border border-rose-200 dark:border-rose-800 text-rose-800 dark:text-rose-200 text-xs">
+                  <AlertTriangle className="w-4 h-4 mt-0.5 shrink-0" />
+                  <div>
+                    <strong className="font-semibold">Caution:</strong>{' '}
+                    The items shown on this page will be refunded once you submit. Please verify the
+                    quantities carefully before confirming — refunds restore stock to inventory and
+                    cannot be easily undone.
+                  </div>
+                </div>
                 {loadingItems ? (
                   <p className="text-sm text-gray-500 py-2">Loading order items…</p>
                 ) : (
@@ -538,9 +850,12 @@ export default function PosRefundsPage() {
                             </td>
                             <td className="px-2 py-1 border border-gray-200 dark:border-gray-600">
                               <input
+                                ref={el => { qtyInputRefs.current[i] = el; }}
                                 type="number" step="0.001" min="0" max={line.max_returnable}
                                 value={line.quantity}
+                                onFocus={e => e.target.select()}
                                 onChange={e => updateLine(i, Number(e.target.value))}
+                                onKeyDown={e => { if (e.key === 'Enter') e.preventDefault(); }}
                                 className={`${inputCls} text-center`}
                               />
                               {errors[`items.${i}.qty`] && <p className={errCls}>{errors[`items.${i}.qty`]}</p>}
@@ -675,10 +990,10 @@ export default function PosRefundsPage() {
 
                 {/* Balance banner */}
                 <div className={`rounded-lg p-3 text-center ${balance === 0
-                    ? 'bg-green-100 dark:bg-green-900/40 text-green-800 dark:text-green-200'
-                    : balance > 0
-                      ? 'bg-amber-100 dark:bg-amber-900/40 text-amber-800 dark:text-amber-200'
-                      : 'bg-red-100 dark:bg-red-900/40 text-red-800 dark:text-red-200'
+                  ? 'bg-green-100 dark:bg-green-900/40 text-green-800 dark:text-green-200'
+                  : balance > 0
+                    ? 'bg-amber-100 dark:bg-amber-900/40 text-amber-800 dark:text-amber-200'
+                    : 'bg-red-100 dark:bg-red-900/40 text-red-800 dark:text-red-200'
                   }`}>
                   {balance === 0 ? (
                     <p className="font-semibold text-sm">Order is fully settled — no action needed</p>
@@ -705,9 +1020,14 @@ export default function PosRefundsPage() {
                     <div>
                       <label className={labelCls}>Amount</label>
                       <input type="number" step="0.01" min="0.01"
+                        max={Math.abs(balance) || undefined}
                         value={settleForm.amount}
                         onChange={e => setSettleForm(f => ({ ...f, amount: e.target.value }))}
                         className={inputCls} />
+                      <p className="text-[10px] text-gray-500 mt-0.5">
+                        Max: ৳{(Math.abs(balance) || 0).toFixed(2)}
+      {settleLoading ? ' · loading fresh balance…' : ''}
+                      </p>
                     </div>
                     <div>
                       <label className={labelCls}>Payment Method</label>
@@ -733,12 +1053,21 @@ export default function PosRefundsPage() {
                   className="px-4 py-1.5 text-sm border border-gray-300 dark:border-gray-600 rounded-sm text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors">
                   {balance === 0 ? 'Close' : 'Cancel'}
                 </button>
-                {balance !== 0 && (
-                  <button onClick={handleSettleSubmit} disabled={settling}
-                    className="px-4 py-1.5 text-sm bg-emerald-600 hover:bg-emerald-700 disabled:opacity-60 text-white rounded-sm font-medium transition-colors">
-                    {settling ? 'Processing…' : settleForm.action === 'refund' ? 'Issue Refund' : 'Record Payment'}
-                  </button>
-                )}
+                {balance !== 0 && (() => {
+                  // P0-5: cap client-side. The input has max={abs(balance)}
+                  // but the user can still type something out of range if
+                  // they paste a larger number. Disable submit when the
+                  // typed amount is invalid, missing, or zero.
+                  const amt = Number(settleForm.amount);
+                  const outOfRange = !settleForm.amount || !Number.isFinite(amt) || amt <= 0 || amt > Math.abs(balance);
+                  return (
+                    <button onClick={handleSettleSubmit}
+                      disabled={settling || settleLoading || outOfRange}
+                      className="px-4 py-1.5 text-sm bg-emerald-600 hover:bg-emerald-700 disabled:opacity-60 text-white rounded-sm font-medium transition-colors">
+                      {settling ? 'Processing…' : settleForm.action === 'refund' ? 'Issue Refund' : 'Record Payment'}
+                    </button>
+                  );
+                })()}
               </div>
             </div>
           </div>
