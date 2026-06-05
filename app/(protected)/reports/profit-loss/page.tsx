@@ -4,13 +4,14 @@ import { useState } from 'react';
 import { Search, TrendingUp, TrendingDown } from 'lucide-react';
 import { notify } from '@/lib/notifications';
 import accountService from '@/services/accountService';
+import CustomDatePicker from '@/components/ui/date-picker';
 import type { ProfitLossReport } from '@/types/accounting.types';
 
 function AmountRow({ label, amount, bold, indent, color }: {
   label: string; amount: number; bold?: boolean; indent?: boolean; color?: string;
 }) {
   return (
-    <div className={`flex justify-between py-1.5 ${indent ? 'pl-6' : ''} ${bold ? 'font-semibold border-t dark:border-gray-700' : ''}`}>
+    <div className={`flex justify-between py-1.5 ${indent ? 'pl-6' : ''} ${bold ? 'font-semibold' : ''}`}>
       <span className={`text-sm ${color ?? 'text-gray-700 dark:text-gray-300'}`}>{label}</span>
       <span className={`font-mono text-sm ${color ?? (amount < 0 ? 'text-red-500' : 'text-gray-900 dark:text-white')}`}>
         ৳{Math.abs(amount).toFixed(2)}{amount < 0 ? ' (loss)' : ''}
@@ -48,13 +49,19 @@ export default function ProfitLossPage() {
       <div className="bg-white dark:bg-gray-900 rounded-lg border dark:border-gray-700 p-4 flex flex-wrap gap-3 items-end">
         <div>
           <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">Start Date</label>
-          <input type="date" value={startDate} onChange={e => setStartDate(e.target.value)}
-            className="border rounded px-2 py-1.5 text-sm dark:bg-gray-800 dark:border-gray-600 dark:text-white" />
+          <CustomDatePicker
+            value={startDate}
+            onChange={setStartDate}
+            className="w-full"
+          />
         </div>
         <div>
           <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">End Date</label>
-          <input type="date" value={endDate} onChange={e => setEndDate(e.target.value)}
-            className="border rounded px-2 py-1.5 text-sm dark:bg-gray-800 dark:border-gray-600 dark:text-white" />
+          <CustomDatePicker
+            value={endDate}
+            onChange={setEndDate}
+            className="w-full"
+          />
         </div>
         <button
           onClick={load}
@@ -105,7 +112,7 @@ export default function ProfitLossPage() {
             <AmountRow label="Total Expenses" amount={report.expenses} bold />
           </div>
 
-          <div className={`flex justify-between pt-3 border-t-2 ${report.net_profit >= 0 ? 'border-green-400' : 'border-red-400'}`}>
+          <div className="flex justify-between pt-3">
             <span className="font-bold text-base text-gray-900 dark:text-white flex items-center gap-1">
               {report.net_profit >= 0
                 ? <TrendingUp size={16} className="text-green-500" />

@@ -30,6 +30,8 @@ import {
   FileText,
   FileSpreadsheet,
   History,
+  Scale,
+  Landmark,
 } from 'lucide-react';
 import { MdOutlineAssignmentReturn, MdOutlinePointOfSale, MdOutlinePostAdd, MdPayment, MdSupervisedUserCircle } from 'react-icons/md';
 import { BsFilePost, BsReceiptCutoff } from 'react-icons/bs';
@@ -195,6 +197,8 @@ const navigation: NavigationItem[] = [
       { name: 'Expenses', href: '/expenses', icon: FileText, permission: 'view-expenses' },
       { name: 'Journal Entries', href: '/journal-entries', icon: History, permission: 'view-journal-entries' },
       { name: 'Account Ledger', href: '/reports/ledger', icon: FileSpreadsheet, permission: 'view-accounts' },
+      { name: 'Trial Balance', href: '/reports/trial-balance', icon: Scale, permission: 'view-reports' },
+      { name: 'Balance Sheet', href: '/reports/balance-sheet', icon: Landmark, permission: 'view-reports' },
       { name: 'Profit & Loss', href: '/reports/profit-loss', icon: FileText, permission: 'view-reports' },
       { name: 'Cash Flow', href: '/reports/cash-flow', icon: FileText, permission: 'view-reports' },
     ],

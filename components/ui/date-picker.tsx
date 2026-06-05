@@ -56,7 +56,7 @@ export default function CustomDatePicker({
           placeholder={placeholder}
           readOnly
           disabled={disabled}
-          className={`w-full px-2 py-1.25 text-sm border border-gray-300 rounded-sm focus:outline-none focus:ring-1 focus:ring-blue-500 dark:focus:ring-blue-400 focus:border-transparent dark:bg-gray-700 dark:text-gray-100 dark:border-gray-600 ${disabled ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'} ${value ? 'pr-14' : 'pr-8'} ${className || ''}`}
+          className={`w-full px-2.5 py-1 text-sm bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-sm text-gray-900 dark:text-gray-100 focus:outline-none focus:border-indigo-500 dark:focus:border-indigo-400 ${disabled ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'} ${value ? 'pr-14' : 'pr-8'} ${className || ''}`}
         />
         {value && (
           <button

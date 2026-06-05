@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { Search } from 'lucide-react';
 import { notify } from '@/lib/notifications';
 import accountService from '@/services/accountService';
+import CustomDatePicker from '@/components/ui/date-picker';
 import type { LedgerLine, Account } from '@/types/accounting.types';
 
 export default function LedgerPage() {
@@ -57,7 +58,7 @@ export default function LedgerPage() {
               placeholder="Search account by code or name…"
               value={selectedAccount ? `${selectedAccount.code} – ${selectedAccount.name}` : accountQuery}
               onChange={e => { setSelectedAccount(null); searchAccounts(e.target.value); }}
-              className="w-full border rounded px-3 py-1.5 text-sm dark:bg-gray-800 dark:border-gray-600 dark:text-white"
+              className="w-full px-2.5 py-1 text-sm bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-sm text-gray-900 dark:text-gray-100 focus:outline-none focus:border-indigo-500 dark:focus:border-indigo-400"
             />
             {accountOptions.length > 0 && !selectedAccount && (
               <div className="absolute z-10 top-full left-0 right-0 bg-white dark:bg-gray-800 border dark:border-gray-700 rounded shadow-lg mt-0.5">
@@ -77,18 +78,24 @@ export default function LedgerPage() {
         </div>
         <div>
           <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">Start Date</label>
-          <input type="date" value={startDate} onChange={e => setStartDate(e.target.value)}
-            className="border rounded px-2 py-1.5 text-sm dark:bg-gray-800 dark:border-gray-600 dark:text-white" />
+          <CustomDatePicker
+            value={startDate}
+            onChange={setStartDate}
+            className="w-full"
+          />
         </div>
         <div>
           <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">End Date</label>
-          <input type="date" value={endDate} onChange={e => setEndDate(e.target.value)}
-            className="border rounded px-2 py-1.5 text-sm dark:bg-gray-800 dark:border-gray-600 dark:text-white" />
+          <CustomDatePicker
+            value={endDate}
+            onChange={setEndDate}
+            className="w-full"
+          />
         </div>
         <button
           onClick={loadLedger}
           disabled={loading || !selectedAccount}
-          className="flex items-center gap-1.5 px-4 py-1.5 text-sm bg-blue-600 hover:bg-blue-700 text-white rounded disabled:opacity-60"
+          className="flex items-center gap-1.5 px-4 py-1.5 text-sm bg-indigo-600 hover:bg-indigo-700 text-white rounded-sm disabled:opacity-60"
         >
           <Search size={14} />
           {loading ? 'Loading…' : 'View Ledger'}
@@ -98,7 +105,7 @@ export default function LedgerPage() {
       {/* Ledger Table */}
       {ledgerData && (
         <div className="bg-white dark:bg-gray-900 rounded-lg border dark:border-gray-700 overflow-hidden">
-          <div className="p-4 border-b dark:border-gray-700">
+          <div className="p-4">
             <h2 className="font-semibold text-gray-900 dark:text-white">
               {ledgerData.account.code} – {ledgerData.account.name}
             </h2>

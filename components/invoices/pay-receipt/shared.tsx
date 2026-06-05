@@ -53,14 +53,41 @@ export function buildQrUrl(
 
 // ─── Shared prop types ───────────────────────────────────────────────────────
 
+// ─── Generic order-item shape (covers POS + Sales orders) ────────────────────
+
+export interface PrintOrderItem {
+  id?: number;
+  /** Display name (item_name for POS, product name for Sales) */
+  name: string;
+  /** Variation / options label e.g. "Red / XL" */
+  variant?: string | null;
+  sku?: string | null;
+  quantity: number;
+  unit_price: number;
+  discount?: number | null;
+  tax_rate?: number | null;
+  line_total: number;
+}
+
 export interface PayReceiptCommonProps {
   payment: Payment;
   /** When set, renders a "CUSTOMER COPY" / "MERCHANT COPY" / "DUPLICATE" stamp. */
   copyLabel?: 'customer' | 'merchant' | 'duplicate' | null;
+  /** Full order line items fetched from the server (POS or Sales order). */
+  orderItems?: PrintOrderItem[] | null;
+  /** Summary totals from the linked order for sub-total / discount / tax lines. */
+  orderSummary?: {
+    sub_total?: number | null;
+    discount_amount?: number | null;
+    discount_type?: string | null;
+    discount_value?: number | null;
+    tax_amount?: number | null;
+    grand_total?: number | null;
+  } | null;
 }
 
 export const COPY_LABEL_TEXT: Record<NonNullable<PayReceiptCommonProps['copyLabel']>, string> = {
-  customer:  'CUSTOMER COPY',
-  merchant:  'MERCHANT COPY',
+  customer: 'CUSTOMER COPY',
+  merchant: 'MERCHANT COPY',
   duplicate: 'DUPLICATE',
 };

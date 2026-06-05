@@ -5,8 +5,11 @@ import { FileText, Printer, X } from 'lucide-react';
 import type { Payment } from '@/types/api.types';
 import { notify } from '@/lib/notifications';
 import { paymentService } from '@/services';
+import posService from '@/services/posService';
+import salesOrderService from '@/services/salesOrderService';
 import { PayReceiptA4 } from './PayReceiptA4';
 import { PayReceiptThermal } from './PayReceiptThermal';
+import type { PrintOrderItem } from './shared';
 
 // ─── PrintMenu ────────────────────────────────────────────────────────────────
 
@@ -38,13 +41,23 @@ export function PrintMenu({ payment }: PrintMenuProps) {
   const [loading, setLoading] = useState(false);
 
   // Refs to each hidden print area.
-  const a4Ref   = useRef<HTMLDivElement>(null);
-  const t80Ref  = useRef<HTMLDivElement>(null);
-  const t58Ref  = useRef<HTMLDivElement>(null);
+  const a4Ref = useRef<HTMLDivElement>(null);
+  const t80Ref = useRef<HTMLDivElement>(null);
+  const t58Ref = useRef<HTMLDivElement>(null);
 
-  // Latest payment (after reload — needed because the list row may
-  // not include the full relations like tenant / salesOrder).
+  // Latest payment (after reload)
   const [full, setFull] = useState<Payment | null>(null);
+
+  // Order line items + summary fetched from the linked POS / Sales order
+  const [orderItems, setOrderItems] = useState<PrintOrderItem[] | null>(null);
+  const [orderSummary, setOrderSummary] = useState<{
+    sub_total?: number | null;
+    discount_amount?: number | null;
+    discount_type?: string | null;
+    discount_value?: number | null;
+    tax_amount?: number | null;
+    grand_total?: number | null;
+  } | null>(null);
 
   // ── Print helpers ────────────────────────────────────────────────────────
 
@@ -58,38 +71,47 @@ export function PrintMenu({ payment }: PrintMenuProps) {
     }
     win.document.write(`<!doctype html><html><head><title>Pay Receipt</title>
       <style>
+        /* ── Page setup ────────────────────────────────────── */
         @page {
           size: ${paperSize || 'auto'};
           margin: 0;
         }
-        body {
-          font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
-          margin: 0;
-          padding: 0;
-          color: #000;
+
+        /* ── Base reset ────────────────────────────────────── */
+        *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+        html, body {
           background: #fff;
+          color: #1a1a2e;
+          -webkit-print-color-adjust: exact;
+          print-color-adjust: exact;
         }
-        @media print { body { margin: 0; padding: 0; } }
-        /* A4 page wrapper */
+        body { font-family: 'Segoe UI', system-ui, -apple-system, Roboto, Arial, sans-serif; }
+        img  { display: block; max-width: 100%; }
+        table { border-collapse: collapse; }
+
+        /* ── A4 wrapper — used by PayReceiptA4 ─────────────── */
         .invoice-content {
           width: 210mm;
           min-height: 297mm;
           margin: 0 auto;
           padding: 20mm;
           background: #fff;
-          box-sizing: border-box;
+          position: relative;
+          overflow: hidden;
         }
-        /* 80mm thermal slip */
+
+        /* ── Thermal wrapper — used by PayReceiptThermal ────── */
         .pos-invoice-content {
-          width: 80mm;
-          min-height: auto;
           margin: 0 auto;
-          padding: 6mm 4mm;
           background: #fff;
-          box-sizing: border-box;
+          padding: 6mm 4mm;
         }
-        table, tr, td, th { page-break-inside: avoid; }
-        img { display: block; }
+
+        /* ── Print helpers ──────────────────────────────────── */
+        @media print {
+          html, body { background: #fff !important; }
+          table, tr, td, th { page-break-inside: avoid; }
+        }
       </style>
       </head><body>${html}</body></html>`);
     win.document.close();
@@ -107,6 +129,66 @@ export function PrintMenu({ payment }: PrintMenuProps) {
       setLoading(true);
       const f = await paymentService.show(payment.id);
       setFull(f);
+
+      // ── Fetch order detail for line items ──────────────────────────
+      // Only fetch once (orderItems starts null; after fetch it is [] or populated)
+      if (orderItems === null) {
+        try {
+          if (f.pos_order_id) {
+            // POS order — route accepts numeric ID as well as UUID
+            const order = await posService.getPosOrder(String(f.pos_order_id));
+            const mapped: PrintOrderItem[] = (order.items ?? []).map((it: any) => ({
+              id: it.id,
+              name: it.item_name ?? it.product?.name ?? 'Item',
+              variant: it.variation?.name ?? null,
+              sku: it.variation?.sku ?? it.product?.code ?? null,
+              quantity: Number(it.quantity),
+              unit_price: Number(it.unit_price),
+              discount: Number(it.discount ?? 0),
+              tax_rate: Number(it.tax_rate ?? 0),
+              line_total: Number(it.line_total),
+            }));
+            setOrderItems(mapped);
+            setOrderSummary({
+              sub_total: order.sub_total,
+              discount_amount: order.discount_amount,
+              discount_type: order.discount_type,
+              discount_value: order.discount_value,
+              tax_amount: order.tax_amount,
+              grand_total: order.grand_total,
+            });
+          } else if (f.sales_order_id) {
+            // Sales order — fetch detail (includes items array)
+            const order = await salesOrderService.getSalesOrder(String(f.sales_order_id));
+            const rawItems = order.items ?? await salesOrderService.getSalesOrderItems(String(f.sales_order_id));
+            const mapped: PrintOrderItem[] = (rawItems ?? []).map((it: any) => ({
+              id: it.id,
+              name: it.product?.name ?? it.name ?? 'Item',
+              variant: it.variation?.name ?? null,
+              sku: it.variation?.sku ?? it.product?.sku ?? null,
+              quantity: Number(it.quantity ?? it.qty ?? 0),
+              unit_price: Number(it.unit_price ?? it.price ?? 0),
+              discount: Number(it.discount_amount ?? it.discount ?? 0),
+              tax_rate: Number(it.tax_rate ?? 0),
+              line_total: Number(it.line_total ?? it.total ?? 0),
+            }));
+            setOrderItems(mapped);
+            setOrderSummary({
+              sub_total: order.sub_total,
+              discount_amount: order.discount_amount,
+              discount_type: order.discount_type,
+              discount_value: order.discount_value,
+              tax_amount: order.tax_amount,
+              grand_total: order.grand_total,
+            });
+          } else {
+            setOrderItems([]); // no linked order
+          }
+        } catch {
+          // Non-fatal — receipt still prints without items
+          setOrderItems([]);
+        }
+      }
       return f;
     } catch {
       notify.error('Failed to load payment details for printing');
@@ -169,7 +251,14 @@ export function PrintMenu({ payment }: PrintMenuProps) {
           (the active one), but all three stay mounted so refs remain valid. */}
       <div style={{ display: 'none' }}>
         <div ref={a4Ref}>
-          {data && <PayReceiptA4 payment={data} copyLabel={null} />}
+          {data && (
+            <PayReceiptA4
+              payment={data}
+              copyLabel={null}
+              orderItems={orderItems}
+              orderSummary={orderSummary}
+            />
+          )}
         </div>
         <div ref={t80Ref}>
           {data && <PayReceiptThermal payment={data} width="80mm" copyLabel={copyLabel} />}

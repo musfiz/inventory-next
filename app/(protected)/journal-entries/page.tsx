@@ -9,6 +9,7 @@ import accountService from '@/services/accountService';
 import type { JournalEntry, JournalEntryFormData } from '@/types/accounting.types';
 import type { Account } from '@/types/accounting.types';
 import DataTable from '@/components/ui/datatable';
+import CustomDatePicker from '@/components/ui/date-picker';
 import { usePermissions } from '@/hooks/use-permissions';
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -212,7 +213,7 @@ export default function JournalEntriesPage() {
         {hasPermission('create_journal_entries') && (
           <button
             onClick={openCreate}
-            className="flex items-center gap-1.5 px-3 py-1.5 text-sm bg-blue-600 hover:bg-blue-700 text-white rounded"
+            className="flex items-center gap-1.5 px-3 py-1.5 text-sm bg-indigo-600 hover:bg-indigo-700 text-white rounded-sm"
           >
             <Plus size={14} />
             Manual Entry
@@ -232,7 +233,7 @@ export default function JournalEntriesPage() {
       {showForm && (
         <div className="fixed inset-0 z-50 bg-black/40 flex items-center justify-center p-4">
           <div className="bg-white dark:bg-gray-900 rounded-xl shadow-xl w-full max-w-2xl max-h-[90vh] overflow-y-auto">
-            <div className="flex items-center justify-between p-4 border-b dark:border-gray-700 sticky top-0 bg-white dark:bg-gray-900">
+            <div className="flex items-center justify-between p-4 sticky top-0 bg-white dark:bg-gray-900">
               <h2 className="font-semibold text-gray-900 dark:text-white">New Manual Journal Entry</h2>
               <button onClick={() => setShowForm(false)} className="text-gray-400 hover:text-gray-600">✕</button>
             </div>
@@ -240,12 +241,10 @@ export default function JournalEntriesPage() {
               <div className="grid grid-cols-2 gap-3">
                 <div>
                   <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">Entry Date *</label>
-                  <input
-                    type="date"
-                    required
+                  <CustomDatePicker
                     value={form.entry_date}
-                    onChange={e => setForm(p => ({ ...p, entry_date: e.target.value }))}
-                    className="w-full border rounded px-2 py-1.5 text-sm dark:bg-gray-800 dark:border-gray-600 dark:text-white"
+                    onChange={v => setForm(p => ({ ...p, entry_date: v }))}
+                    className="w-full"
                   />
                 </div>
                 <div>
@@ -255,7 +254,7 @@ export default function JournalEntriesPage() {
                     required
                     value={form.description}
                     onChange={e => setForm(p => ({ ...p, description: e.target.value }))}
-                    className="w-full border rounded px-2 py-1.5 text-sm dark:bg-gray-800 dark:border-gray-600 dark:text-white"
+                    className="w-full px-2.5 py-1 text-sm bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-sm text-gray-900 dark:text-gray-100 focus:outline-none focus:border-indigo-500 dark:focus:border-indigo-400"
                   />
                 </div>
               </div>
@@ -277,7 +276,7 @@ export default function JournalEntriesPage() {
                       <select
                         value={line.account_id || ''}
                         onChange={e => updateLine(i, 'account_id', e.target.value)}
-                        className="border rounded px-2 py-1 text-xs dark:bg-gray-800 dark:border-gray-600 dark:text-white"
+                        className="w-full px-2.5 py-1 text-sm bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-sm text-gray-900 dark:text-gray-100 focus:outline-none focus:border-indigo-500 dark:focus:border-indigo-400"
                       >
                         <option value="">Select…</option>
                         {accountOptions.map(a => (
@@ -289,7 +288,7 @@ export default function JournalEntriesPage() {
                         placeholder="Note"
                         value={line.description || ''}
                         onChange={e => updateLine(i, 'description', e.target.value)}
-                        className="border rounded px-2 py-1 text-xs dark:bg-gray-800 dark:border-gray-600 dark:text-white"
+                        className="w-full px-2.5 py-1 text-sm bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-sm text-gray-900 dark:text-gray-100 focus:outline-none focus:border-indigo-500 dark:focus:border-indigo-400"
                       />
                       <input
                         type="number"
@@ -298,7 +297,7 @@ export default function JournalEntriesPage() {
                         placeholder="0.00"
                         value={line.debit || ''}
                         onChange={e => updateLine(i, 'debit', e.target.value)}
-                        className="border rounded px-2 py-1 text-xs dark:bg-gray-800 dark:border-gray-600 dark:text-white"
+                        className="w-full px-2.5 py-1 text-sm bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-sm text-gray-900 dark:text-gray-100 focus:outline-none focus:border-indigo-500 dark:focus:border-indigo-400"
                       />
                       <input
                         type="number"
@@ -307,7 +306,7 @@ export default function JournalEntriesPage() {
                         placeholder="0.00"
                         value={line.credit || ''}
                         onChange={e => updateLine(i, 'credit', e.target.value)}
-                        className="border rounded px-2 py-1 text-xs dark:bg-gray-800 dark:border-gray-600 dark:text-white"
+                        className="w-full px-2.5 py-1 text-sm bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-sm text-gray-900 dark:text-gray-100 focus:outline-none focus:border-indigo-500 dark:focus:border-indigo-400"
                       />
                       <button
                         type="button"
@@ -334,18 +333,18 @@ export default function JournalEntriesPage() {
                   rows={2}
                   value={form.notes ?? ''}
                   onChange={e => setForm(p => ({ ...p, notes: e.target.value }))}
-                  className="w-full border rounded px-2 py-1.5 text-sm dark:bg-gray-800 dark:border-gray-600 dark:text-white"
+                  className="w-full px-2.5 py-1 text-sm bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-sm text-gray-900 dark:text-gray-100 focus:outline-none focus:border-indigo-500 dark:focus:border-indigo-400"
                 />
               </div>
 
-              <div className="flex justify-end gap-2 pt-2 border-t dark:border-gray-700">
-                <button type="button" onClick={() => setShowForm(false)} className="px-4 py-1.5 text-sm border rounded dark:border-gray-600 dark:text-gray-300">
+              <div className="flex justify-end gap-2 pt-2">
+                <button type="button" onClick={() => setShowForm(false)} className="px-3 py-1.5 text-sm font-medium text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-sm hover:bg-gray-50 dark:hover:bg-gray-600">
                   Cancel
                 </button>
                 <button
                   type="submit"
                   disabled={saving || !isBalanced}
-                  className="px-4 py-1.5 text-sm bg-blue-600 hover:bg-blue-700 text-white rounded disabled:opacity-60"
+                  className="px-5 py-1.5 text-sm bg-indigo-600 hover:bg-indigo-700 text-white rounded-sm disabled:opacity-60"
                 >
                   {saving ? 'Saving…' : 'Save Draft'}
                 </button>
@@ -359,7 +358,7 @@ export default function JournalEntriesPage() {
       {showDetail && (
         <div className="fixed inset-0 z-50 bg-black/40 flex items-center justify-center p-4">
           <div className="bg-white dark:bg-gray-900 rounded-xl shadow-xl w-full max-w-xl max-h-[80vh] overflow-y-auto">
-            <div className="flex items-center justify-between p-4 border-b dark:border-gray-700 sticky top-0 bg-white dark:bg-gray-900">
+            <div className="flex items-center justify-between p-4 sticky top-0 bg-white dark:bg-gray-900">
               <div>
                 <h2 className="font-semibold text-gray-900 dark:text-white">{showDetail.entry_number}</h2>
                 <p className="text-xs text-gray-500">{showDetail.entry_date?.slice(0, 10)} · {statusBadge(showDetail.status)}</p>
@@ -370,7 +369,7 @@ export default function JournalEntriesPage() {
               <p className="text-sm text-gray-600 dark:text-gray-400">{showDetail.description}</p>
               <table className="w-full text-sm">
                 <thead>
-                  <tr className="border-b dark:border-gray-700">
+                  <tr>
                     <th className="text-left py-1 font-medium text-gray-600 dark:text-gray-300">Account</th>
                     <th className="text-left py-1 font-medium text-gray-600 dark:text-gray-300">Note</th>
                     <th className="text-right py-1 font-medium text-gray-600 dark:text-gray-300">Debit</th>
@@ -393,7 +392,7 @@ export default function JournalEntriesPage() {
                       </td>
                     </tr>
                   ))}
-                  <tr className="border-t dark:border-gray-700 font-semibold">
+                  <tr className="font-semibold">
                     <td colSpan={2} className="py-1">Total</td>
                     <td className="py-1 text-right font-mono text-xs">৳{Number(showDetail.total_debit).toFixed(2)}</td>
                     <td className="py-1 text-right font-mono text-xs">৳{Number(showDetail.total_credit).toFixed(2)}</td>

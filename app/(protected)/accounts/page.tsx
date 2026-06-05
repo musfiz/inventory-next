@@ -208,7 +208,7 @@ export default function AccountsPage() {
                 placeholder="Search accounts..."
                 value={search}
                 onChange={e => setSearch(e.target.value)}
-                className="w-full rounded-lg border border-gray-300 bg-white py-2 pl-9 pr-3 text-sm text-gray-900 outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 dark:border-gray-600 dark:bg-gray-800 dark:text-white"
+                className="w-full px-2.5 py-1 text-sm bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-sm text-gray-900 dark:text-gray-100 focus:outline-none focus:border-indigo-500 dark:focus:border-indigo-400"
               />
             </div>
             <button
@@ -255,7 +255,7 @@ export default function AccountsPage() {
       ) : (
         <div className="overflow-hidden rounded-xl border border-gray-200 bg-white shadow-sm dark:border-gray-700 dark:bg-gray-900">
           {loadError ? (
-            <div className="border-b border-gray-200 bg-red-50 px-4 py-3 text-sm text-red-700 dark:border-gray-700 dark:bg-red-950/30 dark:text-red-300">
+            <div className="bg-red-50 px-4 py-3 text-sm text-red-700 dark:bg-red-950/30 dark:text-red-300">
               {loadError}
             </div>
           ) : null}
@@ -356,7 +356,7 @@ export default function AccountsPage() {
       {showForm && (
         <div className="fixed inset-0 z-50 bg-black/40 flex items-center justify-center p-4">
           <div className="bg-white dark:bg-gray-900 rounded-xl shadow-xl w-full max-w-md">
-            <div className="flex items-center justify-between p-4 border-b dark:border-gray-700">
+            <div className="flex items-center justify-between p-4">
               <h2 className="font-semibold text-gray-900 dark:text-white">
                 {editAccount ? 'Edit Account' : 'New Account'}
               </h2>
@@ -372,7 +372,7 @@ export default function AccountsPage() {
                     value={form.code}
                     onChange={e => setForm(p => ({ ...p, code: e.target.value }))}
                     disabled={!!editAccount}
-                    className="w-full border rounded px-2 py-1.5 text-sm dark:bg-gray-800 dark:border-gray-600 dark:text-white disabled:opacity-50"
+                    className="w-full px-2.5 py-1 text-sm bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-sm text-gray-900 dark:text-gray-100 focus:outline-none focus:border-indigo-500 dark:focus:border-indigo-400 disabled:opacity-50"
                     placeholder="e.g. 1101"
                   />
                 </div>
@@ -382,7 +382,7 @@ export default function AccountsPage() {
                     type="text"
                     value={form.currency}
                     onChange={e => setForm(p => ({ ...p, currency: e.target.value }))}
-                    className="w-full border rounded px-2 py-1.5 text-sm dark:bg-gray-800 dark:border-gray-600 dark:text-white"
+                    className="w-full px-2.5 py-1 text-sm bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-sm text-gray-900 dark:text-gray-100 focus:outline-none focus:border-indigo-500 dark:focus:border-indigo-400"
                   />
                 </div>
               </div>
@@ -393,7 +393,7 @@ export default function AccountsPage() {
                   required
                   value={form.name}
                   onChange={e => setForm(p => ({ ...p, name: e.target.value }))}
-                  className="w-full border rounded px-2 py-1.5 text-sm dark:bg-gray-800 dark:border-gray-600 dark:text-white"
+                  className="w-full px-2.5 py-1 text-sm bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-sm text-gray-900 dark:text-gray-100 focus:outline-none focus:border-indigo-500 dark:focus:border-indigo-400"
                 />
               </div>
               <div className="grid grid-cols-2 gap-3">
@@ -407,7 +407,7 @@ export default function AccountsPage() {
                       const first = SUBTYPES_BY_TYPE[t]?.[0]?.value ?? 'other';
                       setForm(p => ({ ...p, account_type: t, account_subtype: first }));
                     }}
-                    className="w-full border rounded px-2 py-1.5 text-sm dark:bg-gray-800 dark:border-gray-600 dark:text-white"
+                    className="w-full px-2.5 py-1 text-sm bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-sm text-gray-900 dark:text-gray-100 focus:outline-none focus:border-indigo-500 dark:focus:border-indigo-400"
                   >
                     {ACCOUNT_TYPES.map(t => <option key={t} value={t} className="capitalize">{t}</option>)}
                   </select>
@@ -418,7 +418,7 @@ export default function AccountsPage() {
                     required
                     value={form.account_subtype}
                     onChange={e => setForm(p => ({ ...p, account_subtype: e.target.value as AccountSubtype }))}
-                    className="w-full border rounded px-2 py-1.5 text-sm dark:bg-gray-800 dark:border-gray-600 dark:text-white"
+                    className="w-full px-2.5 py-1 text-sm bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-sm text-gray-900 dark:text-gray-100 focus:outline-none focus:border-indigo-500 dark:focus:border-indigo-400"
                   >
                     {subtypeOptions.map(s => <option key={s.value} value={s.value}>{s.label}</option>)}
                   </select>
@@ -430,14 +430,14 @@ export default function AccountsPage() {
                   rows={2}
                   value={form.description ?? ''}
                   onChange={e => setForm(p => ({ ...p, description: e.target.value }))}
-                  className="w-full border rounded px-2 py-1.5 text-sm dark:bg-gray-800 dark:border-gray-600 dark:text-white"
+                  className="w-full px-2.5 py-1 text-sm bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-sm text-gray-900 dark:text-gray-100 focus:outline-none focus:border-indigo-500 dark:focus:border-indigo-400"
                 />
               </div>
               <div className="flex justify-end gap-2 pt-2">
-                <button type="button" onClick={() => setShowForm(false)} className="px-4 py-1.5 text-sm border rounded dark:border-gray-600 dark:text-gray-300">
+                <button type="button" onClick={() => setShowForm(false)} className="px-3 py-1.5 text-sm font-medium text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-sm hover:bg-gray-50 dark:hover:bg-gray-600">
                   Cancel
                 </button>
-                <button type="submit" disabled={saving} className="px-4 py-1.5 text-sm bg-blue-600 hover:bg-blue-700 text-white rounded disabled:opacity-60">
+                <button type="submit" disabled={saving} className="px-5 py-1.5 text-sm bg-indigo-600 hover:bg-indigo-700 text-white rounded-sm disabled:opacity-60">
                   {saving ? 'Saving…' : (editAccount ? 'Update' : 'Create')}
                 </button>
               </div>

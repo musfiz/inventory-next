@@ -7,6 +7,7 @@ import { notify, confirm } from '@/lib/notifications';
 import expenseService from '@/services/expenseService';
 import type { Expense, ExpenseFormData, PaymentMethod } from '@/types/accounting.types';
 import DataTable from '@/components/ui/datatable';
+import CustomDatePicker from '@/components/ui/date-picker';
 import { usePermissions } from '@/hooks/use-permissions';
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -185,7 +186,7 @@ export default function ExpensesPage() {
         {hasPermission('create_expenses') && (
           <button
             onClick={() => { setForm(emptyForm); setShowForm(true); }}
-            className="flex items-center gap-1.5 px-3 py-1.5 text-sm bg-blue-600 hover:bg-blue-700 text-white rounded"
+            className="flex items-center gap-1.5 px-3 py-1.5 text-sm bg-indigo-600 hover:bg-indigo-700 text-white rounded-sm"
           >
             <Plus size={14} />
             New Expense
@@ -206,7 +207,7 @@ export default function ExpensesPage() {
       {showForm && (
         <div className="fixed inset-0 z-50 bg-black/40 flex items-center justify-center p-4">
           <div className="bg-white dark:bg-gray-900 rounded-xl shadow-xl w-full max-w-lg">
-            <div className="flex items-center justify-between p-4 border-b dark:border-gray-700">
+            <div className="flex items-center justify-between p-4">
               <h2 className="font-semibold text-gray-900 dark:text-white">New Expense</h2>
               <button onClick={() => setShowForm(false)} className="text-gray-400 hover:text-gray-600">✕</button>
             </div>
@@ -214,12 +215,10 @@ export default function ExpensesPage() {
               <div className="grid grid-cols-2 gap-3">
                 <div>
                   <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">Date *</label>
-                  <input
-                    type="date"
-                    required
+                  <CustomDatePicker
                     value={form.expense_date}
-                    onChange={e => setForm(p => ({ ...p, expense_date: e.target.value }))}
-                    className="w-full border rounded px-2 py-1.5 text-sm dark:bg-gray-800 dark:border-gray-600 dark:text-white"
+                    onChange={v => setForm(p => ({ ...p, expense_date: v }))}
+                    className="w-full"
                   />
                 </div>
                 <div>
@@ -228,7 +227,7 @@ export default function ExpensesPage() {
                     required
                     value={form.payment_method}
                     onChange={e => setForm(p => ({ ...p, payment_method: e.target.value as PaymentMethod }))}
-                    className="w-full border rounded px-2 py-1.5 text-sm dark:bg-gray-800 dark:border-gray-600 dark:text-white"
+                    className="w-full px-2.5 py-1 text-sm bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-sm text-gray-900 dark:text-gray-100 focus:outline-none focus:border-indigo-500 dark:focus:border-indigo-400"
                   >
                     {PAYMENT_METHODS.map(m => <option key={m} value={m} className="capitalize">{m}</option>)}
                   </select>
@@ -240,7 +239,7 @@ export default function ExpensesPage() {
                   required
                   value={form.category}
                   onChange={e => setForm(p => ({ ...p, category: e.target.value }))}
-                  className="w-full border rounded px-2 py-1.5 text-sm dark:bg-gray-800 dark:border-gray-600 dark:text-white"
+                  className="w-full px-2.5 py-1 text-sm bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-sm text-gray-900 dark:text-gray-100 focus:outline-none focus:border-indigo-500 dark:focus:border-indigo-400"
                 >
                   <option value="">Select category…</option>
                   {EXPENSE_CATEGORIES.map(c => <option key={c} value={c}>{c}</option>)}
@@ -252,7 +251,7 @@ export default function ExpensesPage() {
                   type="text"
                   value={form.description ?? ''}
                   onChange={e => setForm(p => ({ ...p, description: e.target.value }))}
-                  className="w-full border rounded px-2 py-1.5 text-sm dark:bg-gray-800 dark:border-gray-600 dark:text-white"
+                  className="w-full px-2.5 py-1 text-sm bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-sm text-gray-900 dark:text-gray-100 focus:outline-none focus:border-indigo-500 dark:focus:border-indigo-400"
                   placeholder="Brief description…"
                 />
               </div>
@@ -266,7 +265,7 @@ export default function ExpensesPage() {
                     step={0.01}
                     value={form.amount || ''}
                     onChange={e => setForm(p => ({ ...p, amount: parseFloat(e.target.value) || 0 }))}
-                    className="w-full border rounded px-2 py-1.5 text-sm dark:bg-gray-800 dark:border-gray-600 dark:text-white"
+                    className="w-full px-2.5 py-1 text-sm bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-sm text-gray-900 dark:text-gray-100 focus:outline-none focus:border-indigo-500 dark:focus:border-indigo-400"
                   />
                 </div>
                 <div>
@@ -277,7 +276,7 @@ export default function ExpensesPage() {
                     step={0.01}
                     value={form.tax_amount || ''}
                     onChange={e => setForm(p => ({ ...p, tax_amount: parseFloat(e.target.value) || 0 }))}
-                    className="w-full border rounded px-2 py-1.5 text-sm dark:bg-gray-800 dark:border-gray-600 dark:text-white"
+                    className="w-full px-2.5 py-1 text-sm bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-sm text-gray-900 dark:text-gray-100 focus:outline-none focus:border-indigo-500 dark:focus:border-indigo-400"
                   />
                 </div>
               </div>
@@ -288,7 +287,7 @@ export default function ExpensesPage() {
                     type="text"
                     value={form.vendor_name ?? ''}
                     onChange={e => setForm(p => ({ ...p, vendor_name: e.target.value }))}
-                    className="w-full border rounded px-2 py-1.5 text-sm dark:bg-gray-800 dark:border-gray-600 dark:text-white"
+                    className="w-full px-2.5 py-1 text-sm bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-sm text-gray-900 dark:text-gray-100 focus:outline-none focus:border-indigo-500 dark:focus:border-indigo-400"
                   />
                 </div>
                 <div>
@@ -297,19 +296,19 @@ export default function ExpensesPage() {
                     type="text"
                     value={form.vendor_phone ?? ''}
                     onChange={e => setForm(p => ({ ...p, vendor_phone: e.target.value }))}
-                    className="w-full border rounded px-2 py-1.5 text-sm dark:bg-gray-800 dark:border-gray-600 dark:text-white"
+                    className="w-full px-2.5 py-1 text-sm bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-sm text-gray-900 dark:text-gray-100 focus:outline-none focus:border-indigo-500 dark:focus:border-indigo-400"
                   />
                 </div>
               </div>
-              <div className="flex justify-between items-center pt-2 border-t dark:border-gray-700">
+              <div className="flex justify-between items-center pt-2">
                 <span className="text-sm font-semibold text-gray-700 dark:text-gray-200">
                   Total: ৳{((form.amount || 0) + (form.tax_amount || 0)).toFixed(2)}
                 </span>
                 <div className="flex gap-2">
-                  <button type="button" onClick={() => setShowForm(false)} className="px-4 py-1.5 text-sm border rounded dark:border-gray-600 dark:text-gray-300">
+                  <button type="button" onClick={() => setShowForm(false)} className="px-3 py-1.5 text-sm font-medium text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-sm hover:bg-gray-50 dark:hover:bg-gray-600">
                     Cancel
                   </button>
-                  <button type="submit" disabled={saving} className="px-4 py-1.5 text-sm bg-blue-600 hover:bg-blue-700 text-white rounded disabled:opacity-60">
+                  <button type="submit" disabled={saving} className="px-5 py-1.5 text-sm bg-indigo-600 hover:bg-indigo-700 text-white rounded-sm disabled:opacity-60">
                     {saving ? 'Saving…' : 'Save Expense'}
                   </button>
                 </div>

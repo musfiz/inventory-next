@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { Search, ArrowDownCircle, ArrowUpCircle } from 'lucide-react';
 import { notify } from '@/lib/notifications';
 import accountService from '@/services/accountService';
+import CustomDatePicker from '@/components/ui/date-picker';
 import type { CashFlowReport } from '@/types/accounting.types';
 
 export default function CashFlowPage() {
@@ -35,18 +36,24 @@ export default function CashFlowPage() {
       <div className="bg-white dark:bg-gray-900 rounded-lg border dark:border-gray-700 p-4 flex flex-wrap gap-3 items-end">
         <div>
           <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">Start Date</label>
-          <input type="date" value={startDate} onChange={e => setStartDate(e.target.value)}
-            className="border rounded px-2 py-1.5 text-sm dark:bg-gray-800 dark:border-gray-600 dark:text-white" />
+          <CustomDatePicker
+            value={startDate}
+            onChange={setStartDate}
+            className="w-full"
+          />
         </div>
         <div>
           <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">End Date</label>
-          <input type="date" value={endDate} onChange={e => setEndDate(e.target.value)}
-            className="border rounded px-2 py-1.5 text-sm dark:bg-gray-800 dark:border-gray-600 dark:text-white" />
+          <CustomDatePicker
+            value={endDate}
+            onChange={setEndDate}
+            className="w-full"
+          />
         </div>
         <button
           onClick={load}
           disabled={loading}
-          className="flex items-center gap-1.5 px-4 py-1.5 text-sm bg-blue-600 hover:bg-blue-700 text-white rounded disabled:opacity-60"
+          className="flex items-center gap-1.5 px-4 py-1.5 text-sm bg-indigo-600 hover:bg-indigo-700 text-white rounded-sm disabled:opacity-60"
         >
           <Search size={14} />
           {loading ? 'Loading…' : 'Generate Report'}
@@ -87,7 +94,7 @@ export default function CashFlowPage() {
 
           {/* By account breakdown */}
           <div className="bg-white dark:bg-gray-900 rounded-lg border dark:border-gray-700 overflow-hidden">
-            <div className="p-3 border-b dark:border-gray-700">
+            <div className="p-3">
               <h3 className="text-sm font-semibold text-gray-700 dark:text-gray-200">By Account</h3>
               <p className="text-xs text-gray-400">{report.start_date} to {report.end_date}</p>
             </div>

@@ -153,6 +153,85 @@ export interface TrialBalanceRow {
   balance: number;
 }
 
+export interface TrialBalanceReport {
+  data: TrialBalanceRow[];
+  start_date: string;
+  end_date: string;
+  total_debit: number;
+  total_credit: number;
+  is_balanced: boolean;
+}
+
+// ── Balance Sheet ──────────────────────────────────────────────────────────
+
+export interface BalanceSheetLine {
+  code: string;
+  name: string;
+  balance: number;
+}
+
+export interface BalanceSheetSection {
+  current: number;
+  fixed: number;
+  total: number;
+  lines: BalanceSheetLine[];
+}
+
+export interface BalanceSheetLiabilitiesSection {
+  current: number;
+  long_term: number;
+  total: number;
+  lines: BalanceSheetLine[];
+}
+
+export interface BalanceSheetEquitySection {
+  total: number;
+  lines: BalanceSheetLine[];
+}
+
+export interface BalanceSheetReport {
+  as_of_date: string;
+  assets: BalanceSheetSection;
+  liabilities: BalanceSheetLiabilitiesSection;
+  equity: BalanceSheetEquitySection;
+  total_assets: number;
+  total_liabilities: number;
+  total_equity: number;
+  total_le: number;          // liabilities + equity
+  balanced: boolean;         // |assets - (liabilities + equity)| < 0.01
+}
+
+// ── Receivables (AR Aging) ──────────────────────────────────────────────────
+
+export interface ReceivablesAgingBucket {
+  current: number;   // 0-30 days
+  d_31_60: number;
+  d_61_90: number;
+  d_90_plus: number;
+  total: number;
+}
+
+export interface ReceivablesCustomer {
+  customer_id: number;
+  customer_name: string;
+  customer_phone?: string | null;
+  customer_email?: string | null;
+  invoice_count: number;
+  oldest_invoice_date?: string | null;
+  aging: ReceivablesAgingBucket;
+}
+
+export interface ReceivablesReport {
+  as_of_date: string;
+  total_outstanding: number;
+  total_current: number;
+  total_31_60: number;
+  total_61_90: number;
+  total_90_plus: number;
+  customer_count: number;
+  customers: ReceivablesCustomer[];
+}
+
 export interface ProfitLossSection {
   code: string;
   name: string;
