@@ -24,7 +24,20 @@ class PosRegisterService {
   }
 
   async destroy(id: string) {
-    await apiClient.get(`/api/v1/pos/registers/delete/${id}`);
+    // F-4 FIX: use DELETE (RESTful) instead of GET for the destructive
+    // op. The backend's `GET .../delete/{id}` route is being
+    // deprecated; the new canonical route is `DELETE /{id}`. Falls
+    // back to the legacy GET only if the backend has not yet shipped
+    // the new route.
+    try {
+      await apiClient.delete(`/api/v1/pos/registers/${id}`);
+    } catch (err: any) {
+      if (err?.response?.status === 404 || err?.response?.status === 405) {
+        await apiClient.get(`/api/v1/pos/registers/delete/${id}`);
+      } else {
+        throw err;
+      }
+    }
   }
 
   async dropdown(tenantId?: string | number) {

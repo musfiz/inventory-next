@@ -30,7 +30,10 @@ export interface PosSession {
   refund_count?: number;
   item_count?: number;
   customer_count?: number;
-  status?: 'open' | 'closed' | 'paused' | 'suspended';
+  // F-10 FIX: backend enum is `open | closed` only. The previous
+  // type allowed `paused | suspended` (UI-only values that the
+  // backend never writes). Restricted to the canonical set.
+  status?: 'open' | 'closed';
   opening_notes?: string | null;
   closing_notes?: string | null;
   closing_reason?: string | null;
@@ -73,8 +76,20 @@ class PosSessionService {
   }
 
   async destroy(id: string) {
-    const response = await apiClient.get(`/api/v1/pos/sessions/delete/${id}`);
-    return response.data;
+    // F-5 FIX: use DELETE (RESTful) instead of GET for the destructive
+    // op. The backend's `GET .../delete/{id}` route is being
+    // deprecated; the new canonical route is `DELETE /{id}`. Falls
+    // back to the legacy GET only if the backend has not yet shipped
+    // the new route.
+    try {
+      await apiClient.delete(`/api/v1/pos/sessions/${id}`);
+    } catch (err: any) {
+      if (err?.response?.status === 404 || err?.response?.status === 405) {
+        const response = await apiClient.get(`/api/v1/pos/sessions/delete/${id}`);
+        return response.data;
+      }
+      throw err;
+    }
   }
 }
 

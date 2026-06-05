@@ -39,6 +39,13 @@ const REFUND_METHODS = [
   { value: 'bank_transfer', label: 'Bank Transfer' },
   { value: 'store_credit', label: 'Store Credit' },
   { value: 'exchange', label: 'Exchange' },
+  // F-8 FIX: backend settleRefundPayment accepts `check` and `other`
+  // (used when the cashier pays the customer by cheque or an
+  // unlisted method). The previous list missed them, so the
+  // dropdown forced the cashier to leave the field empty and
+  // re-enter a method on the settle dialog.
+  { value: 'check', label: 'Cheque' },
+  { value: 'other', label: 'Other' },
 ];
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────

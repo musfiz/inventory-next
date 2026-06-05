@@ -36,6 +36,11 @@ const REFUND_METHODS: { value: SalesReturnRefundMethod; label: string }[] = [
   { value: 'bank_transfer', label: 'Bank Transfer' },
   { value: 'store_credit', label: 'Store Credit' },
   { value: 'exchange', label: 'Exchange' },
+  // F-9 FIX: backend settleReturnPayment accepts `check` and
+  // `other` (used when the cashier pays the customer by cheque
+  // or an unlisted method).
+  { value: 'check', label: 'Cheque' },
+  { value: 'other', label: 'Other' },
 ];
 
 const CONDITIONS = [

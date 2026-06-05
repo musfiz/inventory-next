@@ -82,8 +82,20 @@ class PosRefundService {
   }
 
   async destroy(id: number | string) {
-    const response = await apiClient.get(`/api/v1/pos/refunds/delete/${id}`);
-    return response.data;
+    // F-3 FIX: use DELETE (RESTful) instead of GET for the destructive
+    // op. The backend's `GET .../delete/{id}` route is being
+    // deprecated; the new canonical route is `DELETE /{id}`. Falls
+    // back to the legacy GET only if the backend has not yet shipped
+    // the new route.
+    try {
+      await apiClient.delete(`/api/v1/pos/refunds/${id}`);
+    } catch (err: any) {
+      if (err?.response?.status === 404 || err?.response?.status === 405) {
+        const response = await apiClient.get(`/api/v1/pos/refunds/delete/${id}`);
+        return response.data;
+      }
+      throw err;
+    }
   }
 
   /** Create a refund with dedicated item records in one step */

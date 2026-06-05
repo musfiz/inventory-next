@@ -189,7 +189,7 @@ const navigation: NavigationItem[] = [
     ],
   },
   {
-    name: 'Accounting',
+    name: 'Accounting Management',
     icon: FileSpreadsheet,
     permission: 'view-accounts',
     children: [

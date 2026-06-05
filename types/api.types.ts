@@ -732,7 +732,12 @@ export type SalesReturnRefundMethod =
   | 'rocket'
   | 'bank_transfer'
   | 'store_credit'
-  | 'exchange';
+  | 'exchange'
+  // F-9 FIX: backend settleReturnPayment accepts `check` and
+  // `other` (used when the cashier pays the customer by cheque
+  // or an unlisted method).
+  | 'check'
+  | 'other';
 
 export type SalesReturnItemCondition = 'good' | 'damaged' | 'defective';
 

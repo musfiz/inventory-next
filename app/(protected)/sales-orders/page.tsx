@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { ColumnDef } from '@tanstack/react-table';
-import { List, Plus, Edit, Trash2, Eye, Printer, ReceiptText, X } from 'lucide-react';
+import { List, Plus, Edit, Trash2, Eye, Printer, ReceiptText, X, DollarSign } from 'lucide-react';
 import DataTable from '@/components/ui/datatable';
 import { formatDate } from '@/lib/utils/date';
 import { notify, confirm } from '@/lib/notifications';
@@ -27,6 +27,41 @@ export default function SalesOrdersPage() {
   const [updating, setUpdating] = useState(false);
   const [printState, setPrintState] = useState<PrintState>(null);
 
+  // ── Record-Payment dialog state ──────────────────────────────────────────────
+  // Replaces the old "edit paid_amount in place" flow, which did not
+  // create a Payment row or a journal entry.
+  const [showPaymentDialog, setShowPaymentDialog] = useState(false);
+  const [paymentForm, setPaymentForm] = useState({
+    amount: '' as string,
+    payment_method: 'cash' as string,
+    payment_date: '' as string,
+    notes: '' as string,
+    tendered_amount: '' as string,
+    change_amount: '0' as string,
+    card_last_four: '' as string,
+    processing_fee: '0' as string,
+    transaction_reference: '' as string,
+    mobile_number: '' as string,
+    mobile_transaction_id: '' as string,
+    bank_name: '' as string,
+    bank_account: '' as string,
+    check_number: '' as string,
+    check_date: '' as string,
+  });
+  const [paymentSubmitting, setPaymentSubmitting] = useState(false);
+  const [paymentErrors, setPaymentErrors] = useState<Record<string, string>>({});
+
+  // Derived: the authoritative outstanding balance for the current
+  // sales order. Matches SalesOrder::getDueAmountAttribute() on the
+  // backend.
+  const outstandingBalance = (() => {
+    if (!currentSO) return 0;
+    const grand = Number(currentSO.grand_total ?? 0);
+    const ret = Number(currentSO.returned_amount ?? 0);
+    const paid = Number(currentSO.paid_amount ?? 0);
+    return grand - ret - paid;
+  })();
+
   const STATUS_LIST = [
     'draft',
     'pending',
@@ -42,7 +77,11 @@ export default function SalesOrdersPage() {
     { value: 'pending', label: 'Pending' },
     { value: 'partial', label: 'Partial' },
     { value: 'paid', label: 'Paid' },
-    { value: 'overdue', label: 'Overdue' },
+    // F-6 FIX: removed 'overdue' — not a valid backend enum value.
+    // The backend writes `pending | partial | paid`; an 'overdue'
+    // value was silently rejected or stored, breaking reports.
+    // If overdue is needed in the UI, derive it on the frontend
+    // from `due_date < now && payment_status === 'pending'`.
   ];
 
   const loadItems = async (id: string) => {
@@ -86,6 +125,122 @@ export default function SalesOrdersPage() {
 
   const handleEdit = (row: any) => {
     router.push(`/sales-orders/add?edit=${row.uuid}`);
+  };
+
+  // ── Record-Payment dialog handlers ───────────────────────────────────────────
+  const openPaymentDialog = () => {
+    if (!currentSO) return;
+    if (outstandingBalance <= 0.005) {
+      notify.error(
+        outstandingBalance === 0
+          ? 'This order has no outstanding balance — no payment is due.'
+          : 'This order is overpaid. Use the return\'s Settle Payment dialog to refund the customer.'
+      );
+      return;
+    }
+    // Pre-fill amount with the full outstanding balance.
+    setPaymentForm((prev) => ({
+      ...prev,
+      amount: outstandingBalance.toFixed(2),
+      payment_date: new Date().toISOString().slice(0, 10),
+      payment_method: 'cash',
+    }));
+    setPaymentErrors({});
+    setShowPaymentDialog(true);
+  };
+
+  const closePaymentDialog = () => {
+    setShowPaymentDialog(false);
+    setPaymentErrors({});
+  };
+
+  const submitPayment = async () => {
+    if (!currentSO) return;
+    const errs: Record<string, string> = {};
+    const amount = Number(paymentForm.amount);
+    if (!Number.isFinite(amount) || amount <= 0) {
+      errs.amount = 'Amount must be greater than zero';
+    } else if (amount > outstandingBalance + 0.005) {
+      errs.amount = `Amount cannot exceed the outstanding balance of ৳${outstandingBalance.toFixed(2)}`;
+    }
+    if (!paymentForm.payment_method) {
+      errs.payment_method = 'Payment method is required';
+    }
+    if (Object.keys(errs).length > 0) {
+      setPaymentErrors(errs);
+      return;
+    }
+
+    setPaymentSubmitting(true);
+    try {
+      const payload: any = {
+        amount,
+        payment_method: paymentForm.payment_method,
+        payment_date: paymentForm.payment_date || undefined,
+        notes: paymentForm.notes || undefined,
+      };
+
+      // Method-specific fields.
+      if (paymentForm.payment_method === 'cash') {
+        if (paymentForm.tendered_amount) {
+          payload.tendered_amount = Number(paymentForm.tendered_amount);
+          // Auto-compute change if tendered > amount.
+          const tendered = Number(paymentForm.tendered_amount);
+          if (tendered > amount) {
+            payload.change_amount = Number((tendered - amount).toFixed(2));
+          } else {
+            payload.change_amount = 0;
+          }
+        }
+      } else if (paymentForm.payment_method === 'card') {
+        payload.card_last_four = paymentForm.card_last_four || undefined;
+        payload.processing_fee = paymentForm.processing_fee
+          ? Number(paymentForm.processing_fee)
+          : undefined;
+        payload.transaction_reference = paymentForm.transaction_reference || undefined;
+      } else if (['bkash', 'nagad', 'rocket'].includes(paymentForm.payment_method)) {
+        payload.mobile_number = paymentForm.mobile_number || undefined;
+        payload.mobile_transaction_id = paymentForm.mobile_transaction_id || undefined;
+      } else if (paymentForm.payment_method === 'bank_transfer') {
+        payload.bank_name = paymentForm.bank_name || undefined;
+        payload.bank_account = paymentForm.bank_account || undefined;
+        payload.transaction_reference = paymentForm.transaction_reference || undefined;
+      } else if (paymentForm.payment_method === 'check') {
+        payload.check_number = paymentForm.check_number || undefined;
+        payload.check_date = paymentForm.check_date || undefined;
+      }
+
+      const res = await salesOrderService.recordPayment(currentSO.uuid, payload);
+      if (!res?.success) {
+        setPaymentErrors(res?.errors ?? { _: res?.message ?? 'Failed to record payment' });
+        notify.error(res?.message ?? 'Failed to record payment');
+        return;
+      }
+
+      notify.success(res?.message ?? 'Payment recorded successfully');
+
+      // Refresh the SO details from the response (the new
+      // sales_order reflects updated paid_amount / payment_status)
+      // so the modal updates in place.
+      if (res?.data?.sales_order) {
+        setCurrentSO(res.data.sales_order);
+      } else if (res?.sales_order) {
+        setCurrentSO(res.sales_order);
+      } else {
+        // Fallback: re-fetch.
+        await loadItems(currentSO.uuid);
+      }
+      setRefreshKey((k) => k + 1);
+      closePaymentDialog();
+    } catch (err: any) {
+      const data = err?.response?.data;
+      if (data?.errors) {
+        setPaymentErrors(data.errors);
+      }
+      notify.error(data?.message || err?.message || 'Failed to record payment');
+    } finally {
+      setPaymentSubmitting(false);
+    }
   };
 
   const handleDelete = async (row: any) => {
@@ -436,22 +591,28 @@ export default function SalesOrdersPage() {
                           ))}
                         </select>
                       </div>
-                      <div className="min-w-[120px]">
-                        <label className="text-xs font-medium text-gray-600 mb-1 block">Paid Amount</label>
-                        <input
-                          type="number"
-                          step="0.01"
-                          value={currentSO?.paid_amount ?? 0}
-                          onChange={e =>
-                            setCurrentSO((prev: any) =>
-                              prev ? { ...prev, paid_amount: e.target.value } : prev
-                            )
-                          }
-                          onFocus={e => e.target.select()}
-                          onKeyDown={preventMinus}
-                          className="w-full px-3 py-1.5 text-right border border-violet-200 rounded-lg text-sm bg-white text-gray-800 focus:outline-none focus:ring-2 focus:ring-violet-400 [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
-                        />
-                      </div>
+                      {/* Bug fix: the "Paid Amount" field used to be
+                          an editable input here. Editing it directly
+                          (and saving via /update/details) updated the
+                          SO row in place but did NOT create a Payment
+                          record or post a journal entry, breaking
+                          the audit trail. The "Record Payment" button
+                          now opens a dialog that calls the canonical
+                          /record-payment endpoint. */}
+                      <button
+                        type="button"
+                        onClick={openPaymentDialog}
+                        disabled={outstandingBalance <= 0.005}
+                        title={
+                          outstandingBalance <= 0.005
+                            ? 'No outstanding balance'
+                            : `Record a payment of up to ৳${outstandingBalance.toFixed(2)}`
+                        }
+                        className="flex items-center gap-1.5 px-4 py-1.5 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 disabled:opacity-50 disabled:cursor-not-allowed text-white rounded-lg text-sm font-medium shadow-sm transition-all"
+                      >
+                        <DollarSign className="w-4 h-4" />
+                        Record Payment
+                      </button>
                       <button
                         onClick={handleUpdate}
                         disabled={updating}
@@ -715,6 +876,66 @@ export default function SalesOrdersPage() {
                             </table>
                           </div>
                         )}
+
+                        {/* Payment History */}
+                        {(() => {
+                          const payments: any[] = currentSO?.payments ?? [];
+                          if (payments.length === 0) return null;
+                          return (
+                            <div className="rounded-xl border border-emerald-100 overflow-hidden">
+                              <div className="bg-emerald-50 px-3 py-2 flex items-center justify-between">
+                                <p className="text-xs font-semibold uppercase tracking-wide text-emerald-700">
+                                  Payment History ({payments.length})
+                                </p>
+                                <p className="text-xs font-semibold text-emerald-800">
+                                  Total: ৳{payments.reduce((s, p) => s + Number(p.amount ?? 0), 0).toFixed(2)}
+                                </p>
+                              </div>
+                              <table className="min-w-full text-xs">
+                                <thead>
+                                  <tr className="bg-emerald-100/60">
+                                    <th className="px-3 py-1.5 text-left font-semibold text-emerald-700">Receipt #</th>
+                                    <th className="px-3 py-1.5 text-left font-semibold text-emerald-700">Date</th>
+                                    <th className="px-3 py-1.5 text-left font-semibold text-emerald-700">Method</th>
+                                    <th className="px-3 py-1.5 text-right font-semibold text-emerald-700">Amount</th>
+                                    <th className="px-3 py-1.5 text-left font-semibold text-emerald-700">Status</th>
+                                  </tr>
+                                </thead>
+                                <tbody className="divide-y divide-emerald-50">
+                                  {payments.map((p: any, pi: number) => (
+                                    <tr key={p.id ?? pi} className="bg-white">
+                                      <td className="px-3 py-1.5 font-mono font-semibold text-emerald-700">
+                                        {p.receipt_number ?? '-'}
+                                      </td>
+                                      <td className="px-3 py-1.5 text-gray-600">
+                                        {p.payment_date ? new Date(p.payment_date).toLocaleDateString() : '-'}
+                                      </td>
+                                      <td className="px-3 py-1.5 text-gray-700 capitalize">
+                                        {String(p.payment_method ?? '-').replace(/_/g, ' ')}
+                                      </td>
+                                      <td className="px-3 py-1.5 text-right font-semibold text-emerald-800">
+                                        ৳{Number(p.amount ?? 0).toFixed(2)}
+                                      </td>
+                                      <td className="px-3 py-1.5">
+                                        <span
+                                          className={`px-2 py-0.5 rounded-full text-xs font-medium ${
+                                            p.status === 'completed'
+                                              ? 'bg-emerald-100 text-emerald-700'
+                                              : p.status === 'pending'
+                                              ? 'bg-yellow-100 text-yellow-700'
+                                              : 'bg-gray-100 text-gray-600'
+                                          }`}
+                                        >
+                                          {p.status ?? '-'}
+                                        </span>
+                                      </td>
+                                    </tr>
+                                  ))}
+                                </tbody>
+                              </table>
+                            </div>
+                          );
+                        })()}
                       </>
                     );
                   })()}
@@ -732,6 +953,260 @@ export default function SalesOrdersPage() {
               </button>
             </div>
 
+          </div>
+        </div>
+      )}
+
+      {/* Record Payment dialog */}
+      {showPaymentDialog && currentSO && (
+        <div className="fixed inset-0 bg-black/70 backdrop-blur-sm z-[60] flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-2xl flex flex-col max-h-[90vh] overflow-hidden">
+            <div className="bg-gradient-to-r from-emerald-600 via-teal-600 to-cyan-600 px-6 py-4 text-white rounded-t-2xl flex items-start justify-between">
+              <div>
+                <p className="text-xs font-semibold uppercase tracking-widest opacity-75 mb-0.5">Record Payment</p>
+                <h2 className="text-xl font-bold leading-tight">{currentSO.invoice_number}</h2>
+                <p className="text-sm opacity-80">{currentSO.customer?.name || '—'}</p>
+                <p className="text-md opacity-75 mt-1 font-semibold text-rose-600">
+                  Outstanding balance: ৳{outstandingBalance.toFixed(2)}
+                </p>
+              </div>
+              <button
+                onClick={closePaymentDialog}
+                className="w-8 h-8 rounded-full bg-white/20 hover:bg-white/30 flex items-center justify-center transition-colors"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            <div className="overflow-y-auto flex-1 px-6 py-4 space-y-3">
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="text-xs font-medium text-gray-600 mb-1 block">
+                    Amount <span className="text-red-500">*</span>
+                  </label>
+                  <input
+                    type="number"
+                    step="0.01"
+                    min="0.01"
+                    max={outstandingBalance}
+                    value={paymentForm.amount}
+                    onChange={e => setPaymentForm(prev => ({ ...prev, amount: e.target.value }))}
+                    onFocus={e => e.target.select()}
+                    onKeyDown={preventMinus}
+                    className="w-full px-3 py-1.5 border border-emerald-200 rounded-lg text-sm bg-white text-gray-800 focus:outline-none focus:ring-2 focus:ring-emerald-400"
+                  />
+                  {paymentErrors.amount && (
+                    <p className="text-xs text-red-600 mt-1">{paymentErrors.amount}</p>
+                  )}
+                </div>
+                <div>
+                  <label className="text-xs font-medium text-gray-600 mb-1 block">
+                    Payment Method <span className="text-red-500">*</span>
+                  </label>
+                  <select
+                    value={paymentForm.payment_method}
+                    onChange={e => setPaymentForm(prev => ({ ...prev, payment_method: e.target.value }))}
+                    className="w-full px-3 py-1.5 border border-emerald-200 rounded-lg text-sm bg-white text-gray-800 focus:outline-none focus:ring-2 focus:ring-emerald-400"
+                  >
+                    <option value="cash">Cash</option>
+                    <option value="card">Card</option>
+                    <option value="bkash">bKash</option>
+                    <option value="nagad">Nagad</option>
+                    <option value="rocket">Rocket</option>
+                    <option value="bank_transfer">Bank Transfer</option>
+                    <option value="check">Cheque</option>
+                    <option value="credit">Credit</option>
+                    <option value="other">Other</option>
+                  </select>
+                  {paymentErrors.payment_method && (
+                    <p className="text-xs text-red-600 mt-1">{paymentErrors.payment_method}</p>
+                  )}
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="text-xs font-medium text-gray-600 mb-1 block">Payment Date</label>
+                  <input
+                    type="date"
+                    value={paymentForm.payment_date}
+                    onChange={e => setPaymentForm(prev => ({ ...prev, payment_date: e.target.value }))}
+                    className="w-full px-3 py-1.5 border border-emerald-200 rounded-lg text-sm bg-white text-gray-800 focus:outline-none focus:ring-2 focus:ring-emerald-400"
+                  />
+                </div>
+                <div>
+                  <label className="text-xs font-medium text-gray-600 mb-1 block">Notes</label>
+                  <input
+                    type="text"
+                    value={paymentForm.notes}
+                    onChange={e => setPaymentForm(prev => ({ ...prev, notes: e.target.value }))}
+                    placeholder="Optional"
+                    className="w-full px-3 py-1.5 border border-emerald-200 rounded-lg text-sm bg-white text-gray-800 focus:outline-none focus:ring-2 focus:ring-emerald-400"
+                  />
+                </div>
+              </div>
+
+              {/* Method-specific fields */}
+              {paymentForm.payment_method === 'cash' && (
+                <div className="grid grid-cols-2 gap-3 bg-emerald-50/50 p-3 rounded-lg border border-emerald-100">
+                  <div>
+                    <label className="text-xs font-medium text-gray-600 mb-1 block">Tendered Amount</label>
+                    <input
+                      type="number"
+                      step="0.01"
+                      min="0"
+                      value={paymentForm.tendered_amount}
+                      onChange={e => setPaymentForm(prev => ({ ...prev, tendered_amount: e.target.value }))}
+                      className="w-full px-3 py-1.5 border border-emerald-200 rounded-lg text-sm bg-white text-gray-800 focus:outline-none focus:ring-2 focus:ring-emerald-400"
+                    />
+                  </div>
+                  <div>
+                    <label className="text-xs font-medium text-gray-600 mb-1 block">Change</label>
+                    <input
+                      type="number"
+                      step="0.01"
+                      value={
+                        paymentForm.tendered_amount && Number(paymentForm.tendered_amount) > Number(paymentForm.amount)
+                          ? (Number(paymentForm.tendered_amount) - Number(paymentForm.amount)).toFixed(2)
+                          : '0.00'
+                      }
+                      readOnly
+                      className="w-full px-3 py-1.5 border border-emerald-200 rounded-lg text-sm bg-gray-50 text-gray-600"
+                    />
+                  </div>
+                </div>
+              )}
+
+              {paymentForm.payment_method === 'card' && (
+                <div className="grid grid-cols-3 gap-3 bg-emerald-50/50 p-3 rounded-lg border border-emerald-100">
+                  <div>
+                    <label className="text-xs font-medium text-gray-600 mb-1 block">Card Last 4</label>
+                    <input
+                      type="text"
+                      maxLength={4}
+                      value={paymentForm.card_last_four}
+                      onChange={e => setPaymentForm(prev => ({ ...prev, card_last_four: e.target.value }))}
+                      className="w-full px-3 py-1.5 border border-emerald-200 rounded-lg text-sm bg-white text-gray-800"
+                    />
+                  </div>
+                  <div>
+                    <label className="text-xs font-medium text-gray-600 mb-1 block">Processing Fee</label>
+                    <input
+                      type="number"
+                      step="0.01"
+                      min="0"
+                      value={paymentForm.processing_fee}
+                      onChange={e => setPaymentForm(prev => ({ ...prev, processing_fee: e.target.value }))}
+                      className="w-full px-3 py-1.5 border border-emerald-200 rounded-lg text-sm bg-white text-gray-800"
+                    />
+                  </div>
+                  <div>
+                    <label className="text-xs font-medium text-gray-600 mb-1 block">Transaction Ref</label>
+                    <input
+                      type="text"
+                      value={paymentForm.transaction_reference}
+                      onChange={e => setPaymentForm(prev => ({ ...prev, transaction_reference: e.target.value }))}
+                      className="w-full px-3 py-1.5 border border-emerald-200 rounded-lg text-sm bg-white text-gray-800"
+                    />
+                  </div>
+                </div>
+              )}
+
+              {['bkash', 'nagad', 'rocket'].includes(paymentForm.payment_method) && (
+                <div className="grid grid-cols-2 gap-3 bg-emerald-50/50 p-3 rounded-lg border border-emerald-100">
+                  <div>
+                    <label className="text-xs font-medium text-gray-600 mb-1 block">Mobile Number</label>
+                    <input
+                      type="text"
+                      value={paymentForm.mobile_number}
+                      onChange={e => setPaymentForm(prev => ({ ...prev, mobile_number: e.target.value }))}
+                      className="w-full px-3 py-1.5 border border-emerald-200 rounded-lg text-sm bg-white text-gray-800"
+                    />
+                  </div>
+                  <div>
+                    <label className="text-xs font-medium text-gray-600 mb-1 block">Transaction ID</label>
+                    <input
+                      type="text"
+                      value={paymentForm.mobile_transaction_id}
+                      onChange={e => setPaymentForm(prev => ({ ...prev, mobile_transaction_id: e.target.value }))}
+                      className="w-full px-3 py-1.5 border border-emerald-200 rounded-lg text-sm bg-white text-gray-800"
+                    />
+                  </div>
+                </div>
+              )}
+
+              {paymentForm.payment_method === 'bank_transfer' && (
+                <div className="grid grid-cols-3 gap-3 bg-emerald-50/50 p-3 rounded-lg border border-emerald-100">
+                  <div>
+                    <label className="text-xs font-medium text-gray-600 mb-1 block">Bank Name</label>
+                    <input
+                      type="text"
+                      value={paymentForm.bank_name}
+                      onChange={e => setPaymentForm(prev => ({ ...prev, bank_name: e.target.value }))}
+                      className="w-full px-3 py-1.5 border border-emerald-200 rounded-lg text-sm bg-white text-gray-800"
+                    />
+                  </div>
+                  <div>
+                    <label className="text-xs font-medium text-gray-600 mb-1 block">Account #</label>
+                    <input
+                      type="text"
+                      value={paymentForm.bank_account}
+                      onChange={e => setPaymentForm(prev => ({ ...prev, bank_account: e.target.value }))}
+                      className="w-full px-3 py-1.5 border border-emerald-200 rounded-lg text-sm bg-white text-gray-800"
+                    />
+                  </div>
+                  <div>
+                    <label className="text-xs font-medium text-gray-600 mb-1 block">Transaction Ref</label>
+                    <input
+                      type="text"
+                      value={paymentForm.transaction_reference}
+                      onChange={e => setPaymentForm(prev => ({ ...prev, transaction_reference: e.target.value }))}
+                      className="w-full px-3 py-1.5 border border-emerald-200 rounded-lg text-sm bg-white text-gray-800"
+                    />
+                  </div>
+                </div>
+              )}
+
+              {paymentForm.payment_method === 'check' && (
+                <div className="grid grid-cols-2 gap-3 bg-emerald-50/50 p-3 rounded-lg border border-emerald-100">
+                  <div>
+                    <label className="text-xs font-medium text-gray-600 mb-1 block">Cheque Number</label>
+                    <input
+                      type="text"
+                      value={paymentForm.check_number}
+                      onChange={e => setPaymentForm(prev => ({ ...prev, check_number: e.target.value }))}
+                      className="w-full px-3 py-1.5 border border-emerald-200 rounded-lg text-sm bg-white text-gray-800"
+                    />
+                  </div>
+                  <div>
+                    <label className="text-xs font-medium text-gray-600 mb-1 block">Cheque Date</label>
+                    <input
+                      type="date"
+                      value={paymentForm.check_date}
+                      onChange={e => setPaymentForm(prev => ({ ...prev, check_date: e.target.value }))}
+                      className="w-full px-3 py-1.5 border border-emerald-200 rounded-lg text-sm bg-white text-gray-800"
+                    />
+                  </div>
+                </div>
+              )}
+            </div>
+
+            <div className="px-6 py-3 border-t border-gray-100 flex justify-end gap-2 bg-white rounded-b-2xl">
+              <button
+                onClick={closePaymentDialog}
+                disabled={paymentSubmitting}
+                className="px-4 py-1.5 text-sm text-gray-600 hover:text-gray-900 bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors disabled:opacity-60"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={submitPayment}
+                disabled={paymentSubmitting}
+                className="flex items-center gap-1.5 px-5 py-1.5 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 disabled:opacity-60 text-white rounded-lg text-sm font-medium shadow-sm transition-all"
+              >
+                {paymentSubmitting ? 'Saving…' : 'Record Payment'}
+              </button>
+            </div>
           </div>
         </div>
       )}
