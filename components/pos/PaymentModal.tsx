@@ -230,7 +230,7 @@ export default function PaymentModal({
     // Method-specific fields
     // `is_partial` and `tendered_amount` apply to ANY method, not just
     // cash. Previously these were set only inside the `method === 'cash'`
-    // branch, so a partial bKash / card / cheque sale silently fell
+    // branch, so a partial bKash / card / cheque sales silently fell
     // through to `is_partial=false` on the backend — which then wrote
     // `paid_amount = grand_total` and a Payment row with `amount = 0`
     // even though the customer only paid a fraction. That was a
@@ -721,7 +721,7 @@ export default function PaymentModal({
                 <div className="rounded-xl p-4 bg-red-50 dark:bg-red-900/10 border border-red-200 dark:border-red-800 space-y-2">
                   <p className="text-sm font-semibold text-red-700 dark:text-red-400">Credit Sale</p>
                   <p className="text-xs text-red-600 dark:text-red-500">
-                    This sale will be recorded as a credit. The amount of ৳{grandTotal.toFixed(2)} is due from the customer.
+                    This sales will be recorded as a credit. The amount of ৳{grandTotal.toFixed(2)} is due from the customer.
                   </p>
                 </div>
               )}

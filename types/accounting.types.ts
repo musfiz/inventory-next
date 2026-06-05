@@ -11,7 +11,7 @@ export type AccountSubtype =
 
 export type JournalEntryStatus = 'draft' | 'posted' | 'reversed';
 export type JournalReferenceType =
-  | 'purchase' | 'sale' | 'pos' | 'payment' | 'expense'
+  | 'purchase' | 'sales' | 'pos' | 'payment' | 'expense'
   | 'return' | 'adjustment' | 'transfer' | 'opening' | 'manual';
 
 export type ExpenseStatus = 'pending' | 'approved' | 'paid' | 'rejected' | 'cancelled';

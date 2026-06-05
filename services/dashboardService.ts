@@ -53,7 +53,7 @@ export interface PaymentMethod {
 export interface StockMovementDay {
   date: string;
   purchase: number;
-  sale: number;
+  sales: number;
   return: number;
   adjustment: number;
 }

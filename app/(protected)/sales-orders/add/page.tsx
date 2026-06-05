@@ -1259,8 +1259,15 @@ export default function AddSalesOrderPage() {
                   </label>
                   <CustomDatePicker
                     value={paymentDate}
-                    onChange={v => setPaymentDate(v)}
+                    onChange={v => {
+                      setPaymentDate(v);
+                      clearErr('payment_date');
+                    }}
+                    className={hasErr('payment_date') ? 'border-red-500' : ''}
                   />
+                  {hasErr('payment_date') && (
+                    <p className="mt-1 text-xs text-red-600">{err('payment_date')}</p>
+                  )}
                 </div>
               </div>
 

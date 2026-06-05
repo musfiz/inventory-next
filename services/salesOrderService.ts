@@ -110,7 +110,7 @@ class SalesOrderService {
    *
    * This new endpoint is the canonical "record a due payment
    * against a SO" flow. It:
-   *  - Creates a `Payment` row with `reference_type='sale'`
+   *  - Creates a `Payment` row with `reference_type='sales'`
    *  - Increments the SO's `paid_amount` and re-derives
    *    `payment_status`
    *  - Posts an auto-journal entry (DR cash/bank, CR AR 1110)

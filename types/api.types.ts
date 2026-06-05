@@ -860,7 +860,7 @@ export type PaymentStatus =
   | 'pending' | 'completed' | 'failed' | 'cancelled' | 'refunded';
 
 export type PaymentReferenceType =
-  | 'purchase' | 'sale' | 'pos' | 'expense' | 'refund' | 'other';
+  | 'purchase' | 'sales' | 'pos' | 'expense' | 'refund' | 'other';
 
 export interface Payment {
   id: number;

@@ -1,7 +1,7 @@
 # POS Module — Implementation Reference
 
 **Last updated:** 2026-06-04
-**Scope:** All point-of-sale flows in `inventory-next` — register setup, shift sessions, the till (POS sales), order history, refunds, and the related shared components. This document is the **single source of truth** for the POS + sales-return module: implementation, P0 audit, and the working backlog (P1/P2/P3/PO/backend).
+**Scope:** All point-of-sales flows in `inventory-next` — register setup, shift sessions, the till (POS sales), order history, refunds, and the related shared components. This document is the **single source of truth** for the POS + sales-return module: implementation, P0 audit, and the working backlog (P1/P2/P3/PO/backend).
 **Sibling docs (planned):** `SALES_MODULE.md` (sales-return flow) — to be written.
 
 ---
@@ -77,7 +77,7 @@ The session page is also the screen that surfaces **refund counts** and **cash-s
 - `selectedCustomer`: optional, supports walk-in (no customer).
 - `discount`: `{ type: 'percentage' | 'fixed', value: number }` applied at the cart level.
 - `heldOrders`: open holds for the current session.
-- `showPaymentModal`, `showHeldOrdersDialog`, `showRefundDialog` (the last is a thin wrapper that jumps to the refund flow when the cashier needs to refund a previously-completed sale).
+- `showPaymentModal`, `showHeldOrdersDialog`, `showRefundDialog` (the last is a thin wrapper that jumps to the refund flow when the cashier needs to refund a previously-completed sales).
 
 ### 5.2 Sub-flows
 

@@ -383,7 +383,7 @@ export default function TenantDashboard() {
             <YAxis tick={{ fontSize: 11, fill: '#9CA3AF' }} />
             <Tooltip contentStyle={{ backgroundColor: '#1F2937', border: 'none', borderRadius: '8px', color: '#F9FAFB' }} />
             <Bar dataKey="purchase" fill="#10B981" name="Purchases" radius={[2, 2, 0, 0]} />
-            <Bar dataKey="sale" fill="#3B82F6" name="Sales" radius={[2, 2, 0, 0]} />
+            <Bar dataKey="sales" fill="#3B82F6" name="Sales" radius={[2, 2, 0, 0]} />
             <Bar dataKey="return" fill="#F59E0B" name="Returns" radius={[2, 2, 0, 0]} />
             <Bar dataKey="adjustment" fill="#6B7280" name="Adjustments" radius={[2, 2, 0, 0]} />
             <Legend wrapperStyle={{ fontSize: '12px' }} />

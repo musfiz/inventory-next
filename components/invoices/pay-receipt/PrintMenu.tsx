@@ -131,13 +131,13 @@ export function PrintMenu({ payment }: PrintMenuProps) {
       // Derive the reference type from the row so the backend knows
       // which order relation to load. Prefer the explicit column, then
       // fall back to whichever FK happens to be set. Mirrors the enum
-      // in payments.reference_type (pos|sale|...).
+      // in payments.reference_type (pos|sales|...).
       const referenceType: string | undefined =
         payment.reference_type ??
         (payment.pos_order_id
           ? 'pos'
           : payment.sales_order_id
-          ? 'sale'
+          ? 'sales'
           : undefined);
 
       // Single round-trip when the backend has the receipt endpoint;

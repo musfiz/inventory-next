@@ -1030,9 +1030,26 @@ export default function SalesOrdersPage() {
                   <input
                     type="date"
                     value={paymentForm.payment_date}
-                    onChange={e => setPaymentForm(prev => ({ ...prev, payment_date: e.target.value }))}
-                    className="w-full px-3 py-1.5 border border-emerald-200 rounded-lg text-sm bg-white text-gray-800 focus:outline-none focus:ring-2 focus:ring-emerald-400"
+                    onChange={e => {
+                      setPaymentForm(prev => ({ ...prev, payment_date: e.target.value }));
+                      if (paymentErrors.payment_date) {
+                        const { payment_date: _, ...rest } = paymentErrors;
+                        setPaymentErrors(rest);
+                      }
+                    }}
+                    className={`w-full px-3 py-1.5 border rounded-lg text-sm bg-white text-gray-800 focus:outline-none focus:ring-2 ${
+                      paymentErrors.payment_date
+                        ? 'border-red-500 focus:ring-red-400'
+                        : 'border-emerald-200 focus:ring-emerald-400'
+                    }`}
                   />
+                  {paymentErrors.payment_date && (
+                    <p className="text-xs text-red-600 mt-1">
+                      {Array.isArray(paymentErrors.payment_date)
+                        ? paymentErrors.payment_date[0]
+                        : paymentErrors.payment_date}
+                    </p>
+                  )}
                 </div>
                 <div>
                   <label className="text-xs font-medium text-gray-600 mb-1 block">Notes</label>

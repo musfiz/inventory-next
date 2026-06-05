@@ -574,9 +574,9 @@ export default function PosOrdersPage() {
                           // own status is the cashier-facing "what state
                           // is THIS receipt in?" — independent of the
                           // order's overall payment_status. A partial
-                          // cash sale records one Payment row with
+                          // cash sales records one Payment row with
                           // status='pending' (awaiting the rest); a
-                          // full sale records status='completed'.
+                          // full sales records status='completed'.
                           // We surface them distinctly so the cashier
                           // doesn't read the plain "pending" text and
                           // think something is broken.

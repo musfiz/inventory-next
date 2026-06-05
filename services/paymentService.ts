@@ -30,7 +30,7 @@ class PaymentService {
    * `getPosOrder` / `getSalesOrder` fetch.
    *
    * The optional `referenceType` hint tells the backend which order
-   * relation this payment is attached to (pos / sale / etc.) so it can
+   * relation this payment is attached to (pos / sales / etc.) so it can
    * pull the correct set of line items. Without it the backend falls
    * back to whichever FK (`pos_order_id` / `sales_order_id`) is set.
    *
