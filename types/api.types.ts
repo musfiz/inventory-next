@@ -895,8 +895,61 @@ export interface Payment {
   updated_at?: string;
 
   tenant?: { id: number; business_name: string; logo_url?: string; address?: string; city?: string; country?: string; phone?: string; email?: string; tin_number?: string; bin_number?: string; vat_number?: string } | null;
-  salesOrder?: { id: number; invoice_number: string; grand_total?: number; paid_amount?: number; returned_amount?: number; payment_status?: string; customer_id?: number } | null;
-  posOrder?: { id: number; order_number?: string; invoice_number?: string; grand_total?: number; paid_amount?: number; returned_amount?: number; payment_status?: string; customer_name?: string } | null;
+  salesOrder?: {
+    id: number;
+    invoice_number: string;
+    grand_total?: number;
+    paid_amount?: number;
+    returned_amount?: number;
+    payment_status?: string;
+    customer_id?: number;
+    sub_total?: number;
+    discount_amount?: number;
+    discount_type?: string;
+    discount_value?: number;
+    tax_amount?: number;
+    items?: ReceiptOrderItem[];
+  } | null;
+  posOrder?: {
+    id: number;
+    uuid?: string;
+    order_number?: string;
+    invoice_number?: string;
+    grand_total?: number;
+    paid_amount?: number;
+    returned_amount?: number;
+    payment_status?: string;
+    customer_name?: string;
+    sub_total?: number;
+    discount_amount?: number;
+    discount_type?: string;
+    discount_value?: number;
+    tax_amount?: number;
+    items?: ReceiptOrderItem[];
+  } | null;
   creator?: { id: number; name: string } | null;
   approver?: { id: number; name: string } | null;
+}
+
+/**
+ * Line item shape returned by the receipt endpoint. Backed by the
+ * backend's eager-loaded `salesOrder.items` / `posOrder.items` relations.
+ * Both orders populate the same fields; the receipt mapper turns this
+ * into a `PrintOrderItem`.
+ */
+export interface ReceiptOrderItem {
+  id: number;
+  product_id?: number;
+  variation_id?: number;
+  item_name?: string;
+  quantity: number;
+  unit_price: number;
+  /** POS orders use `discount_amount`; sales orders use `discount_amount` too. */
+  discount_amount?: number;
+  /** Some legacy rows may carry `discount` instead. */
+  discount?: number;
+  tax_rate?: number;
+  line_total: number;
+  product?: { id: number; name?: string; code?: string; sku?: string };
+  variation?: { id: number; name?: string; sku?: string };
 }

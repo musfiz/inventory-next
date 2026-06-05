@@ -2,7 +2,7 @@
 
 import { useRef, useState } from 'react';
 import { FileText, Printer, X } from 'lucide-react';
-import type { Payment } from '@/types/api.types';
+import type { Payment, ReceiptOrderItem } from '@/types/api.types';
 import { notify } from '@/lib/notifications';
 import { paymentService } from '@/services';
 import posService from '@/services/posService';
@@ -127,70 +127,113 @@ export function PrintMenu({ payment }: PrintMenuProps) {
     if (full) return full;
     try {
       setLoading(true);
-      const f = await paymentService.show(payment.id);
+
+      // Derive the reference type from the row so the backend knows
+      // which order relation to load. Prefer the explicit column, then
+      // fall back to whichever FK happens to be set. Mirrors the enum
+      // in payments.reference_type (pos|sale|...).
+      const referenceType: string | undefined =
+        payment.reference_type ??
+        (payment.pos_order_id
+          ? 'pos'
+          : payment.sales_order_id
+          ? 'sale'
+          : undefined);
+
+      // Single round-trip when the backend has the receipt endpoint;
+      // otherwise the service transparently falls back to `show` /
+      // `byUuid`, which return the payment with `tenant`, `salesOrder`
+      // and `posOrder` relations but no inlined line items. Keyed by
+      // uuid when available so a printed/emailed receipt URL is
+      // stable across db id shifts.
+      const f = payment.uuid
+        ? await paymentService.receiptByUuid(payment.uuid, referenceType)
+        : await paymentService.receipt(payment.id, referenceType);
       setFull(f);
 
-      // ── Fetch order detail for line items ──────────────────────────
-      // Only fetch once (orderItems starts null; after fetch it is [] or populated)
-      if (orderItems === null) {
-        try {
-          if (f.pos_order_id) {
-            // POS order — route accepts numeric ID as well as UUID
-            const order = await posService.getPosOrder(String(f.pos_order_id));
-            const mapped: PrintOrderItem[] = (order.items ?? []).map((it: any) => ({
-              id: it.id,
-              name: it.item_name ?? it.product?.name ?? 'Item',
-              variant: it.variation?.name ?? null,
-              sku: it.variation?.sku ?? it.product?.code ?? null,
-              quantity: Number(it.quantity),
-              unit_price: Number(it.unit_price),
-              discount: Number(it.discount ?? 0),
-              tax_rate: Number(it.tax_rate ?? 0),
-              line_total: Number(it.line_total),
-            }));
-            setOrderItems(mapped);
-            setOrderSummary({
-              sub_total: order.sub_total,
-              discount_amount: order.discount_amount,
-              discount_type: order.discount_type,
-              discount_value: order.discount_value,
-              tax_amount: order.tax_amount,
-              grand_total: order.grand_total,
-            });
-          } else if (f.sales_order_id) {
-            // Sales order — fetch detail (includes items array)
-            const order = await salesOrderService.getSalesOrder(String(f.sales_order_id));
-            const rawItems = order.items ?? await salesOrderService.getSalesOrderItems(String(f.sales_order_id));
-            const mapped: PrintOrderItem[] = (rawItems ?? []).map((it: any) => ({
-              id: it.id,
-              name: it.product?.name ?? it.name ?? 'Item',
-              variant: it.variation?.name ?? null,
-              sku: it.variation?.sku ?? it.product?.sku ?? null,
-              quantity: Number(it.quantity ?? it.qty ?? 0),
-              unit_price: Number(it.unit_price ?? it.price ?? 0),
-              discount: Number(it.discount_amount ?? it.discount ?? 0),
-              tax_rate: Number(it.tax_rate ?? 0),
-              line_total: Number(it.line_total ?? it.total ?? 0),
-            }));
-            setOrderItems(mapped);
-            setOrderSummary({
-              sub_total: order.sub_total,
-              discount_amount: order.discount_amount,
-              discount_type: order.discount_type,
-              discount_value: order.discount_value,
-              tax_amount: order.tax_amount,
-              grand_total: order.grand_total,
-            });
-          } else {
-            setOrderItems([]); // no linked order
+      // Map the linked order's items into PrintOrderItem[]. Two paths:
+      //  (1) The `/receipt` endpoint already inlines `items` on the
+      //      linked order — use them directly.
+      //  (2) `show` / `byUuid` do not — fall back to the order detail
+      //      services so the receipt still gets line items.
+      const linkedOrder = f.salesOrder ?? f.posOrder ?? null;
+
+      const mapItem = (it: ReceiptOrderItem): PrintOrderItem => {
+        const qty   = Number(it.quantity ?? 0);
+        const price = Number(it.unit_price ?? 0);
+        const disc  = Number(it.discount_amount ?? it.discount ?? 0);
+        const tax   = (qty * price * Number(it.tax_rate ?? 0)) / 100;
+        return {
+          id: it.id,
+          name: it.item_name ?? it.product?.name ?? 'Item',
+          variant: it.variation?.name ?? null,
+          sku: it.variation?.sku ?? it.product?.code ?? it.product?.sku ?? null,
+          quantity: qty,
+          unit_price: price,
+          discount: disc,
+          tax_rate: Number(it.tax_rate ?? 0),
+          // line_total is a computed accessor on the backend but not
+          // included in the JSON payload (no $appends on the model),
+          // so we recompute it here to match the server's formula.
+          line_total: qty * price - disc + tax,
+        };
+      };
+
+      const applyLinkedOrder = (order: NonNullable<typeof linkedOrder>, items: ReceiptOrderItem[]) => {
+        setOrderItems(items.map(mapItem));
+        setOrderSummary({
+          sub_total: order.sub_total,
+          discount_amount: order.discount_amount,
+          discount_type: order.discount_type,
+          discount_value: order.discount_value,
+          tax_amount: order.tax_amount,
+          grand_total: order.grand_total,
+        });
+      };
+
+      if (linkedOrder?.items && linkedOrder.items.length > 0) {
+        applyLinkedOrder(linkedOrder, linkedOrder.items as ReceiptOrderItem[]);
+      } else if (f.pos_order_id) {
+        // POS detail endpoint is keyed by uuid, not numeric id. The
+        // eager-loaded `posOrder.uuid` is reliable; fall back to the
+        // numeric id only as a last resort.
+        const posLookup =
+          (linkedOrder as any)?.uuid ??
+          (await posService.getPosOrder(String(f.pos_order_id)).catch(() => null) as any)?.uuid;
+        if (posLookup) {
+          try {
+            const order: any = await posService.getPosOrder(String(posLookup));
+            applyLinkedOrder(
+              { ...(linkedOrder ?? {}), ...order } as any,
+              (order.items ?? []) as ReceiptOrderItem[],
+            );
+          } catch {
+            setOrderItems([]);
           }
-        } catch {
-          // Non-fatal — receipt still prints without items
+        } else {
           setOrderItems([]);
         }
+      } else if (f.sales_order_id) {
+        try {
+          const order: any = await salesOrderService.getSalesOrder(String(f.sales_order_id));
+          const rawItems =
+            order.items ?? (await salesOrderService.getSalesOrderItems(String(f.sales_order_id)));
+          applyLinkedOrder(
+            { ...(linkedOrder ?? {}), ...order } as any,
+            (rawItems ?? []) as ReceiptOrderItem[],
+          );
+        } catch {
+          setOrderItems([]);
+        }
+      } else {
+        // No linked order — receipt still prints without items.
+        setOrderItems([]);
       }
+
       return f;
-    } catch {
+    } catch (err) {
+      // eslint-disable-next-line no-console
+      console.error('PrintMenu: failed to load payment for printing', err);
       notify.error('Failed to load payment details for printing');
       return null;
     } finally {
