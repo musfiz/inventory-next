@@ -30,7 +30,8 @@ import { usePermissions } from '@/hooks/use-permissions';
 import CustomSelect from '@/components/ui/custom-select';
 import PaymentModal from '@/components/pos/PaymentModal';
 import HeldOrdersDialog from '@/components/pos/HeldOrdersDialog';
-import type { Payment } from '@/types/api.types';
+import PosOrderPrintMenu from '@/components/invoices/pos/PosOrderPrintMenu';
+import type { Payment, PosOrderDetail } from '@/types/api.types';
 import Swal from 'sweetalert2';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -122,6 +123,10 @@ export default function POSSalesPage() {
   const [activeTenant, setActiveTenant] = useState<{ id: string | number; name: string } | null>(null);
   const [activeRegister, setActiveRegister] = useState<{ id: string | number; name: string } | null>(null);
   const [showContextDialog, setShowContextDialog] = useState(false);
+  // ── Print State ──────────────────────────────────────────────────────────────
+  // Holds the just-paid order so the industrial POS receipt can be printed.
+  const [printOrder, setPrintOrder] = useState<PosOrderDetail | null>(null);
+  const [printLoading, setPrintLoading] = useState(false);
   // Super admin dialog state
   const [dialogTenant, setDialogTenant] = useState<any>(null);
   const [dialogRegister, setDialogRegister] = useState<any>(null);
@@ -563,15 +568,41 @@ export default function POSSalesPage() {
     setShowPaymentModal(true);
   };
 
-  const handlePaymentSuccess = (payment: Payment, _orderId: string) => {
+  const handlePaymentSuccess = (payment: Payment, order: { id: string; uuid?: string; invoice_number?: string }) => {
     setShowPaymentModal(false);
-    printReceipt();
-    // Reset cart
+    // Reset cart first so the till is ready for the next customer.
     setCart([]);
     setCustomer({ name: 'Walk-in Customer' });
     setDiscount(0);
     setNote('');
     generateOrderNumber();
+    // Fire-and-forget — load the full order detail, then print.
+    void loadAndPrintOrder(order);
+  };
+
+  /**
+   * Fetch the full PosOrderDetail for the just-paid order, then mount
+   * the PosOrderPrintMenu so the cashier can pick A4 / 80mm / 58mm and
+   * print. If the order can't be loaded we fall back to a toast.
+   */
+  const loadAndPrintOrder = async (order: { id: string; uuid?: string; invoice_number?: string }) => {
+    const id = order.uuid || order.id;
+    if (!id) {
+      notify.error('Could not load order for printing — missing id');
+      return;
+    }
+    setPrintLoading(true);
+    try {
+      const detail = await posService.getPosOrder(String(id));
+      setPrintOrder(detail);
+    } catch (err: any) {
+      const msg =
+        err?.response?.data?.message ||
+        'Failed to load order for printing';
+      notify.error(String(msg));
+    } finally {
+      setPrintLoading(false);
+    }
   };
 
   const holdOrder = async () => {
@@ -615,17 +646,20 @@ export default function POSSalesPage() {
     generateOrderNumber();
   };
 
+  /**
+   * Toolbar "Print" button — the receipt is shown automatically after a
+   * successful payment, so this is only useful for re-printing the most
+   * recent order. It hides the menu if a previous order is already on
+   * screen, or shows a hint if there's nothing to reprint.
+   */
   const printReceipt = () => {
-    Swal.fire({
-      icon: 'info',
-      title: 'Printing Receipt',
-      text: 'Sending to printer...',
-      toast: true,
-      position: 'top-end',
-      showConfirmButton: false,
-      timer: 2000,
-    });
-    // Implement thermal printer integration here
+    if (printOrder) {
+      // Toggle — clicking the toolbar Print again hides the menu.
+      setPrintOrder(null);
+      return;
+    }
+    if (printLoading) return;
+    notify.info('No recent order to reprint. Complete a payment to print a receipt.');
   };
 
   // ─── Render ─────────────────────────────────────────────────────────────────
@@ -1303,6 +1337,55 @@ export default function POSSalesPage() {
         onClose={() => setShowHeldOrdersDialog(false)}
         onRestore={handleRestoreHeldOrder}
       />
+
+      {/* ── Print Receipt Card ──────────────────────────────────────────
+          Mounted after a successful payment so the cashier can pick
+          A4 / 80mm / 58mm and print. Uses the industrial design from
+          `PosOrderInvoiceThermal` / `PosOrderInvoiceA4` via PrintMenu.
+          The print menu opens its own modal — the card is the entry
+          point. */}
+      {printOrder && (
+        <div className="fixed bottom-4 right-4 z-40 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl shadow-2xl p-4 w-72 space-y-2">
+          <div className="flex items-start justify-between gap-2">
+            <div>
+              <div className="text-xs uppercase tracking-wide text-gray-500 dark:text-gray-400 font-semibold">
+                Order Complete
+              </div>
+              <div className="text-sm font-bold text-gray-900 dark:text-gray-100 mt-0.5">
+                {printOrder.invoice_number ?? `#${printOrder.id}`}
+              </div>
+              <div className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
+                Grand total ৳{Number(printOrder.grand_total ?? 0).toFixed(2)}
+              </div>
+            </div>
+            <button
+              onClick={() => setPrintOrder(null)}
+              className="p-1 rounded hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-400 hover:text-gray-600"
+              aria-label="Dismiss print menu"
+              title="Dismiss"
+            >
+              <XCircle className="w-4 h-4" />
+            </button>
+          </div>
+          <div className="text-[10px] text-gray-500 dark:text-gray-400">
+            Use the icons below to print A4 invoice or thermal receipt.
+          </div>
+          <div className="flex items-center gap-1 pt-1 border-t border-gray-200 dark:border-gray-700">
+            <PosOrderPrintMenu order={printOrder} />
+            <span className="text-[10px] text-gray-400 ml-1">A4 · 80mm · 58mm</span>
+          </div>
+        </div>
+      )}
+
+      {printLoading && (
+        <div className="fixed bottom-4 right-4 z-40 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl shadow-lg px-4 py-3 flex items-center gap-2">
+          <svg className="w-4 h-4 text-blue-500 animate-spin" fill="none" viewBox="0 0 24 24">
+            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z" />
+          </svg>
+          <span className="text-xs text-gray-600 dark:text-gray-300">Loading order…</span>
+        </div>
+      )}
 
       {/* Customer Search & Quick-Create Dialog */}
       {showCustomerDialog && (

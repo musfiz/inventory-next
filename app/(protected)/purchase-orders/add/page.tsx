@@ -1,6 +1,7 @@
 'use client';
 
-import { useEffect, useState, useRef } from 'react';
+import { useEffect, useState, useRef, Suspense } from 'react';
+import { useSearchParams } from 'next/navigation';
 import { ShoppingCart, Plus, Minus, RotateCcw } from 'lucide-react';
 import CustomSelect from '@/components/ui/custom-select';
 import CustomDatePicker from '@/components/ui/date-picker';
@@ -65,7 +66,15 @@ const selectCls = inputCls; // same visual as text input
 
 // ─── Component ────────────────────────────────────────────────────────────────
 
-export default function AddPurchaseOrderPage() {
+export default function AddPurchaseOrderPageWrapper() {
+  return (
+    <Suspense fallback={<div className="p-4 text-sm">Loading…</div>}>
+      <AddPurchaseOrderPage />
+    </Suspense>
+  );
+}
+
+function AddPurchaseOrderPage() {
   const authUser = useAuthStore(s => s.user);
   const { isSuperAdmin, hasPermission, isHydrated } = usePermissions();
   const router = useRouter();
@@ -76,6 +85,12 @@ export default function AddPurchaseOrderPage() {
   }, [isHydrated, hasPermission, router]);
 
   const formRef = useRef<HTMLFormElement | null>(null);
+  const searchParams = useSearchParams();
+  const editId = searchParams?.get('edit');
+
+  // Edit-mode state
+  const [editingId, setEditingId] = useState<number | null>(null);
+  const [loadingEdit, setLoadingEdit] = useState(false);
 
   // ── Form state ──────────────────────────────────────────────────────────────
   const [formData, setFormData] = useState<OrderForm>({
@@ -315,6 +330,70 @@ export default function AddPurchaseOrderPage() {
     return () => { mounted = false; };
   }, [formData.tenant_id]);
 
+  // Edit mode: load existing PO and prefill the form
+  useEffect(() => {
+    if (!editId) return;
+    let mounted = true;
+    (async () => {
+      try {
+        setLoadingEdit(true);
+        const po: any = await purchaseOrderService.getPurchaseOrder(Number(editId));
+        if (!mounted || !po) return;
+        setEditingId(po.id);
+        setFormData({
+          tenant_id: po.tenant_id ? String(po.tenant_id) : undefined,
+          supplier_id: po.supplier_id ? String(po.supplier_id) : undefined,
+          warehouse_id: po.warehouse_id ? String(po.warehouse_id) : undefined,
+          order_date: po.order_date ? String(po.order_date).substring(0, 10) : '',
+          expected_delivery_date: po.expected_delivery_date
+            ? String(po.expected_delivery_date).substring(0, 10)
+            : '',
+          status: po.status || 'draft',
+        });
+        setNote(po.notes || '');
+        setDiscount(String(po.discount_percentage ?? po.discount_amount ?? 0));
+        setDiscountType(po.discount_percentage ? 'percent' : 'amount');
+        setVat(String(po.vat ?? 0));
+        setShipping(String(po.shipping_charge ?? 0));
+        setPaymentStatus((po.payment_status || 'pending') as PaymentStatus);
+
+        const prefilled: OrderItem[] = (po.items || []).map((it: any) => ({
+          product_id: it.product_id ? String(it.product_id) : undefined,
+          product_name: it.product?.name || it.product_name || '',
+          variation_id: it.variation_id ? String(it.variation_id) : undefined,
+          variation_name: it.variation?.name || it.variation_name || '',
+          quantity_ordered: Number(it.quantity_ordered ?? 1),
+          cost_price: Number(it.unit_cost ?? 0),
+          variationOptions: [],
+        }));
+        setItems(prefilled);
+
+        // Preload variation options for items that have a variation
+        for (let i = 0; i < prefilled.length; i++) {
+          const it = prefilled[i];
+          if (it.product_id) {
+            try {
+              const res: any = await productVariationService.getVariations({
+                product_id: it.product_id, per_page: 50,
+              });
+              const list = res?.data || res || [];
+              const opts = (Array.isArray(list) ? list : list.data || []).map((v: any) => ({
+                value: v.id, label: v.name || v.sku || v.id,
+              }));
+              setItemField(i, 'variationOptions', opts);
+            } catch { /* ignore */ }
+          }
+        }
+      } catch (err: any) {
+        notify.error(err?.response?.data?.message || 'Failed to load purchase order');
+      } finally {
+        if (mounted) setLoadingEdit(false);
+      }
+    })();
+    return () => { mounted = false; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [editId]);
+
   // ─── Validation ───────────────────────────────────────────────────────────────
 
   const validate = (): boolean => {
@@ -414,9 +493,21 @@ export default function AddPurchaseOrderPage() {
         total_amount: Number(Math.round(grandTotal).toFixed(2)),
       };
 
-      await purchaseOrderService.storePurchaseOrder(payload);
-      notify.success('Purchase order created successfully');
-      handleReset();
+      if (editingId) {
+        // Edit mode: only status / payment fields can be updated from the
+        // details endpoint; the rest of the form is read-only.
+        await purchaseOrderService.updatePurchaseOrderFromDetails(editingId, {
+          status: formData.status,
+          payment_status: paymentStatus,
+          notes: note,
+        });
+        notify.success('Purchase order updated successfully');
+        router.push('/purchase-orders');
+      } else {
+        await purchaseOrderService.storePurchaseOrder(payload);
+        notify.success('Purchase order created successfully');
+        handleReset();
+      }
     } catch (error: any) {
       const serverErrors = error?.response?.data?.errors;
       if (serverErrors) {
@@ -454,15 +545,18 @@ export default function AddPurchaseOrderPage() {
       <div className="flex items-center justify-between">
         <h1 className="text-base font-bold text-gray-900 dark:text-gray-100 flex items-center gap-2">
           <ShoppingCart className="w-5 h-5 text-blue-600 dark:text-blue-400" />
-          Add Purchase Order
+          {editingId ? `Edit Purchase Order` : 'Add Purchase Order'}
+          {loadingEdit && <span className="text-xs text-gray-500 ml-2">Loading…</span>}
         </h1>
-        <button
-          type="button"
-          onClick={addItem}
-          className="flex items-center gap-1.5 px-3 py-1.5 bg-green-600 hover:bg-green-700 text-white text-sm font-medium rounded-sm transition-colors"
-        >
-          <Plus className="w-4 h-4" /> Add Item
-        </button>
+        {!editingId && (
+          <button
+            type="button"
+            onClick={addItem}
+            className="flex items-center gap-1.5 px-3 py-1.5 bg-green-600 hover:bg-green-700 text-white text-sm font-medium rounded-sm transition-colors"
+          >
+            <Plus className="w-4 h-4" /> Add Item
+          </button>
+        )}
       </div>
 
       <form ref={formRef} onSubmit={handleSubmit} className="space-y-2" autoComplete="off">
@@ -711,7 +805,7 @@ export default function AddPurchaseOrderPage() {
                   {/* Line total (computed) */}
                   <div className="col-span-2 text-right pr-1">
                     <span className="text-xs font-bold text-gray-800 dark:text-gray-200">
-                      {((Number(it.quantity_ordered) || 0) * (Number(it.cost_price) || 0)).toFixed(0)}
+                      {((Number(it.quantity_ordered) || 0) * (Number(it.cost_price) || 0)).toFixed(2)}
                     </span>
                   </div>
 
@@ -784,7 +878,7 @@ export default function AddPurchaseOrderPage() {
                     {/* Subtotal */}
                     <div className="flex justify-between items-center">
                       <span className="text-xs text-gray-500 dark:text-gray-400">Subtotal</span>
-                      <span className="font-semibold text-gray-900 dark:text-gray-100">{subtotal.toFixed(0)}</span>
+                      <span className="font-semibold text-gray-900 dark:text-gray-100">{subtotal.toFixed(2)}</span>
                     </div>
 
                     {/* Discount input */}
@@ -851,7 +945,7 @@ export default function AddPurchaseOrderPage() {
                     <div className="flex justify-between items-center pt-2 mt-1 border-t-2 border-blue-300 dark:border-blue-700">
                       <span className="text-sm font-bold text-gray-800 dark:text-gray-100">Grand Total</span>
                       <span className="text-lg font-black text-blue-600 dark:text-blue-400">
-                        {grandTotal.toFixed(0)}
+                        {grandTotal.toFixed(2)}
                       </span>
                     </div>
 
@@ -870,15 +964,17 @@ export default function AddPurchaseOrderPage() {
             className="flex items-center justify-center gap-2 px-5 py-1.5 text-sm bg-indigo-600 hover:bg-indigo-700 disabled:bg-gray-400 text-white rounded-sm transition-colors cursor-pointer disabled:opacity-60 disabled:cursor-not-allowed"
           >
             <GiSave className="w-4 h-4" />
-            {isLoading ? 'Creating...' : 'Create Purchase Order'}
+            {isLoading
+              ? (editingId ? 'Updating...' : 'Creating...')
+              : (editingId ? 'Update Purchase Order' : 'Create Purchase Order')}
           </button>
           <button
             type="button"
-            onClick={handleReset}
+            onClick={editingId ? () => router.push('/purchase-orders') : handleReset}
             className="flex items-center gap-2 px-3 py-1.5 bg-gray-500 hover:bg-gray-600 text-white text-sm font-medium rounded-sm transition-colors"
           >
             <RotateCcw className="w-4 h-4" />
-            Reset
+            {editingId ? 'Back' : 'Reset'}
           </button>
         </div>
 

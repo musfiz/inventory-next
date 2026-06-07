@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { ColumnDef } from '@tanstack/react-table';
-import { List, Plus, Edit, Trash2, Eye, Printer, Receipt, ReceiptText } from 'lucide-react';
+import { List, Plus, Edit, Trash2, Eye, Printer, Receipt, ReceiptText, PackageCheck } from 'lucide-react';
 import DataTable from '@/components/ui/datatable';
 import { formatDate } from '@/lib/utils/date';
 import { notify, confirm } from '@/lib/notifications';
@@ -18,6 +18,11 @@ type PrintState = {
   po: any;
 } | null;
 
+type ReceiveState = {
+  po: any;
+  items: any[];
+} | null;
+
 export default function PurchaseOrdersPage() {
   const router = useRouter();
 
@@ -28,6 +33,10 @@ export default function PurchaseOrdersPage() {
   const [currentPO, setCurrentPO] = useState<any | null>(null);
   const [updating, setUpdating] = useState(false);
   const [printState, setPrintState] = useState<PrintState>(null);
+  const [receiveState, setReceiveState] = useState<ReceiveState>(null);
+  const [receiveRows, setReceiveRows] = useState<Record<number, number>>({});
+  const [receiveNotes, setReceiveNotes] = useState('');
+  const [receiving, setReceiving] = useState(false);
 
   const STATUS_LIST = [
     'draft', 'pending', 'approved', 'ordered', 'partial', 'received', 'completed', 'cancelled'
@@ -100,6 +109,58 @@ export default function PurchaseOrdersPage() {
       setRefreshKey(k => k + 1);
     } catch (err: any) {
       notify.error(err?.response?.data?.message || 'Failed to delete');
+    }
+  };
+
+  const openReceive = async (row: any) => {
+    try {
+      const po = await purchaseOrderService.getPurchaseOrder(row.id);
+      const items = (po?.items || []).map((it: any) => ({
+        id: it.id,
+        product_name: it.product?.name || it.product_name || '-',
+        variation_name: it.variation?.name || it.variation_name || '',
+        quantity_ordered: Number(it.quantity_ordered ?? 0),
+        quantity_received: Number(it.quantity_received ?? 0),
+        unit_cost: Number(it.unit_cost ?? 0),
+      }));
+      setReceiveState({ po, items });
+      // Default receive-rows to "remaining" qty (so the user can save in one click)
+      const defaults: Record<number, number> = {};
+      items.forEach((it: any) => {
+        defaults[it.id] = Math.max(0, it.quantity_ordered - it.quantity_received);
+      });
+      setReceiveRows(defaults);
+      setReceiveNotes('');
+    } catch (err: any) {
+      notify.error(err?.response?.data?.message || 'Failed to load purchase order');
+    }
+  };
+
+  const handleReceive = async () => {
+    if (!receiveState) return;
+    const rows = receiveState.items
+      .map((it) => ({
+        purchase_order_item_id: it.id,
+        quantity_received: Number(receiveRows[it.id] ?? 0),
+      }))
+      .filter((r) => r.quantity_received > 0);
+    if (rows.length === 0) {
+      notify.error('Please enter at least one received quantity');
+      return;
+    }
+    try {
+      setReceiving(true);
+      await purchaseOrderService.receiveStock(receiveState.po.id, {
+        items: rows,
+        notes: receiveNotes || undefined,
+      });
+      notify.success('Stock received — stock ledger updated');
+      setReceiveState(null);
+      setRefreshKey((k) => k + 1);
+    } catch (err: any) {
+      notify.error(err?.response?.data?.message || 'Failed to receive stock');
+    } finally {
+      setReceiving(false);
     }
   };
 
@@ -182,45 +243,58 @@ export default function PurchaseOrdersPage() {
       id: 'actions',
       header: 'Actions',
       meta: { width: '96px' },
-      cell: ({ row }) => (
-        <div className="flex items-center gap-2">
-          <button
-            title="Details"
-            onClick={() => loadItems(row.original.id)}
-            className="p-1 text-blue-600 hover:text-blue-800 cursor-pointer"
-          >
-            <Eye className="w-4 h-4" />
-          </button>
-          <button
-            title="Print"
-            onClick={() => handlePrint(row.original.id, 'invoice')}
-            className="p-1 text-gray-600 hover:text-gray-800 cursor-pointer"
-          >
-            <Printer className="w-4 h-4" />
-          </button>
-          <button
-            title="POS Print"
-            onClick={() => handlePrint(row.original.id, 'pos')}
-            className="p-1 text-amber-600 hover:text-amber-800 cursor-pointer"
-          >
-            <ReceiptText className="w-4 h-4" />
-          </button>
-          <button
-            title="Edit"
-            onClick={() => handleEdit(row.original)}
-            className="p-1 text-green-600 hover:text-green-800 cursor-pointer"
-          >
-            <Edit className="w-4 h-4" />
-          </button>
-          <button
-            title="Delete"
-            onClick={() => handleDelete(row.original)}
-            className="p-1 text-red-600 hover:text-red-800 cursor-pointer"
-          >
-            <Trash2 className="w-4 h-4" />
-          </button>
-        </div>
-      ),
+      cell: ({ row }) => {
+        const s = row.original.status || '';
+        const canReceive = !['completed', 'cancelled', 'received'].includes(s);
+        return (
+          <div className="flex items-center gap-2">
+            <button
+              title="Details"
+              onClick={() => loadItems(row.original.id)}
+              className="p-1 text-blue-600 hover:text-blue-800 cursor-pointer"
+            >
+              <Eye className="w-4 h-4" />
+            </button>
+            {canReceive && (
+              <button
+                title="Receive stock"
+                onClick={() => openReceive(row.original)}
+                className="p-1 text-emerald-600 hover:text-emerald-800 cursor-pointer"
+              >
+                <PackageCheck className="w-4 h-4" />
+              </button>
+            )}
+            <button
+              title="Print"
+              onClick={() => handlePrint(row.original.id, 'invoice')}
+              className="p-1 text-gray-600 hover:text-gray-800 cursor-pointer"
+            >
+              <Printer className="w-4 h-4" />
+            </button>
+            <button
+              title="POS Print"
+              onClick={() => handlePrint(row.original.id, 'pos')}
+              className="p-1 text-amber-600 hover:text-amber-800 cursor-pointer"
+            >
+              <ReceiptText className="w-4 h-4" />
+            </button>
+            <button
+              title="Edit"
+              onClick={() => handleEdit(row.original)}
+              className="p-1 text-green-600 hover:text-green-800 cursor-pointer"
+            >
+              <Edit className="w-4 h-4" />
+            </button>
+            <button
+              title="Delete"
+              onClick={() => handleDelete(row.original)}
+              className="p-1 text-red-600 hover:text-red-800 cursor-pointer"
+            >
+              <Trash2 className="w-4 h-4" />
+            </button>
+          </div>
+        );
+      },
     },
   ];
 
@@ -371,6 +445,99 @@ export default function PurchaseOrdersPage() {
                 </div>
               </div>
             )}
+          </div>
+        </div>
+      )}
+
+      {/* Receive stock modal (GRN) */}
+      {receiveState && (
+        <div className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center">
+          <div className="bg-white dark:bg-gray-800 rounded-md w-11/12 md:w-3/4 lg:w-2/3 p-4 max-h-[90vh] overflow-y-auto">
+            <div className="flex items-center justify-between mb-3">
+              <h3 className="text-lg font-medium">
+                Receive Stock — {receiveState.po.po_number}
+              </h3>
+              <button
+                onClick={() => setReceiveState(null)}
+                className="px-2 py-1 text-sm bg-gray-200 rounded"
+              >
+                Close
+              </button>
+            </div>
+
+            <table className="min-w-full text-sm">
+              <thead>
+                <tr className="text-left text-xs text-gray-600 border-b">
+                  <th className="px-2 py-1">#</th>
+                  <th className="px-2 py-1">Product</th>
+                  <th className="px-2 py-1 text-center">Ordered</th>
+                  <th className="px-2 py-1 text-center">Already Received</th>
+                  <th className="px-2 py-1 text-center">Receive Now</th>
+                </tr>
+              </thead>
+              <tbody>
+                {receiveState.items.map((it: any, idx: number) => (
+                  <tr key={it.id} className="border-t">
+                    <td className="px-2 py-2">{idx + 1}</td>
+                    <td className="px-2 py-2">
+                      {it.product_name}
+                      {it.variation_name ? ` — ${it.variation_name}` : ''}
+                    </td>
+                    <td className="px-2 py-2 text-center">{it.quantity_ordered}</td>
+                    <td className="px-2 py-2 text-center">{it.quantity_received}</td>
+                    <td className="px-2 py-2 text-center">
+                      <input
+                        type="number"
+                        step="0.0001"
+                        min="0"
+                        max={it.quantity_ordered - it.quantity_received}
+                        value={receiveRows[it.id] ?? 0}
+                        onChange={(e) => {
+                          const v = Math.max(
+                            0,
+                            Math.min(
+                              it.quantity_ordered - it.quantity_received,
+                              Number(e.target.value) || 0
+                            )
+                          );
+                          setReceiveRows((prev) => ({ ...prev, [it.id]: v }));
+                        }}
+                        onKeyDown={preventMinus}
+                        onFocus={(e) => e.target.select()}
+                        className="w-24 px-2 py-1 text-right text-sm border border-gray-300 dark:border-gray-700 rounded focus:outline-none focus:ring-1 focus:ring-blue-500"
+                      />
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+
+            <div className="mt-3">
+              <label className="block text-xs text-gray-600 mb-1">Notes</label>
+              <textarea
+                value={receiveNotes}
+                onChange={(e) => setReceiveNotes(e.target.value)}
+                rows={2}
+                className="w-full px-2 py-1 text-sm border border-gray-300 dark:border-gray-700 rounded"
+                placeholder="Optional notes for this receipt"
+              />
+            </div>
+
+            <div className="flex justify-end gap-2 mt-3">
+              <button
+                onClick={() => setReceiveState(null)}
+                className="px-3 py-1 bg-gray-200 rounded text-sm"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleReceive}
+                disabled={receiving}
+                className="px-3 py-1 bg-emerald-600 text-white rounded text-sm disabled:opacity-60"
+              >
+                {receiving ? 'Receiving…' : 'Confirm Receipt'}
+              </button>
+            </div>
           </div>
         </div>
       )}

@@ -1,13 +1,19 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { CreditCard, FileText, Filter, X } from 'lucide-react';
+import { CreditCard, FileText, Filter, Search, X } from 'lucide-react';
 import { ColumnDef } from '@tanstack/react-table';
 import { paymentService } from '@/services';
-import type { Payment, PaymentMethod, PaymentStatus } from '@/types/api.types';
+import type {
+  Payment,
+  PaymentMethod,
+  PaymentReferenceType,
+  PaymentStatus,
+} from '@/types/api.types';
 import DataTable from '@/components/ui/datatable';
 import CustomSelect from '@/components/ui/custom-select';
 import TenantSelect from '@/components/ui/tenant-select';
+import CustomDatePicker from '@/components/ui/date-picker';
 import { usePermissions } from '@/hooks/use-permissions';
 import { useRouter } from 'next/navigation';
 import { PrintMenu } from '@/components/invoices/pay-receipt/PrintMenu';
@@ -32,6 +38,15 @@ const PAYMENT_STATUSES: { value: PaymentStatus; label: string }[] = [
   { value: 'failed',    label: 'Failed' },
   { value: 'cancelled', label: 'Cancelled' },
   { value: 'refunded',  label: 'Refunded' },
+];
+
+const REFERENCE_TYPES: { value: PaymentReferenceType; label: string }[] = [
+  { value: 'pos',      label: 'POS' },
+  { value: 'sales',    label: 'Sales Order' },
+  { value: 'purchase', label: 'Purchase' },
+  { value: 'expense',  label: 'Expense' },
+  { value: 'refund',   label: 'Refund' },
+  { value: 'other',    label: 'Other' },
 ];
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -74,32 +89,68 @@ export default function PaymentsListPage() {
     if (!hasPermission('view-payment')) router.replace('/dashboard');
   }, [isHydrated, hasPermission, router]);
 
-  // Filters
-  const [tenantId,    setTenantId]    = useState('');
-  const [methodOpt,   setMethodOpt]   = useState<any>(null);
-  const [statusOpt,   setStatusOpt]   = useState<any>(null);
-  const [dateFrom,    setDateFrom]    = useState('');
-  const [dateTo,      setDateTo]      = useState('');
-  const [refreshKey,  setRefreshKey]  = useState(0);
+  // Filter draft — what the form controls are bound to. Changes do
+  // NOT refetch until the user clicks Search.
+  const [tenantId,          setTenantId]          = useState('');
+  const [referenceTypeOpt, setReferenceTypeOpt]  = useState<any>(null);
+  const [methodOpt,         setMethodOpt]         = useState<any>(null);
+  const [statusOpt,         setStatusOpt]         = useState<any>(null);
+  const [dateFrom,          setDateFrom]          = useState('');
+  const [dateTo,            setDateTo]            = useState('');
 
-  // Build the API endpoint with current filter state
+  // Applied filters — what actually drives the API call. Updated only
+  // when the user clicks Search.
+  const [applied, setApplied] = useState({
+    tenantId: '',
+    referenceType: '',
+    method: '',
+    status: '',
+    dateFrom: '',
+    dateTo: '',
+  });
+  const [refreshKey, setRefreshKey] = useState(0);
+
+  // Build the API endpoint from the *applied* filter set
   const buildApiEndpoint = () => {
     const params = new URLSearchParams();
-    if (isSuperAdmin && tenantId) params.set('tenant_id', tenantId);
-    if (methodOpt?.value) params.set('payment_method', methodOpt.value);
-    if (statusOpt?.value) params.set('status', statusOpt.value);
-    if (dateFrom) params.set('date_from', dateFrom);
-    if (dateTo)   params.set('date_to',   dateTo);
+    if (isSuperAdmin && applied.tenantId) params.set('tenant_id', applied.tenantId);
+    if (applied.referenceType) params.set('reference_type', applied.referenceType);
+    if (applied.method) params.set('payment_method', applied.method);
+    if (applied.status) params.set('status', applied.status);
+    if (applied.dateFrom) params.set('date_from', applied.dateFrom);
+    if (applied.dateTo)   params.set('date_to',   applied.dateTo);
     const qs = params.toString();
     return `/payments${qs ? `?${qs}` : ''}`;
   };
 
+  // Click handlers — copy the draft into applied and refetch
+  const handleSearch = () => {
+    setApplied({
+      tenantId,
+      referenceType: referenceTypeOpt?.value ?? '',
+      method: methodOpt?.value ?? '',
+      status: statusOpt?.value ?? '',
+      dateFrom,
+      dateTo,
+    });
+    setRefreshKey(k => k + 1);
+  };
+
   const clearFilters = () => {
     setTenantId('');
+    setReferenceTypeOpt(null);
     setMethodOpt(null);
     setStatusOpt(null);
     setDateFrom('');
     setDateTo('');
+    setApplied({
+      tenantId: '',
+      referenceType: '',
+      method: '',
+      status: '',
+      dateFrom: '',
+      dateTo: '',
+    });
     setRefreshKey(k => k + 1);
   };
 
@@ -122,21 +173,11 @@ export default function PaymentsListPage() {
       cell: ({ row }) => <span className="text-xs">{fmtDate(row.original.payment_date)}</span>,
     },
     {
-      id: 'reference', header: 'Reference',
+      accessorKey: 'reference_type', header: 'Reference Type',
       cell: ({ row }) => {
-        const p = row.original;
-        if (p.salesOrder?.invoice_number) {
-          return <span className="text-xs font-mono">{p.salesOrder.invoice_number}</span>;
-        }
-        if (p.posOrder?.invoice_number) {
-          return <span className="text-xs font-mono">{p.posOrder.invoice_number}</span>;
-        }
-        if (p.posOrder?.order_number) {
-          return <span className="text-xs font-mono">{p.posOrder.order_number}</span>;
-        }
-        if (p.sales_order_id) return <span className="text-xs">#{p.sales_order_id}</span>;
-        if (p.pos_order_id)   return <span className="text-xs">#{p.pos_order_id}</span>;
-        return <span className="text-xs text-gray-400">-</span>;
+        const v = row.original.reference_type;
+        const label = REFERENCE_TYPES.find(r => r.value === v)?.label ?? v ?? '-';
+        return <span className="text-xs capitalize">{label}</span>;
       },
     },
     {
@@ -174,11 +215,12 @@ export default function PaymentsListPage() {
   const labelCls = 'block text-xs font-medium text-gray-700 dark:text-gray-300 mb-2';
 
   const hasFilters =
-    (isSuperAdmin && !!tenantId) ||
-    !!methodOpt?.value ||
-    !!statusOpt?.value ||
-    !!dateFrom ||
-    !!dateTo;
+    !!applied.tenantId ||
+    !!applied.referenceType ||
+    !!applied.method ||
+    !!applied.status ||
+    !!applied.dateFrom ||
+    !!applied.dateTo;
 
   // ── Render ────────────────────────────────────────────────────────────────
 
@@ -191,43 +233,54 @@ export default function PaymentsListPage() {
         </h1>
       </div>
 
-      {/* Filters card */}
+      {/* Advanced Filter card */}
       <div className="bg-white dark:bg-gray-800 rounded-md shadow-sm border border-gray-200 dark:border-gray-700 p-3">
-        <div className="flex items-center justify-between mb-2">
+        <div className="flex items-center justify-between mb-3">
           <p className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide flex items-center gap-1.5">
-            <Filter className="w-3.5 h-3.5" /> Filters
+            <Filter className="w-3.5 h-3.5" /> Advanced Filter
           </p>
           {hasFilters && (
-            <button
-              type="button"
-              onClick={clearFilters}
-              title="Clear all filters"
-              className="inline-flex items-center gap-1 px-2 py-1 text-xs text-gray-600 dark:text-gray-300 hover:text-red-600 dark:hover:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-sm cursor-pointer"
-            >
-              <X className="w-3.5 h-3.5" /> Clear
-            </button>
+            <span className="text-[10px] text-indigo-600 dark:text-indigo-400 font-semibold uppercase tracking-wide">
+              {Object.values(applied).filter(Boolean).length} active
+            </span>
           )}
         </div>
-        <div className="grid grid-cols-1 md:grid-cols-5 gap-3">
-          {/* Tenant (super admin only) */}
-          {isSuperAdmin && (
+
+        {/* Row 1 — Tenant (super admin only). Other roles skip this row. */}
+        {isSuperAdmin && (
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-3 mb-3">
             <div>
               <label className={labelCls}>Tenant</label>
               <TenantSelect
                 value={tenantId}
-                onChange={(tid) => { setTenantId(tid || ''); setRefreshKey(k => k + 1); }}
+                onChange={(tid) => setTenantId(tid || '')}
                 placeholder="All Tenants"
                 isInvalid={false}
               />
             </div>
-          )}
+          </div>
+        )}
+
+        {/* Row 2 — Reference Type + Method + Status + From + To + buttons */}
+        <div className="grid grid-cols-1 md:grid-cols-5 gap-3 items-end">
+          {/* Reference type — links to POS / Sales / etc. */}
+          <div>
+            <label className={labelCls}>Reference Type</label>
+            <CustomSelect
+              value={referenceTypeOpt}
+              onChange={(opt) => setReferenceTypeOpt(opt)}
+              defaultOptions={[{ value: '', label: 'All Types' } as any, ...REFERENCE_TYPES]}
+              placeholder="All Types"
+              className="text-sm"
+            />
+          </div>
 
           {/* Payment method */}
           <div>
             <label className={labelCls}>Method</label>
             <CustomSelect
               value={methodOpt}
-              onChange={(opt) => { setMethodOpt(opt); setRefreshKey(k => k + 1); }}
+              onChange={(opt) => setMethodOpt(opt)}
               defaultOptions={[{ value: '', label: 'All Methods' } as any, ...PAYMENT_METHODS]}
               placeholder="All Methods"
               className="text-sm"
@@ -239,7 +292,7 @@ export default function PaymentsListPage() {
             <label className={labelCls}>Status</label>
             <CustomSelect
               value={statusOpt}
-              onChange={(opt) => { setStatusOpt(opt); setRefreshKey(k => k + 1); }}
+              onChange={(opt) => setStatusOpt(opt)}
               defaultOptions={[{ value: '', label: 'All Statuses' } as any, ...PAYMENT_STATUSES]}
               placeholder="All Statuses"
               className="text-sm"
@@ -249,24 +302,43 @@ export default function PaymentsListPage() {
           {/* Date from */}
           <div>
             <label className={labelCls}>From</label>
-            <input
-              type="date"
+            <CustomDatePicker
               value={dateFrom}
-              onChange={(e) => { setDateFrom(e.target.value); setRefreshKey(k => k + 1); }}
-              className={inputCls}
+              onChange={setDateFrom}
+              placeholder="DD/MM/YYYY"
             />
           </div>
 
-          {/* Date to */}
+          {/* Date to + buttons */}
           <div>
             <label className={labelCls}>To</label>
-            <input
-              type="date"
+            <CustomDatePicker
               value={dateTo}
-              onChange={(e) => { setDateTo(e.target.value); setRefreshKey(k => k + 1); }}
-              className={inputCls}
+              onChange={setDateTo}
+              placeholder="DD/MM/YYYY"
+              minDate={dateFrom ? new Date(dateFrom + 'T00:00:00') : undefined}
             />
           </div>
+        </div>
+
+        {/* Buttons row */}
+        <div className="flex items-center justify-end gap-2 mt-3">
+          <button
+            type="button"
+            onClick={clearFilters}
+            title="Clear all filters"
+            className="inline-flex items-center gap-1 px-3 py-1.5 text-xs font-semibold text-gray-700 dark:text-gray-200 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-600 rounded-sm cursor-pointer transition-colors"
+          >
+            <X className="w-3.5 h-3.5" /> Clear
+          </button>
+          <button
+            type="button"
+            onClick={handleSearch}
+            title="Apply filters"
+            className="inline-flex items-center gap-1.5 px-4 py-1.5 text-xs font-bold text-white bg-indigo-600 hover:bg-indigo-700 dark:bg-indigo-500 dark:hover:bg-indigo-600 rounded-sm cursor-pointer transition-colors shadow-sm"
+          >
+            <Search className="w-3.5 h-3.5" /> Search
+          </button>
         </div>
       </div>
 

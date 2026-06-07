@@ -97,6 +97,17 @@ export default function CustomDatePicker({
         .react-datepicker-wrapper {
           width: 100% !important;
         }
+        /* Lift the datepicker popup above any stacking context created
+           by ancestor cards with shadows / rounded corners / sticky
+           children. Without this, the calendar can be clipped by a
+           parent that uses overflow:hidden, transform, or a sticky
+           header. */
+        .react-datepicker-popper {
+          z-index: 9999 !important;
+        }
+        .react-datepicker {
+          z-index: 9999 !important;
+        }
       `}</style>
     </div>
   );

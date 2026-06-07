@@ -196,20 +196,25 @@ export function PrintMenu({ payment }: PrintMenuProps) {
       } else if (f.pos_order_id) {
         // POS detail endpoint is keyed by uuid, not numeric id. The
         // eager-loaded `posOrder.uuid` is reliable; fall back to the
-        // numeric id only as a last resort.
-        const posLookup =
-          (linkedOrder as any)?.uuid ??
-          (await posService.getPosOrder(String(f.pos_order_id)).catch(() => null) as any)?.uuid;
-        if (posLookup) {
-          try {
-            const order: any = await posService.getPosOrder(String(posLookup));
-            applyLinkedOrder(
-              { ...(linkedOrder ?? {}), ...order } as any,
-              (order.items ?? []) as ReceiptOrderItem[],
-            );
-          } catch {
-            setOrderItems([]);
+        // numeric id only as a last resort. We do at most ONE network
+        // call here — the previous code made two (one just to read
+        // the uuid, then a second to read the order). Now we resolve
+        // the uuid in one shot and reuse the result.
+        let order: any = null;
+        try {
+          if ((linkedOrder as any)?.uuid) {
+            order = await posService.getPosOrder(String((linkedOrder as any).uuid));
+          } else {
+            order = await posService.getPosOrder(String(f.pos_order_id));
           }
+        } catch {
+          order = null;
+        }
+        if (order) {
+          applyLinkedOrder(
+            { ...(linkedOrder ?? {}), ...order } as any,
+            (order.items ?? []) as ReceiptOrderItem[],
+          );
         } else {
           setOrderItems([]);
         }
@@ -304,10 +309,26 @@ export function PrintMenu({ payment }: PrintMenuProps) {
           )}
         </div>
         <div ref={t80Ref}>
-          {data && <PayReceiptThermal payment={data} width="80mm" copyLabel={copyLabel} />}
+          {data && (
+            <PayReceiptThermal
+              payment={data}
+              width="80mm"
+              copyLabel={copyLabel}
+              orderItems={orderItems}
+              orderSummary={orderSummary}
+            />
+          )}
         </div>
         <div ref={t58Ref}>
-          {data && <PayReceiptThermal payment={data} width="58mm" copyLabel={copyLabel} />}
+          {data && (
+            <PayReceiptThermal
+              payment={data}
+              width="58mm"
+              copyLabel={copyLabel}
+              orderItems={orderItems}
+              orderSummary={orderSummary}
+            />
+          )}
         </div>
       </div>
 

@@ -50,6 +50,14 @@ class PurchaseOrderService {
     const response = await apiClient.post<ApiResponse<any>>(`/api/v1/purchase-order/${id}/update/details`, data);
     return response.data.data;
   }
+
+  async receiveStock(id: number, data: Record<string, any>) {
+    const response = await apiClient.post<ApiResponse<any>>(
+      `/api/v1/purchase-order/${id}/receive`,
+      data
+    );
+    return response.data.data;
+  }
 }
 
 export default new PurchaseOrderService();

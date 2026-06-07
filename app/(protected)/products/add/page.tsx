@@ -1,7 +1,7 @@
 'use client';
 
-import { useState, useEffect, useRef, useCallback } from 'react';
-import { useRouter } from 'next/navigation';
+import { useState, useEffect, useRef, useCallback, Suspense } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { Package2 } from 'lucide-react';
 import { notify } from '@/lib/notifications';
 import { productService } from '@/services';
@@ -34,10 +34,24 @@ interface ProductFormData {
   image: string;
 }
 
-export default function AddProductPage() {
+export default function AddProductPageWrapper() {
+  return (
+    <Suspense fallback={<div className="p-4 text-sm">Loading…</div>}>
+      <AddProductPage />
+    </Suspense>
+  );
+}
+
+function AddProductPage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const editId = searchParams?.get('edit');
   const user = useAuthStore(state => state.user);
   const isSuperAdmin = user?.user_type === 'super_admin';
+  const tenantBusinessType =
+    (user as any)?.tenant?.business_type ||
+    (user as any)?.business_type ||
+    '';
 
   const [isLoading, setIsLoading] = useState(false);
   const [errors, setErrors] = useState<Record<string, string[]>>({});
@@ -48,9 +62,17 @@ export default function AddProductPage() {
   const [defaultBrandOptions, setDefaultBrandOptions] = useState<SelectOption[]>([]);
   const [defaultUnitOptions, setDefaultUnitOptions] = useState<SelectOption[]>([]);
 
-  // Business type state
-  const [businessType, setBusinessType] = useState<string>('');
-  const [selectedBusinessType, setSelectedBusinessType] = useState<SelectOption | null>(null);
+  // Business type state — for non-super-admin, locked to their tenant's business_type
+  const [businessType, setBusinessType] = useState<string>(isSuperAdmin ? '' : tenantBusinessType);
+  const [selectedBusinessType, setSelectedBusinessType] = useState<SelectOption | null>(
+    isSuperAdmin
+      ? null
+      : BUSINESS_TYPES.find((bt) => bt.value === tenantBusinessType) || null
+  );
+
+  // Edit-mode state
+  const [editingId, setEditingId] = useState<number | null>(null);
+  const [loadingEdit, setLoadingEdit] = useState(false);
 
   // Track if initial data has been loaded to prevent duplicate API calls
   const hasLoadedData = useRef(false);
@@ -208,6 +230,68 @@ export default function AddProductPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [businessType]);
 
+  // Edit mode: load existing product and prefill the form
+  useEffect(() => {
+    if (!editId) return;
+    let mounted = true;
+    (async () => {
+      try {
+        setLoadingEdit(true);
+        const res: any = await productService.getProduct(Number(editId));
+        const p = res?.data?.product || res?.product || res;
+        if (!mounted || !p) return;
+        setEditingId(p.id);
+        setFormData({
+          name: p.name || '',
+          description: p.description || '',
+          category_id: p.category_id ? String(p.category_id) : '',
+          brand_id: p.brand_id ? String(p.brand_id) : '',
+          unit_id: p.unit_id ? String(p.unit_id) : '',
+          type: p.type || 'simple',
+          status: p.status || 'active',
+          is_taxable: !!p.is_taxable,
+          tax_rate: String(p.tax_rate ?? 0),
+          track_inventory: p.track_inventory !== false,
+          allow_backorder: !!p.allow_backorder,
+          low_stock_threshold: String(p.low_stock_threshold ?? 10),
+          reorder_point: p.reorder_point ? String(p.reorder_point) : '',
+          has_expiry: !!p.has_expiry,
+          has_batch: !!p.has_batch,
+          has_serial: !!p.has_serial,
+          is_featured: !!p.is_featured,
+          display_order: String(p.display_order ?? 1),
+          image: '',
+        });
+        // Reflect business_type in the selector (locked either way)
+        if (p.business_type) {
+          setBusinessType(p.business_type);
+          setSelectedBusinessType(
+            BUSINESS_TYPES.find((bt) => bt.value === p.business_type) || null
+          );
+        }
+        // Pre-populate the visible CustomSelect labels
+        if (p.category) {
+          setSelectedCategory({ value: String(p.category.id), label: p.category.name });
+        }
+        if (p.brand) {
+          setSelectedBrand({ value: String(p.brand.id), label: p.brand.name });
+        }
+        if (p.unit) {
+          setSelectedUnit({
+            value: String(p.unit.id),
+            label: `${p.unit.name} (${p.unit.short_name})`,
+          });
+        }
+      } catch (err: any) {
+        notify.error(err?.response?.data?.message || 'Failed to load product');
+      } finally {
+        if (mounted) setLoadingEdit(false);
+      }
+    })();
+    return () => { mounted = false; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [editId]);
+
   const handleCategoryChange = (option: SelectOption | null) => {
     setSelectedCategory(option);
     setFormData(prev => ({
@@ -341,17 +425,23 @@ export default function AddProductPage() {
         display_order: formData.display_order ? parseInt(formData.display_order) : 0,
       };
 
-      await productService.createProduct(submitData);
-      notify.success('Product created successfully!');
-      router.push('/products');
+      if (editingId) {
+        await productService.updateProduct(editingId, submitData);
+        notify.success('Product updated successfully!');
+        router.push('/products');
+      } else {
+        await productService.createProduct(submitData);
+        notify.success('Product created successfully!');
+        router.push('/products');
+      }
     } catch (error: any) {
-      console.error('Error creating product:', error);
+      console.error('Error saving product:', error);
 
       // Handle validation errors
       if (error.response?.data?.errors) {
         setErrors(error.response.data.errors);
       } else {
-        notify.error(error.response?.data?.message || 'Failed to create product');
+        notify.error(error.response?.data?.message || 'Failed to save product');
       }
     } finally {
       setIsLoading(false);
@@ -366,7 +456,8 @@ export default function AddProductPage() {
           <div>
             <h1 className="text-base font-bold text-gray-900 dark:text-gray-100 flex items-center gap-2">
               <Package2 className="w-5 h-5 text-indigo-600 dark:text-indigo-400" />
-              Add Product
+              {editingId ? 'Edit Product' : 'Add Product'}
+              {loadingEdit && <span className="text-xs text-gray-500 ml-2">Loading…</span>}
             </h1>
           </div>
         </div>
@@ -419,7 +510,7 @@ export default function AddProductPage() {
                 ) : (
                   <input
                     type="text"
-                    value={selectedBusinessType?.label || ''}
+                    value={selectedBusinessType?.label || tenantBusinessType || '—'}
                     disabled
                     className="w-full px-2.5 py-1 text-sm bg-gray-100 dark:bg-gray-600 border border-gray-300 dark:border-gray-600 rounded-sm text-gray-700 dark:text-gray-300 cursor-not-allowed"
                   />
@@ -803,7 +894,9 @@ export default function AddProductPage() {
             className="flex items-center justify-center gap-2 px-5 py-1.5 text-sm bg-indigo-600 hover:bg-indigo-700 disabled:bg-gray-400 text-white rounded-sm transition-colors cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
           >
             <GiSave className="w-4 h-4" />
-            {isLoading ? 'Creating...' : 'Create Product'}
+            {isLoading
+              ? (editingId ? 'Updating...' : 'Creating...')
+              : (editingId ? 'Update Product' : 'Create Product')}
           </button>
         </div>
       </form>

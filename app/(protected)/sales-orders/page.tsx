@@ -2,19 +2,13 @@
 
 import { useState } from 'react';
 import { ColumnDef } from '@tanstack/react-table';
-import { List, Plus, Edit, Trash2, Eye, Printer, ReceiptText, X, DollarSign } from 'lucide-react';
+import { List, Plus, Edit, Trash2, Eye, X, DollarSign } from 'lucide-react';
 import DataTable from '@/components/ui/datatable';
 import { formatDate } from '@/lib/utils/date';
 import { notify, confirm } from '@/lib/notifications';
 import salesOrderService from '@/services/salesOrderService';
 import { useRouter } from 'next/navigation';
-
-type PrintMode = 'invoice' | 'pos';
-
-type PrintState = {
-  mode: PrintMode;
-  so: any;
-} | null;
+import { SalesOrderPrintMenu } from '@/components/invoices/SalesOrderPrintMenu';
 
 export default function SalesOrdersPage() {
   const router = useRouter();
@@ -25,7 +19,6 @@ export default function SalesOrdersPage() {
   const [detailLoading, setDetailLoading] = useState(false);
   const [currentSO, setCurrentSO] = useState<any | null>(null);
   const [updating, setUpdating] = useState(false);
-  const [printState, setPrintState] = useState<PrintState>(null);
 
   // ── Record-Payment dialog state ──────────────────────────────────────────────
   // Replaces the old "edit paid_amount in place" flow, which did not
@@ -261,18 +254,10 @@ export default function SalesOrdersPage() {
     }
   };
 
-  const handlePrint = async (id: string, mode: PrintMode = 'invoice') => {
-    try {
-      const so = await salesOrderService.getSalesOrder(id);
-      setPrintState({ mode, so });
-      setTimeout(() => {
-        window.print();
-        setTimeout(() => setPrintState(null), 500);
-      }, 300);
-    } catch (err: any) {
-      notify.error(err?.response?.data?.message || 'Failed to load sales order');
-    }
-  };
+  // Self-contained two-button print menu. The component itself
+  // loads the full SO detail on first click and caches it, so no
+  // parent wrapper is needed — matches the pattern used by the
+  // Payments list's `<PrintMenu payment={row.original} />`.
 
   const columns: ColumnDef<any>[] = [
     {
@@ -355,46 +340,37 @@ export default function SalesOrdersPage() {
     {
       id: 'actions',
       header: 'Actions',
-      meta: { width: '96px' },
-      cell: ({ row }) => (
-        <div className="flex items-center gap-2">
-          <button
-            title="Details"
-            onClick={() => loadItems(row.original.uuid)}
-            className="p-1 text-blue-600 hover:text-blue-800 cursor-pointer"
-          >
-            <Eye className="w-4 h-4" />
-          </button>
-          <button
-            title="Print"
-            onClick={() => handlePrint(row.original.uuid, 'invoice')}
-            className="p-1 text-gray-600 hover:text-gray-800 cursor-pointer"
-          >
-            <Printer className="w-4 h-4" />
-          </button>
-          {/* <button
-            title="POS Print"
-            onClick={() => handlePrint(row.original.id, 'pos')}
-            className="p-1 text-amber-600 hover:text-amber-800 cursor-pointer"
-          >
-            <ReceiptText className="w-4 h-4" />
-          </button> */}
-          <button
-            title="Edit"
-            onClick={() => handleEdit(row.original)}
-            className="p-1 text-green-600 hover:text-green-800 cursor-pointer"
-          >
-            <Edit className="w-4 h-4" />
-          </button>
-          <button
-            title="Delete"
-            onClick={() => handleDelete(row.original)}
-            className="p-1 text-red-600 hover:text-red-800 cursor-pointer"
-          >
-            <Trash2 className="w-4 h-4" />
-          </button>
-        </div>
-      ),
+      meta: { width: '120px' },
+      cell: ({ row }) => {
+        // Self-contained two-button print menu — loads the full SO
+        // on first click and caches it. No parent wrapper needed.
+        return (
+          <div className="flex items-center gap-2">
+            <button
+              title="Details"
+              onClick={() => loadItems(row.original.uuid)}
+              className="p-1 text-blue-600 hover:text-blue-800 cursor-pointer"
+            >
+              <Eye className="w-4 h-4" />
+            </button>
+            <SalesOrderPrintMenu order={row.original} />
+            <button
+              title="Edit"
+              onClick={() => handleEdit(row.original)}
+              className="p-1 text-green-600 hover:text-green-800 cursor-pointer"
+            >
+              <Edit className="w-4 h-4" />
+            </button>
+            <button
+              title="Delete"
+              onClick={() => handleDelete(row.original)}
+              className="p-1 text-red-600 hover:text-red-800 cursor-pointer"
+            >
+              <Trash2 className="w-4 h-4" />
+            </button>
+          </div>
+        );
+      },
     },
   ];
 
@@ -1227,31 +1203,6 @@ export default function SalesOrdersPage() {
           </div>
         </div>
       )}
-
-      {/* Print-specific styles */}
-      <style jsx global>{`
-        @media screen {
-          .print-only {
-            display: none !important;
-          }
-        }
-
-        @media print {
-          body * {
-            visibility: hidden;
-          }
-          #print-invoice,
-          #print-invoice * {
-            visibility: visible;
-          }
-          #print-invoice {
-            position: absolute;
-            left: 0;
-            top: 0;
-            width: 100%;
-          }
-        }
-      `}</style>
     </div>
   );
 }

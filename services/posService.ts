@@ -22,6 +22,7 @@ export interface PosOrderPayload extends PosPaymentFields {
 
 export interface PosOrderResponse {
   id: string;
+  uuid?: string;
   invoice_number: string;
   grand_total: number;
   payment_method: string;

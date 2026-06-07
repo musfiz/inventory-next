@@ -60,7 +60,7 @@ interface PaymentModalProps {
   discountValue: number;
   notes?: string;
   defaultMethod?: PaymentMethod;
-  onSuccess: (payment: Payment, orderId: string) => void;
+  onSuccess: (payment: Payment, order: { id: string; uuid?: string; invoice_number?: string }) => void;
   onCancel: () => void;
 }
 
@@ -135,7 +135,7 @@ export default function PaymentModal({
 
   // ── Submission & success state ──────────────────────────────────────────────
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [success, setSuccess] = useState<{ payment: Payment; orderId: string; balanceDue: number; isPartial: boolean } | null>(null);
+  const [success, setSuccess] = useState<{ payment: Payment; order: { id: string; uuid?: string; invoice_number?: string }; balanceDue: number; isPartial: boolean } | null>(null);
 
   const tenderInputRef = useRef<HTMLInputElement>(null);
 
@@ -262,7 +262,16 @@ export default function PaymentModal({
     setIsSubmitting(true);
     try {
       const result = await posService.createOrder(payload);
-      setSuccess({ payment: result.payment, orderId: result.order?.id ?? '', balanceDue: result.balance_due, isPartial: result.is_partial });
+      setSuccess({
+        payment: result.payment,
+        order: {
+          id: String(result.order?.id ?? ''),
+          uuid: (result.order as any)?.uuid,
+          invoice_number: result.order?.invoice_number,
+        },
+        balanceDue: result.balance_due,
+        isPartial: result.is_partial,
+      });
     } catch (error: any) {
       const msg = error?.response?.data?.message || error?.response?.data?.errors;
       if (typeof msg === 'object') {
@@ -330,21 +339,21 @@ export default function PaymentModal({
 
           <div className="flex gap-3">
             <button
-              onClick={() => onSuccess(success.payment, success.orderId)}
+              onClick={() => onSuccess(success.payment, success.order)}
               className="flex-1 flex items-center justify-center gap-2 py-2.5 bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-lg text-sm transition-colors"
             >
               <Printer className="w-4 h-4" />
               Print Receipt
             </button>
             <button
-              onClick={() => onSuccess(success.payment, success.orderId)}
+              onClick={() => onSuccess(success.payment, success.order)}
               className="flex items-center justify-center gap-2 px-4 py-2.5 border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 font-semibold rounded-lg text-sm hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
             >
               <Mail className="w-4 h-4" />
               Email
             </button>
             <button
-              onClick={() => onSuccess(success.payment, success.orderId)}
+              onClick={() => onSuccess(success.payment, success.order)}
               className="flex items-center justify-center gap-2 px-4 py-2.5 bg-gray-900 dark:bg-gray-100 text-white dark:text-gray-900 font-semibold rounded-lg text-sm hover:opacity-90 transition-opacity"
             >
               Done

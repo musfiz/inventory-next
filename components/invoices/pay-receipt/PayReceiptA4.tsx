@@ -226,9 +226,9 @@ export function PayReceiptA4({ payment, copyLabel, orderItems, orderSummary }: P
             <thead>
               <tr>
                 <th style={thStyle({ width: '2em', textAlign: 'center' })}>#</th>
-                <th style={thStyle({ textAlign: 'left' })}>Product</th>
+                <th style={thStyle({ textAlign: 'left', width: '15em' })}>Product</th>
                 <th style={thStyle({ textAlign: 'center', width: '3em' })}>Qty</th>
-                <th style={thStyle({ textAlign: 'right', width: '5em' })}>Unit Price</th>
+                <th style={thStyle({ textAlign: 'right', width: '5em' })}>Price</th>
                 <th style={thStyle({ textAlign: 'right', width: '5em' })}>Total</th>
               </tr>
             </thead>

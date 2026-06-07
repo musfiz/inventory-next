@@ -263,7 +263,7 @@ export default function ProductsPage() {
           <button
             className="p-1 text-indigo-600 hover:text-indigo-900 dark:text-indigo-400 dark:hover:text-indigo-300 hover:bg-indigo-50 dark:hover:bg-indigo-900/20 rounded cursor-pointer"
             title="View Details"
-            onClick={() => console.log('View', row.original.id)}
+            onClick={() => router.push(`/products/add?edit=${row.original.id}`)}
           >
             <Eye className="w-3.5 h-3.5" />
           </button>
@@ -271,7 +271,7 @@ export default function ProductsPage() {
             <button
               className="p-1 text-blue-600 hover:text-blue-900 dark:text-blue-400 dark:hover:text-blue-300 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded cursor-pointer"
               title="Edit"
-              onClick={() => router.push(`/products/${row.original.id}/edit`)}
+              onClick={() => router.push(`/products/add?edit=${row.original.id}`)}
             >
               <Edit className="w-3.5 h-3.5" />
             </button>
@@ -279,7 +279,7 @@ export default function ProductsPage() {
           <button
             className="p-1 text-purple-600 hover:text-purple-900 dark:text-purple-400 dark:hover:text-purple-300 hover:bg-purple-50 dark:hover:bg-purple-900/20 rounded cursor-pointer"
             title="Variations"
-            onClick={() => router.push(`/products/variations?product_id=${row.original.id}`)}
+            onClick={() => router.push(`/product-variations?product_id=${row.original.id}`)}
           >
             <Rows4 className="w-3.5 h-3.5" />
           </button>
@@ -304,11 +304,11 @@ export default function ProductsPage() {
 
                 if (result.isConfirmed) {
                   try {
-                    await productService.deleteProduct(row.original.id);
+                    await productService.deleteProduct(String(row.original.id));
                     notify.success('Product deleted successfully');
                     setRefreshKey(prev => prev + 1); // Refresh the product list
-                  } catch (error) {
-                    notify.error('Failed to delete product');
+                  } catch (err: any) {
+                    notify.error(err?.response?.data?.message || 'Failed to delete product');
                   }
                 }
               }}
@@ -340,6 +340,18 @@ export default function ProductsPage() {
           </h1>
         </div>
         <div className="flex items-center gap-2">
+          <select
+            value={statusFilter}
+            onChange={(e) => setStatusFilter(e.target.value)}
+            className="px-2 py-1.5 text-sm bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-sm text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-1 focus:ring-indigo-500"
+            title="Filter by status"
+          >
+            <option value="all">All status</option>
+            <option value="active">Active</option>
+            <option value="inactive">Inactive</option>
+            <option value="discontinued">Discontinued</option>
+            <option value="archived">Archived</option>
+          </select>
           <button
             type="button"
             onClick={handleDownloadSample}
@@ -475,7 +487,7 @@ export default function ProductsPage() {
 
       {/* DataTable */}
       <DataTable
-        key={refreshKey}
+        key={`${refreshKey}-${statusFilter}`}
         columns={columns}
         apiEndpoint={buildApiEndpoint()}
         pageSize={15}

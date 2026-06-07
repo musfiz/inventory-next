@@ -57,11 +57,11 @@ class ProductService {
 
   /**
    * Update existing product
-   * PUT /api/v1/products/{id}
+   * POST /api/v1/products/{id}
    */
-  async updateProduct(data: UpdateProductRequest): Promise<Product> {
-    const response = await apiClient.put<ApiResponse<{ product: Product }>>(
-      `/api/v1/products/${data.id}`,
+  async updateProduct(id: number | string, data: Partial<UpdateProductRequest>): Promise<Product> {
+    const response = await apiClient.post<ApiResponse<{ product: Product }>>(
+      `/api/v1/products/${id}`,
       data
     );
     return response.data.data.product;
