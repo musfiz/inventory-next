@@ -1,13 +1,14 @@
 'use client';
 
 import { useRef, useState } from 'react';
-import { FileText, Printer, X } from 'lucide-react';
+import { FileText, Printer, X, Loader2 } from 'lucide-react';
 import { notify } from '@/lib/notifications';
 import { SalesOrderInvoiceA4 } from './SalesOrderInvoiceA4';
 import {
   SalesOrderInvoiceThermal,
   type PosInvoiceCopyLabel,
 } from './SalesOrderInvoiceThermal';
+import salesOrderService from '@/services/salesOrderService';
 
 // ─── Base print styles injected into the new window ──────────────────────────
 
@@ -84,17 +85,75 @@ export function SalesOrderPrintMenu({ order }: SalesOrderPrintMenuProps) {
   const [showModal, setShowModal] = useState(false);
   const [copyLabel, setCopyLabel] = useState<PosInvoiceCopyLabel>('customer');
 
+  // The list row (`order`) is lightweight — it has the SO summary but
+  // NOT the `items`, `payments`, or `returns` arrays. The A4 + thermal
+  // invoice components need all of those to render the product list
+  // and the full payment history. We lazy-load the full detail on
+  // first print and cache it for subsequent prints of the same row.
+  const [fullOrder, setFullOrder] = useState<any | null>(null);
+  const [loadingDetail, setLoadingDetail] = useState(false);
+  const cachedUuidRef = useRef<string | null>(null);
+
   const a4Ref = useRef<HTMLDivElement>(null);
   const t80Ref = useRef<HTMLDivElement>(null);
   const t58Ref = useRef<HTMLDivElement>(null);
 
-  const handleA4 = () => {
-    setTimeout(() => openPrint(a4Ref, 'A4'), 50);
+  // Use the cached detail if we already fetched it for this row, else
+  // fall back to the lightweight list row so the menu can render
+  // something while the fetch is in flight.
+  const orderForPrint = fullOrder ?? order;
+
+  /**
+   * Fetch the full sales-order detail by UUID.
+   *
+   * Backend `GET /api/v1/sales-order/{id}` accepts the UUID and
+   * eager-loads items, payments (where reference_type='sales'),
+   * returns, customer, warehouse and tenant. This is the only way
+   * to render the full product list and the full payment history
+   * on the printed invoice.
+   */
+  const ensureFullOrder = async (): Promise<any | null> => {
+    const uuid = order?.uuid;
+    if (!uuid) {
+      notify.error('Cannot print — sales order is missing its UUID.');
+      return null;
+    }
+    if (cachedUuidRef.current === uuid && fullOrder) {
+      return fullOrder;
+    }
+    try {
+      setLoadingDetail(true);
+      const detail = await salesOrderService.getSalesOrderForPrint(uuid);
+      cachedUuidRef.current = uuid;
+      setFullOrder(detail);
+      return detail;
+    } catch (err: any) {
+      notify.error(
+        err?.response?.data?.message ||
+          'Failed to load sales order detail for printing.'
+      );
+      return null;
+    } finally {
+      setLoadingDetail(false);
+    }
   };
 
-  const handleThermal = (w: '80mm' | '58mm') => {
+  const handleA4 = async () => {
+    const detail = await ensureFullOrder();
+    if (!detail) return;
+    // Give React a tick to flush the new `fullOrder` state into the
+    // hidden print div before reading its innerHTML.
+    setTimeout(() => openPrint(a4Ref, 'A4'), 80);
+  };
+
+  const handleThermal = async (w: '80mm' | '58mm') => {
+    const detail = await ensureFullOrder();
+    if (!detail) return;
     const ref = w === '80mm' ? t80Ref : t58Ref;
-    setTimeout(() => openPrint(ref, `${w === '80mm' ? '80mm' : '58mm'} auto`), 50);
+    setTimeout(
+      () => openPrint(ref, `${w === '80mm' ? '80mm' : '58mm'} auto`),
+      80
+    );
   };
 
   return (
@@ -103,11 +162,16 @@ export function SalesOrderPrintMenu({ order }: SalesOrderPrintMenuProps) {
         {/* A4 — default, instant print */}
         <button
           onClick={handleA4}
+          disabled={loadingDetail}
           title="Print A4 Tax Invoice (with full payment history)"
           aria-label="Print A4 Tax Invoice"
-          className="p-1 rounded text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/30 cursor-pointer"
+          className="p-1 rounded text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/30 cursor-pointer disabled:opacity-50"
         >
-          <FileText className="w-4 h-4" />
+          {loadingDetail ? (
+            <Loader2 className="w-4 h-4 animate-spin" />
+          ) : (
+            <FileText className="w-4 h-4" />
+          )}
         </button>
 
         {/* Thermal — opens the modal */}
@@ -121,21 +185,25 @@ export function SalesOrderPrintMenu({ order }: SalesOrderPrintMenuProps) {
         </button>
       </div>
 
-      {/* Hidden print areas — one per format */}
+      {/* Hidden print areas — one per format. These render the FULL
+          order detail once `fullOrder` is populated, so the printed
+          invoice includes the complete product list and the full
+          payment history. While the fetch is in flight we still pass
+          the lightweight list row so the menu itself doesn't crash. */}
       <div style={{ display: 'none' }} aria-hidden="true">
         <div ref={a4Ref}>
-          <SalesOrderInvoiceA4 order={order} copyLabel={null} />
+          <SalesOrderInvoiceA4 order={orderForPrint} copyLabel={null} />
         </div>
         <div ref={t80Ref}>
           <SalesOrderInvoiceThermal
-            order={order}
+            order={orderForPrint}
             width="80mm"
             copyLabel={copyLabel}
           />
         </div>
         <div ref={t58Ref}>
           <SalesOrderInvoiceThermal
-            order={order}
+            order={orderForPrint}
             width="58mm"
             copyLabel={copyLabel}
           />

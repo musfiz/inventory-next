@@ -14,6 +14,7 @@ import DataTable from '@/components/ui/datatable';
 import CustomSelect from '@/components/ui/custom-select';
 import TenantSelect from '@/components/ui/tenant-select';
 import CustomDatePicker from '@/components/ui/date-picker';
+import { formatDate } from '@/lib/utils/date';
 import { usePermissions } from '@/hooks/use-permissions';
 import { useRouter } from 'next/navigation';
 import { PrintMenu } from '@/components/invoices/pay-receipt/PrintMenu';
@@ -64,8 +65,11 @@ function statusBadge(status?: string) {
 }
 
 function fmtDate(d?: string | null) {
-  if (!d) return '-';
-  return new Date(d).toLocaleString();
+  // Render as DD/MM/YYYY — date only, no time. Matches the rest of
+  // the inventory UI (sales-orders, etc.) and removes the
+  // locale-dependent timestamp that the previous `toLocaleString()`
+  // call produced.
+  return formatDate(d, 'DD/MM/YYYY');
 }
 
 function fmtNum(n?: string | number | null) {

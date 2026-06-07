@@ -60,11 +60,49 @@ class SalesOrderService {
     return response.data.data;
   }
 
-  async getSalesOrder(salesOrderId: string) {
+  /**
+   * Fetch the full sales-order detail by UUID.
+   *
+   * This is the single server-side request used by BOTH the SO
+   * details modal (page.tsx → loadItems) and the print menu
+   * (SalesOrderPrintMenu → ensureFullOrder). The list endpoint
+   * (`GET /api/v1/sales-order`) returns lightweight rows without
+   * `items`, `payments`, or `returns` — we need a second request
+   * keyed by the row's UUID to hydrate the full document.
+   *
+   * The backend `GET /api/v1/sales-order/{id}` route accepts BOTH
+   * the integer PK and the UUID. We always pass the UUID here so:
+   *   - the int id is never leaked through the URL
+   *   - the URL is stable for a given business document
+   *   - both the details page and the print menu hit the same
+   *     canonical route
+   *
+   * The backend eager-loads:
+   *   - tenant, customer, warehouse
+   *   - items.product, items.variation
+   *   - returns.items
+   *   - payments (where reference_type='sales')
+   *
+   * Use this for: SO details modal, A4 print invoice, thermal
+   * (POS) print invoice. Do NOT use the list endpoint for any
+   * of these — it does not include the items / payments arrays.
+   */
+  async getSalesOrder(uuid: string) {
     const response = await apiClient.get<ApiResponse<any>>(
-      `/api/v1/sales-order/${salesOrderId}`
+      `/api/v1/sales-order/${uuid}`
     );
     return response.data.data;
+  }
+
+  /**
+   * Print-specific alias for `getSalesOrder`. Both the details
+   * modal and the print menu hit the same backend endpoint keyed
+   * by UUID — this method exists so the print menu can call
+   * something with an obvious name while still going through the
+   * same shared server-side request.
+   */
+  async getSalesOrderForPrint(uuid: string) {
+    return this.getSalesOrder(uuid);
   }
 
   async storeSalesOrder(data: Record<string, any>) {
