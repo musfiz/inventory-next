@@ -125,6 +125,27 @@ class TenantService {
     const response = await apiClient.get<ApiResponse<any>>(`/api/v1/tenants/${tenantId}/stats`);
     return response.data.data;
   }
+
+  /**
+   * Get tenant settings
+   * GET /api/v1/tenants/:id/settings
+   */
+  async getTenantSettings(tenantId: string): Promise<any> {
+    const response = await apiClient.get<ApiResponse<any>>(`/api/v1/tenants/${tenantId}/settings`);
+    return response.data.data;
+  }
+
+  /**
+   * Update tenant settings
+   * POST /api/v1/tenants/:id/settings
+   */
+  async updateTenantSettings(tenantId: string, data: any): Promise<any> {
+    const response = await apiClient.post<ApiResponse<any>>(
+      `/api/v1/tenants/${tenantId}/settings`,
+      data
+    );
+    return response.data.data;
+  }
 }
 
 export const tenantService = new TenantService();

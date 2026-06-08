@@ -146,7 +146,14 @@ export default function TenantsPage() {
             <Edit className="w-3.5 h-3.5" />
           </button>
           <button
-            className="p-1 text-red-600 hover:text-red-900 dark:text-red-400 dark:hover:text-red-300 hover:bg-red-50 dark:hover:bg-red-900/20 rounded"
+            className="p-1 text-purple-600 hover:text-purple-900 dark:text-purple-400 dark:hover:text-purple-300 hover:bg-purple-50 dark:hover:bg-purple-900/20 rounded"
+            title="Settings"
+            onClick={() => router.push(`/tenants/${row.original.id}/settings`)}
+          >
+            <Settings className="w-3.5 h-3.5" />
+          </button>
+          <button
+            className="p-1 text-red-600 hover:text-red-900 dark:text-red-400 dark:hover:text-red-300 hover:bg-red-50 dark:bg-red-900/20 rounded"
             title="Delete"
             onClick={() => console.log('Delete', row.original.id)}
           >
