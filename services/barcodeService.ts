@@ -56,6 +56,31 @@ class BarcodeService {
   }
 
   /**
+   * Fetch barcodes for a product (optionally with variation filter)
+   * GET /api/v1/product-barcodes?product_id=...&per_page=100
+   */
+  async getBarcodes(productId: string | number): Promise<ProductBarcode[]> {
+    const response = await apiClient.get<{ data: ProductBarcode[] }>(
+      '/api/v1/product-barcodes',
+      { params: { product_id: productId, per_page: 100 } }
+    );
+    return response.data.data ?? [];
+  }
+
+  /**
+   * Fetch barcodes with flexible filters (for print page).
+   * GET /api/v1/product-barcodes
+   */
+  async getAllBarcodes(filters?: Record<string, string>): Promise<{ data: ProductBarcode[] }> {
+    const params: Record<string, string> = { per_page: '500', ...filters };
+    const response = await apiClient.get<ApiResponse<{ data: ProductBarcode[] }>>(
+      '/api/v1/product-barcodes',
+      { params }
+    );
+    return response.data.data;
+  }
+
+  /**
    * Generate barcodes for all variations of a product
    * POST /api/v1/product-barcodes/generate-bulk
    */

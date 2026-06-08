@@ -12,6 +12,7 @@ import apiClient from '@/lib/api/axios';
 import { usePermissions } from '@/hooks/use-permissions';
 import { confirm, notify } from '@/lib/notifications';
 import { useAuthStore } from '@/stores/auth-store';
+import { BarcodeStickerPrint } from '@/components/print/barcode/BarcodeStickerPrint';
 import { ImDownload } from "react-icons/im";
 import { RiDragDropLine, RiFileExcel2Line } from "react-icons/ri";
 import { TiUploadOutline } from "react-icons/ti";
@@ -290,6 +291,10 @@ export default function ProductsPage() {
           >
             <Image className="w-3.5 h-3.5" />
           </button>
+          <BarcodeStickerPrint
+            productId={row.original.id}
+            productName={row.original.name}
+          />
           {hasPermission('delete-products') && (
             <button
               className="p-1 text-red-600 hover:text-red-900 dark:text-red-400 dark:hover:text-red-300 hover:bg-red-50 dark:hover:bg-red-900/20 rounded cursor-pointer"

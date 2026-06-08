@@ -10,6 +10,7 @@ import commonService from '@/services/commonService';
 import { ProductBarcode } from '@/services/barcodeService';
 import DataTable from '@/components/ui/datatable';
 import CustomSelect from '@/components/ui/custom-select';
+import BarcodeStickerPrint from '@/components/print/barcode/BarcodeStickerPrint';
 
 const BARCODE_TYPES = [
   { value: 'EAN13', label: 'EAN-13' },
@@ -218,7 +219,11 @@ export default function ProductBarcodesPage() {
       id: 'actions',
       header: 'Actions',
       cell: ({ row }) => (
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-1">
+          <BarcodeStickerPrint
+            barcodeData={row.original}
+            productName={row.original.product?.name || ''}
+          />
           <button
             onClick={() => handleDelete(row.original)}
             className="p-1 text-red-600 hover:text-red-800 dark:text-red-400 dark:hover:text-red-300"
