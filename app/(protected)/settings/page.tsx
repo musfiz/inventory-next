@@ -2,10 +2,15 @@
 
 import { useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { Camera, User } from 'lucide-react';
+import { Building2, Camera, User, X } from 'lucide-react';
 import { GiSave } from 'react-icons/gi';
 import { useAuthStore } from '@/stores/auth-store';
+import { useTenantStore } from '@/stores/tenant-store';
+import { usePermissions } from '@/hooks/use-permissions';
 import { userService } from '@/services';
+import tenantService from '@/services/tenantService';
+import commonService from '@/services/commonService';
+import CustomSelect from '@/components/ui/custom-select';
 import { notify } from '@/lib/notifications';
 
 type ProfileFormState = {
@@ -21,8 +26,16 @@ export default function SettingsPage() {
   const router = useRouter();
   const user = useAuthStore(state => state.user);
   const setUser = useAuthStore(state => state.setUser);
+  const { isSuperAdmin } = usePermissions();
+  const { selectedTenant, tenantSettings, setSelectedTenant, setTenantSettings, clearTenantData } = useTenantStore();
   const [saving, setSaving] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
+
+  // ── Tenant selector state (superadmin only) ──────────────────────────────
+  const [tenantOption, setTenantOption] = useState<{ value: string; label: string } | null>(
+    selectedTenant ? { value: selectedTenant.id, label: selectedTenant.business_name } : null
+  );
+  const [tenantSaving, setTenantSaving] = useState(false);
   const [avatarPreview, setAvatarPreview] = useState<string | null>(null);
   const [form, setForm] = useState<ProfileFormState>({
     name: '',
@@ -71,6 +84,30 @@ export default function SettingsPage() {
 
   const handleChange = (field: keyof ProfileFormState, value: string) => {
     setForm(prev => ({ ...prev, [field]: value }));
+  };
+
+  const handleSaveTenant = async () => {
+    if (!tenantOption) {
+      notify.error('Please select a tenant first');
+      return;
+    }
+    setTenantSaving(true);
+    try {
+      const settings = await tenantService.getTenantSettings(String(tenantOption.value));
+      setSelectedTenant({ id: tenantOption.value, business_name: tenantOption.label } as any);
+      setTenantSettings(settings);
+      notify.success(`Default tenant set to "${tenantOption.label}"`);
+    } catch {
+      notify.error('Failed to load tenant settings');
+    } finally {
+      setTenantSaving(false);
+    }
+  };
+
+  const handleClearTenant = () => {
+    clearTenantData();
+    setTenantOption(null);
+    notify.success('Default tenant cleared');
   };
 
   const validate = () => {
@@ -295,6 +332,72 @@ export default function SettingsPage() {
           </button>
         </div>
       </form>
+
+      {/* ── Superadmin: Default Tenant ────────────────────────────────────── */}
+      {isSuperAdmin && (
+        <div className="bg-white dark:bg-gray-800 rounded-md shadow-sm border border-gray-200 dark:border-gray-700 p-3">
+          <div className="flex items-center gap-2 mb-1">
+            <Building2 className="h-4 w-4 text-indigo-500" />
+            <h3 className="text-base font-semibold text-gray-900 dark:text-gray-100">Default Tenant</h3>
+          </div>
+          <p className="text-xs text-gray-500 dark:text-gray-400 mb-3">
+            Select the tenant whose print &amp; POS settings will be used across the application. This is saved locally and persists across sessions.
+          </p>
+
+          {/* Currently saved badge */}
+          {selectedTenant && (
+            <div className="flex items-center gap-2 mb-3">
+              <span className="text-xs text-gray-500 dark:text-gray-400">Currently:</span>
+              <span className="inline-flex items-center gap-1.5 px-2 py-0.5 bg-indigo-50 dark:bg-indigo-900/30 text-indigo-700 dark:text-indigo-300 text-xs font-medium rounded-full border border-indigo-200 dark:border-indigo-700">
+                <Building2 className="h-3 w-3" />
+                {selectedTenant.business_name}
+              </span>
+              {tenantSettings && (
+                <span className="text-xs text-gray-400 dark:text-gray-500">
+                  · {tenantSettings.default_printer_type === 'thermal' ? `Thermal ${tenantSettings.thermal_paper_size ?? '80mm'}` : 'A4'}
+                </span>
+              )}
+            </div>
+          )}
+
+          <div className="flex items-end gap-2">
+            <div className="flex-1">
+              <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">Tenant</label>
+              <CustomSelect
+                value={tenantOption}
+                onChange={opt => setTenantOption(opt)}
+                loadOptions={async (input: string) => {
+                  const list = await commonService.getTenantsForDropdown({ search: input }).catch(() => []);
+                  return (list || []).map((t: any) => ({ value: String(t.id), label: t.business_name }));
+                }}
+                defaultOptions
+                placeholder="Search and select a tenant…"
+                className="text-sm"
+              />
+            </div>
+            <button
+              type="button"
+              onClick={handleSaveTenant}
+              disabled={tenantSaving || !tenantOption}
+              className="inline-flex items-center gap-1 px-3 py-1.5 bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed text-white text-sm font-medium rounded-sm cursor-pointer shrink-0"
+            >
+              <GiSave className="h-4 w-4" />
+              {tenantSaving ? 'Saving…' : 'Save Tenant'}
+            </button>
+            {selectedTenant && (
+              <button
+                type="button"
+                onClick={handleClearTenant}
+                title="Clear default tenant"
+                className="inline-flex items-center gap-1 px-2.5 py-1.5 border border-red-300 dark:border-red-700 text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 text-sm font-medium rounded-sm cursor-pointer shrink-0"
+              >
+                <X className="h-4 w-4" />
+                Clear
+              </button>
+            )}
+          </div>
+        </div>
+      )}
     </div>
   );
 }

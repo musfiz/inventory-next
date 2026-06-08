@@ -7,6 +7,7 @@ import { SalesOrderInvoiceA4 } from './SalesOrderInvoiceA4';
 import { SalesOrderInvoiceThermal } from './SalesOrderInvoiceThermal';
 import salesOrderService from '@/services/salesOrderService';
 import tenantService from '@/services/tenantService';
+import { useTenantStore } from '@/stores/tenant-store';
 
 // ─── Base print styles injected into the new window ──────────────────────────
 
@@ -84,6 +85,7 @@ interface SalesOrderPrintMenuProps {
  * valid. The active one is populated with the current order.
  */
 export function SalesOrderPrintMenu({ order, paperSize: propPaperSize }: SalesOrderPrintMenuProps) {
+  const { tenantSettings } = useTenantStore();
   // The list row (`order`) is lightweight — it has the SO summary but
   // NOT the `items`, `payments`, or `returns` arrays. The A4 + thermal
   // invoice components need all of those to render the product list
@@ -140,6 +142,12 @@ export function SalesOrderPrintMenu({ order, paperSize: propPaperSize }: SalesOr
   const resolvePaperSize = async (detail: any): Promise<'80mm' | '58mm'> => {
     // Prefer the prop if provided (parent already has tenant settings)
     if (propPaperSize) return propPaperSize;
+
+    // Prefer store (super-admin selected default tenant) to avoid extra API call
+    if (tenantSettings?.thermal_paper_size) {
+      const raw = tenantSettings.thermal_paper_size;
+      return raw === '53mm' ? '58mm' : raw === '58mm' ? '58mm' : '80mm';
+    }
 
     // Try to get tenant ID from the loaded detail
     const tenantId = detail?.tenant?.id ?? detail?.warehouse?.tenant?.id;

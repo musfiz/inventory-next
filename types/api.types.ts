@@ -3,6 +3,23 @@
  * Defines request and response types for all API endpoints
  */
 
+export interface TenantSettings {
+  default_printer_type?: 'a4' | 'thermal';
+  thermal_paper_size?: '80mm' | '53mm' | '58mm';
+  default_printer_enabled?: boolean;
+  pos_type?: '80mm' | '53mm';
+  pos_receipt_header?: string;
+  pos_receipt_footer?: string;
+  pos_logo_position?: 'top' | 'bottom';
+  pos_show_tax_breakdown?: boolean;
+  store_notification_email?: string | null;
+  store_date_format?: string;
+  store_time_format?: string;
+  store_currency_position?: 'before' | 'after';
+  store_tax_included?: boolean;
+  logo_url?: string | null;
+}
+
 export interface Tenant {
   id: string;
   business_name: string;

@@ -7,6 +7,7 @@ import { PosOrderInvoiceA4 } from './PosOrderInvoiceA4';
 import { PosOrderInvoiceThermal } from './PosOrderInvoiceThermal';
 import posService from '@/services/posService';
 import tenantService from '@/services/tenantService';
+import { useTenantStore } from '@/stores/tenant-store';
 
 // ─── Base print styles injected into the new window ──────────────────────────
 
@@ -97,6 +98,7 @@ interface PosOrderPrintMenuProps {
  *     fires an immediate thermal print.
  */
 export function PosOrderPrintMenu({ order, autoPrint, paperSize: propPaperSize = '80mm' }: PosOrderPrintMenuProps) {
+  const { tenantSettings } = useTenantStore();
   const [fullOrder, setFullOrder] = useState<any | null>(null);
   const [loadingDetail, setLoadingDetail] = useState(false);
   const cachedUuidRef = useRef<string | null>(null);
@@ -152,6 +154,12 @@ export function PosOrderPrintMenu({ order, autoPrint, paperSize: propPaperSize =
 
   const resolvePaperSize = async (detail: any): Promise<'80mm' | '58mm'> => {
     if (propPaperSize !== '80mm') return propPaperSize;
+
+    // Prefer store (super-admin selected default tenant) to avoid extra API call
+    if (tenantSettings?.thermal_paper_size) {
+      const raw = tenantSettings.thermal_paper_size;
+      return raw === '53mm' ? '58mm' : raw === '58mm' ? '58mm' : '80mm';
+    }
 
     const tenantId = detail?.tenant?.id ?? detail?.warehouse?.tenant?.id;
     if (!tenantId) return '80mm';

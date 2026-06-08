@@ -26,6 +26,7 @@ import posService from '@/services/posService';
 import { posSessionService, posRegisterService, commonService } from '@/services';
 import customerService from '@/services/customerService';
 import { useAuthStore } from '@/stores/auth-store';
+import { useTenantStore } from '@/stores/tenant-store';
 import { usePermissions } from '@/hooks/use-permissions';
 import CustomSelect from '@/components/ui/custom-select';
 import PaymentModal from '@/components/pos/PaymentModal';
@@ -83,6 +84,7 @@ interface Customer {
 export default function POSSalesPage() {
   const authUser = useAuthStore(s => s.user);
   const { isSuperAdmin, isHydrated } = usePermissions();
+  const { tenantSettings } = useTenantStore();
   const router = useRouter();
   const searchInputRef = useRef<HTMLInputElement>(null);
 
@@ -576,8 +578,8 @@ export default function POSSalesPage() {
     setDiscount(0);
     setNote('');
     generateOrderNumber();
-    // Map tenant thermal_paper_size (53mm) to component format (58mm)
-    const rawSize = printSettings?.thermal_paper_size ?? '80mm';
+    // Resolve paper size: API response → tenant store → default 80mm
+    const rawSize = printSettings?.thermal_paper_size ?? tenantSettings?.thermal_paper_size ?? '80mm';
     const mappedSize = rawSize === '53mm' ? '58mm' : '80mm';
     setAutoPrintPaperSize(mappedSize as '80mm' | '58mm');
     void loadAndPrintOrder(order);

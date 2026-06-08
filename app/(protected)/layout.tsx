@@ -6,12 +6,14 @@ import { usePathname, useRouter } from 'next/navigation';
 import { User } from 'lucide-react';
 import { notify } from '@/lib/notifications';
 import { useAuth } from '@/hooks/use-auth';
+import { useSyncTenantStore } from '@/hooks/use-sync-tenant-store';
 import Header from '@/components/layout/header';
 import Sidebar from '@/components/layout/sidebar';
 import Loading from '@/app/loading';
 
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
   const { user: authUser, isRedirecting, isLoading } = useAuth({ middleware: 'auth' });
+  useSyncTenantStore();
   const user = useAuthStore(state => state.user);
   const hydrated = useAuthStore(state => state.hydrated);
   const isSwitchedUser = useAuthStore(state => state.isSwitchedUser);
