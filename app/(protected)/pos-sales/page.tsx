@@ -30,7 +30,8 @@ import { usePermissions } from '@/hooks/use-permissions';
 import CustomSelect from '@/components/ui/custom-select';
 import PaymentModal from '@/components/pos/PaymentModal';
 import HeldOrdersDialog from '@/components/pos/HeldOrdersDialog';
-import PosOrderPrintMenu from '@/components/invoices/pos/PosOrderPrintMenu';
+import { PosOrderPrintMenu } from '@/components/invoices/pos/PosOrderPrintMenu';
+import type { PrintSettings } from '@/services/posService';
 import type { Payment, PosOrderDetail } from '@/types/api.types';
 import Swal from 'sweetalert2';
 
@@ -124,9 +125,9 @@ export default function POSSalesPage() {
   const [activeRegister, setActiveRegister] = useState<{ id: string | number; name: string } | null>(null);
   const [showContextDialog, setShowContextDialog] = useState(false);
   // ── Print State ──────────────────────────────────────────────────────────────
-  // Holds the just-paid order so the industrial POS receipt can be printed.
   const [printOrder, setPrintOrder] = useState<PosOrderDetail | null>(null);
   const [printLoading, setPrintLoading] = useState(false);
+  const [autoPrintPaperSize, setAutoPrintPaperSize] = useState<'80mm' | '58mm'>('80mm');
   // Super admin dialog state
   const [dialogTenant, setDialogTenant] = useState<any>(null);
   const [dialogRegister, setDialogRegister] = useState<any>(null);
@@ -568,15 +569,17 @@ export default function POSSalesPage() {
     setShowPaymentModal(true);
   };
 
-  const handlePaymentSuccess = (payment: Payment, order: { id: string; uuid?: string; invoice_number?: string }) => {
+  const handlePaymentSuccess = (payment: Payment, order: { id: string; uuid?: string; invoice_number?: string }, printSettings?: PrintSettings) => {
     setShowPaymentModal(false);
-    // Reset cart first so the till is ready for the next customer.
     setCart([]);
     setCustomer({ name: 'Walk-in Customer' });
     setDiscount(0);
     setNote('');
     generateOrderNumber();
-    // Fire-and-forget — load the full order detail, then print.
+    // Map tenant thermal_paper_size (53mm) to component format (58mm)
+    const rawSize = printSettings?.thermal_paper_size ?? '80mm';
+    const mappedSize = rawSize === '53mm' ? '58mm' : '80mm';
+    setAutoPrintPaperSize(mappedSize as '80mm' | '58mm');
     void loadAndPrintOrder(order);
   };
 
@@ -1338,42 +1341,9 @@ export default function POSSalesPage() {
         onRestore={handleRestoreHeldOrder}
       />
 
-      {/* ── Print Receipt Card ──────────────────────────────────────────
-          Mounted after a successful payment so the cashier can pick
-          A4 / 80mm / 58mm and print. Uses the industrial design from
-          `PosOrderInvoiceThermal` / `PosOrderInvoiceA4` via PrintMenu.
-          The print menu opens its own modal — the card is the entry
-          point. */}
       {printOrder && (
-        <div className="fixed bottom-4 right-4 z-40 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl shadow-2xl p-4 w-72 space-y-2">
-          <div className="flex items-start justify-between gap-2">
-            <div>
-              <div className="text-xs uppercase tracking-wide text-gray-500 dark:text-gray-400 font-semibold">
-                Order Complete
-              </div>
-              <div className="text-sm font-bold text-gray-900 dark:text-gray-100 mt-0.5">
-                {printOrder.invoice_number ?? `#${printOrder.id}`}
-              </div>
-              <div className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
-                Grand total ৳{Number(printOrder.grand_total ?? 0).toFixed(2)}
-              </div>
-            </div>
-            <button
-              onClick={() => setPrintOrder(null)}
-              className="p-1 rounded hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-400 hover:text-gray-600"
-              aria-label="Dismiss print menu"
-              title="Dismiss"
-            >
-              <XCircle className="w-4 h-4" />
-            </button>
-          </div>
-          <div className="text-[10px] text-gray-500 dark:text-gray-400">
-            Use the icons below to print A4 invoice or thermal receipt.
-          </div>
-          <div className="flex items-center gap-1 pt-1 border-t border-gray-200 dark:border-gray-700">
-            <PosOrderPrintMenu order={printOrder} />
-            <span className="text-[10px] text-gray-400 ml-1">A4 · 80mm · 58mm</span>
-          </div>
+        <div style={{ display: 'none' }} aria-hidden="true">
+          <PosOrderPrintMenu order={printOrder} autoPrint paperSize={autoPrintPaperSize} />
         </div>
       )}
 

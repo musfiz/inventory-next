@@ -14,10 +14,9 @@ import {
   ChevronRight,
   Receipt,
   Printer,
-  Mail,
 } from 'lucide-react';
 import type { PaymentMethod, Payment } from '@/types/api.types';
-import posService, { type PosOrderPayload } from '@/services/posService';
+import posService, { type PosOrderPayload, type PrintSettings } from '@/services/posService';
 import { notify } from '@/lib/notifications';
 import DatePicker from 'react-datepicker';
 
@@ -60,7 +59,7 @@ interface PaymentModalProps {
   discountValue: number;
   notes?: string;
   defaultMethod?: PaymentMethod;
-  onSuccess: (payment: Payment, order: { id: string; uuid?: string; invoice_number?: string }) => void;
+  onSuccess: (payment: Payment, order: { id: string; uuid?: string; invoice_number?: string }, printSettings?: PrintSettings) => void;
   onCancel: () => void;
 }
 
@@ -135,7 +134,7 @@ export default function PaymentModal({
 
   // ── Submission & success state ──────────────────────────────────────────────
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [success, setSuccess] = useState<{ payment: Payment; order: { id: string; uuid?: string; invoice_number?: string }; balanceDue: number; isPartial: boolean } | null>(null);
+  const [success, setSuccess] = useState<{ payment: Payment; order: { id: string; uuid?: string; invoice_number?: string }; balanceDue: number; isPartial: boolean; printSettings?: PrintSettings } | null>(null);
 
   const tenderInputRef = useRef<HTMLInputElement>(null);
 
@@ -271,6 +270,7 @@ export default function PaymentModal({
         },
         balanceDue: result.balance_due,
         isPartial: result.is_partial,
+        printSettings: result.print_settings,
       });
     } catch (error: any) {
       const msg = error?.response?.data?.message || error?.response?.data?.errors;
@@ -339,22 +339,15 @@ export default function PaymentModal({
 
           <div className="flex gap-3">
             <button
-              onClick={() => onSuccess(success.payment, success.order)}
+              onClick={() => onSuccess(success.payment, success.order, success.printSettings)}
               className="flex-1 flex items-center justify-center gap-2 py-2.5 bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-lg text-sm transition-colors"
             >
               <Printer className="w-4 h-4" />
               Print Receipt
             </button>
             <button
-              onClick={() => onSuccess(success.payment, success.order)}
-              className="flex items-center justify-center gap-2 px-4 py-2.5 border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 font-semibold rounded-lg text-sm hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
-            >
-              <Mail className="w-4 h-4" />
-              Email
-            </button>
-            <button
-              onClick={() => onSuccess(success.payment, success.order)}
-              className="flex items-center justify-center gap-2 px-4 py-2.5 bg-gray-900 dark:bg-gray-100 text-white dark:text-gray-900 font-semibold rounded-lg text-sm hover:opacity-90 transition-opacity"
+              onClick={() => onSuccess(success.payment, success.order, success.printSettings)}
+              className="flex-1 py-2.5 bg-gray-900 dark:bg-gray-100 text-white dark:text-gray-900 font-semibold rounded-lg text-sm hover:opacity-90 transition-opacity"
             >
               Done
             </button>

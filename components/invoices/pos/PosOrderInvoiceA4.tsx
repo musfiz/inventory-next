@@ -26,13 +26,24 @@ function fmtDateTime(d?: string | null): string {
   });
 }
 
+// ── Inline-style palette ──────────────────────────────────────────────────────
+const C = {
+  ink: '#1a1a2e',
+  muted: '#6b7280',
+  border: '#e5e7eb',
+  borderDk: '#d1d5db',
+  bg: '#ffffff',
+  rowAlt: '#f8fafc',
+  sumBg: '#f3f4f6',
+};
+const FONT = "'Segoe UI', system-ui, -apple-system, Roboto, Arial, sans-serif";
+
 // ── Types ─────────────────────────────────────────────────────────────────────
 
 export type PosInvoiceCopyLabel = 'customer' | 'merchant' | 'duplicate';
 
 export interface PosOrderInvoiceA4Props {
   order: PosOrderDetail;
-  /** Optional copy stamp printed at the top. */
   copyLabel?: PosInvoiceCopyLabel | null;
 }
 
@@ -42,95 +53,83 @@ const COPY_LABEL: Record<PosInvoiceCopyLabel, string> = {
   duplicate: 'Duplicate',
 };
 
-// ── Status badge helper ───────────────────────────────────────────────────────
-
-function PayStatusBadge({ status }: { status: string }) {
-  const map: Record<string, string> = {
-    paid: 'bg-black text-white border-black',
-    partial: 'bg-white text-black border-black',
-    pending: 'bg-white text-black border-dashed',
-    failed: 'bg-red-100 text-red-800 border-red-300',
-  };
-  const cls = map[status] ?? 'bg-gray-100 text-gray-700 border-gray-300';
-  const label =
-    status === 'paid'
-      ? 'Paid ✓'
-      : status === 'partial'
-        ? 'Partial Payment'
-        : status
-          ? status.charAt(0).toUpperCase() + status.slice(1)
-          : 'Pending';
-  return (
-    <span
-      className={`inline-block border rounded px-2 py-0.5 text-xs font-bold uppercase tracking-wider ${cls}`}
-    >
-      {label}
-    </span>
-  );
-}
-
 // ── Component ─────────────────────────────────────────────────────────────────
 
-/**
- * POS Sales Invoice — A4 professional tax invoice.
- *
- * Industrial-standard design that mirrors the thermal receipt's
- * section model. Hybrid two-column layout:
- *  • Header — brand (left) + document meta card (right)
- *  • Parties — Bill To / Sold By (two columns)
- *  • Items table — 8 columns with row striping
- *  • Summary grid — Terms (left) + Totals card (right)
- *  • Payment strip
- *  • Footer — return policy + QR + signature
- *
- * Mount inside a hidden `<div>` and trigger via `window.print()`.
- */
 export function PosOrderInvoiceA4({ order, copyLabel }: PosOrderInvoiceA4Props) {
   const tenant = order.tenant as any;
   const customer = order.customer;
   const items = order.items ?? [];
+  const payments: any[] = order.payments ?? [];
 
   const customerName = customer?.name ?? order.customer_name ?? 'Walk-in Customer';
   const customerPhone = customer?.phone ?? order.customer_phone;
   const customerEmail = customer?.email;
   const invoiceNo = order.invoice_number ?? `#${order.id}`;
 
-  const hasDisc = Number(order.discount_amount) > 0;
-  const hasTax = Number(order.tax_amount) > 0;
-  const hasService = Number((order as any).service_charge ?? 0) > 0;
+  const subTotal = Number(order.sub_total ?? 0);
+  const discAmt = Number(order.discount_amount ?? 0);
+  const discType = order.discount_type;
+  const discValue = Number(order.discount_value ?? 0);
+  const taxAmt = Number(order.tax_amount ?? 0);
   const rounding = Number(order.rounding_adjustment ?? 0);
-  const dueAmount = Number(order.due_amount ?? 0);
+  const grandTotal = Number(order.grand_total ?? 0);
   const paidAmount = Number(order.paid_amount ?? 0);
+  const returnedAmount = Number(order.returned_amount ?? 0);
+  const dueAmount = Number(order.due_amount ?? 0);
   const tendered = Number(order.tendered_amount ?? 0);
   const change = Number(order.change_amount ?? 0);
+  const net = Math.max(0, grandTotal - returnedAmount);
+  const balanceText =
+    dueAmount > 0 ? 'Amount Due' : dueAmount < 0 ? 'Customer Return' : 'Settled';
 
-  const itemDiscountSum = items.reduce(
-    (s, it) => s + Number((it as any).discount ?? 0),
-    0,
-  );
-  const totalSaved = itemDiscountSum + Number(order.discount_amount ?? 0);
-
+  const cashierName = (order as any).cashier_name as string | undefined;
   const printedAt = fmtDateTime(new Date().toISOString());
-  const qrSrc = buildQrUrl(invoiceNo, order.grand_total);
+  const qrSrc = buildQrUrl(invoiceNo, grandTotal);
+
+  const thCell = (extra?: React.CSSProperties): React.CSSProperties => ({
+    padding: '6px 8px',
+    fontSize: 11,
+    fontWeight: 700,
+    textTransform: 'uppercase',
+    letterSpacing: '0.04em',
+    color: C.ink,
+    background: C.sumBg,
+    textAlign: 'left',
+    borderBottom: `1px solid ${C.borderDk}`,
+    ...extra,
+  });
+  const tdCell = (extra?: React.CSSProperties): React.CSSProperties => ({
+    padding: '5px 8px',
+    fontSize: 11,
+    color: C.ink,
+    borderBottom: `1px solid ${C.border}`,
+    verticalAlign: 'middle',
+    ...extra,
+  });
 
   return (
     <div
-      className="invoice-content bg-white text-gray-900 mx-auto"
+      className="invoice-content"
       style={{
-        fontFamily:
-          'system-ui, -apple-system, "Segoe UI", Roboto, Arial, sans-serif',
-        fontSize: '12px',
-        lineHeight: 1.5,
-        color: '#1a1a2e',
+        fontFamily: FONT,
+        fontSize: 12,
+        lineHeight: 1.4,
+        color: C.ink,
+        background: C.bg,
       }}
     >
-      {/* ── Copy stamp ──────────────────────────────────────────────── */}
+      {/* ── A) Copy stamp ─────────────────────────────────────────── */}
       {copyLabel && (
-        <div className="text-center mb-4">
+        <div style={{ textAlign: 'center', marginBottom: 8 }}>
           <span
-            className="inline-block border-2 border-gray-900 px-4 py-1 font-extrabold text-xs uppercase"
             style={{
+              display: 'inline-block',
+              border: `2px solid ${C.ink}`,
+              padding: '4px 16px',
+              fontWeight: 800,
+              fontSize: 11,
               letterSpacing: '0.14em',
+              textTransform: 'uppercase',
               transform: copyLabel === 'merchant' ? 'rotate(-3deg)' : undefined,
             }}
           >
@@ -139,38 +138,76 @@ export function PosOrderInvoiceA4({ order, copyLabel }: PosOrderInvoiceA4Props) 
         </div>
       )}
 
-      {/* ══════════════════════════════════
-          HEADER  —  brand (left) + meta (right)
-          ══════════════════════════════════ */}
-      <header className="flex justify-between items-start border-b-[3px] border-gray-900 pb-5 mb-5 gap-6">
+      {/* ── B) HEADER  (brand left, doc-type right) ───────────────── */}
+      <div
+        style={{
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'flex-start',
+          paddingBottom: 8,
+          borderBottom: `1.5px solid ${C.ink}`,
+          marginBottom: 10,
+          gap: 16,
+        }}
+      >
         {/* Brand block */}
-        <div className="max-w-[60mm]">
+        <div style={{ maxWidth: '60mm' }}>
           {tenant?.logo_url ? (
             <img
               src={tenant.logo_url}
               alt={tenant?.business_name ?? 'Logo'}
-              className="mb-2 object-contain"
-              style={{ maxHeight: '20mm', maxWidth: '50mm' }}
+              style={{
+                display: 'block',
+                maxHeight: '20mm',
+                maxWidth: '50mm',
+                objectFit: 'contain',
+                marginBottom: 4,
+              }}
             />
           ) : (
             <div
-              className="w-20 h-16 border border-dashed border-gray-300 flex items-center justify-center text-gray-400 text-xs mb-2"
-              aria-hidden="true"
+              style={{
+                width: 80,
+                height: 64,
+                border: `1px dashed ${C.borderDk}`,
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                color: C.muted,
+                fontSize: 11,
+                marginBottom: 4,
+              }}
             >
               LOGO
             </div>
           )}
           {tenant?.business_name && (
-            <div className="text-2xl font-extrabold uppercase tracking-tight">
+            <div
+              style={{
+                fontSize: 18,
+                fontWeight: 800,
+                lineHeight: 1.1,
+                color: C.ink,
+                textTransform: 'uppercase',
+                letterSpacing: '0.03em',
+              }}
+            >
               {tenant.business_name}
             </div>
           )}
           {tenant?.tagline && (
-            <div className="text-xs text-gray-500 italic mt-0.5">
+            <div
+              style={{
+                fontSize: 10,
+                color: C.muted,
+                fontStyle: 'italic',
+                marginTop: 2,
+              }}
+            >
               {tenant.tagline}
             </div>
           )}
-          <div className="text-xs text-gray-600 mt-1.5 leading-5">
+          <div style={{ fontSize: 10, color: '#4b5563', marginTop: 4, lineHeight: 1.5 }}>
             {tenant?.address && <div>{tenant.address}</div>}
             {(tenant?.city || tenant?.country) && (
               <div>{[tenant?.city, tenant?.country].filter(Boolean).join(', ')}</div>
@@ -178,7 +215,7 @@ export function PosOrderInvoiceA4({ order, copyLabel }: PosOrderInvoiceA4Props) 
             {tenant?.phone && <div>Tel: {tenant.phone}</div>}
             {tenant?.email && <div>Email: {tenant.email}</div>}
             {(tenant?.tin_number || tenant?.bin_number || tenant?.vat_number) && (
-              <div className="mt-0.5">
+              <div style={{ marginTop: 2 }}>
                 {tenant?.tin_number && <span>TIN: {tenant.tin_number}</span>}
                 {tenant?.bin_number && <span> &nbsp;·&nbsp; BIN: {tenant.bin_number}</span>}
                 {tenant?.vat_number && <span> &nbsp;·&nbsp; VAT: {tenant.vat_number}</span>}
@@ -188,459 +225,827 @@ export function PosOrderInvoiceA4({ order, copyLabel }: PosOrderInvoiceA4Props) 
         </div>
 
         {/* Document meta card */}
-        <div
-          className="text-right"
-          style={{ minWidth: '62mm' }}
-        >
-          <div className="text-3xl font-extrabold uppercase tracking-wide text-gray-900 mb-3">
+        <div style={{ textAlign: 'right', minWidth: '62mm' }}>
+          <div
+            style={{
+              fontSize: 26,
+              fontWeight: 900,
+              textTransform: 'uppercase',
+              letterSpacing: '0.02em',
+              color: C.ink,
+              lineHeight: 1.05,
+              marginBottom: 8,
+            }}
+          >
             Tax Invoice
           </div>
-          <table className="text-xs ml-auto">
+          <table style={{ fontSize: 10, marginLeft: 'auto', borderCollapse: 'collapse' }}>
             <tbody>
               <tr>
-                <td className="text-gray-500 pr-3 text-right">Invoice No</td>
-                <td className="font-bold text-right">{invoiceNo}</td>
+                <td style={{ color: C.muted, paddingRight: 12, textAlign: 'right' }}>Invoice No</td>
+                <td style={{ fontWeight: 700, textAlign: 'right' }}>{invoiceNo}</td>
               </tr>
               {order.id && (
                 <tr>
-                  <td className="text-gray-500 pr-3 text-right">Order No</td>
-                  <td className="text-right">POS-{order.id}</td>
+                  <td style={{ color: C.muted, paddingRight: 12, textAlign: 'right' }}>Order No</td>
+                  <td style={{ textAlign: 'right' }}>POS-{order.id}</td>
                 </tr>
               )}
               <tr>
-                <td className="text-gray-500 pr-3 text-right">Date</td>
-                <td className="text-right">{fmtDate(order.order_date ?? order.created_at)}</td>
+                <td style={{ color: C.muted, paddingRight: 12, textAlign: 'right' }}>Date</td>
+                <td style={{ textAlign: 'right' }}>{fmtDate(order.order_date ?? order.created_at)}</td>
               </tr>
               <tr>
-                <td className="text-gray-500 pr-3 text-right">Time</td>
-                <td className="text-right">
+                <td style={{ color: C.muted, paddingRight: 12, textAlign: 'right' }}>Time</td>
+                <td style={{ textAlign: 'right' }}>
                   {order.order_date
                     ? new Date(order.order_date).toLocaleTimeString(undefined, {
-                        hour: '2-digit',
-                        minute: '2-digit',
+                        hour: '2-digit', minute: '2-digit',
                       })
                     : '-'}
                 </td>
               </tr>
-              {(order as any).cashier_name && (
+              {cashierName && (
                 <tr>
-                  <td className="text-gray-500 pr-3 text-right">Cashier</td>
-                  <td className="text-right">{(order as any).cashier_name}</td>
+                  <td style={{ color: C.muted, paddingRight: 12, textAlign: 'right' }}>Cashier</td>
+                  <td style={{ textAlign: 'right' }}>{cashierName}</td>
                 </tr>
               )}
               {order.register?.name && (
                 <tr>
-                  <td className="text-gray-500 pr-3 text-right">Terminal</td>
-                  <td className="text-right">{order.register.name}</td>
+                  <td style={{ color: C.muted, paddingRight: 12, textAlign: 'right' }}>Terminal</td>
+                  <td style={{ textAlign: 'right' }}>{order.register.name}</td>
                 </tr>
               )}
               {order.session?.session_number && (
                 <tr>
-                  <td className="text-gray-500 pr-3 text-right">Session</td>
-                  <td className="text-right">{order.session.session_number}</td>
+                  <td style={{ color: C.muted, paddingRight: 12, textAlign: 'right' }}>Session</td>
+                  <td style={{ textAlign: 'right' }}>{order.session.session_number}</td>
                 </tr>
               )}
               <tr>
-                <td className="text-gray-500 pr-3 text-right">Status</td>
-                <td className="text-right">
-                  <PayStatusBadge status={order.payment_status} />
+                <td style={{ color: C.muted, paddingRight: 12, textAlign: 'right' }}>Status</td>
+                <td style={{ textAlign: 'right' }}>
+                  <span
+                    style={{
+                      display: 'inline-block',
+                      background: '#1a1a2e',
+                      color: '#fff',
+                      padding: '1px 8px',
+                      borderRadius: 999,
+                      fontSize: 9,
+                      fontWeight: 700,
+                      textTransform: 'uppercase',
+                      letterSpacing: '0.04em',
+                    }}
+                  >
+                    {order.status ?? '-'}
+                  </span>
+                </td>
+              </tr>
+              <tr>
+                <td style={{ color: C.muted, paddingRight: 12, textAlign: 'right' }}>Payment</td>
+                <td style={{ textAlign: 'right' }}>
+                  <span
+                    style={{
+                      display: 'inline-block',
+                      background:
+                        order.payment_status === 'paid'
+                          ? '#059669'
+                          : order.payment_status === 'partial'
+                            ? '#f59e0b'
+                            : '#dc2626',
+                      color: '#fff',
+                      padding: '1px 8px',
+                      borderRadius: 999,
+                      fontSize: 9,
+                      fontWeight: 700,
+                      textTransform: 'uppercase',
+                      letterSpacing: '0.04em',
+                    }}
+                  >
+                    {order.payment_status ?? 'pending'}
+                  </span>
                 </td>
               </tr>
             </tbody>
           </table>
         </div>
-      </header>
+      </div>
 
-      {/* ══════════════════════════════════
-          PARTIES  —  Bill To / Sold By
-          ══════════════════════════════════ */}
-      <div className="grid grid-cols-2 gap-4 mb-5">
-        <div className="border border-gray-200 rounded p-3">
-          <div className="text-[10px] font-bold uppercase tracking-widest text-gray-500 border-b border-gray-200 pb-1.5 mb-2">
+      {/* ── C) PARTIES  (Bill To / Sold By) ─────────────────────── */}
+      <div
+        style={{
+          display: 'grid',
+          gridTemplateColumns: '1fr 1fr',
+          gap: 12,
+          marginBottom: 14,
+        }}
+      >
+        <div style={{ border: `1px solid ${C.border}`, borderRadius: 4, padding: 10 }}>
+          <div
+            style={{
+              fontSize: 9,
+              fontWeight: 800,
+              textTransform: 'uppercase',
+              letterSpacing: '0.1em',
+              color: C.muted,
+              borderBottom: `1px solid ${C.border}`,
+              paddingBottom: 4,
+              marginBottom: 6,
+            }}
+          >
             Bill To
           </div>
-          <div className="font-bold text-sm">{customerName}</div>
-          <div className="text-xs text-gray-600 mt-1 space-y-0.5">
+          <div style={{ fontSize: 13, fontWeight: 700, color: C.ink, lineHeight: 1.2 }}>
+            {customerName}
+          </div>
+          <div style={{ fontSize: 10, color: '#4b5563', marginTop: 4, lineHeight: 1.6 }}>
             {customerPhone && <div>Tel: {customerPhone}</div>}
             {customerEmail && <div>Email: {customerEmail}</div>}
-            {(customer as any)?.address && (
-              <div>{(customer as any).address}</div>
-            )}
+            {(customer as any)?.address && <div>{(customer as any).address}</div>}
           </div>
         </div>
-        <div className="border border-gray-200 rounded p-3">
-          <div className="text-[10px] font-bold uppercase tracking-widest text-gray-500 border-b border-gray-200 pb-1.5 mb-2">
+        <div style={{ border: `1px solid ${C.border}`, borderRadius: 4, padding: 10 }}>
+          <div
+            style={{
+              fontSize: 9,
+              fontWeight: 800,
+              textTransform: 'uppercase',
+              letterSpacing: '0.1em',
+              color: C.muted,
+              borderBottom: `1px solid ${C.border}`,
+              paddingBottom: 4,
+              marginBottom: 6,
+            }}
+          >
             Sold By / Branch
           </div>
-          <div className="font-bold text-sm">
+          <div style={{ fontSize: 13, fontWeight: 700, color: C.ink, lineHeight: 1.2 }}>
             {tenant?.business_name ?? 'Main Branch'}
           </div>
-          <div className="text-xs text-gray-600 mt-1 space-y-0.5">
+          <div style={{ fontSize: 10, color: '#4b5563', marginTop: 4, lineHeight: 1.6 }}>
             {tenant?.address && <div>{tenant.address}</div>}
             {tenant?.phone && <div>Tel: {tenant.phone}</div>}
-            {tenant?.email && <div>Email: {tenant.email}</div>}
           </div>
         </div>
       </div>
 
-      {/* ══════════════════════════════════
-          ITEMS TABLE  —  vertical layout
-          Each item occupies a 2-row block:
-            Row 1: # · Item name  (left)    ·  Total  (right)
-            Row 2: SKU                        ·  Qty × Price · Disc · Tax
-          Smaller font + dotted dividers between items.
-          ══════════════════════════════════ */}
-      <div className="mb-4 border border-gray-200 rounded overflow-hidden">
-        {/* Column labels */}
+      {/* ── D) ITEMS TABLE  (7-col with dotted leaders) ─────────── */}
+      <div
+        style={{
+          marginBottom: 12,
+          border: `1px solid ${C.border}`,
+          borderRadius: 4,
+          overflow: 'hidden',
+        }}
+      >
+        {/* Header row */}
         <div
-          className="grid items-center bg-gray-900 text-white"
           style={{
-            gridTemplateColumns:
-              'auto 1fr auto auto auto auto auto',
+            display: 'grid',
+            gridTemplateColumns: 'auto 1fr auto auto auto auto auto',
             columnGap: '4mm',
+            alignItems: 'center',
             padding: '6px 10px',
-            fontSize: '9px',
+            background: '#1a1a2e',
+            color: '#fff',
+            fontSize: 9,
             fontWeight: 700,
             textTransform: 'uppercase',
             letterSpacing: '0.08em',
             minHeight: '4mm',
           }}
         >
-          <span style={{ width: '14px', alignSelf: 'center' }}>#</span>
-          <span style={{ alignSelf: 'center' }}>Item</span>
-          <span style={{ textAlign: 'center', minWidth: '10mm', alignSelf: 'center' }}>Qty</span>
-          <span style={{ textAlign: 'right', minWidth: '16mm', alignSelf: 'center' }}>Price</span>
-          <span style={{ textAlign: 'right', minWidth: '14mm', alignSelf: 'center' }}>Disc</span>
-          <span style={{ textAlign: 'right', minWidth: '10mm', alignSelf: 'center' }}>Tax%</span>
-          <span style={{ textAlign: 'right', minWidth: '18mm', alignSelf: 'center' }}>Total</span>
+          <span style={{ width: '14px' }}>#</span>
+          <span>Item</span>
+          <span style={{ textAlign: 'center', minWidth: '10mm' }}>Qty</span>
+          <span style={{ textAlign: 'right', minWidth: '16mm' }}>Price</span>
+          <span style={{ textAlign: 'right', minWidth: '14mm' }}>Disc</span>
+          <span style={{ textAlign: 'right', minWidth: '10mm' }}>Tax%</span>
+          <span style={{ textAlign: 'right', minWidth: '18mm' }}>Total</span>
         </div>
 
-        {items.map((item, idx) => {
-          const discAmt = Number((item as any).discount ?? 0);
-          const taxRate = Number(item.tax_rate ?? 0);
-          const sku =
-            (item as any).variation?.sku ?? (item as any).product?.code;
-
-          return (
-            <div
-              key={item.id}
-              className={idx % 2 === 1 ? 'bg-gray-50' : 'bg-white'}
-              style={{
-                display: 'grid',
-                gridTemplateColumns:
-                  'auto 1fr auto auto auto auto auto',
-                columnGap: '4mm',
-                alignItems: 'baseline',
-                padding: '5px 10px',
-                fontSize: '9px',
-                borderBottom:
-                  idx === items.length - 1
-                    ? 'none'
-                    : '1px dotted #e5e7eb',
-              }}
-            >
-              {/* # — small muted */}
-              <span
+        {items.length === 0 ? (
+          <div style={{ textAlign: 'center', color: C.muted, padding: 12, fontSize: 11 }}>
+            No items found
+          </div>
+        ) : (
+          items.map((it: any, idx: number) => {
+            const qty = Math.abs(Number(it.quantity ?? 0));
+            const price = Number(it.unit_price ?? 0);
+            const disc = Number(it.discount ?? 0);
+            const taxRate = Number(it.tax_rate ?? 0);
+            const lineTot = Number(it.line_total ?? qty * price - disc);
+            return (
+              <div
+                key={it.id ?? idx}
                 style={{
-                  color: '#9ca3af',
-                  fontWeight: 600,
-                  fontSize: '10px',
-                  alignSelf: 'center',
-                  width: '14px',
-                }}
-              >
-                {idx + 1}
-              </span>
-
-              {/* Item name + SKU */}
-              <span
-                style={{
-                  wordBreak: 'break-word',
-                  overflowWrap: 'anywhere',
-                  minWidth: 0,
-                  alignSelf: 'center',
+                  display: 'grid',
+                  gridTemplateColumns: 'auto 1fr auto auto auto auto auto',
+                  columnGap: '4mm',
+                  alignItems: 'center',
+                  padding: '5px 10px',
+                  fontSize: 10,
+                  background: idx % 2 === 1 ? C.rowAlt : '#fff',
+                  borderBottom:
+                    idx === items.length - 1 ? 'none' : `1px dotted ${C.border}`,
                 }}
               >
                 <span
                   style={{
-                    display: 'block',
-                    fontSize: '10px',
-                    fontWeight: 500,
-                    color: '#1f2937',
-                    lineHeight: 1.3,
+                    color: C.muted,
+                    fontWeight: 600,
+                    fontSize: 10,
+                    width: '14px',
                   }}
                 >
-                  {item.item_name}
+                  {idx + 1}
                 </span>
-                {sku && (
-                  <span
+
+                <span style={{ minWidth: 0 }}>
+                  <div
                     style={{
-                      display: 'block',
-                      color: '#6b7280',
-                      fontFamily: 'ui-monospace, Menlo, Consolas, monospace',
-                      fontSize: '8px',
-                      marginTop: '0.5px',
-                      letterSpacing: '0.02em',
+                      fontWeight: 500,
+                      color: C.ink,
+                      lineHeight: 1.3,
+                      wordBreak: 'break-word',
                     }}
                   >
-                    {sku}
-                  </span>
-                )}
-              </span>
+                    {it.item_name ?? '-'}
+                  </div>
+                  {it.variation?.name && (
+                    <div
+                      style={{
+                        color: C.muted,
+                        fontFamily: 'ui-monospace, Menlo, Consolas, monospace',
+                        fontSize: 9,
+                        marginTop: 1,
+                      }}
+                    >
+                      {it.variation.name}
+                    </div>
+                  )}
+                </span>
 
-              {/* Total — bold, right-aligned, no leader (right edge) */}
-              <span
-                style={{
-                  textAlign: 'right',
-                  padding: '0 1mm',
-                  fontWeight: 700,
-                  fontVariantNumeric: 'tabular-nums',
-                  color: '#111827',
-                  fontSize: '10px',
-                  whiteSpace: 'nowrap',
-                  minWidth: '18mm',
-                  alignSelf: 'center',
-                }}
-              >
-                {fmt(item.line_total)}
-              </span>
+                <span
+                  style={{
+                    textAlign: 'center',
+                    padding: '0 1mm',
+                    fontVariantNumeric: 'tabular-nums',
+                    color: '#4b5563',
+                    borderBottom: '1px dotted #9ca3af',
+                    minWidth: '10mm',
+                  }}
+                >
+                  {qty}
+                </span>
 
-              {/* Qty — center-aligned, dotted leader */}
-              <span
-                style={{
-                  textAlign: 'center',
-                  padding: '0 1mm',
-                  fontVariantNumeric: 'tabular-nums',
-                  color: '#4b5563',
-                  borderBottom: '1px dotted #9ca3af',
-                  minWidth: '10mm',
-                  alignSelf: 'center',
-                }}
-              >
-                {item.quantity}
-              </span>
+                <span
+                  style={{
+                    textAlign: 'right',
+                    padding: '0 1mm',
+                    fontVariantNumeric: 'tabular-nums',
+                    color: '#4b5563',
+                    borderBottom: '1px dotted #9ca3af',
+                    minWidth: '16mm',
+                  }}
+                >
+                  {fmt(price)}
+                </span>
 
-              {/* Price — right-aligned, dotted leader */}
-              <span
-                style={{
-                  textAlign: 'right',
-                  padding: '0 1mm',
-                  fontVariantNumeric: 'tabular-nums',
-                  color: '#4b5563',
-                  borderBottom: '1px dotted #9ca3af',
-                  minWidth: '16mm',
-                  alignSelf: 'center',
-                }}
-              >
-                {fmt(item.unit_price)}
-              </span>
+                <span
+                  style={{
+                    textAlign: 'right',
+                    padding: '0 1mm',
+                    fontVariantNumeric: 'tabular-nums',
+                    color: '#4b5563',
+                    borderBottom: '1px dotted #9ca3af',
+                    minWidth: '14mm',
+                  }}
+                >
+                  {disc > 0 ? fmt(disc) : '—'}
+                </span>
 
-              {/* Disc — right-aligned, dotted leader */}
-              <span
-                style={{
-                  textAlign: 'right',
-                  padding: '0 1mm',
-                  fontVariantNumeric: 'tabular-nums',
-                  color: '#4b5563',
-                  borderBottom: '1px dotted #9ca3af',
-                  minWidth: '14mm',
-                  alignSelf: 'center',
-                }}
-              >
-                {discAmt > 0 ? fmt(discAmt) : '—'}
-              </span>
+                <span
+                  style={{
+                    textAlign: 'right',
+                    padding: '0 1mm',
+                    fontVariantNumeric: 'tabular-nums',
+                    color: '#4b5563',
+                    borderBottom: '1px dotted #9ca3af',
+                    minWidth: '10mm',
+                  }}
+                >
+                  {taxRate > 0 ? `${taxRate}%` : '—'}
+                </span>
 
-              {/* Tax% — right-aligned, dotted leader */}
-              <span
-                style={{
-                  textAlign: 'right',
-                  padding: '0 1mm',
-                  fontVariantNumeric: 'tabular-nums',
-                  color: '#4b5563',
-                  borderBottom: '1px dotted #9ca3af',
-                  minWidth: '10mm',
-                  alignSelf: 'center',
-                }}
-              >
-                {taxRate > 0 ? `${taxRate}%` : '—'}
-              </span>
-            </div>
-          );
-        })}
+                <span
+                  style={{
+                    textAlign: 'right',
+                    padding: '0 1mm',
+                    fontWeight: 700,
+                    fontVariantNumeric: 'tabular-nums',
+                    color: '#111827',
+                    fontSize: 10,
+                    whiteSpace: 'nowrap',
+                    minWidth: '18mm',
+                  }}
+                >
+                  {fmt(lineTot)}
+                </span>
+              </div>
+            );
+          })
+        )}
       </div>
 
-      {/* ══════════════════════════════════
-          SUMMARY GRID  —  Terms (left) + Totals (right)
-          ══════════════════════════════════ */}
-      <div className="grid grid-cols-2 gap-5 mb-5 items-start">
-        {/* Notes & Terms */}
-        <div className="text-xs text-gray-600 leading-5">
+      {/* ── E) SUMMARY GRID  (Notes left, Totals right) ──────────── */}
+      <div
+        style={{
+          display: 'grid',
+          gridTemplateColumns: '1.4fr 1fr',
+          gap: 14,
+          marginBottom: 14,
+          alignItems: 'flex-start',
+        }}
+      >
+        <div style={{ fontSize: 11, color: '#4b5563', lineHeight: 1.6 }}>
           {order.notes && (
-            <div className="mb-3">
-              <div className="font-semibold text-gray-900 uppercase tracking-wider text-[10px] mb-1">
+            <div style={{ marginBottom: 8 }}>
+              <div
+                style={{
+                  fontWeight: 700,
+                  color: C.ink,
+                  textTransform: 'uppercase',
+                  letterSpacing: '0.06em',
+                  fontSize: 9,
+                  marginBottom: 2,
+                }}
+              >
                 Notes
               </div>
               <div>{order.notes}</div>
             </div>
           )}
           <div>
-            <div className="font-semibold text-gray-900 uppercase tracking-wider text-[10px] mb-1">
+            <div
+              style={{
+                fontWeight: 700,
+                color: C.ink,
+                textTransform: 'uppercase',
+                letterSpacing: '0.06em',
+                fontSize: 9,
+                marginBottom: 2,
+              }}
+            >
               Terms &amp; Conditions
             </div>
-            <div className="text-gray-500">
-              Returns accepted within 7 days with original receipt.
+            <div style={{ color: C.muted }}>
+              Goods once sold are not returnable without a valid receipt.
               <br />
-              No refund on discounted or opened items.
+              No refund on discounted or already-opened items.
               <br />
               Items once sold cannot be exchanged without a valid receipt.
             </div>
           </div>
         </div>
 
-        {/* Totals card */}
-        <div className="border border-gray-200 rounded p-3">
-          <table className="w-full text-xs">
+        <div
+          style={{
+            border: `1px solid ${C.border}`,
+            borderRadius: 4,
+            padding: 12,
+          }}
+        >
+          <table style={{ width: '100%', fontSize: 11, borderCollapse: 'collapse' }}>
             <tbody>
               <tr>
-                <td className="text-gray-500 py-0.5">Subtotal</td>
-                <td className="text-right tabular-nums py-0.5 font-mono">
-                  {fmt(order.sub_total)}
+                <td style={{ ...tdCell({ color: C.muted }) }}>Subtotal</td>
+                <td style={{ ...tdCell({ textAlign: 'right', fontFamily: 'ui-monospace, monospace' }) }}>
+                  {fmt(subTotal)}
                 </td>
               </tr>
-              {itemDiscountSum > 0 && (
+              {discAmt > 0 && (
                 <tr>
-                  <td className="text-gray-500 py-0.5">Item Discounts</td>
-                  <td className="text-right tabular-nums py-0.5 font-mono">
-                    −{fmt(itemDiscountSum)}
-                  </td>
-                </tr>
-              )}
-              {hasDisc && (
-                <tr>
-                  <td className="text-gray-500 py-0.5">
-                    Order Discount
-                    {order.discount_type === 'percent' && order.discount_value
-                      ? ` (${order.discount_value}%)`
+                  <td style={{ ...tdCell({ color: C.muted }) }}>
+                    Discount
+                    {discType === 'percentage' && discValue > 0
+                      ? ` (${discValue}%)`
                       : ''}
                   </td>
-                  <td className="text-right tabular-nums py-0.5 font-mono">
-                    −{fmt(order.discount_amount)}
-                  </td>
-                </tr>
-              )}
-              {totalSaved > 0 && (
-                <tr>
-                  <td className="text-gray-500 py-0.5" style={{ color: '#1b7f3a' }}>
-                    You Saved
-                  </td>
                   <td
-                    className="text-right tabular-nums py-0.5 font-mono font-semibold"
-                    style={{ color: '#1b7f3a' }}
+                    style={{
+                      ...tdCell({ textAlign: 'right', fontFamily: 'ui-monospace, monospace', color: '#d97706' }),
+                    }}
                   >
-                    −{fmt(totalSaved)}
+                    − {fmt(discAmt)}
                   </td>
                 </tr>
               )}
-              {hasTax && (
+              {taxAmt > 0 && (
                 <tr>
-                  <td className="text-gray-500 py-0.5">
-                    Tax{order.tax_rate ? ` (${order.tax_rate}%)` : ''}
-                  </td>
-                  <td className="text-right tabular-nums py-0.5 font-mono">
-                    +{fmt(order.tax_amount)}
-                  </td>
-                </tr>
-              )}
-              {hasService && (
-                <tr>
-                  <td className="text-gray-500 py-0.5">Service Charge</td>
-                  <td className="text-right tabular-nums py-0.5 font-mono">
-                    +{fmt((order as any).service_charge)}
+                  <td style={{ ...tdCell({ color: C.muted }) }}>Tax</td>
+                  <td style={{ ...tdCell({ textAlign: 'right', fontFamily: 'ui-monospace, monospace' }) }}>
+                    + {fmt(taxAmt)}
                   </td>
                 </tr>
               )}
               {rounding !== 0 && (
                 <tr>
-                  <td className="text-gray-500 py-0.5">Rounding</td>
-                  <td className="text-right tabular-nums py-0.5 font-mono">
+                  <td style={{ ...tdCell({ color: C.muted }) }}>Rounding</td>
+                  <td style={{ ...tdCell({ textAlign: 'right', fontFamily: 'ui-monospace, monospace' }) }}>
                     {rounding > 0 ? '+' : ''}
                     {fmt(rounding)}
                   </td>
                 </tr>
               )}
-              <tr className="border-t-2 border-b-2 border-gray-900">
-                <td className="font-extrabold text-gray-900 py-2 uppercase tracking-wide">
-                  Grand Total
-                </td>
-                <td className="text-right tabular-nums py-2 font-extrabold font-mono text-base">
-                  {fmt(order.grand_total)}
-                </td>
-              </tr>
-              <tr>
-                <td className="text-gray-500 py-0.5">Amount Paid</td>
-                <td className="text-right tabular-nums py-0.5 font-mono">
-                  {fmt(paidAmount)}
-                </td>
-              </tr>
-              {dueAmount > 0 && (
+              {returnedAmount > 0 && (
                 <tr>
-                  <td className="font-semibold py-0.5">Balance Due</td>
-                  <td className="text-right tabular-nums py-0.5 font-mono font-bold">
-                    {fmt(dueAmount)}
+                  <td style={{ ...tdCell({ color: '#ea580c', fontWeight: 600 }) }}>
+                    Returns
+                  </td>
+                  <td
+                    style={{
+                      ...tdCell({
+                        textAlign: 'right',
+                        fontFamily: 'ui-monospace, monospace',
+                        color: '#ea580c',
+                      }),
+                    }}
+                  >
+                    − {fmt(returnedAmount)}
                   </td>
                 </tr>
               )}
+              {returnedAmount > 0 && (
+                <tr style={{ background: '#eef2ff' }}>
+                  <td
+                    style={{
+                      ...tdCell({
+                        color: '#4338ca',
+                        fontWeight: 600,
+                        fontSize: 10,
+                      }),
+                    }}
+                  >
+                    Net Total
+                  </td>
+                  <td
+                    style={{
+                      ...tdCell({
+                        textAlign: 'right',
+                        fontFamily: 'ui-monospace, monospace',
+                        fontWeight: 700,
+                        color: '#3730a3',
+                      }),
+                    }}
+                  >
+                    {fmt(net)}
+                  </td>
+                </tr>
+              )}
+              <tr>
+                <td
+                  style={{
+                    ...tdCell({
+                      borderTop: '2px solid #1a1a2e',
+                      borderBottom: '2px solid #1a1a2e',
+                      fontWeight: 900,
+                      color: C.ink,
+                      textTransform: 'uppercase',
+                      letterSpacing: '0.04em',
+                      padding: '6px 8px',
+                    }),
+                  }}
+                >
+                  Grand Total
+                </td>
+                <td
+                  style={{
+                    ...tdCell({
+                      borderTop: '2px solid #1a1a2e',
+                      borderBottom: '2px solid #1a1a2e',
+                      textAlign: 'right',
+                      fontWeight: 900,
+                      fontFamily: 'ui-monospace, monospace',
+                      fontSize: 13,
+                      padding: '6px 8px',
+                    }),
+                  }}
+                >
+                  {fmt(grandTotal)}
+                </td>
+              </tr>
+              <tr>
+                <td style={{ ...tdCell({ color: '#059669', fontWeight: 600 }) }}>
+                  Paid
+                </td>
+                <td
+                  style={{
+                    ...tdCell({
+                      textAlign: 'right',
+                      fontFamily: 'ui-monospace, monospace',
+                      fontWeight: 700,
+                      color: '#047857',
+                    }),
+                  }}
+                >
+                  {fmt(paidAmount)}
+                </td>
+              </tr>
+              <tr
+                style={{
+                  background:
+                    dueAmount > 0
+                      ? '#fef2f2'
+                      : dueAmount < 0
+                        ? '#ecfdf5'
+                        : '#f3f4f6',
+                }}
+              >
+                <td
+                  style={{
+                    ...tdCell({
+                      fontWeight: 800,
+                      color: '#374151',
+                      padding: '6px 8px',
+                    }),
+                  }}
+                >
+                  Balance Due
+                </td>
+                <td
+                  style={{
+                    ...tdCell({
+                      textAlign: 'right',
+                      fontFamily: 'ui-monospace, monospace',
+                      fontWeight: 800,
+                      fontSize: 12,
+                      color:
+                        dueAmount > 0
+                          ? '#dc2626'
+                          : dueAmount < 0
+                            ? '#059669'
+                            : '#6b7280',
+                      padding: '6px 8px',
+                    }),
+                  }}
+                >
+                  <span style={{ marginRight: 6 }}>{fmt(Math.abs(dueAmount))}</span>
+                  <span
+                    style={{
+                      fontSize: 9,
+                      fontWeight: 700,
+                      textTransform: 'uppercase',
+                      letterSpacing: '0.04em',
+                    }}
+                  >
+                    {balanceText}
+                  </span>
+                </td>
+              </tr>
             </tbody>
           </table>
         </div>
       </div>
 
-      {/* ══════════════════════════════════
-          PAYMENT STRIP
-          ══════════════════════════════════ */}
-      <div className="border border-gray-200 rounded p-3 mb-5 text-xs">
-        <div className="text-[10px] font-bold uppercase tracking-widest text-gray-500 border-b border-gray-200 pb-1.5 mb-2">
-          Payment Details
+      {/* ── F) PAYMENT strip (tendered / change) ──────────────────── */}
+      {(tendered > 0 || change > 0) && (
+        <div
+          style={{
+            marginBottom: 14,
+            border: `1px solid ${C.border}`,
+            borderRadius: 4,
+            padding: 10,
+          }}
+        >
+          <div
+            style={{
+              fontSize: 9,
+              fontWeight: 800,
+              textTransform: 'uppercase',
+              letterSpacing: '0.1em',
+              color: C.muted,
+              borderBottom: `1px solid ${C.border}`,
+              paddingBottom: 4,
+              marginBottom: 8,
+            }}
+          >
+            Payment Details
+          </div>
+          <div
+            style={{
+              display: 'grid',
+              gridTemplateColumns: 'repeat(4, 1fr)',
+              gap: 8,
+              fontSize: 10,
+            }}
+          >
+            <div>
+              <div style={{ color: C.muted, fontSize: 9, textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+                Method
+              </div>
+              <div style={{ fontWeight: 700, textTransform: 'capitalize', marginTop: 2 }}>
+                {(order.payment_method ?? '').replace(/_/g, ' ') || '—'}
+              </div>
+            </div>
+            {tendered > 0 && (
+              <div>
+                <div style={{ color: C.muted, fontSize: 9, textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+                  Tendered
+                </div>
+                <div style={{ fontWeight: 700, fontFamily: 'ui-monospace, monospace', marginTop: 2 }}>
+                  {fmt(tendered)}
+                </div>
+              </div>
+            )}
+            {change > 0 && (
+              <div>
+                <div style={{ color: C.muted, fontSize: 9, textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+                  Change
+                </div>
+                <div style={{ fontWeight: 700, fontFamily: 'ui-monospace, monospace', marginTop: 2 }}>
+                  {fmt(change)}
+                </div>
+              </div>
+            )}
+            <div>
+              <div style={{ color: C.muted, fontSize: 9, textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+                Tendered
+              </div>
+              <div style={{ fontWeight: 700, fontFamily: 'ui-monospace, monospace', marginTop: 2 }}>
+                {fmt(tendered > 0 ? tendered : paidAmount)}
+              </div>
+            </div>
+          </div>
         </div>
-        <div className="grid grid-cols-5 gap-3">
-          <div>
-            <div className="text-[10px] uppercase tracking-wide text-gray-500">Method</div>
-            <div className="font-bold capitalize">
-              {(order.payment_method ?? '').replace(/_/g, ' ') || '—'}
-            </div>
-          </div>
-          <div>
-            <div className="text-[10px] uppercase tracking-wide text-gray-500">Amount Paid</div>
-            <div className="font-bold tabular-nums">{fmt(paidAmount)}</div>
-          </div>
-          {tendered > 0 && (
-            <div>
-              <div className="text-[10px] uppercase tracking-wide text-gray-500">Cash Tendered</div>
-              <div className="font-bold tabular-nums">{fmt(tendered)}</div>
-            </div>
-          )}
-          {change > 0 && (
-            <div>
-              <div className="text-[10px] uppercase tracking-wide text-gray-500">Change</div>
-              <div className="font-bold tabular-nums">{fmt(change)}</div>
-            </div>
-          )}
-          <div>
-            <div className="text-[10px] uppercase tracking-wide text-gray-500">Status</div>
-            <div>
-              <PayStatusBadge status={order.payment_status} />
-            </div>
-          </div>
-        </div>
-      </div>
+      )}
 
-      {/* ══════════════════════════════════
-          FOOTER  —  policy (left) + QR (centre) + signature (right)
-          ══════════════════════════════════ */}
-      <footer className="flex justify-between items-end border-t border-gray-200 pt-4 mt-2 gap-4">
-        {/* Return policy */}
-        <div className="text-xs text-gray-500 max-w-[95mm] leading-5">
-          <div className="font-semibold text-gray-700 uppercase tracking-wide text-[10px] mb-1">
+      {/* ── G) PAYMENT HISTORY  ──────────────────────────────────── */}
+      {payments.length > 0 && (
+        <div
+          style={{
+            marginBottom: 14,
+            border: '1px solid #d1fae5',
+            borderRadius: 4,
+            overflow: 'hidden',
+          }}
+        >
+          <div
+            style={{
+              background: '#ecfdf5',
+              padding: '6px 12px',
+              display: 'flex',
+              justifyContent: 'space-between',
+              alignItems: 'center',
+            }}
+          >
+            <p
+              style={{
+                fontSize: 11,
+                fontWeight: 700,
+                textTransform: 'uppercase',
+                letterSpacing: '0.06em',
+                color: '#047857',
+                margin: 0,
+              }}
+            >
+              Payment History ({payments.length})
+            </p>
+            <p
+              style={{
+                fontSize: 11,
+                fontWeight: 700,
+                color: '#065f46',
+                margin: 0,
+              }}
+            >
+              Total Received: {fmt(
+                payments.reduce((s: number, p: any) => s + Number(p.amount ?? 0), 0)
+              )}
+            </p>
+          </div>
+          <table
+            style={{
+              width: '100%',
+              fontSize: 10,
+              borderCollapse: 'collapse',
+            }}
+          >
+            <thead>
+              <tr style={{ background: '#d1fae5' }}>
+                <th style={thCell({ width: 18, textAlign: 'center' })}>#</th>
+                <th style={thCell()}>Receipt #</th>
+                <th style={thCell()}>Date</th>
+                <th style={thCell()}>Method</th>
+                <th style={thCell({ textAlign: 'right' })}>Amount</th>
+                <th style={thCell()}>Status</th>
+              </tr>
+            </thead>
+            <tbody>
+              {payments.map((p: any, pi: number) => (
+                <tr key={p.id ?? pi} style={{ background: '#fff' }}>
+                  <td style={{ ...tdCell({ color: C.muted, textAlign: 'center' }) }}>{pi + 1}</td>
+                  <td
+                    style={{
+                      ...tdCell({
+                        fontFamily: 'ui-monospace, monospace',
+                        fontWeight: 700,
+                        color: '#047857',
+                      }),
+                    }}
+                  >
+                    {p.receipt_number ?? '-'}
+                  </td>
+                  <td style={{ ...tdCell({ color: '#4b5563' }) }}>
+                    {p.payment_date
+                      ? new Date(p.payment_date).toLocaleDateString()
+                      : '-'}
+                  </td>
+                  <td
+                    style={{
+                      ...tdCell({
+                        color: '#374151',
+                        textTransform: 'capitalize',
+                      }),
+                    }}
+                  >
+                    {String(p.payment_method ?? '-').replace(/_/g, ' ')}
+                  </td>
+                  <td
+                    style={{
+                      ...tdCell({
+                        textAlign: 'right',
+                        fontFamily: 'ui-monospace, monospace',
+                        fontWeight: 700,
+                        color: '#065f46',
+                      }),
+                    }}
+                  >
+                    {fmt(p.amount)}
+                  </td>
+                  <td style={{ ...tdCell() }}>
+                    <span
+                      style={{
+                        display: 'inline-block',
+                        background:
+                          p.status === 'completed'
+                            ? '#d1fae5'
+                            : p.status === 'pending'
+                              ? '#fef3c7'
+                              : p.status === 'failed'
+                                ? '#fee2e2'
+                                : '#f3f4f6',
+                        color:
+                          p.status === 'completed'
+                            ? '#065f46'
+                            : p.status === 'pending'
+                              ? '#92400e'
+                              : p.status === 'failed'
+                                ? '#991b1b'
+                                : '#374151',
+                        padding: '1px 8px',
+                        borderRadius: 999,
+                        fontSize: 9,
+                        fontWeight: 700,
+                        textTransform: 'uppercase',
+                        letterSpacing: '0.04em',
+                      }}
+                    >
+                      {p.status ?? '-'}
+                    </span>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+
+      {/* ── H) FOOTER  (policy left, QR centre, signature right) ── */}
+      <div
+        style={{
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'flex-end',
+          borderTop: `1px solid ${C.border}`,
+          paddingTop: 10,
+          marginTop: 6,
+          gap: 12,
+        }}
+      >
+        <div style={{ fontSize: 10, color: C.muted, maxWidth: '95mm', lineHeight: 1.6 }}>
+          <div
+            style={{
+              fontWeight: 700,
+              color: '#374151',
+              textTransform: 'uppercase',
+              letterSpacing: '0.06em',
+              fontSize: 9,
+              marginBottom: 2,
+            }}
+          >
             Return Policy
           </div>
           Returns accepted within 7 days with original receipt.
@@ -649,42 +1054,64 @@ export function PosOrderInvoiceA4({ order, copyLabel }: PosOrderInvoiceA4Props) 
           <br />
           Items once sold cannot be exchanged without a valid receipt.
           {(tenant?.phone || tenant?.email) && (
-            <div className="mt-1.5">
-              {tenant?.phone && <span><strong>Helpline:</strong> {tenant.phone}</span>}
+            <div style={{ marginTop: 4 }}>
+              {tenant?.phone && (
+                <span>
+                  <strong>Helpline:</strong> {tenant.phone}
+                </span>
+              )}
               {tenant?.phone && tenant?.email && <span> &nbsp;·&nbsp; </span>}
-              {tenant?.email && <span><strong>Email:</strong> {tenant.email}</span>}
+              {tenant?.email && (
+                <span>
+                  <strong>Email:</strong> {tenant.email}
+                </span>
+              )}
             </div>
           )}
-          <div className="mt-2 text-[10px]">
+          <div style={{ marginTop: 4, fontSize: 9 }}>
             Powered by Inventory POS · v1.0 · Printed: {printedAt}
           </div>
         </div>
 
-        {/* QR code */}
         {qrSrc && (
-          <div className="flex flex-col items-center mx-2">
+          <div
+            style={{
+              display: 'flex',
+              flexDirection: 'column',
+              alignItems: 'center',
+              margin: '0 8px',
+            }}
+          >
             <img
               src={qrSrc}
               alt={`QR for ${invoiceNo}`}
-              width={80}
-              height={80}
+              width={72}
+              height={72}
               crossOrigin="anonymous"
             />
-            <div className="text-[9px] text-gray-500 mt-0.5">
+            <div style={{ fontSize: 9, color: C.muted, marginTop: 2 }}>
               Scan to verify · {invoiceNo}
             </div>
           </div>
         )}
 
-        {/* Authorised signature */}
-        <div className="text-right">
-          <div className="w-44 border-b border-gray-900 mb-1 h-8" />
-          <div className="text-xs text-gray-500">Authorised Signature</div>
+        <div style={{ textAlign: 'right' }}>
+          <div
+            style={{
+              width: '44mm',
+              borderBottom: `1.5px solid ${C.ink}`,
+              height: 16,
+              marginBottom: 2,
+            }}
+          />
+          <div style={{ fontSize: 10, color: C.muted }}>Authorised Signature</div>
           {tenant?.business_name && (
-            <div className="text-[10px] text-gray-400">{tenant.business_name}</div>
+            <div style={{ fontSize: 9, color: '#9ca3af' }}>{tenant.business_name}</div>
           )}
         </div>
-      </footer>
+      </div>
     </div>
   );
 }
+
+export default PosOrderInvoiceA4;

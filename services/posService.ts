@@ -30,11 +30,26 @@ export interface PosOrderResponse {
   items?: unknown[];
 }
 
+export interface PrintSettings {
+  default_printer_type: string;
+  pos_type: string;
+  thermal_paper_size: string;
+  default_printer_enabled: boolean;
+  receipt_header: string;
+  receipt_footer: string;
+  logo_position: string;
+  show_tax_breakdown: boolean;
+  payment_uuid: string;
+  reference_type: string;
+  direct_print: boolean;
+}
+
 export interface CreateOrderResult {
   order: PosOrderResponse;
   payment: Payment;
   balance_due: number;
   is_partial: boolean;
+  print_settings?: PrintSettings;
 }
 
 class PosService {
@@ -73,6 +88,7 @@ class PosService {
       payment: response.data.payment,
       balance_due: response.data.balance_due ?? 0,
       is_partial: response.data.is_partial ?? false,
+      print_settings: response.data.print_settings,
     };
   }
 

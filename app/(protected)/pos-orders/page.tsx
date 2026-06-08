@@ -10,6 +10,7 @@ import { commonService, posRegisterService } from '@/services';
 import posService from '@/services/posService';
 import { notify } from '@/lib/notifications';
 import type { PosOrderDetail } from '@/types/api.types';
+import { PosOrderPrintMenu } from '@/components/invoices/pos/PosOrderPrintMenu';
 
 const PAYMENT_METHOD_OPTIONS = [
   { value: 'cash', label: 'Cash' },
@@ -244,7 +245,7 @@ export default function PosOrdersPage() {
     {
       id: 'actions',
       header: 'Actions',
-      meta: { width: '80px' },
+      meta: { width: '130px' },
       cell: ({ row }) => (
         <div className="flex items-center gap-2">
           <button
@@ -254,6 +255,7 @@ export default function PosOrdersPage() {
           >
             <Eye className="w-4 h-4" />
           </button>
+          <PosOrderPrintMenu order={row.original} />
           {(() => {
             // "Record Due Payment" is the action for collecting the
             // remaining balance from a customer. The right state is:
