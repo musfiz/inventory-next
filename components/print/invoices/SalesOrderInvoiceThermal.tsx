@@ -1,5 +1,5 @@
 import type { PosOrderDetail } from '@/types/api.types';
-import { buildQrUrl } from '@/components/invoices/pay-receipt/shared';
+import { buildQrUrl } from './shared';
 
 // ── Formatters ────────────────────────────────────────────────────────────────
 
@@ -19,17 +19,18 @@ function fmtDateTime(d?: string | null): string {
   });
 }
 
-// ── Types ─────────────────────────────────────────────────────────────────────
+// ── Component ─────────────────────────────────────────────────────────────────
 
 export type PosInvoicePaperWidth = '58mm' | '80mm';
 export type PosInvoiceCopyLabel = 'customer' | 'merchant' | 'duplicate';
 
-export interface PosOrderInvoiceThermalProps {
-  order: PosOrderDetail;
+export interface SalesOrderInvoiceThermalProps {
+  /** Full sales order object from `salesOrderService.getSalesOrder(uuid)`. */
+  order: any;
   /**
    * Paper width.
-   *  '80mm' — standard Epson TM-T88 / Star TSP slip (default).
-   *  '58mm' — compact Bixolon / Star mPOP slip.
+   *  '80mm' — standard retail POS slip (Epson TM-T88 / Star TSP). Default.
+   *  '58mm' — compact slip (Bixolon SRP-350 / Star mPOP).
    */
   width?: PosInvoicePaperWidth;
   /** When set, stamps "CUSTOMER COPY" / "MERCHANT COPY" / "DUPLICATE". */
@@ -43,45 +44,53 @@ const COPY_LABEL: Record<PosInvoiceCopyLabel, string> = {
 };
 
 /**
- * POS Sales Receipt — Thermal (58mm / 80mm).
+ * Sales Order Tax Invoice — Thermal (80mm / 58mm POS slip).
+ *
+ * Industrial-standard design with full payment history in compact form.
+ * Single source of truth, prints from the Sales Orders page via
+ * `SalesOrderPrintMenu`.
  *
  * Sections:
  *  A) Copy stamp
- *  B) Tenant header (logo, name, address, TIN/BIN/VAT)
- *  C) Document title + transaction meta (receipt #, order #, date, cashier, terminal, session, customer)
- *  D) Items table (Qty center, Price/Total right, dotted leaders)
- *  E) Financial summary (subtotal, discount, tax, rounding, returns, grand total, paid, due)
- *  F) Payment history
- *  G) QR code
- *  H) Footer
+ *  B) Tenant header
+ *  C) Document title + meta (Invoice #, dates, status)
+ *  D) Reference block (customer, warehouse)
+ *  E) Items table (Qty center, Price/Total right, dotted leaders)
+ *  F) Financial summary (subtotal, discount, tax, shipping, returns, net, paid, due)
+ *  G) Payment history (one line per receipt, dotted leader)
+ *  H) QR + footer
  */
-export function PosOrderInvoiceThermal({
+export function SalesOrderInvoiceThermal({
   order,
   width = '80mm',
   copyLabel,
-}: PosOrderInvoiceThermalProps) {
+}: SalesOrderInvoiceThermalProps) {
   const is58 = width === '58mm';
   const qrSize = is58 ? 72 : 88;
 
-  const tenant = order.tenant as any;
-  const customer = order.customer;
-  const items = order.items ?? [];
-  const payments = order.payments ?? [];
+  const tenant = (order?.tenant ?? order?.warehouse?.tenant ?? null) as any;
+  const customer = order?.customer;
+  const items = order?.items ?? [];
+  const payments: any[] = order?.payments ?? [];
+  const returns: any[] = order?.returns ?? [];
 
-  const customerName = customer?.name ?? order.customer_name ?? 'Walk-in Customer';
-  const customerPhone = customer?.phone ?? order.customer_phone;
-  const invoiceNo = order.invoice_number ?? `#${order.id}`;
+  const invoiceNo = order?.invoice_number ?? order?.order_number ?? `#${order?.id}`;
+  const customerName = customer?.name ?? 'Walk-in Customer';
+  const customerPhone = customer?.phone;
 
-  const subTotal = Number(order.sub_total ?? 0);
-  const discAmt = Number(order.discount_amount ?? 0);
-  const discType = order.discount_type;
-  const discValue = Number(order.discount_value ?? 0);
-  const taxAmt = Number(order.tax_amount ?? 0);
-  const rounding = Number(order.rounding_adjustment ?? 0);
-  const grandTotal = Number(order.grand_total ?? 0);
-  const paidAmount = Number(order.paid_amount ?? 0);
-  const returnedAmount = Number(order.returned_amount ?? 0);
-  const dueAmount = Number(order.due_amount ?? 0);
+  const subTotal = Number(order?.sub_total ?? 0);
+  const discAmt = Number(order?.discount_amount ?? 0);
+  const discType = order?.discount_type;
+  const discValue = Number(order?.discount_value ?? 0);
+  const taxAmt = Number(order?.tax_amount ?? 0);
+  const shippingAmt = Number(order?.shipping_charge ?? 0);
+  const rounding = Number(order?.rounding_adjustment ?? 0);
+  const grandTotal = Number(order?.grand_total ?? 0);
+  const paidAmount = Number(order?.paid_amount ?? 0);
+  const returnedAmount = Number(order?.returned_amount ?? 0);
+  const dueAmount = Number(
+    order?.due_amount ?? Math.max(0, grandTotal - paidAmount)
+  );
 
   const qrSrc = buildQrUrl(invoiceNo, grandTotal);
 
@@ -250,15 +259,27 @@ export function PosOrderInvoiceThermal({
         aria-label="Transaction information"
       >
         <Row label="Invoice #" value={invoiceNo} bold />
-        {order.id && <Row label="Order #" value={`POS-${order.id}`} />}
-        <Row label="Date" value={fmtDateTime(order.order_date ?? order.created_at)} />
-        {(order as any).cashier_name && <Row label="Cashier" value={(order as any).cashier_name} />}
-        {order.register?.name && <Row label="Terminal" value={order.register.name} />}
-        {order.session?.session_number && (
-          <Row label="Session" value={order.session.session_number} />
+        {order?.order_number && order.order_number !== invoiceNo && (
+          <Row label="Order #" value={order.order_number} />
         )}
+        <Row
+          label="Date"
+          value={fmtDateTime(order?.order_date ?? order?.created_at)}
+        />
+        {order?.due_date && (
+          <Row label="Due Date" value={fmtDateTime(order?.due_date)} />
+        )}
+        <Row label="Status" value={String(order?.status ?? '-')} upper />
+        <Row
+          label="Payment"
+          value={String(order?.payment_status ?? 'pending')}
+          upper
+        />
         <Row label="Customer" value={customerName} />
         {customerPhone && <Row label="Phone" value={customerPhone} />}
+        {order?.warehouse?.name && (
+          <Row label="Warehouse" value={order.warehouse.name} />
+        )}
       </section>
 
       <RuleDashed />
@@ -307,10 +328,10 @@ export function PosOrderInvoiceThermal({
             (no line items)
           </div>
         ) : (
-          items.map((it, idx) => {
-            const qty = Math.abs(Number(it.quantity ?? 0));
-            const price = Number(it.unit_price ?? 0);
-            const disc = Number(it.discount ?? 0);
+          items.map((it: any, idx: number) => {
+            const qty = Math.abs(Number(it.quantity ?? it.quantity_ordered ?? 0));
+            const price = Number(it.unit_price ?? it.unit_cost ?? 0);
+            const disc = Number(it.discount ?? it.discount_amount ?? 0);
             const tax = Number(it.tax_rate ?? 0);
             const lineTot = Number(it.line_total ?? qty * price - disc);
             return (
@@ -347,7 +368,7 @@ export function PosOrderInvoiceThermal({
                         fontWeight: 500,
                       }}
                     >
-                      {it.product?.name ?? it.item_name ?? '-'}
+                      {it.product?.name ?? it.item_name ?? it.name ?? '-'}
                     </span>
                     {it.variation?.name && (
                       <span
@@ -443,15 +464,13 @@ export function PosOrderInvoiceThermal({
         {discAmt > 0 && (
           <Row
             label={`Discount${
-              discType === 'percent' || discType === 'percentage'
-                ? ` (${discValue}%)`
-                : ''
+              discType === 'percentage' && discValue > 0 ? ` (${discValue}%)` : ''
             }`}
             value={`−${fmt(discAmt)}`}
           />
         )}
-        {taxAmt > 0 && (
-          <Row label="Tax" value={`+${fmt(taxAmt)}`} />
+        {(taxAmt + shippingAmt) > 0 && (
+          <Row label="Tax + Ship" value={`+${fmt(taxAmt + shippingAmt)}`} />
         )}
         {rounding !== 0 && (
           <Row
@@ -460,7 +479,7 @@ export function PosOrderInvoiceThermal({
           />
         )}
         {returnedAmount > 0 && (
-          <Row label="Returns" value={`−${fmt(returnedAmount)}`} />
+          <Row label={`Returns (${returns.length})`} value={`−${fmt(returnedAmount)}`} />
         )}
 
         <div
@@ -496,7 +515,7 @@ export function PosOrderInvoiceThermal({
       <RuleDouble />
 
       {/* ═══════════════════════════════════════════════
-          F) PAYMENT HISTORY
+          F) PAYMENT HISTORY  (full)
           ═══════════════════════════════════════════════ */}
       {payments.length > 0 && (
         <>
@@ -518,7 +537,7 @@ export function PosOrderInvoiceThermal({
             )}
           </div>
 
-          {payments.map((p, pi) => (
+          {payments.map((p: any, pi: number) => (
             <div
               key={p.id ?? pi}
               style={{
@@ -567,6 +586,7 @@ export function PosOrderInvoiceThermal({
                       : '-'}
                     {' · '}
                     {String(p.payment_method ?? '-').replace(/_/g, ' ')}
+                    {p.creator?.name ? ` · ${p.creator.name}` : ''}
                   </span>
                 </span>
 
@@ -688,7 +708,7 @@ export function PosOrderInvoiceThermal({
   );
 }
 
-// ── Row helper ────────────────────────────────────────────────────────────────
+// ── Sub-components ────────────────────────────────────────────────────────────
 
 function Row({
   label,
@@ -717,3 +737,5 @@ function Row({
     </div>
   );
 }
+
+export default SalesOrderInvoiceThermal;

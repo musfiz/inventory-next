@@ -1,6 +1,6 @@
 import { formatDate } from '@/lib/utils/date';
 
-interface PurchaseOrderPosInvoiceProps {
+interface PurchaseOrderThermalProps {
   po: {
     po_number: string;
     order_date: string;
@@ -28,7 +28,7 @@ interface PurchaseOrderPosInvoiceProps {
   };
 }
 
-export default function PurchaseOrderPosInvoice({ po }: PurchaseOrderPosInvoiceProps) {
+export default function PurchaseOrderThermal({ po }: PurchaseOrderThermalProps) {
   const vatAmount = ((po.sub_total ?? 0) - (po.discount_amount ?? 0)) * ((po.vat ?? 0) / 100);
 
   return (

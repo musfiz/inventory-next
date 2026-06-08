@@ -10,7 +10,7 @@ import { commonService, posRegisterService } from '@/services';
 import posService from '@/services/posService';
 import { notify } from '@/lib/notifications';
 import type { PosOrderDetail } from '@/types/api.types';
-import { PosOrderPrintMenu } from '@/components/invoices/pos/PosOrderPrintMenu';
+import { PosOrderPrintMenu } from '@/components/print';
 
 const PAYMENT_METHOD_OPTIONS = [
   { value: 'cash', label: 'Cash' },

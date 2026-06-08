@@ -8,8 +8,8 @@ import { formatDate } from '@/lib/utils/date';
 import { notify, confirm } from '@/lib/notifications';
 import purchaseOrderService from '@/services/purchaseOrderService';
 import { useRouter } from 'next/navigation';
-import PurchaseOrderInvoice from '@/components/invoices/PurchaseOrderInvoice';
-import PurchaseOrderPosInvoice from '@/components/invoices/pos/PurchaseOrderPosInvoice';
+import PurchaseOrderInvoice from '@/components/print/invoices/PurchaseOrderInvoice';
+import PurchaseOrderThermal from '@/components/print/invoices/PurchaseOrderThermal';
 
 type PrintMode = 'invoice' | 'pos';
 
@@ -548,7 +548,7 @@ export default function PurchaseOrdersPage() {
           {printState.mode === 'invoice' ? (
             <PurchaseOrderInvoice po={printState.po} />
           ) : (
-            <PurchaseOrderPosInvoice po={printState.po} />
+            <PurchaseOrderThermal po={printState.po} />
           )}
         </div>
       )}

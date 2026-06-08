@@ -31,7 +31,7 @@ import { usePermissions } from '@/hooks/use-permissions';
 import CustomSelect from '@/components/ui/custom-select';
 import PaymentModal from '@/components/pos/PaymentModal';
 import HeldOrdersDialog from '@/components/pos/HeldOrdersDialog';
-import { PosOrderPrintMenu } from '@/components/invoices/pos/PosOrderPrintMenu';
+import { PosOrderPrintMenu } from '@/components/print';
 import type { PrintSettings } from '@/services/posService';
 import type { Payment, PosOrderDetail } from '@/types/api.types';
 import Swal from 'sweetalert2';

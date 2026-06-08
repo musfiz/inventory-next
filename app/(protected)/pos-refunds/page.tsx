@@ -15,7 +15,7 @@ import { useRouter } from 'next/navigation';
 import { usePermissions } from '@/hooks/use-permissions';
 import { useAuthStore } from '@/stores/auth-store';
 import apiClient from '@/lib/api/axios';
-import { PosRefundCreditNote } from '@/components/invoices/CreditNote';
+import { PosRefundCreditNote } from '@/components/print/invoices';
 import { GiSave } from 'react-icons/gi';
 
 // ─── Constants ────────────────────────────────────────────────────────────────

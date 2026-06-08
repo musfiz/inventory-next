@@ -8,7 +8,7 @@ import { formatDate } from '@/lib/utils/date';
 import { notify, confirm } from '@/lib/notifications';
 import salesOrderService from '@/services/salesOrderService';
 import { useRouter } from 'next/navigation';
-import { SalesOrderPrintMenu } from '@/components/invoices/SalesOrderPrintMenu';
+import { SalesOrderPrintMenu } from '@/components/print';
 
 export default function SalesOrdersPage() {
   const router = useRouter();

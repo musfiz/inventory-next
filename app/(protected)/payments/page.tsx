@@ -17,7 +17,7 @@ import CustomDatePicker from '@/components/ui/date-picker';
 import { formatDate } from '@/lib/utils/date';
 import { usePermissions } from '@/hooks/use-permissions';
 import { useRouter } from 'next/navigation';
-import { PrintMenu } from '@/components/invoices/pay-receipt/PrintMenu';
+import { PayReceiptPrintMenu as PrintMenu } from '@/components/print';
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 

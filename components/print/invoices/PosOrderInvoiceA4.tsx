@@ -1,4 +1,5 @@
-import { buildQrUrl } from '@/components/invoices/pay-receipt/shared';
+import type { PosOrderDetail } from '@/types/api.types';
+import { buildQrUrl } from './shared';
 
 // ── Formatters ────────────────────────────────────────────────────────────────
 
@@ -25,7 +26,7 @@ function fmtDateTime(d?: string | null): string {
   });
 }
 
-// ── Inline-style palette (mirrors PayReceiptA4) ───────────────────────────────
+// ── Inline-style palette ──────────────────────────────────────────────────────
 const C = {
   ink: '#1a1a2e',
   muted: '#6b7280',
@@ -37,67 +38,54 @@ const C = {
 };
 const FONT = "'Segoe UI', system-ui, -apple-system, Roboto, Arial, sans-serif";
 
-// ── Component ─────────────────────────────────────────────────────────────────
+// ── Types ─────────────────────────────────────────────────────────────────────
 
 export type PosInvoiceCopyLabel = 'customer' | 'merchant' | 'duplicate';
 
-export interface SalesOrderInvoiceA4Props {
-  /** Full sales order object from `salesOrderService.getSalesOrder(uuid)`. */
-  order: any;
-  /** Optional copy stamp printed at the top. */
+export interface PosOrderInvoiceA4Props {
+  order: PosOrderDetail;
   copyLabel?: PosInvoiceCopyLabel | null;
 }
 
-/**
- * Sales Order Tax Invoice — A4 professional layout.
- *
- * 100% INLINE STYLES — this component is copied via `innerHTML` into a
- * print window that does NOT have Tailwind, so every visual must be
- * expressed as inline CSS. This matches the pattern used by
- * `PayReceiptA4.tsx`.
- *
- * Sections:
- *  A) Copy stamp
- *  B) Tenant / store header
- *  C) "Tax Invoice" title + meta (Invoice #, dates, status)
- *  D) Bill To / Sold By parties
- *  E) Items table with dotted leaders
- *  F) Financial summary
- *  G) Payment history table (every Payment row for this SO)
- *  H) Footer (return policy, QR, signature, brand)
- */
-export function SalesOrderInvoiceA4({ order, copyLabel }: SalesOrderInvoiceA4Props) {
-  const tenant = (order?.tenant ?? order?.warehouse?.tenant ?? null) as any;
-  const customer = order?.customer;
-  const items = order?.items ?? [];
-  const payments: any[] = order?.payments ?? [];
-  const returns: any[] = order?.returns ?? [];
+const COPY_LABEL: Record<PosInvoiceCopyLabel, string> = {
+  customer: 'Customer Copy',
+  merchant: 'Merchant Copy',
+  duplicate: 'Duplicate',
+};
 
-  const invoiceNo = order?.invoice_number ?? order?.order_number ?? `#${order?.id}`;
-  const orderDate = order?.order_date ?? order?.created_at;
-  const dueDate = order?.due_date;
+// ── Component ─────────────────────────────────────────────────────────────────
 
-  const subTotal = Number(order?.sub_total ?? 0);
-  const discAmt = Number(order?.discount_amount ?? 0);
-  const discType = order?.discount_type;
-  const discValue = Number(order?.discount_value ?? 0);
-  const taxAmt = Number(order?.tax_amount ?? 0);
-  const shippingAmt = Number(order?.shipping_charge ?? 0);
-  const rounding = Number(order?.rounding_adjustment ?? 0);
-  const grandTotal = Number(order?.grand_total ?? 0);
-  const paidAmount = Number(order?.paid_amount ?? 0);
-  const returnedAmount = Number(order?.returned_amount ?? 0);
-  const dueAmount = Number(
-    order?.due_amount ?? Math.max(0, grandTotal - paidAmount)
-  );
+export function PosOrderInvoiceA4({ order, copyLabel }: PosOrderInvoiceA4Props) {
+  const tenant = order.tenant as any;
+  const customer = order.customer;
+  const items = order.items ?? [];
+  const payments: any[] = order.payments ?? [];
 
-  const printedAt = fmtDateTime(new Date().toISOString());
-  const qrSrc = buildQrUrl(invoiceNo, grandTotal);
+  const customerName = customer?.name ?? order.customer_name ?? 'Walk-in Customer';
+  const customerPhone = customer?.phone ?? order.customer_phone;
+  const customerEmail = customer?.email;
+  const invoiceNo = order.invoice_number ?? `#${order.id}`;
+
+  const subTotal = Number(order.sub_total ?? 0);
+  const discAmt = Number(order.discount_amount ?? 0);
+  const discType = order.discount_type;
+  const discValue = Number(order.discount_value ?? 0);
+  const taxAmt = Number(order.tax_amount ?? 0);
+  const rounding = Number(order.rounding_adjustment ?? 0);
+  const grandTotal = Number(order.grand_total ?? 0);
+  const paidAmount = Number(order.paid_amount ?? 0);
+  const returnedAmount = Number(order.returned_amount ?? 0);
+  const dueAmount = Number(order.due_amount ?? 0);
+  const tendered = Number(order.tendered_amount ?? 0);
+  const change = Number(order.change_amount ?? 0);
   const net = Math.max(0, grandTotal - returnedAmount);
   const balanceText =
     dueAmount > 0 ? 'Amount Due' : dueAmount < 0 ? 'Customer Return' : 'Settled';
 
-  // ── Sub-components (inline styles only) ──────────────────────────────────
+  const cashierName = (order as any).cashier_name as string | undefined;
+  const printedAt = fmtDateTime(new Date().toISOString());
+  const qrSrc = buildQrUrl(invoiceNo, grandTotal);
+
   const thCell = (extra?: React.CSSProperties): React.CSSProperties => ({
     padding: '6px 8px',
     fontSize: 11,
@@ -130,7 +118,7 @@ export function SalesOrderInvoiceA4({ order, copyLabel }: SalesOrderInvoiceA4Pro
         background: C.bg,
       }}
     >
-      {/* ── Copy stamp ──────────────────────────────────────────────── */}
+      {/* ── A) Copy stamp ─────────────────────────────────────────── */}
       {copyLabel && (
         <div style={{ textAlign: 'center', marginBottom: 8 }}>
           <span
@@ -145,16 +133,12 @@ export function SalesOrderInvoiceA4({ order, copyLabel }: SalesOrderInvoiceA4Pro
               transform: copyLabel === 'merchant' ? 'rotate(-3deg)' : undefined,
             }}
           >
-            {copyLabel === 'customer'
-              ? 'Customer Copy'
-              : copyLabel === 'merchant'
-                ? 'Merchant Copy'
-                : 'Duplicate'}
+            {COPY_LABEL[copyLabel]}
           </span>
         </div>
       )}
 
-      {/* ── HEADER  (brand left, doc-type right) ─────────────────────── */}
+      {/* ── B) HEADER  (brand left, doc-type right) ───────────────── */}
       <div
         style={{
           display: 'flex',
@@ -261,20 +245,42 @@ export function SalesOrderInvoiceA4({ order, copyLabel }: SalesOrderInvoiceA4Pro
                 <td style={{ color: C.muted, paddingRight: 12, textAlign: 'right' }}>Invoice No</td>
                 <td style={{ fontWeight: 700, textAlign: 'right' }}>{invoiceNo}</td>
               </tr>
-              {order?.order_number && order.order_number !== invoiceNo && (
+              {order.id && (
                 <tr>
                   <td style={{ color: C.muted, paddingRight: 12, textAlign: 'right' }}>Order No</td>
-                  <td style={{ textAlign: 'right' }}>{order.order_number}</td>
+                  <td style={{ textAlign: 'right' }}>POS-{order.id}</td>
                 </tr>
               )}
               <tr>
-                <td style={{ color: C.muted, paddingRight: 12, textAlign: 'right' }}>Order Date</td>
-                <td style={{ textAlign: 'right' }}>{fmtDate(orderDate)}</td>
+                <td style={{ color: C.muted, paddingRight: 12, textAlign: 'right' }}>Date</td>
+                <td style={{ textAlign: 'right' }}>{fmtDate(order.order_date ?? order.created_at)}</td>
               </tr>
-              {dueDate && (
+              <tr>
+                <td style={{ color: C.muted, paddingRight: 12, textAlign: 'right' }}>Time</td>
+                <td style={{ textAlign: 'right' }}>
+                  {order.order_date
+                    ? new Date(order.order_date).toLocaleTimeString(undefined, {
+                        hour: '2-digit', minute: '2-digit',
+                      })
+                    : '-'}
+                </td>
+              </tr>
+              {cashierName && (
                 <tr>
-                  <td style={{ color: C.muted, paddingRight: 12, textAlign: 'right' }}>Due Date</td>
-                  <td style={{ textAlign: 'right' }}>{fmtDate(dueDate)}</td>
+                  <td style={{ color: C.muted, paddingRight: 12, textAlign: 'right' }}>Cashier</td>
+                  <td style={{ textAlign: 'right' }}>{cashierName}</td>
+                </tr>
+              )}
+              {order.register?.name && (
+                <tr>
+                  <td style={{ color: C.muted, paddingRight: 12, textAlign: 'right' }}>Terminal</td>
+                  <td style={{ textAlign: 'right' }}>{order.register.name}</td>
+                </tr>
+              )}
+              {order.session?.session_number && (
+                <tr>
+                  <td style={{ color: C.muted, paddingRight: 12, textAlign: 'right' }}>Session</td>
+                  <td style={{ textAlign: 'right' }}>{order.session.session_number}</td>
                 </tr>
               )}
               <tr>
@@ -293,7 +299,7 @@ export function SalesOrderInvoiceA4({ order, copyLabel }: SalesOrderInvoiceA4Pro
                       letterSpacing: '0.04em',
                     }}
                   >
-                    {order?.status ?? '-'}
+                    {order.status ?? '-'}
                   </span>
                 </td>
               </tr>
@@ -304,9 +310,9 @@ export function SalesOrderInvoiceA4({ order, copyLabel }: SalesOrderInvoiceA4Pro
                     style={{
                       display: 'inline-block',
                       background:
-                        order?.payment_status === 'paid'
+                        order.payment_status === 'paid'
                           ? '#059669'
-                          : order?.payment_status === 'partial'
+                          : order.payment_status === 'partial'
                             ? '#f59e0b'
                             : '#dc2626',
                       color: '#fff',
@@ -318,7 +324,7 @@ export function SalesOrderInvoiceA4({ order, copyLabel }: SalesOrderInvoiceA4Pro
                       letterSpacing: '0.04em',
                     }}
                   >
-                    {order?.payment_status ?? 'pending'}
+                    {order.payment_status ?? 'pending'}
                   </span>
                 </td>
               </tr>
@@ -327,7 +333,7 @@ export function SalesOrderInvoiceA4({ order, copyLabel }: SalesOrderInvoiceA4Pro
         </div>
       </div>
 
-      {/* ── PARTIES  (Bill To / Sold By) ──────────────────────────── */}
+      {/* ── C) PARTIES  (Bill To / Sold By) ─────────────────────── */}
       <div
         style={{
           display: 'grid',
@@ -352,12 +358,12 @@ export function SalesOrderInvoiceA4({ order, copyLabel }: SalesOrderInvoiceA4Pro
             Bill To
           </div>
           <div style={{ fontSize: 13, fontWeight: 700, color: C.ink, lineHeight: 1.2 }}>
-            {customer?.name ?? '-'}
+            {customerName}
           </div>
           <div style={{ fontSize: 10, color: '#4b5563', marginTop: 4, lineHeight: 1.6 }}>
-            {customer?.phone && <div>Tel: {customer.phone}</div>}
-            {customer?.email && <div>Email: {customer.email}</div>}
-            {customer?.address && <div>{customer.address}</div>}
+            {customerPhone && <div>Tel: {customerPhone}</div>}
+            {customerEmail && <div>Email: {customerEmail}</div>}
+            {(customer as any)?.address && <div>{(customer as any).address}</div>}
           </div>
         </div>
         <div style={{ border: `1px solid ${C.border}`, borderRadius: 4, padding: 10 }}>
@@ -376,17 +382,16 @@ export function SalesOrderInvoiceA4({ order, copyLabel }: SalesOrderInvoiceA4Pro
             Sold By / Branch
           </div>
           <div style={{ fontSize: 13, fontWeight: 700, color: C.ink, lineHeight: 1.2 }}>
-            {tenant?.business_name ?? order?.warehouse?.name ?? 'Main Branch'}
+            {tenant?.business_name ?? 'Main Branch'}
           </div>
           <div style={{ fontSize: 10, color: '#4b5563', marginTop: 4, lineHeight: 1.6 }}>
-            {order?.warehouse?.name && <div>Warehouse: {order.warehouse.name}</div>}
             {tenant?.address && <div>{tenant.address}</div>}
             {tenant?.phone && <div>Tel: {tenant.phone}</div>}
           </div>
         </div>
       </div>
 
-      {/* ── ITEMS TABLE  (7-col with dotted leaders) ──────────────── */}
+      {/* ── D) ITEMS TABLE  (7-col with dotted leaders) ─────────── */}
       <div
         style={{
           marginBottom: 12,
@@ -399,8 +404,7 @@ export function SalesOrderInvoiceA4({ order, copyLabel }: SalesOrderInvoiceA4Pro
         <div
           style={{
             display: 'grid',
-            gridTemplateColumns:
-              'auto 1fr auto auto auto auto auto',
+            gridTemplateColumns: 'auto 1fr auto auto auto auto auto',
             columnGap: '4mm',
             alignItems: 'center',
             padding: '6px 10px',
@@ -428,11 +432,9 @@ export function SalesOrderInvoiceA4({ order, copyLabel }: SalesOrderInvoiceA4Pro
           </div>
         ) : (
           items.map((it: any, idx: number) => {
-            const qty = Math.abs(
-              Number(it.quantity ?? it.quantity_ordered ?? 0)
-            );
-            const price = Number(it.unit_price ?? it.unit_cost ?? 0);
-            const disc = Number(it.discount ?? it.discount_amount ?? 0);
+            const qty = Math.abs(Number(it.quantity ?? 0));
+            const price = Number(it.unit_price ?? 0);
+            const disc = Number(it.discount ?? 0);
             const taxRate = Number(it.tax_rate ?? 0);
             const lineTot = Number(it.line_total ?? qty * price - disc);
             return (
@@ -440,17 +442,14 @@ export function SalesOrderInvoiceA4({ order, copyLabel }: SalesOrderInvoiceA4Pro
                 key={it.id ?? idx}
                 style={{
                   display: 'grid',
-                  gridTemplateColumns:
-                    'auto 1fr auto auto auto auto auto',
+                  gridTemplateColumns: 'auto 1fr auto auto auto auto auto',
                   columnGap: '4mm',
                   alignItems: 'center',
                   padding: '5px 10px',
                   fontSize: 10,
                   background: idx % 2 === 1 ? C.rowAlt : '#fff',
                   borderBottom:
-                    idx === items.length - 1
-                      ? 'none'
-                      : `1px dotted ${C.border}`,
+                    idx === items.length - 1 ? 'none' : `1px dotted ${C.border}`,
                 }}
               >
                 <span
@@ -473,7 +472,7 @@ export function SalesOrderInvoiceA4({ order, copyLabel }: SalesOrderInvoiceA4Pro
                       wordBreak: 'break-word',
                     }}
                   >
-                    {it.product?.name ?? it.item_name ?? it.name ?? '-'}
+                    {it.item_name ?? '-'}
                   </div>
                   {it.variation?.name && (
                     <div
@@ -561,7 +560,7 @@ export function SalesOrderInvoiceA4({ order, copyLabel }: SalesOrderInvoiceA4Pro
         )}
       </div>
 
-      {/* ── SUMMARY GRID  (Terms left, Totals right) ───────────────── */}
+      {/* ── E) SUMMARY GRID  (Notes left, Totals right) ──────────── */}
       <div
         style={{
           display: 'grid',
@@ -572,7 +571,7 @@ export function SalesOrderInvoiceA4({ order, copyLabel }: SalesOrderInvoiceA4Pro
         }}
       >
         <div style={{ fontSize: 11, color: '#4b5563', lineHeight: 1.6 }}>
-          {order?.notes && (
+          {order.notes && (
             <div style={{ marginBottom: 8 }}>
               <div
                 style={{
@@ -605,9 +604,9 @@ export function SalesOrderInvoiceA4({ order, copyLabel }: SalesOrderInvoiceA4Pro
             <div style={{ color: C.muted }}>
               Goods once sold are not returnable without a valid receipt.
               <br />
-              Warranty terms apply as per the manufacturer.
+              No refund on discounted or already-opened items.
               <br />
-              Payments are non-refundable once processed.
+              Items once sold cannot be exchanged without a valid receipt.
             </div>
           </div>
         </div>
@@ -644,11 +643,11 @@ export function SalesOrderInvoiceA4({ order, copyLabel }: SalesOrderInvoiceA4Pro
                   </td>
                 </tr>
               )}
-              {(taxAmt + shippingAmt) > 0 && (
+              {taxAmt > 0 && (
                 <tr>
-                  <td style={{ ...tdCell({ color: C.muted }) }}>Tax + Shipping</td>
+                  <td style={{ ...tdCell({ color: C.muted }) }}>Tax</td>
                   <td style={{ ...tdCell({ textAlign: 'right', fontFamily: 'ui-monospace, monospace' }) }}>
-                    + {fmt(taxAmt + shippingAmt)}
+                    + {fmt(taxAmt)}
                   </td>
                 </tr>
               )}
@@ -658,6 +657,51 @@ export function SalesOrderInvoiceA4({ order, copyLabel }: SalesOrderInvoiceA4Pro
                   <td style={{ ...tdCell({ textAlign: 'right', fontFamily: 'ui-monospace, monospace' }) }}>
                     {rounding > 0 ? '+' : ''}
                     {fmt(rounding)}
+                  </td>
+                </tr>
+              )}
+              {returnedAmount > 0 && (
+                <tr>
+                  <td style={{ ...tdCell({ color: '#ea580c', fontWeight: 600 }) }}>
+                    Returns
+                  </td>
+                  <td
+                    style={{
+                      ...tdCell({
+                        textAlign: 'right',
+                        fontFamily: 'ui-monospace, monospace',
+                        color: '#ea580c',
+                      }),
+                    }}
+                  >
+                    − {fmt(returnedAmount)}
+                  </td>
+                </tr>
+              )}
+              {returnedAmount > 0 && (
+                <tr style={{ background: '#eef2ff' }}>
+                  <td
+                    style={{
+                      ...tdCell({
+                        color: '#4338ca',
+                        fontWeight: 600,
+                        fontSize: 10,
+                      }),
+                    }}
+                  >
+                    Net Total
+                  </td>
+                  <td
+                    style={{
+                      ...tdCell({
+                        textAlign: 'right',
+                        fontFamily: 'ui-monospace, monospace',
+                        fontWeight: 700,
+                        color: '#3730a3',
+                      }),
+                    }}
+                  >
+                    {fmt(net)}
                   </td>
                 </tr>
               )}
@@ -693,61 +737,8 @@ export function SalesOrderInvoiceA4({ order, copyLabel }: SalesOrderInvoiceA4Pro
                   {fmt(grandTotal)}
                 </td>
               </tr>
-              {returnedAmount > 0 && (
-                <>
-                  <tr>
-                    <td
-                      style={{
-                        ...tdCell({ color: '#ea580c', fontWeight: 600 }),
-                      }}
-                    >
-                      Returns ({returns.length})
-                    </td>
-                    <td
-                      style={{
-                        ...tdCell({
-                          textAlign: 'right',
-                          fontFamily: 'ui-monospace, monospace',
-                          color: '#ea580c',
-                        }),
-                      }}
-                    >
-                      − {fmt(returnedAmount)}
-                    </td>
-                  </tr>
-                  <tr style={{ background: '#eef2ff' }}>
-                    <td
-                      style={{
-                        ...tdCell({
-                          color: '#4338ca',
-                          fontWeight: 600,
-                          fontSize: 10,
-                        }),
-                      }}
-                    >
-                      Net Total
-                    </td>
-                    <td
-                      style={{
-                        ...tdCell({
-                          textAlign: 'right',
-                          fontFamily: 'ui-monospace, monospace',
-                          fontWeight: 700,
-                          color: '#3730a3',
-                        }),
-                      }}
-                    >
-                      {fmt(net)}
-                    </td>
-                  </tr>
-                </>
-              )}
               <tr>
-                <td
-                  style={{
-                    ...tdCell({ color: '#059669', fontWeight: 600 }),
-                  }}
-                >
+                <td style={{ ...tdCell({ color: '#059669', fontWeight: 600 }) }}>
                   Paid
                 </td>
                 <td
@@ -819,7 +810,79 @@ export function SalesOrderInvoiceA4({ order, copyLabel }: SalesOrderInvoiceA4Pro
         </div>
       </div>
 
-      {/* ── PAYMENT HISTORY  (full) ─────────────────────────────── */}
+      {/* ── F) PAYMENT strip (tendered / change) ──────────────────── */}
+      {(tendered > 0 || change > 0) && (
+        <div
+          style={{
+            marginBottom: 14,
+            border: `1px solid ${C.border}`,
+            borderRadius: 4,
+            padding: 10,
+          }}
+        >
+          <div
+            style={{
+              fontSize: 9,
+              fontWeight: 800,
+              textTransform: 'uppercase',
+              letterSpacing: '0.1em',
+              color: C.muted,
+              borderBottom: `1px solid ${C.border}`,
+              paddingBottom: 4,
+              marginBottom: 8,
+            }}
+          >
+            Payment Details
+          </div>
+          <div
+            style={{
+              display: 'grid',
+              gridTemplateColumns: 'repeat(4, 1fr)',
+              gap: 8,
+              fontSize: 10,
+            }}
+          >
+            <div>
+              <div style={{ color: C.muted, fontSize: 9, textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+                Method
+              </div>
+              <div style={{ fontWeight: 700, textTransform: 'capitalize', marginTop: 2 }}>
+                {(order.payment_method ?? '').replace(/_/g, ' ') || '—'}
+              </div>
+            </div>
+            {tendered > 0 && (
+              <div>
+                <div style={{ color: C.muted, fontSize: 9, textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+                  Tendered
+                </div>
+                <div style={{ fontWeight: 700, fontFamily: 'ui-monospace, monospace', marginTop: 2 }}>
+                  {fmt(tendered)}
+                </div>
+              </div>
+            )}
+            {change > 0 && (
+              <div>
+                <div style={{ color: C.muted, fontSize: 9, textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+                  Change
+                </div>
+                <div style={{ fontWeight: 700, fontFamily: 'ui-monospace, monospace', marginTop: 2 }}>
+                  {fmt(change)}
+                </div>
+              </div>
+            )}
+            <div>
+              <div style={{ color: C.muted, fontSize: 9, textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+                Tendered
+              </div>
+              <div style={{ fontWeight: 700, fontFamily: 'ui-monospace, monospace', marginTop: 2 }}>
+                {fmt(tendered > 0 ? tendered : paidAmount)}
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── G) PAYMENT HISTORY  ──────────────────────────────────── */}
       {payments.length > 0 && (
         <div
           style={{
@@ -858,8 +921,8 @@ export function SalesOrderInvoiceA4({ order, copyLabel }: SalesOrderInvoiceA4Pro
                 margin: 0,
               }}
             >
-              Total Received: ৳{fmt(
-                payments.reduce((s, p) => s + Number(p.amount ?? 0), 0)
+              Total Received: {fmt(
+                payments.reduce((s: number, p: any) => s + Number(p.amount ?? 0), 0)
               )}
             </p>
           </div>
@@ -878,7 +941,6 @@ export function SalesOrderInvoiceA4({ order, copyLabel }: SalesOrderInvoiceA4Pro
                 <th style={thCell()}>Method</th>
                 <th style={thCell({ textAlign: 'right' })}>Amount</th>
                 <th style={thCell()}>Status</th>
-                <th style={thCell()}>Recorded By</th>
               </tr>
             </thead>
             <tbody>
@@ -921,7 +983,7 @@ export function SalesOrderInvoiceA4({ order, copyLabel }: SalesOrderInvoiceA4Pro
                       }),
                     }}
                   >
-                    ৳{fmt(p.amount)}
+                    {fmt(p.amount)}
                   </td>
                   <td style={{ ...tdCell() }}>
                     <span
@@ -954,9 +1016,6 @@ export function SalesOrderInvoiceA4({ order, copyLabel }: SalesOrderInvoiceA4Pro
                       {p.status ?? '-'}
                     </span>
                   </td>
-                  <td style={{ ...tdCell({ color: '#4b5563' }) }}>
-                    {p.creator?.name ?? '-'}
-                  </td>
                 </tr>
               ))}
             </tbody>
@@ -964,7 +1023,7 @@ export function SalesOrderInvoiceA4({ order, copyLabel }: SalesOrderInvoiceA4Pro
         </div>
       )}
 
-      {/* ── FOOTER  (policy left, QR centre, signature right) ─────── */}
+      {/* ── H) FOOTER  (policy left, QR centre, signature right) ── */}
       <div
         style={{
           display: 'flex',
@@ -1055,4 +1114,4 @@ export function SalesOrderInvoiceA4({ order, copyLabel }: SalesOrderInvoiceA4Pro
   );
 }
 
-export default SalesOrderInvoiceA4;
+export default PosOrderInvoiceA4;

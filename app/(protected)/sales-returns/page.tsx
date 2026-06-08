@@ -13,7 +13,7 @@ import { useRouter } from 'next/navigation';
 import { usePermissions } from '@/hooks/use-permissions';
 import { useAuthStore } from '@/stores/auth-store';
 import apiClient from '@/lib/api/axios';
-import { SalesReturnCreditNote } from '@/components/invoices/CreditNote';
+import { SalesReturnCreditNote } from '@/components/print/invoices';
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
