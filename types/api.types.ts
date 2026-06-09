@@ -18,6 +18,11 @@ export interface TenantSettings {
   store_currency_position?: 'before' | 'after';
   store_tax_included?: boolean;
   logo_url?: string | null;
+  barcode_print_type?: 'a4' | 'thermal';
+  barcode_columns?: number;
+  barcode_label_width?: string;
+  barcode_label_height?: string;
+  barcode_paper_size?: '80mm' | '50mm';
 }
 
 export interface Tenant {

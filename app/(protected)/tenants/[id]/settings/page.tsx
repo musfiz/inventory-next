@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import {
   ArrowLeft,
+  Barcode,
   Printer,
   Settings,
   Store,
@@ -29,6 +30,11 @@ interface TenantSettingsFormData {
   store_currency_position: string;
   store_tax_included: boolean;
   logo_url: string;
+  barcode_print_type: string;
+  barcode_columns: number;
+  barcode_label_width: string;
+  barcode_label_height: string;
+  barcode_paper_size: string;
   [key: string]: any;
 }
 
@@ -47,6 +53,11 @@ const EMPTY_FORM: TenantSettingsFormData = {
   store_currency_position: 'before',
   store_tax_included: false,
   logo_url: '',
+  barcode_print_type: 'a4',
+  barcode_columns: 1,
+  barcode_label_width: '50mm',
+  barcode_label_height: '25mm',
+  barcode_paper_size: '80mm',
 };
 
 export default function TenantSettingsPage() {
@@ -109,14 +120,14 @@ export default function TenantSettingsPage() {
   const getInputClassName = (fieldName: string, base: string) => {
     return errors[fieldName]
       ? base
-          .replace(
-            'border-gray-300 dark:border-gray-600',
-            'border-red-500'
-          )
-          .replace(
-            'focus:border-indigo-500 dark:focus:border-indigo-400',
-            'focus:border-red-500'
-          )
+        .replace(
+          'border-gray-300 dark:border-gray-600',
+          'border-red-500'
+        )
+        .replace(
+          'focus:border-indigo-500 dark:focus:border-indigo-400',
+          'focus:border-red-500'
+        )
       : base;
   };
 
@@ -465,6 +476,124 @@ export default function TenantSettingsPage() {
                     Tax Included in Prices
                   </span>
                 </label>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Section 4: Barcode Print Settings */}
+        <div className="bg-white dark:bg-gray-800 rounded-md shadow-sm border border-gray-200 dark:border-gray-700">
+          <div className="flex items-center gap-2 px-3 py-2 border-b border-gray-200 dark:border-gray-700">
+            <Barcode className="w-4 h-4 text-indigo-600 dark:text-indigo-400" />
+            <h2 className="text-sm font-semibold text-gray-900 dark:text-gray-100">
+              Barcode Print Settings
+            </h2>
+          </div>
+          <div className="p-3">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+              {/* Print Type */}
+              <div>
+                <label className={labelClass}>Print Type</label>
+                <select
+                  name="barcode_print_type"
+                  value={formData.barcode_print_type}
+                  onChange={handleInputChange}
+                  className={getInputClassName('barcode_print_type', inputBase)}
+                >
+                  <option value="a4">A4 Sheet</option>
+                  <option value="thermal">Thermal</option>
+                </select>
+                {getFieldError('barcode_print_type') && (
+                  <p className="mt-1 text-xs text-red-600 dark:text-red-400">
+                    {getFieldError('barcode_print_type')}
+                  </p>
+                )}
+              </div>
+
+              {/* Columns */}
+              <div>
+                <label className={labelClass}>Columns</label>
+                <select
+                  name="barcode_columns"
+                  value={formData.barcode_columns}
+                  onChange={(e) =>
+                    setFormData((prev) => ({
+                      ...prev,
+                      barcode_columns: parseInt(e.target.value),
+                    }))
+                  }
+                  className={getInputClassName('barcode_columns', inputBase)}
+                >
+                  <option value={1}>1</option>
+                  <option value={2}>2</option>
+                  <option value={3}>3</option>
+                </select>
+                {getFieldError('barcode_columns') && (
+                  <p className="mt-1 text-xs text-red-600 dark:text-red-400">
+                    {getFieldError('barcode_columns')}
+                  </p>
+                )}
+              </div>
+
+              {/* Label Width */}
+              <div>
+                <label className={labelClass}>Label Width</label>
+                <input
+                  type="text"
+                  name="barcode_label_width"
+                  value={formData.barcode_label_width}
+                  onChange={handleInputChange}
+                  className={getInputClassName(
+                    'barcode_label_width',
+                    inputBase
+                  )}
+                  placeholder="50mm"
+                />
+                {getFieldError('barcode_label_width') && (
+                  <p className="mt-1 text-xs text-red-600 dark:text-red-400">
+                    {getFieldError('barcode_label_width')}
+                  </p>
+                )}
+              </div>
+
+              {/* Label Height */}
+              <div>
+                <label className={labelClass}>Label Height</label>
+                <input
+                  type="text"
+                  name="barcode_label_height"
+                  value={formData.barcode_label_height}
+                  onChange={handleInputChange}
+                  className={getInputClassName(
+                    'barcode_label_height',
+                    inputBase
+                  )}
+                  placeholder="25mm"
+                />
+                {getFieldError('barcode_label_height') && (
+                  <p className="mt-1 text-xs text-red-600 dark:text-red-400">
+                    {getFieldError('barcode_label_height')}
+                  </p>
+                )}
+              </div>
+
+              {/* Paper Size */}
+              <div>
+                <label className={labelClass}>Paper Size (Thermal)</label>
+                <select
+                  name="barcode_paper_size"
+                  value={formData.barcode_paper_size}
+                  onChange={handleInputChange}
+                  className={getInputClassName('barcode_paper_size', inputBase)}
+                >
+                  <option value="80mm">80mm</option>
+                  <option value="50mm">50mm</option>
+                </select>
+                {getFieldError('barcode_paper_size') && (
+                  <p className="mt-1 text-xs text-red-600 dark:text-red-400">
+                    {getFieldError('barcode_paper_size')}
+                  </p>
+                )}
               </div>
             </div>
           </div>

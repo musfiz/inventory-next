@@ -1,51 +1,66 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { Printer, Loader2 } from 'lucide-react';
 import JsBarcode from 'jsbarcode';
 import { notify } from '@/lib/notifications';
 import barcodeService from '@/services/barcodeService';
 import type { ProductBarcode } from '@/services/barcodeService';
+import { useTenantStore } from '@/stores/tenant-store';
 
-const PRINT_STYLES = `
-  @page { size: A4; margin: 5mm; }
-  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-  body {
-    font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
-    padding: 0;
-    -webkit-print-color-adjust: exact;
-    print-color-adjust: exact;
-  }
-  .page { page-break-after: always; }
-  .page:last-child { page-break-after: avoid; }
-  .sticker-grid {
-    display: grid;
-    grid-template-columns: repeat(3, 1fr);
-    gap: 3mm;
-    padding: 3mm;
-  }
-  .sticker {
-    border: 1px dashed #bbb;
-    padding: 3mm;
-    text-align: center;
-    page-break-inside: avoid;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    min-height: 64mm;
-  }
-  .sticker-barcode-value {
-    font-size: 9px;
-    margin-top: 1.5mm;
-    color: #444;
-    font-family: "Courier New", monospace;
-    letter-spacing: 0.5px;
-  }
-  @media print {
-    .sticker { border: none; }
-  }
-`;
+function buildPrintStyles(settings: {
+  printType: 'a4' | 'thermal';
+  columns: number;
+  labelWidth: string;
+  labelHeight: string;
+  thermalPaperSize: string;
+}): string {
+  const { printType, columns, labelWidth, labelHeight, thermalPaperSize } = settings;
+
+  const pageSize = printType === 'thermal' ? `${thermalPaperSize} 297mm` : 'A4';
+  const pageMargin = printType === 'thermal' ? '2mm' : '5mm';
+
+  return `
+    @page { size: ${pageSize}; margin: ${pageMargin}; }
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+      padding: 0;
+      -webkit-print-color-adjust: exact;
+      print-color-adjust: exact;
+    }
+    .page { page-break-after: always; }
+    .page:last-child { page-break-after: avoid; }
+    .sticker-grid {
+      display: grid;
+      grid-template-columns: repeat(${columns}, 1fr);
+      gap: 3mm;
+      padding: 3mm;
+    }
+    .sticker {
+      border: 1px dashed #bbb;
+      padding: 3mm;
+      text-align: center;
+      page-break-inside: avoid;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      max-width: ${labelWidth};
+      min-height: ${labelHeight};
+    }
+    .sticker-barcode-value {
+      font-size: 9px;
+      margin-top: 1.5mm;
+      color: #444;
+      font-family: "Courier New", monospace;
+      letter-spacing: 0.5px;
+    }
+    @media print {
+      .sticker { border: none; }
+    }
+  `;
+}
 
 function generateBarcodeSVG(value: string, format: 'EAN13' | 'CODE128'): string | null {
   const container = document.createElement('div');
@@ -75,20 +90,40 @@ interface BarcodeStickerPrintProps {
   productName?: string;
   /** If provided, print this single barcode directly (no API fetch) */
   barcodeData?: ProductBarcode;
+  /** Force POS/thermal printing mode, ignoring barcode_print_type setting */
+  posMode?: boolean;
   onComplete?: () => void;
 }
-
-const STICKERS_PER_PAGE = 12; // 3 cols × 4 rows
 
 export function BarcodeStickerPrint({
   productId,
   productName,
   barcodeData,
+  posMode = false,
   onComplete,
 }: BarcodeStickerPrintProps) {
   const [loading, setLoading] = useState(false);
+  const { tenantSettings } = useTenantStore();
 
-  function buildStickerHtml(list: ProductBarcode[]): string {
+  const barcodePrintType = posMode
+    ? 'thermal'
+    : (tenantSettings?.barcode_print_type ?? 'a4') as 'a4' | 'thermal';
+  const barcodeColumns = tenantSettings?.barcode_columns ?? 2;
+  const barcodeLabelWidth = tenantSettings?.barcode_label_width ?? '50mm';
+  const barcodeLabelHeight = tenantSettings?.barcode_label_height ?? '25mm';
+  const thermalPaperSize = posMode
+    ? (tenantSettings?.barcode_paper_size ?? '80mm')
+    : (tenantSettings?.thermal_paper_size ?? '58mm');
+
+  const printStyles = useMemo(() => buildPrintStyles({
+    printType: barcodePrintType,
+    columns: barcodeColumns,
+    labelWidth: barcodeLabelWidth,
+    labelHeight: barcodeLabelHeight,
+    thermalPaperSize,
+  }), [barcodePrintType, barcodeColumns, barcodeLabelWidth, barcodeLabelHeight, thermalPaperSize]);
+
+  function buildStickerHtml(list: ProductBarcode[], perPage: number): string {
     const all: string[] = [];
 
     for (const bc of list) {
@@ -102,23 +137,22 @@ export function BarcodeStickerPrint({
       `);
     }
 
-    // Split into pages of STICKERS_PER_PAGE
     const pages: string[] = [];
-    for (let i = 0; i < all.length; i += STICKERS_PER_PAGE) {
-      const chunk = all.slice(i, i + STICKERS_PER_PAGE);
+    for (let i = 0; i < all.length; i += perPage) {
+      const chunk = all.slice(i, i + perPage);
       pages.push(`<div class="page"><div class="sticker-grid">${chunk.join('')}</div></div>`);
     }
 
     return pages.join('\n');
   }
 
-  function openPrintWindow(htmlBody: string, title: string) {
+  function openPrintWindow(htmlBody: string, styles: string, title: string) {
     const html = `
       <!doctype html>
       <html>
         <head>
           <title>${escapeHtml(title)}</title>
-          <style>${PRINT_STYLES}</style>
+          <style>${styles}</style>
         </head>
         <body>${htmlBody}</body>
       </html>
@@ -140,11 +174,24 @@ export function BarcodeStickerPrint({
   }
 
   const handlePrint = async () => {
-    // ── barcodeData mode: print 12 copies of the single barcode ──
+    // Read fresh settings from store on every print
+    const { tenantSettings: ts } = useTenantStore.getState();
+    const cols = ts?.barcode_columns ?? barcodeColumns;
+    const lw = ts?.barcode_label_width ?? barcodeLabelWidth;
+    const lh = ts?.barcode_label_height ?? barcodeLabelHeight;
+    const pt = posMode ? 'thermal' : (ts?.barcode_print_type ?? barcodePrintType) as 'a4' | 'thermal';
+    const ps = posMode
+      ? (ts?.barcode_paper_size ?? '80mm')
+      : (ts?.thermal_paper_size ?? thermalPaperSize);
+
+    const ss = buildPrintStyles({ printType: pt, columns: cols, labelWidth: lw, labelHeight: lh, thermalPaperSize: ps });
+    const perPage = cols * 4;
+
+    // ── barcodeData mode: print copies of the single barcode ──
     if (barcodeData) {
-      const copies: ProductBarcode[] = Array.from({ length: STICKERS_PER_PAGE }, () => barcodeData);
-      const body = buildStickerHtml(copies);
-      openPrintWindow(body, `Barcode Stickers \u2013 ${productName ?? ''}`);
+      const copies: ProductBarcode[] = Array.from({ length: perPage }, () => barcodeData);
+      const body = buildStickerHtml(copies, perPage);
+      openPrintWindow(body, ss, `Barcode Stickers \u2013 ${productName ?? ''}`);
       onComplete?.();
       return;
     }
@@ -178,8 +225,8 @@ export function BarcodeStickerPrint({
         return;
       }
 
-      const body = buildStickerHtml(list);
-      openPrintWindow(body, `Barcode Stickers \u2013 ${productName ?? ''}`);
+      const body = buildStickerHtml(list, perPage);
+      openPrintWindow(body, ss, `Barcode Stickers \u2013 ${productName ?? ''}`);
     } catch (err: any) {
       notify.error(err?.response?.data?.message || 'Failed to load barcodes');
     } finally {
@@ -188,13 +235,18 @@ export function BarcodeStickerPrint({
     }
   };
 
+  const btnTitle = posMode ? 'POS Print Barcode Sticker' : 'Print Barcode Stickers';
+  const btnClass = posMode
+    ? 'p-1 rounded text-orange-600 hover:bg-orange-50 dark:hover:bg-orange-900/30 cursor-pointer disabled:opacity-50'
+    : 'p-1 rounded text-teal-600 hover:bg-teal-50 dark:hover:bg-teal-900/30 cursor-pointer disabled:opacity-50';
+
   return (
     <button
       onClick={handlePrint}
       disabled={loading}
-      title="Print Barcode Stickers"
-      aria-label="Print Barcode Stickers"
-      className="p-1 rounded text-teal-600 hover:bg-teal-50 dark:hover:bg-teal-900/30 cursor-pointer disabled:opacity-50"
+      title={btnTitle}
+      aria-label={btnTitle}
+      className={btnClass}
     >
       {loading ? (
         <Loader2 className="w-3.5 h-3.5 animate-spin" />
