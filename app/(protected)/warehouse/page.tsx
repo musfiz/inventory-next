@@ -13,7 +13,7 @@ import { useRouter } from 'next/navigation';
 import { usePermissions } from '@/hooks/use-permissions';
 
 export default function WarehousePage() {
-  const { isSuperAdmin, hasPermission, isHydrated } = usePermissions();
+  const { isSuperAdmin, hasPermission, hasAnyPermission, isHydrated } = usePermissions();
   const router = useRouter();
 
   useEffect(() => {
@@ -356,28 +356,36 @@ export default function WarehousePage() {
         </span>
       ),
     },
-    {
-      id: 'actions',
-      header: 'Actions',
-      cell: ({ row }) => (
-        <div className="flex items-center gap-2">
-          <button
-            onClick={() => handleEditWarehouse(row.original)}
-            className="p-1 text-green-600 hover:text-green-800 dark:text-green-400 dark:hover:text-green-300 cursor-pointer"
-            title="Edit"
-          >
-            <Edit className="w-4 h-4" />
-          </button>
-          <button
-            onClick={() => handleDelete(row.original)}
-            className="p-1 text-red-600 hover:text-red-800 dark:text-red-400 dark:hover:text-red-300 cursor-pointer"
-            title="Delete"
-          >
-            <Trash2 className="w-4 h-4" />
-          </button>
-        </div>
-      ),
-    },
+    ...(isSuperAdmin || hasAnyPermission(['edit-warehouse', 'delete-warehouse'])
+      ? [
+        {
+          id: 'actions',
+          header: 'Actions',
+          cell: ({ row }: { row: any }) => (
+            <div className="flex items-center gap-2">
+              {(isSuperAdmin || hasPermission('edit-warehouse')) && (
+                <button
+                  onClick={() => handleEditWarehouse(row.original)}
+                  className="p-1 text-green-600 hover:text-green-800 dark:text-green-400 dark:hover:text-green-300 cursor-pointer"
+                  title="Edit"
+                >
+                  <Edit className="w-4 h-4" />
+                </button>
+              )}
+              {(isSuperAdmin || hasPermission('delete-warehouse')) && (
+                <button
+                  onClick={() => handleDelete(row.original)}
+                  className="p-1 text-red-600 hover:text-red-800 dark:text-red-400 dark:hover:text-red-300 cursor-pointer"
+                  title="Delete"
+                >
+                  <Trash2 className="w-4 h-4" />
+                </button>
+              )}
+            </div>
+          ),
+        },
+      ]
+      : []),
   ];
 
   // Build API endpoint with filters
@@ -397,13 +405,15 @@ export default function WarehousePage() {
             Warehouses
           </h1>
         </div>
-        <button
-          onClick={handleAddWarehouse}
-          className="flex items-center gap-2 px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium rounded-sm transition-colors duration-200 cursor-pointer"
-        >
-          <Plus className="w-4 h-4" />
-          Add Warehouse
-        </button>
+        {(isSuperAdmin || hasPermission('create-warehouse')) && (
+          <button
+            onClick={handleAddWarehouse}
+            className="flex items-center gap-2 px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium rounded-sm transition-colors duration-200 cursor-pointer"
+          >
+            <Plus className="w-4 h-4" />
+            Add Warehouse
+          </button>
+        )}
       </div>
 
       {/* Add/Edit Warehouse Form */}
