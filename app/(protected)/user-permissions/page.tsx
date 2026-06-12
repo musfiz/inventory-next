@@ -57,10 +57,10 @@ export default function UserPermissionsPage() {
   // Redirect if no permission to view user permissions
   useEffect(() => {
     if (!isHydrated) return;
-    if (!isSuperAdmin && !hasPermission('view-user-permission')) {
-      router.replace('/dashboard');
+    if (!isSuperAdmin && !isTenantAdmin) {
+      router.replace('/access-denied');
     }
-  }, [isHydrated, isSuperAdmin, hasPermission, router]);
+  }, [isHydrated, isSuperAdmin, isTenantAdmin, router]);
 
   // Filter modules when search query or module filter changes
   useEffect(() => {
@@ -463,7 +463,7 @@ export default function UserPermissionsPage() {
       )}
 
       {/* Save Button - only visible to users with create-user-permission */}
-      {selectedUserId && (isSuperAdmin || hasPermission('create-user-permission')) && (
+      {selectedUserId && (isSuperAdmin || hasPermission('create-user-permission') || hasPermission('update-user-permissions')) && (
         <div className="flex justify-end gap-3">
           <button
             onClick={handleSavePermissions}

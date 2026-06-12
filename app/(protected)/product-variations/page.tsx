@@ -7,10 +7,19 @@ import DataTable from '@/components/ui/datatable';
 import { ProductVariation } from '@/types/api.types';
 import productVariationService from '@/services/productVariationService';
 import { confirm, notify } from '@/lib/notifications';
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { usePermissions } from '@/hooks/use-permissions';
 
 export default function ProductVariationsPage() {
   const router = useRouter();
+  const { hasPermission, isHydrated } = usePermissions();
+
+  useEffect(() => {
+    if (isHydrated && !hasPermission('view-product-variation')) {
+      router.push('/access-denied');
+    }
+  }, [hasPermission, isHydrated, router]);
+
   const [refreshKey, setRefreshKey] = useState(0);
 
   const columns: ColumnDef<ProductVariation>[] = [
@@ -117,8 +126,8 @@ export default function ProductVariationsPage() {
       cell: ({ row }) => (
         <span
           className={`px-1.5 py-0.5 text-xs font-medium rounded ${row.original.is_active
-              ? 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400'
-              : 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400'
+            ? 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400'
+            : 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400'
             }`}
         >
           {row.original.is_active ? 'Active' : 'Inactive'}
@@ -131,37 +140,41 @@ export default function ProductVariationsPage() {
       meta: { width: '10%' },
       cell: ({ row }) => (
         <div className="flex items-center gap-1">
-          <button
-            className="p-1 text-blue-600 hover:text-blue-900 dark:text-blue-400 dark:hover:text-blue-300 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded cursor-pointer"
-            title="Edit"
-            onClick={() => router.push(`/product-variations/${row.original.id}/edit`)}
-          >
-            <Edit className="w-3.5 h-3.5" />
-          </button>
-          <button
-            className="p-1 text-red-600 hover:text-red-900 dark:text-red-400 dark:hover:text-red-300 hover:bg-red-50 dark:hover:bg-red-900/20 rounded cursor-pointer"
-            title="Delete"
-            onClick={async () => {
-              const result = await confirm({
-                title: 'Delete Variation',
-                html: `Are you sure you want to delete variation <strong>${row.original.sku}</strong>?<br><br>This action cannot be undone.`,
-                confirmButtonText: 'Delete',
-                cancelButtonText: 'Cancel',
-              });
+          {hasPermission('update-products') && (
+            <button
+              className="p-1 text-blue-600 hover:text-blue-900 dark:text-blue-400 dark:hover:text-blue-300 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded cursor-pointer"
+              title="Edit"
+              onClick={() => router.push(`/product-variations/${row.original.id}/edit`)}
+            >
+              <Edit className="w-3.5 h-3.5" />
+            </button>
+          )}
+          {hasPermission('delete-products') && (
+            <button
+              className="p-1 text-red-600 hover:text-red-900 dark:text-red-400 dark:hover:text-red-300 hover:bg-red-50 dark:hover:bg-red-900/20 rounded cursor-pointer"
+              title="Delete"
+              onClick={async () => {
+                const result = await confirm({
+                  title: 'Delete Variation',
+                  html: `Are you sure you want to delete variation <strong>${row.original.sku}</strong>?<br><br>This action cannot be undone.`,
+                  confirmButtonText: 'Delete',
+                  cancelButtonText: 'Cancel',
+                });
 
-              if (result.isConfirmed) {
-                try {
-                  await productVariationService.deleteVariation(row.original.id);
-                  notify.success('Variation deleted successfully');
-                  setRefreshKey(prev => prev + 1); // Refresh the product list
-                } catch (error) {
-                  notify.error('Failed to delete variation');
+                if (result.isConfirmed) {
+                  try {
+                    await productVariationService.deleteVariation(row.original.id);
+                    notify.success('Variation deleted successfully');
+                    setRefreshKey(prev => prev + 1); // Refresh the product list
+                  } catch (error) {
+                    notify.error('Failed to delete variation');
+                  }
                 }
-              }
-            }}
-          >
-            <Trash2 className="w-3.5 h-3.5" />
-          </button>
+              }}
+            >
+              <Trash2 className="w-3.5 h-3.5" />
+            </button>
+          )}
         </div>
       ),
     },
@@ -177,13 +190,15 @@ export default function ProductVariationsPage() {
             Product Variations
           </h1>
         </div>
-        <button
-          onClick={() => router.push('/product-variations/add')}
-          className="flex items-center gap-2 px-2 py-1 text-sm bg-indigo-600 hover:bg-indigo-700 text-white font-medium rounded-sm transition-colors duration-200 cursor-pointer"
-        >
-          <Plus className="w-6 h-6" />
-          Add Variation
-        </button>
+        {hasPermission('create-products') && (
+          <button
+            onClick={() => router.push('/product-variations/add')}
+            className="flex items-center gap-2 px-2 py-1 text-sm bg-indigo-600 hover:bg-indigo-700 text-white font-medium rounded-sm transition-colors duration-200 cursor-pointer"
+          >
+            <Plus className="w-6 h-6" />
+            Add Variation
+          </button>
+        )}
       </div>
 
       {/* DataTable */}

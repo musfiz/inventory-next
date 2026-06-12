@@ -12,6 +12,7 @@ import { usePermissions } from '@/hooks/use-permissions';
 import { confirm, notify, success } from '@/lib/notifications';
 import { userService } from '@/services';
 
+
 interface UserForm {
   name: string;
   email: string;
@@ -47,13 +48,14 @@ export default function UsersPage() {
     is_active: true,
   });
 
+  const canViewUser = isHydrated && hasPermission('view-user');
+
   // Redirect if no access to view users
   useEffect(() => {
-    if (!isHydrated) return;
-    if (!isSuperAdmin && !hasPermission('view-users')) {
-      router.replace('/dashboard');
+    if (!canViewUser) {
+      router.push('/access-denied');
     }
-  }, [isHydrated, isSuperAdmin, hasPermission, router]);
+  }, [canViewUser, router]);
 
   const resetForm = () => {
     setForm({

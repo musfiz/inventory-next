@@ -1,7 +1,7 @@
 'use client';
 
-import { useState, useMemo } from 'react';
-import { useSearchParams } from 'next/navigation';
+import { useState, useMemo, useEffect } from 'react';
+import { useSearchParams, useRouter } from 'next/navigation';
 import { Image as ImageIcon, Plus } from 'lucide-react';
 import DataTable from '@/components/ui/datatable';
 import { ImageUploadForm } from './components';
@@ -10,6 +10,7 @@ import { TABLE_CONFIG } from './constants';
 import { productImageService } from '@/services';
 import { notify, confirm } from '@/lib/notifications';
 import { ProductImage } from '@/types/api.types';
+import { usePermissions } from '@/hooks/use-permissions';
 
 /**
  * Product Images Management Page
@@ -17,9 +18,17 @@ import { ProductImage } from '@/types/api.types';
  */
 export default function ProductImagesPage() {
   const searchParams = useSearchParams();
+  const router = useRouter();
   const productId = searchParams.get('product_id');
+  const { hasPermission, isHydrated } = usePermissions();
   const [showAddForm, setShowAddForm] = useState(false);
   const [refreshKey, setRefreshKey] = useState(0);
+
+  useEffect(() => {
+    if (isHydrated && !hasPermission('view-product-image')) {
+      router.push('/access-denied');
+    }
+  }, [isHydrated, hasPermission, router]);
 
   // Refresh table
   const refreshImages = () => {
@@ -69,8 +78,8 @@ export default function ProductImagesPage() {
 
   // Memoize table columns
   const columns = useMemo(
-    () => createProductImageColumns(handleDelete, handleSetPrimary),
-    []
+    () => createProductImageColumns(handleDelete, handleSetPrimary, hasPermission('delete-product-images'), hasPermission('update-product-images')),
+    [hasPermission]
   );
 
   // Handle upload success
@@ -97,14 +106,16 @@ export default function ProductImagesPage() {
           </h1>
         </div>
 
-        <button
-          onClick={() => setShowAddForm(true)}
-          className="flex items-center gap-2 px-4 py-1 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium rounded-sm transition-colors duration-200 cursor-pointer shadow-sm"
-          type="button"
-        >
-          <Plus className="w-4 h-4" />
-          Add Image
-        </button>
+        {hasPermission('upload-product-images') && (
+          <button
+            onClick={() => setShowAddForm(true)}
+            className="flex items-center gap-2 px-4 py-1 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium rounded-sm transition-colors duration-200 cursor-pointer shadow-sm"
+            type="button"
+          >
+            <Plus className="w-4 h-4" />
+            Add Image
+          </button>
+        )}
       </header>
 
       {/* Upload Form */}

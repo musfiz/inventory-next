@@ -9,6 +9,7 @@ import { Brand, Category, Unit } from '@/types/api.types';
 import CustomSelect, { SelectOption } from '@/components/ui/custom-select';
 import commonService from '@/services/commonService';
 import { useAuthStore } from '@/stores/auth-store';
+import { usePermissions } from '@/hooks/use-permissions';
 import { BUSINESS_TYPES } from '@/lib/constants';
 import { GiSave } from 'react-icons/gi';
 
@@ -47,6 +48,13 @@ function AddProductPage() {
   const searchParams = useSearchParams();
   const editId = searchParams?.get('edit');
   const user = useAuthStore(state => state.user);
+  const { hasPermission, isHydrated } = usePermissions();
+
+  useEffect(() => {
+    if (isHydrated && !hasPermission(editId ? 'edit-product' : 'create-product')) {
+      router.push('/access-denied');
+    }
+  }, [hasPermission, isHydrated, router, editId]);
   const isSuperAdmin = user?.user_type === 'super_admin';
   const tenantBusinessType =
     (user as any)?.tenant?.business_type ||
@@ -237,7 +245,7 @@ function AddProductPage() {
     (async () => {
       try {
         setLoadingEdit(true);
-        const res: any = await productService.getProduct(Number(editId));
+        const res: any = await productService.getProduct(editId!);
         const p = res?.data?.product || res?.product || res;
         if (!mounted || !p) return;
         setEditingId(p.id);
@@ -481,11 +489,10 @@ function AddProductPage() {
                   name="name"
                   value={formData.name}
                   onChange={handleInputChange}
-                  className={`w-full px-2.5 py-1 text-sm bg-white dark:bg-gray-700 border ${
-                    hasFieldError('name')
+                  className={`w-full px-2.5 py-1 text-sm bg-white dark:bg-gray-700 border ${hasFieldError('name')
                       ? 'border-red-500 focus:border-red-500'
                       : 'border-gray-300 dark:border-gray-600 focus:border-indigo-500 dark:focus:border-indigo-400'
-                  } rounded-sm text-gray-900 dark:text-gray-100 focus:outline-none`}
+                    } rounded-sm text-gray-900 dark:text-gray-100 focus:outline-none`}
                   placeholder="Enter product name"
                 />
                 {hasFieldError('name') && (
@@ -532,11 +539,10 @@ function AddProductPage() {
                 value={formData.description}
                 onChange={handleInputChange}
                 rows={2}
-                className={`w-full px-2.5 py-1 text-sm bg-white dark:bg-gray-700 border ${
-                  hasFieldError('description')
+                className={`w-full px-2.5 py-1 text-sm bg-white dark:bg-gray-700 border ${hasFieldError('description')
                     ? 'border-red-500 focus:border-red-500'
                     : 'border-gray-300 dark:border-gray-600 focus:border-indigo-500 dark:focus:border-indigo-400'
-                } rounded-sm text-gray-900 dark:text-gray-100 focus:outline-none`}
+                  } rounded-sm text-gray-900 dark:text-gray-100 focus:outline-none`}
                 placeholder="Enter product description"
               />
               {hasFieldError('description') && (
@@ -630,11 +636,10 @@ function AddProductPage() {
                   name="type"
                   value={formData.type}
                   onChange={handleInputChange}
-                  className={`w-full px-2.5 py-1 text-sm bg-white dark:bg-gray-700 border ${
-                    hasFieldError('type')
+                  className={`w-full px-2.5 py-1 text-sm bg-white dark:bg-gray-700 border ${hasFieldError('type')
                       ? 'border-red-500 focus:border-red-500'
                       : 'border-gray-300 dark:border-gray-600 focus:border-indigo-500 dark:focus:border-indigo-400'
-                  } rounded-sm text-gray-900 dark:text-gray-100 focus:outline-none`}
+                    } rounded-sm text-gray-900 dark:text-gray-100 focus:outline-none`}
                 >
                   <option value="simple">Simple Product</option>
                   <option value="variable">Variable Product</option>
@@ -654,11 +659,10 @@ function AddProductPage() {
                   name="status"
                   value={formData.status}
                   onChange={handleInputChange}
-                  className={`w-full px-2.5 py-1 text-sm bg-white dark:bg-gray-700 border ${
-                    hasFieldError('status')
+                  className={`w-full px-2.5 py-1 text-sm bg-white dark:bg-gray-700 border ${hasFieldError('status')
                       ? 'border-red-500 focus:border-red-500'
                       : 'border-gray-300 dark:border-gray-600 focus:border-indigo-500 dark:focus:border-indigo-400'
-                  } rounded-sm text-gray-900 dark:text-gray-100 focus:outline-none`}
+                    } rounded-sm text-gray-900 dark:text-gray-100 focus:outline-none`}
                 >
                   <option value="active">Active</option>
                   <option value="inactive">Inactive</option>
@@ -694,11 +698,10 @@ function AddProductPage() {
                   step="0.01"
                   min="0"
                   max="100"
-                  className={`w-full px-2.5 py-1 text-sm bg-white dark:bg-gray-700 border ${
-                    hasFieldError('tax_rate')
+                  className={`w-full px-2.5 py-1 text-sm bg-white dark:bg-gray-700 border ${hasFieldError('tax_rate')
                       ? 'border-red-500 focus:border-red-500'
                       : 'border-gray-300 dark:border-gray-600 focus:border-indigo-500 dark:focus:border-indigo-400'
-                  } rounded-sm text-gray-900 dark:text-gray-100 focus:outline-none`}
+                    } rounded-sm text-gray-900 dark:text-gray-100 focus:outline-none`}
                   placeholder="0.00"
                 />
                 {hasFieldError('tax_rate') && (
@@ -741,11 +744,10 @@ function AddProductPage() {
                   value={formData.low_stock_threshold}
                   onChange={handleInputChange}
                   min="0"
-                  className={`w-full px-2.5 py-1 text-sm bg-white dark:bg-gray-700 border ${
-                    hasFieldError('low_stock_threshold')
+                  className={`w-full px-2.5 py-1 text-sm bg-white dark:bg-gray-700 border ${hasFieldError('low_stock_threshold')
                       ? 'border-red-500 focus:border-red-500'
                       : 'border-gray-300 dark:border-gray-600 focus:border-indigo-500 dark:focus:border-indigo-400'
-                  } rounded-sm text-gray-900 dark:text-gray-100 focus:outline-none`}
+                    } rounded-sm text-gray-900 dark:text-gray-100 focus:outline-none`}
                   placeholder="10"
                 />
                 {hasFieldError('low_stock_threshold') && (
@@ -765,11 +767,10 @@ function AddProductPage() {
                   value={formData.reorder_point}
                   onChange={handleInputChange}
                   min="0"
-                  className={`w-full px-2.5 py-1 text-sm bg-white dark:bg-gray-700 border ${
-                    hasFieldError('reorder_point')
+                  className={`w-full px-2.5 py-1 text-sm bg-white dark:bg-gray-700 border ${hasFieldError('reorder_point')
                       ? 'border-red-500 focus:border-red-500'
                       : 'border-gray-300 dark:border-gray-600 focus:border-indigo-500 dark:focus:border-indigo-400'
-                  } rounded-sm text-gray-900 dark:text-gray-100 focus:outline-none`}
+                    } rounded-sm text-gray-900 dark:text-gray-100 focus:outline-none`}
                   placeholder="Reorder point"
                 />
                 {hasFieldError('reorder_point') && (
@@ -789,11 +790,10 @@ function AddProductPage() {
                   value={formData.display_order}
                   onChange={handleInputChange}
                   min="0"
-                  className={`w-full px-2.5 py-1 text-sm bg-white dark:bg-gray-700 border ${
-                    hasFieldError('display_order')
+                  className={`w-full px-2.5 py-1 text-sm bg-white dark:bg-gray-700 border ${hasFieldError('display_order')
                       ? 'border-red-500 focus:border-red-500'
                       : 'border-gray-300 dark:border-gray-600 focus:border-indigo-500 dark:focus:border-indigo-400'
-                  } rounded-sm text-gray-900 dark:text-gray-100 focus:outline-none`}
+                    } rounded-sm text-gray-900 dark:text-gray-100 focus:outline-none`}
                   placeholder="Display order"
                 />
                 {hasFieldError('display_order') && (
@@ -888,16 +888,18 @@ function AddProductPage() {
 
         {/* Submit Button */}
         <div className="flex justify-start">
-          <button
-            type="submit"
-            disabled={isLoading}
-            className="flex items-center justify-center gap-2 px-5 py-1.5 text-sm bg-indigo-600 hover:bg-indigo-700 disabled:bg-gray-400 text-white rounded-sm transition-colors cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
-          >
-            <GiSave className="w-4 h-4" />
-            {isLoading
-              ? (editingId ? 'Updating...' : 'Creating...')
-              : (editingId ? 'Update Product' : 'Create Product')}
-          </button>
+          {hasPermission(editingId ? 'update-products' : 'create-products') && (
+            <button
+              type="submit"
+              disabled={isLoading}
+              className="flex items-center justify-center gap-2 px-5 py-1.5 text-sm bg-indigo-600 hover:bg-indigo-700 disabled:bg-gray-400 text-white rounded-sm transition-colors cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              <GiSave className="w-4 h-4" />
+              {isLoading
+                ? (editingId ? 'Updating...' : 'Creating...')
+                : (editingId ? 'Update Product' : 'Create Product')}
+            </button>
+          )}
         </div>
       </form>
     </div>

@@ -2,6 +2,8 @@
 
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
+import { usePermissions } from '@/hooks/use-permissions';
 import { ColumnDef } from '@tanstack/react-table';
 import { ArrowLeftRight, ArrowDownToLine, ArrowUpFromLine, RotateCcw, SlidersHorizontal, Layers, Minus, AlertTriangle, Clock, Eye, X } from 'lucide-react';
 import DataTable from '@/components/ui/datatable';
@@ -63,6 +65,8 @@ function MovementTypeBadge({ type }: { type: string }) {
 }
 
 export default function StockMovementsPage() {
+  const router = useRouter();
+  const { hasPermission, isHydrated } = usePermissions();
   const [selectedType, setSelectedType] = useState('');
   const [refreshKey, setRefreshKey] = useState(0);
   const [summary, setSummary] = useState<StockMovementSummary>({ total: 0, inbound: 0, outbound: 0, adjustment: 0 });
@@ -115,6 +119,12 @@ export default function StockMovementsPage() {
       .then(setSummary)
       .catch(() => { });
   }, []);
+
+  useEffect(() => {
+    if (!hasPermission('view-stock-movement')) {
+      router.replace('/access-denied');
+    }
+  }, [isHydrated, hasPermission, router]);
 
   const columns: ColumnDef<StockMovement>[] = [
     {
@@ -189,13 +199,15 @@ export default function StockMovementsPage() {
       id: 'actions',
       header: 'Action',
       cell: ({ row }) => (
-        <button
-          onClick={() => setSelectedMovement(row.original)}
-          className="inline-flex items-center gap-1 px-2 py-1 rounded text-xs font-medium bg-blue-50 text-blue-600 hover:bg-blue-100 dark:bg-blue-900/20 dark:text-blue-400 dark:hover:bg-blue-900/40 transition-colors"
-        >
-          <Eye className="w-3 h-3" />
-          Details
-        </button>
+        hasPermission('view-stock-movements') && (
+          <button
+            onClick={() => setSelectedMovement(row.original)}
+            className="inline-flex items-center gap-1 px-2 py-1 rounded text-xs font-medium bg-blue-50 text-blue-600 hover:bg-blue-100 dark:bg-blue-900/20 dark:text-blue-400 dark:hover:bg-blue-900/40 transition-colors"
+          >
+            <Eye className="w-3 h-3" />
+            Details
+          </button>
+        )
       ),
     },
   ];

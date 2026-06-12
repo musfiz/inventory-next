@@ -14,6 +14,7 @@ import {
 import { notify } from '@/lib/notifications';
 import { tenantService } from '@/services/tenantService';
 import { GiSave } from 'react-icons/gi';
+import { usePermissions } from '@/hooks/use-permissions';
 
 interface TenantSettingsFormData {
   default_printer_type: string;
@@ -63,6 +64,14 @@ const EMPTY_FORM: TenantSettingsFormData = {
 export default function TenantSettingsPage() {
   const params = useParams();
   const router = useRouter();
+  const { isSuperAdmin, isHydrated } = usePermissions();
+
+  useEffect(() => {
+    if (isHydrated && !isSuperAdmin) {
+      router.push('/access-denied');
+    }
+  }, [isSuperAdmin, isHydrated, router]);
+
   const tenantId = params.id as string;
 
   const [isLoading, setIsLoading] = useState(false);

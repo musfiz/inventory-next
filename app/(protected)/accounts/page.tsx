@@ -323,22 +323,26 @@ export default function AccountsPage() {
                           </td>
                           <td className="px-4 py-3 text-right">
                             <div className="flex justify-end gap-1">
-                              <button
-                                onClick={() => openEdit(account)}
-                                disabled={account.is_system}
-                                className="inline-flex h-8 w-8 items-center justify-center rounded-md border border-transparent text-gray-400 transition hover:border-blue-200 hover:bg-blue-50 hover:text-blue-600 disabled:cursor-not-allowed disabled:opacity-30 dark:hover:border-blue-900 dark:hover:bg-blue-950/40"
-                                title="Edit"
-                              >
-                                <Pencil size={14} />
-                              </button>
-                              <button
-                                onClick={() => handleDelete(account)}
-                                disabled={account.is_system}
-                                className="inline-flex h-8 w-8 items-center justify-center rounded-md border border-transparent text-gray-400 transition hover:border-red-200 hover:bg-red-50 hover:text-red-600 disabled:cursor-not-allowed disabled:opacity-30 dark:hover:border-red-900 dark:hover:bg-red-950/40"
-                                title="Delete"
-                              >
-                                <Trash2 size={14} />
-                              </button>
+                              {hasPermission('update-account') && (
+                                <button
+                                  onClick={() => openEdit(account)}
+                                  disabled={account.is_system}
+                                  className="inline-flex h-8 w-8 items-center justify-center rounded-md border border-transparent text-gray-400 transition hover:border-blue-200 hover:bg-blue-50 hover:text-blue-600 disabled:cursor-not-allowed disabled:opacity-30 dark:hover:border-blue-900 dark:hover:bg-blue-950/40"
+                                  title="Edit"
+                                >
+                                  <Pencil size={14} />
+                                </button>
+                              )}
+                              {hasPermission('delete-account') && (
+                                <button
+                                  onClick={() => handleDelete(account)}
+                                  disabled={account.is_system}
+                                  className="inline-flex h-8 w-8 items-center justify-center rounded-md border border-transparent text-gray-400 transition hover:border-red-200 hover:bg-red-50 hover:text-red-600 disabled:cursor-not-allowed disabled:opacity-30 dark:hover:border-red-900 dark:hover:bg-red-950/40"
+                                  title="Delete"
+                                >
+                                  <Trash2 size={14} />
+                                </button>
+                              )}
                             </div>
                           </td>
                         </tr>

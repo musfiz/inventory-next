@@ -6,6 +6,7 @@ import { Building2, ArrowLeft } from 'lucide-react';
 import { notify } from '@/lib/notifications';
 import { tenantService } from '@/services/tenantService';
 import { GiSave } from 'react-icons/gi';
+import { usePermissions } from '@/hooks/use-permissions';
 import { BUSINESS_TYPES, SUBSCRIPTION_PLANS, SUBSCRIPTION_STATUSES } from '@/lib/constants';
 
 interface TenantEditFormData {
@@ -63,6 +64,14 @@ const EMPTY_FORM: TenantEditFormData = {
 export default function TenantEditPage() {
   const params = useParams();
   const router = useRouter();
+  const { isSuperAdmin, isHydrated } = usePermissions();
+
+  useEffect(() => {
+    if (isHydrated && !isSuperAdmin) {
+      router.push('/access-denied');
+    }
+  }, [isSuperAdmin, isHydrated, router]);
+
   const tenantId = params.id as string;
 
   const [isLoading, setIsLoading] = useState(false);

@@ -398,17 +398,21 @@ export default function PosSessionPage() {
             <button onClick={() => setDetailSession(s)} title="View details" className="p-1 rounded text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/30 cursor-pointer">
               <Eye className="w-4 h-4" />
             </button>
-            {s.status === 'open' && (
+            {s.status === 'open' && hasPermission('close-pos-session') && (
               <button onClick={() => handleCloseModal(s)} title="Close session" className="p-1 rounded text-orange-600 hover:bg-orange-50 dark:hover:bg-orange-900/30 cursor-pointer">
                 <Lock className="w-4 h-4" />
               </button>
             )}
-            <button onClick={() => handleEdit(s)} title="Edit session" className="p-1 rounded text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-700 cursor-pointer">
-              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" /></svg>
-            </button>
-            <button onClick={() => handleDelete(s)} title="Delete session" className="p-1 rounded text-red-600 hover:bg-red-50 dark:hover:bg-red-900/30 cursor-pointer">
-              <X className="w-4 h-4" />
-            </button>
+            {hasPermission('edit-pos-session') && (
+              <button onClick={() => handleEdit(s)} title="Edit session" className="p-1 rounded text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-700 cursor-pointer">
+                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" /></svg>
+              </button>
+            )}
+            {hasPermission('delete-pos-session') && (
+              <button onClick={() => handleDelete(s)} title="Delete session" className="p-1 rounded text-red-600 hover:bg-red-50 dark:hover:bg-red-900/30 cursor-pointer">
+                <X className="w-4 h-4" />
+              </button>
+            )}
           </div>
         );
       },
@@ -655,12 +659,14 @@ export default function PosSessionPage() {
       {/* Header */}
       <div className="flex items-center justify-between">
         <h1 className="text-xl font-bold text-gray-900 dark:text-gray-100">POS Sessions</h1>
-        <button
-          onClick={handleOpenNew}
-          className="flex items-center gap-2 px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium rounded-sm transition-colors cursor-pointer"
-        >
-          <Plus className="w-4 h-4" /> Add Session
-        </button>
+        {hasPermission('create-pos-session') && (
+          <button
+            onClick={handleOpenNew}
+            className="flex items-center gap-2 px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium rounded-sm transition-colors cursor-pointer"
+          >
+            <Plus className="w-4 h-4" /> Add Session
+          </button>
+        )}
       </div>
 
       {/* ── Open Session Form ── */}
@@ -791,11 +797,7 @@ export default function PosSessionPage() {
             {/* Header */}
             <div className={`px-6 py-4 rounded-t-2xl flex items-start justify-between text-white ${detailSession.status === 'open'
               ? 'bg-gradient-to-r from-green-600 to-emerald-600'
-              : detailSession.status === 'paused'
-                ? 'bg-gradient-to-r from-yellow-500 to-amber-500'
-                : detailSession.status === 'suspended'
-                  ? 'bg-gradient-to-r from-red-600 to-rose-600'
-                  : 'bg-gradient-to-r from-gray-600 to-slate-700'
+              : 'bg-gradient-to-r from-gray-600 to-slate-700'
               }`}>
               <div>
                 <p className="text-xs font-semibold uppercase tracking-widest opacity-75 mb-0.5">POS Session</p>

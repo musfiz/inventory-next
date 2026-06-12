@@ -235,6 +235,16 @@ export const notify = {
       icon: 'warning',
       timer: 3000,
     }),
+
+  // Single arg:  notify.info('message')              → title='Info', text='message'
+  // Two args:    notify.info('Title', 'detail')      → title='Title', text='detail'
+  info: (titleOrMessage?: string, text?: string) =>
+    notifications.toast({
+      title: text ? (titleOrMessage || 'Info') : 'Info',
+      text: text || titleOrMessage || '',
+      icon: 'info',
+      timer: 3000,
+    }),
 };
 
 /*

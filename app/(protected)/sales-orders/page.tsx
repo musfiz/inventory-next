@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { ColumnDef } from '@tanstack/react-table';
 import { List, Plus, Edit, Trash2, Eye, X, DollarSign } from 'lucide-react';
 import DataTable from '@/components/ui/datatable';
@@ -8,10 +8,18 @@ import { formatDate } from '@/lib/utils/date';
 import { notify, confirm } from '@/lib/notifications';
 import salesOrderService from '@/services/salesOrderService';
 import { useRouter } from 'next/navigation';
+import { usePermissions } from '@/hooks/use-permissions';
 import { SalesOrderPrintMenu } from '@/components/print';
 
 export default function SalesOrdersPage() {
   const router = useRouter();
+  const { hasPermission, isHydrated } = usePermissions();
+
+  useEffect(() => {
+    if (isHydrated && !hasPermission('view-sales-orders')) {
+      router.push('/access-denied');
+    }
+  }, [hasPermission, isHydrated, router]);
 
   const [refreshKey, setRefreshKey] = useState(0);
   const [showDetails, setShowDetails] = useState(false);
@@ -205,7 +213,15 @@ export default function SalesOrdersPage() {
 
       const res = await salesOrderService.recordPayment(currentSO.uuid, payload);
       if (!res?.success) {
-        setPaymentErrors(res?.errors ?? { _: res?.message ?? 'Failed to record payment' });
+        const apiErrors: Record<string, string> = {};
+        if (res?.errors) {
+          for (const [key, msgs] of Object.entries(res.errors)) {
+            apiErrors[key] = Array.isArray(msgs) ? msgs[0] : msgs;
+          }
+        } else {
+          apiErrors._ = res?.message ?? 'Failed to record payment';
+        }
+        setPaymentErrors(apiErrors);
         notify.error(res?.message ?? 'Failed to record payment');
         return;
       }
@@ -215,10 +231,11 @@ export default function SalesOrdersPage() {
       // Refresh the SO details from the response (the new
       // sales_order reflects updated paid_amount / payment_status)
       // so the modal updates in place.
+      const resAny = res as any;
       if (res?.data?.sales_order) {
         setCurrentSO(res.data.sales_order);
-      } else if (res?.sales_order) {
-        setCurrentSO(res.sales_order);
+      } else if (resAny?.sales_order) {
+        setCurrentSO(resAny.sales_order);
       } else {
         // Fallback: re-fetch.
         await loadItems(currentSO.uuid);
@@ -228,7 +245,11 @@ export default function SalesOrdersPage() {
     } catch (err: any) {
       const data = err?.response?.data;
       if (data?.errors) {
-        setPaymentErrors(data.errors);
+        const apiErrors: Record<string, string> = {};
+        for (const [key, msgs] of Object.entries(data.errors)) {
+          apiErrors[key] = Array.isArray(msgs) ? msgs[0] : msgs;
+        }
+        setPaymentErrors(apiErrors);
       }
       notify.error(data?.message || err?.message || 'Failed to record payment');
     } finally {
@@ -353,21 +374,27 @@ export default function SalesOrdersPage() {
             >
               <Eye className="w-4 h-4" />
             </button>
-            <SalesOrderPrintMenu order={row.original} />
-            <button
-              title="Edit"
-              onClick={() => handleEdit(row.original)}
-              className="p-1 text-green-600 hover:text-green-800 cursor-pointer"
-            >
-              <Edit className="w-4 h-4" />
-            </button>
-            <button
-              title="Delete"
-              onClick={() => handleDelete(row.original)}
-              className="p-1 text-red-600 hover:text-red-800 cursor-pointer"
-            >
-              <Trash2 className="w-4 h-4" />
-            </button>
+            {hasPermission('print-sales-orders') && (
+              <SalesOrderPrintMenu order={row.original} />
+            )}
+            {hasPermission('update-sales-orders') && (
+              <button
+                title="Edit"
+                onClick={() => handleEdit(row.original)}
+                className="p-1 text-green-600 hover:text-green-800 cursor-pointer"
+              >
+                <Edit className="w-4 h-4" />
+              </button>
+            )}
+            {hasPermission('delete-sales-orders') && (
+              <button
+                title="Delete"
+                onClick={() => handleDelete(row.original)}
+                className="p-1 text-red-600 hover:text-red-800 cursor-pointer"
+              >
+                <Trash2 className="w-4 h-4" />
+              </button>
+            )}
           </div>
         );
       },
@@ -382,12 +409,14 @@ export default function SalesOrdersPage() {
         <h1 className="text-xl font-bold flex items-center gap-2">
           <List className="w-5 h-5 text-blue-600" /> Sales Orders
         </h1>
-        <button
-          onClick={() => router.push('/sales-orders/add')}
-          className="flex items-center gap-2 px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium rounded-sm transition-colors duration-200"
-        >
-          <Plus className="w-4 h-4" /> Add Sales Order
-        </button>
+        {hasPermission('create-sales-orders') && (
+          <button
+            onClick={() => router.push('/sales-orders/add')}
+            className="flex items-center gap-2 px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium rounded-sm transition-colors duration-200"
+          >
+            <Plus className="w-4 h-4" /> Add Sales Order
+          </button>
+        )}
       </div>
 
       <DataTable
@@ -575,27 +604,31 @@ export default function SalesOrdersPage() {
                           the audit trail. The "Record Payment" button
                           now opens a dialog that calls the canonical
                           /record-payment endpoint. */}
-                      <button
-                        type="button"
-                        onClick={openPaymentDialog}
-                        disabled={outstandingBalance <= 0.005}
-                        title={
-                          outstandingBalance <= 0.005
-                            ? 'No outstanding balance'
-                            : `Record a payment of up to ৳${outstandingBalance.toFixed(2)}`
-                        }
-                        className="flex items-center gap-1.5 px-4 py-1.5 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 disabled:opacity-50 disabled:cursor-not-allowed text-white rounded-lg text-sm font-medium shadow-sm transition-all"
-                      >
-                        <DollarSign className="w-4 h-4" />
-                        Record Payment
-                      </button>
-                      <button
-                        onClick={handleUpdate}
-                        disabled={updating}
-                        className="px-5 py-1.5 bg-gradient-to-r from-violet-600 to-purple-600 hover:from-violet-700 hover:to-purple-700 disabled:opacity-60 text-white rounded-lg text-sm font-medium shadow-sm transition-all"
-                      >
-                        {updating ? 'Saving…' : 'Save Changes'}
-                      </button>
+                      {hasPermission('record-payment-sales-orders') && (
+                        <button
+                          type="button"
+                          onClick={openPaymentDialog}
+                          disabled={outstandingBalance <= 0.005}
+                          title={
+                            outstandingBalance <= 0.005
+                              ? 'No outstanding balance'
+                              : `Record a payment of up to ৳${outstandingBalance.toFixed(2)}`
+                          }
+                          className="flex items-center gap-1.5 px-4 py-1.5 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 disabled:opacity-50 disabled:cursor-not-allowed text-white rounded-lg text-sm font-medium shadow-sm transition-all"
+                        >
+                          <DollarSign className="w-4 h-4" />
+                          Record Payment
+                        </button>
+                      )}
+                      {hasPermission('update-sales-orders') && (
+                        <button
+                          onClick={handleUpdate}
+                          disabled={updating}
+                          className="px-5 py-1.5 bg-gradient-to-r from-violet-600 to-purple-600 hover:from-violet-700 hover:to-purple-700 disabled:opacity-60 text-white rounded-lg text-sm font-medium shadow-sm transition-all"
+                        >
+                          {updating ? 'Saving…' : 'Save Changes'}
+                        </button>
+                      )}
                     </div>
                   </div>
 

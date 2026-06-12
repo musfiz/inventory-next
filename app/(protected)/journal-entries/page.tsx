@@ -186,12 +186,12 @@ export default function JournalEntriesPage() {
             <button onClick={() => viewDetail(entry)} className="p-1 text-gray-400 hover:text-blue-600" title="View">
               <Eye size={14} />
             </button>
-            {entry.status === 'draft' && (
+            {hasPermission('post-journal-entries') && entry.status === 'draft' && (
               <button onClick={() => handlePost(entry)} className="p-1 text-green-500 hover:text-green-700" title="Post">
                 <Check size={14} />
               </button>
             )}
-            {entry.status === 'posted' && (
+            {hasPermission('reverse-journal-entries') && entry.status === 'posted' && (
               <button onClick={() => handleReverse(entry)} className="p-1 text-orange-500 hover:text-orange-700" title="Reverse">
                 <RotateCcw size={14} />
               </button>

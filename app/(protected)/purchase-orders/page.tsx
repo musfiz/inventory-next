@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { ColumnDef } from '@tanstack/react-table';
 import { List, Plus, Edit, Trash2, Eye, Printer, Receipt, ReceiptText, PackageCheck } from 'lucide-react';
 import DataTable from '@/components/ui/datatable';
@@ -8,6 +8,7 @@ import { formatDate } from '@/lib/utils/date';
 import { notify, confirm } from '@/lib/notifications';
 import purchaseOrderService from '@/services/purchaseOrderService';
 import { useRouter } from 'next/navigation';
+import { usePermissions } from '@/hooks/use-permissions';
 import PurchaseOrderInvoice from '@/components/print/invoices/PurchaseOrderInvoice';
 import PurchaseOrderThermal from '@/components/print/invoices/PurchaseOrderThermal';
 
@@ -25,6 +26,13 @@ type ReceiveState = {
 
 export default function PurchaseOrdersPage() {
   const router = useRouter();
+  const { hasPermission, isHydrated } = usePermissions();
+
+  useEffect(() => {
+    if (isHydrated && !hasPermission('view-purchase-orders')) {
+      router.push('/access-denied');
+    }
+  }, [hasPermission, isHydrated, router]);
 
   const [refreshKey, setRefreshKey] = useState(0);
   const [showDetails, setShowDetails] = useState(false);
@@ -255,7 +263,7 @@ export default function PurchaseOrdersPage() {
             >
               <Eye className="w-4 h-4" />
             </button>
-            {canReceive && (
+            {canReceive && hasPermission('receive-purchase-orders') && (
               <button
                 title="Receive stock"
                 onClick={() => openReceive(row.original)}
@@ -264,34 +272,42 @@ export default function PurchaseOrdersPage() {
                 <PackageCheck className="w-4 h-4" />
               </button>
             )}
-            <button
-              title="Print"
-              onClick={() => handlePrint(row.original.id, 'invoice')}
-              className="p-1 text-gray-600 hover:text-gray-800 cursor-pointer"
-            >
-              <Printer className="w-4 h-4" />
-            </button>
-            <button
-              title="POS Print"
-              onClick={() => handlePrint(row.original.id, 'pos')}
-              className="p-1 text-amber-600 hover:text-amber-800 cursor-pointer"
-            >
-              <ReceiptText className="w-4 h-4" />
-            </button>
-            <button
-              title="Edit"
-              onClick={() => handleEdit(row.original)}
-              className="p-1 text-green-600 hover:text-green-800 cursor-pointer"
-            >
-              <Edit className="w-4 h-4" />
-            </button>
-            <button
-              title="Delete"
-              onClick={() => handleDelete(row.original)}
-              className="p-1 text-red-600 hover:text-red-800 cursor-pointer"
-            >
-              <Trash2 className="w-4 h-4" />
-            </button>
+            {hasPermission('print-purchase-orders') && (
+              <button
+                title="Print"
+                onClick={() => handlePrint(row.original.id, 'invoice')}
+                className="p-1 text-gray-600 hover:text-gray-800 cursor-pointer"
+              >
+                <Printer className="w-4 h-4" />
+              </button>
+            )}
+            {hasPermission('print-purchase-orders') && (
+              <button
+                title="POS Print"
+                onClick={() => handlePrint(row.original.id, 'pos')}
+                className="p-1 text-amber-600 hover:text-amber-800 cursor-pointer"
+              >
+                <ReceiptText className="w-4 h-4" />
+              </button>
+            )}
+            {hasPermission('update-purchase-orders') && (
+              <button
+                title="Edit"
+                onClick={() => handleEdit(row.original)}
+                className="p-1 text-green-600 hover:text-green-800 cursor-pointer"
+              >
+                <Edit className="w-4 h-4" />
+              </button>
+            )}
+            {hasPermission('delete-purchase-orders') && (
+              <button
+                title="Delete"
+                onClick={() => handleDelete(row.original)}
+                className="p-1 text-red-600 hover:text-red-800 cursor-pointer"
+              >
+                <Trash2 className="w-4 h-4" />
+              </button>
+            )}
           </div>
         );
       },
@@ -306,12 +322,14 @@ export default function PurchaseOrdersPage() {
         <h1 className="text-xl font-bold flex items-center gap-2">
           <List className="w-5 h-5 text-blue-600" /> Purchase Orders
         </h1>
-        <button
-          onClick={() => router.push('/purchase-orders/add')}
-          className="flex items-center gap-2 px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium rounded-sm transition-colors duration-200"
-        >
-          <Plus className="w-4 h-4" /> Add Purchase
-        </button>
+        {hasPermission('create-purchase-orders') && (
+          <button
+            onClick={() => router.push('/purchase-orders/add')}
+            className="flex items-center gap-2 px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium rounded-sm transition-colors duration-200"
+          >
+            <Plus className="w-4 h-4" /> Add Purchase
+          </button>
+        )}
       </div>
 
       {/* Inline add/edit form removed — Add button navigates to separate add page */}
@@ -399,11 +417,13 @@ export default function PurchaseOrdersPage() {
                         className="px-2 py-1 text-right border border-gray-300 dark:border-gray-700 rounded text-sm focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500 w-36 [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
                       />
                     </div>
-                    <div className="ml-auto">
-                      <button onClick={handleUpdate} disabled={updating} className="px-3 py-1 bg-blue-600 text-white rounded text-sm">
-                        {updating ? 'Saving...' : 'Save'}
-                      </button>
-                    </div>
+                    {hasPermission('update-purchase-orders') && (
+                      <div className="ml-auto">
+                        <button onClick={handleUpdate} disabled={updating} className="px-3 py-1 bg-blue-600 text-white rounded text-sm">
+                          {updating ? 'Saving...' : 'Save'}
+                        </button>
+                      </div>
+                    )}
                   </div>
 
                   <table className="min-w-full text-sm">

@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Barcode as BarcodeIcon, Plus, Trash2, X } from 'lucide-react';
 import { GiSave } from 'react-icons/gi';
 import { ColumnDef } from '@tanstack/react-table';
@@ -11,6 +11,8 @@ import { ProductBarcode } from '@/services/barcodeService';
 import DataTable from '@/components/ui/datatable';
 import CustomSelect from '@/components/ui/custom-select';
 import BarcodeStickerPrint from '@/components/print/barcode/BarcodeStickerPrint';
+import { useRouter } from 'next/navigation';
+import { usePermissions } from '@/hooks/use-permissions';
 
 const BARCODE_TYPES = [
   { value: 'EAN13', label: 'EAN-13' },
@@ -19,6 +21,15 @@ const BARCODE_TYPES = [
 ];
 
 export default function ProductBarcodesPage() {
+  const router = useRouter();
+  const { hasPermission, isHydrated } = usePermissions();
+
+  useEffect(() => {
+    if (isHydrated && !hasPermission('view-product-barcode')) {
+      router.push('/access-denied');
+    }
+  }, [hasPermission, isHydrated, router]);
+
   const [showForm, setShowForm] = useState(false);
   const [formData, setFormData] = useState({
     product_id: '' as string | undefined,
@@ -224,13 +235,15 @@ export default function ProductBarcodesPage() {
             barcodeData={row.original}
             productName={row.original.product?.name || ''}
           />
-          <button
-            onClick={() => handleDelete(row.original)}
-            className="p-1 text-red-600 hover:text-red-800 dark:text-red-400 dark:hover:text-red-300"
-            title="Delete"
-          >
-            <Trash2 className="w-4 h-4" />
-          </button>
+          {hasPermission('delete-product-barcode') && (
+            <button
+              onClick={() => handleDelete(row.original)}
+              className="p-1 text-red-600 hover:text-red-800 dark:text-red-400 dark:hover:text-red-300"
+              title="Delete"
+            >
+              <Trash2 className="w-4 h-4" />
+            </button>
+          )}
         </div>
       ),
     },
@@ -253,13 +266,15 @@ export default function ProductBarcodesPage() {
             Product Barcodes
           </h1>
         </div>
-        <button
-          onClick={handleAddBarcode}
-          className="flex items-center gap-2 px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium rounded-sm transition-colors duration-200 cursor-pointer"
-        >
-          <Plus className="w-4 h-4" />
-          Generate Barcodes
-        </button>
+        {hasPermission('create-product-barcode') && (
+          <button
+            onClick={handleAddBarcode}
+            className="flex items-center gap-2 px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium rounded-sm transition-colors duration-200 cursor-pointer"
+          >
+            <Plus className="w-4 h-4" />
+            Generate Barcodes
+          </button>
+        )}
       </div>
 
       {/* Add/Edit Barcode Form */}

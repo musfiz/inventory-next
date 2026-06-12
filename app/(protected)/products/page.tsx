@@ -58,7 +58,7 @@ export default function ProductsPage() {
 
   const handleBulkUpload = async (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     // Validate file selection
     if (!selectedFile) {
       notify.error('Please select a file to upload');
@@ -75,7 +75,7 @@ export default function ProductsPage() {
     const allowedExt = ['.xls', '.xlsx'];
     const fileName = selectedFile.name.toLowerCase();
     const isValidExt = allowedExt.some(ext => fileName.endsWith(ext));
-    
+
     if (!isValidExt) {
       notify.error('Invalid file type. Please upload an Excel file (.xls, .xlsx).');
       return;
@@ -83,10 +83,10 @@ export default function ProductsPage() {
 
     try {
       setUploading(true);
-      
+
       const formData = new FormData();
       formData.append('file', selectedFile);
-      
+
       if (isSuperAdmin && businessType) {
         formData.append('business_type', businessType);
       }
@@ -132,7 +132,7 @@ export default function ProductsPage() {
 
   // Check permissions only after store is hydrated
   useEffect(() => {
-    if (isHydrated && !hasPermission('view-products')) {
+    if (isHydrated && !hasPermission('view-product')) {
       router.push('/access-denied');
     }
   }, [hasPermission, isHydrated, router]);
@@ -194,17 +194,17 @@ export default function ProductsPage() {
     },
     ...(isSuperAdmin
       ? [
-          {
-            accessorKey: 'business_type',
-            header: 'Business Type',
-            meta: { width: '15%' },
-            cell: ({ row }: any) => (
-              <span className="px-1.5 py-0.5 text-xs font-medium rounded bg-purple-100 text-purple-800 dark:bg-purple-900/30 dark:text-purple-400 capitalize">
-                {row.original.business_type?.replace('_', ' ') || '-'}
-              </span>
-            ),
-          },
-        ]
+        {
+          accessorKey: 'business_type',
+          header: 'Business Type',
+          meta: { width: '15%' },
+          cell: ({ row }: any) => (
+            <span className="px-1.5 py-0.5 text-xs font-medium rounded bg-purple-100 text-purple-800 dark:bg-purple-900/30 dark:text-purple-400 capitalize">
+              {row.original.business_type?.replace('_', ' ') || '-'}
+            </span>
+          ),
+        },
+      ]
       : []),
     {
       accessorKey: 'brand.name',

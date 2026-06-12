@@ -1,4 +1,20 @@
+'use client';
+
+import { useEffect } from 'react';
+import { useRouter } from 'next/navigation';
+import { usePermissions } from '@/hooks/use-permissions';
+
 export default function AnalyticsPage() {
+  const router = useRouter();
+  const { hasPermission, isHydrated } = usePermissions();
+
+  useEffect(() => {
+    if (!isHydrated) return;
+    if (!hasPermission('view-reports')) {
+      router.replace('/access-denied');
+    }
+  }, [isHydrated, hasPermission, router]);
+
   return (
     <div>
       <div className="mb-8">

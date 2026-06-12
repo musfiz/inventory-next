@@ -142,7 +142,7 @@ export default function ExpensesPage() {
         const exp = row.original;
         return (
           <div className="flex items-center gap-1">
-            {exp.status === 'pending' && (
+            {hasPermission('approve-expenses') && exp.status === 'pending' && (
               <button
                 onClick={() => handleApprove(exp)}
                 className="p-1 text-blue-500 hover:text-blue-700"
@@ -151,7 +151,7 @@ export default function ExpensesPage() {
                 <Check size={14} />
               </button>
             )}
-            {(exp.status === 'approved' || exp.status === 'pending') && (
+            {hasPermission('pay-expenses') && (exp.status === 'approved' || exp.status === 'pending') && (
               <button
                 onClick={() => handlePay(exp)}
                 className="p-1 text-green-600 hover:text-green-700"
@@ -160,7 +160,7 @@ export default function ExpensesPage() {
                 <DollarSign size={14} />
               </button>
             )}
-            {exp.status !== 'paid' && (
+            {hasPermission('reject-expenses') && exp.status !== 'paid' && (
               <button
                 onClick={() => handleDelete(exp)}
                 className="p-1 text-red-400 hover:text-red-600"

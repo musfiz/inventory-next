@@ -123,11 +123,11 @@ export default function PurchaseReportPage() {
 
       // Calculate summary
       const totalAmount = purchasesWithItems.reduce(
-        (sum, po) => sum + (parseFloat(po.total_amount) || 0),
+        (sum, po) => sum + (Number(po.total_amount) || 0),
         0
       );
       const totalPaid = purchasesWithItems.reduce(
-        (sum, po) => sum + (parseFloat(po.paid_amount) || 0),
+        (sum, po) => sum + (Number(po.paid_amount) || 0),
         0
       );
       const totalItems = purchasesWithItems.reduce(
@@ -249,8 +249,8 @@ export default function PurchaseReportPage() {
 
         const supplierName = po.supplier?.name || po.supplier?.company_name || 'N/A';
         const warehouseName = po.warehouse?.name || 'N/A';
-        const amount = parseFloat(po.total_amount) || 0;
-        const paid = parseFloat(po.paid_amount || '0');
+        const amount = Number(po.total_amount) || 0;
+        const paid = Number(po.paid_amount) || 0;
         const due = amount - paid;
 
         pdf.text(po.po_number || 'N/A', 16, yPos);
@@ -375,7 +375,7 @@ export default function PurchaseReportPage() {
       header: 'Total Amount',
       cell: ({ row }) => (
         <span className="font-semibold text-gray-900 dark:text-gray-100">
-          ৳{parseFloat(row.original.total_amount).toFixed(2)}
+          ৳{Number(row.original.total_amount).toFixed(2)}
         </span>
       ),
     },
@@ -383,7 +383,7 @@ export default function PurchaseReportPage() {
       accessorKey: 'paid_amount',
       header: 'Paid',
       cell: ({ row }) => {
-        const paid = parseFloat(row.original.paid_amount || '0');
+        const paid = Number(row.original.paid_amount) || 0;
         return (
           <span className="text-green-600 dark:text-green-400 font-medium">
             ৳{paid.toFixed(2)}
@@ -395,8 +395,8 @@ export default function PurchaseReportPage() {
       id: 'due',
       header: 'Due',
       cell: ({ row }) => {
-        const total = parseFloat(row.original.total_amount);
-        const paid = parseFloat(row.original.paid_amount || '0');
+        const total = Number(row.original.total_amount) || 0;
+        const paid = Number(row.original.paid_amount) || 0;
         const due = total - paid;
         return (
           <span className={`font-medium ${due > 0 ? 'text-red-600 dark:text-red-400' : 'text-gray-500'}`}>
@@ -608,8 +608,8 @@ export default function PurchaseReportPage() {
           <DataTable
             columns={columns}
             data={purchases}
-            searchable={false}
-            pagination={true}
+            enableSearch={false}
+            enablePagination={true}
           />
         </div>
       ) : (
@@ -686,8 +686,8 @@ export default function PurchaseReportPage() {
             </thead>
             <tbody>
               {purchases.map((po) => {
-                const total = parseFloat(po.total_amount);
-                const paid = parseFloat(po.paid_amount || '0');
+                const total = Number(po.total_amount) || 0;
+                const paid = Number(po.paid_amount) || 0;
                 const due = total - paid;
                 return (
                   <tr key={po.id}>

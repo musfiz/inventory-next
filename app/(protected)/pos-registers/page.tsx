@@ -337,8 +337,12 @@ export default function PosRegisterPage() {
     {
       id: 'actions', header: 'Actions', cell: ({ row }) => (
         <div className="flex items-center gap-2">
-          <button onClick={() => handleEdit(row.original)} className="p-1 text-green-600 hover:text-green-700"><Edit className="w-4 h-4" /></button>
-          <button onClick={() => handleDelete(row.original)} className="p-1 text-red-600 hover:text-red-700"><Trash2 className="w-4 h-4" /></button>
+          {hasPermission('update-pos-register') && (
+            <button onClick={() => handleEdit(row.original)} className="p-1 text-green-600 hover:text-green-700"><Edit className="w-4 h-4" /></button>
+          )}
+          {hasPermission('delete-pos-register') && (
+            <button onClick={() => handleDelete(row.original)} className="p-1 text-red-600 hover:text-red-700"><Trash2 className="w-4 h-4" /></button>
+          )}
         </div>
       )
     },
@@ -350,9 +354,11 @@ export default function PosRegisterPage() {
     <div className="space-y-2">
       <div className="flex items-center justify-between">
         <h1 className="text-xl font-bold">POS Registers</h1>
-        <button onClick={handleAdd} className="flex items-center gap-2 px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium rounded-sm transition-colors duration-200 cursor-pointer">
-          <Plus className="w-4 h-4" /> Add Register
-        </button>
+        {hasPermission('create-pos-register') && (
+          <button onClick={handleAdd} className="flex items-center gap-2 px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium rounded-sm transition-colors duration-200 cursor-pointer">
+            <Plus className="w-4 h-4" /> Add Register
+          </button>
+        )}
       </div>
 
       {showForm && (

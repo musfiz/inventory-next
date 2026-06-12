@@ -8,7 +8,9 @@ import { buildImageUrl, handleImageError } from './utils';
  */
 export function createProductImageColumns(
   onDelete: (image: ProductImage) => void,
-  onSetPrimary: (image: ProductImage) => void
+  onSetPrimary: (image: ProductImage) => void,
+  canDelete?: boolean,
+  canSetPrimary?: boolean
 ): ColumnDef<ProductImage>[] {
   return [
     {
@@ -94,7 +96,7 @@ export function createProductImageColumns(
             <Star className="w-3 h-3 mr-1 fill-current" />
             Primary
           </span>
-        ) : (
+        ) : canSetPrimary ? (
           <button
             onClick={() => onSetPrimary(row.original)}
             className="inline-flex items-center px-2 py-1 text-xs rounded-full bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-300 hover:bg-green-100 hover:text-green-800 dark:hover:bg-green-900/30 dark:hover:text-green-400 transition-colors cursor-pointer"
@@ -104,12 +106,14 @@ export function createProductImageColumns(
             <Star className="w-3 h-3 mr-1" />
             Set Primary
           </button>
+        ) : (
+          <span className="text-gray-400 dark:text-gray-500 italic">-</span>
         ),
     },
     {
       id: 'actions',
       header: 'Actions',
-      cell: ({ row }) => (
+      cell: ({ row }) => canDelete ? (
         <button
           onClick={() => onDelete(row.original)}
           className="p-1 text-red-600 hover:text-red-800 dark:text-red-400 dark:hover:text-red-300 cursor-pointer"
@@ -118,6 +122,8 @@ export function createProductImageColumns(
         >
           <Trash2 className="w-4 h-4" />
         </button>
+      ) : (
+        <span className="text-gray-400 dark:text-gray-500 italic">-</span>
       ),
     },
   ];

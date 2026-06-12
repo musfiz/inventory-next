@@ -73,7 +73,7 @@ const navigation: NavigationItem[] = [
     icon: Users,
     permission: 'view-user',
     children: [
-      { name: 'All Users', href: '/users', icon: List, permission: 'view-user' }
+      { name: 'All Users', href: '/users', icon: List, permissions: ['view-user', 'create-user', 'edit-user', 'delete-user'] }
     ],
   },
   {
@@ -121,11 +121,11 @@ const navigation: NavigationItem[] = [
   {
     name: 'Stock Management',
     icon: CirclePile,
-    permissions: ['view-stocks', 'create-stocks', 'view-warehouse', 'view-bin'],
+    permissions: ['view-stocks', 'create-stocks', 'view-stock-movement', 'view-warehouse', 'view-bin'],
     children: [
       { name: 'Stock', href: '/stock', icon: List, permission: 'view-stocks' },
       { name: 'Add Stock', href: '/stock/add', icon: LayersPlus, permission: 'create-stocks' },
-      { name: 'Stock Movement', href: '/stock/movement', icon: History },
+      { name: 'Stock Movement', href: '/stock/movement', icon: History, permission: 'view-stock-movement' },
       { name: 'Warehouse', href: '/warehouse', icon: Warehouse, permission: 'view-warehouse' },
       { name: 'Bins', href: '/bins', icon: Container, permission: 'view-bin' },
     ],

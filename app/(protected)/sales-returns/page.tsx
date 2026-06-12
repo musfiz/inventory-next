@@ -577,13 +577,13 @@ export default function SalesReturnsPage() {
         const r = row.original;
         return (
           <div className="flex items-center gap-1">
-            {r.status === 'pending' && (
+            {r.status === 'pending' && hasPermission('approve-sales-returns') && (
               <button onClick={() => handleApprove(r)} title="Approve"
                 className="p-1 rounded text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/30 cursor-pointer">
                 <CheckCircle className="w-4 h-4" />
               </button>
             )}
-            {r.status === 'approved' && (
+            {r.status === 'approved' && hasPermission('approve-sales-returns') && (
               <button onClick={() => handleComplete(r)} title="Complete & Restock"
                 className="p-1 rounded text-green-600 hover:bg-green-50 dark:hover:bg-green-900/30 cursor-pointer">
                 <Check className="w-4 h-4" />
@@ -591,20 +591,24 @@ export default function SalesReturnsPage() {
             )}
             {r.status === 'completed' && (
               <>
-                <button onClick={() => handlePrint(r)} title="Print Credit Note"
-                  className="p-1 rounded text-purple-600 hover:bg-purple-50 dark:hover:bg-purple-900/30 cursor-pointer">
-                  <Printer className="w-4 h-4" />
-                </button>
-                <button onClick={() => openSettle(r)} title="Settle Payment"
-                  className="p-1 rounded text-emerald-600 hover:bg-emerald-50 dark:hover:bg-emerald-900/30 cursor-pointer">
-                  <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
-                      d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                  </svg>
-                </button>
+                {hasPermission('print-sales-returns') && (
+                  <button onClick={() => handlePrint(r)} title="Print Credit Note"
+                    className="p-1 rounded text-purple-600 hover:bg-purple-50 dark:hover:bg-purple-900/30 cursor-pointer">
+                    <Printer className="w-4 h-4" />
+                  </button>
+                )}
+                {hasPermission('settle-sales-returns') && (
+                  <button onClick={() => openSettle(r)} title="Settle Payment"
+                    className="p-1 rounded text-emerald-600 hover:bg-emerald-50 dark:hover:bg-emerald-900/30 cursor-pointer">
+                    <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
+                        d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                  </button>
+                )}
               </>
             )}
-            {r.status === 'pending' && (
+            {r.status === 'pending' && hasPermission('update-sales-returns') && (
               <button onClick={() => handleEdit(r)} title="Edit"
                 className="p-1 rounded text-yellow-600 hover:bg-yellow-50 dark:hover:bg-yellow-900/30 cursor-pointer">
                 <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -613,13 +617,13 @@ export default function SalesReturnsPage() {
                 </svg>
               </button>
             )}
-            {['pending', 'approved'].includes(r.status ?? '') && (
+            {['pending', 'approved'].includes(r.status ?? '') && hasPermission('reject-sales-returns') && (
               <button onClick={() => handleCancelReturn(r)} title="Cancel"
                 className="p-1 rounded text-orange-600 hover:bg-orange-50 dark:hover:bg-orange-900/30 cursor-pointer">
                 <Ban className="w-4 h-4" />
               </button>
             )}
-            {r.status === 'pending' && (
+            {r.status === 'pending' && hasPermission('delete-sales-returns') && (
               <button onClick={() => handleDelete(r)} title="Delete"
                 className="p-1 rounded text-red-600 hover:bg-red-50 dark:hover:bg-red-900/30 cursor-pointer">
                 <X className="w-4 h-4" />
@@ -650,12 +654,14 @@ export default function SalesReturnsPage() {
       {/* Header */}
       <div className="flex items-center justify-between">
         <h1 className="text-xl font-bold text-gray-900 dark:text-gray-100">Sales Returns</h1>
-        <button
-          onClick={handleAdd}
-          className="flex items-center gap-2 px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium rounded-sm transition-colors cursor-pointer"
-        >
-          <Plus className="w-4 h-4" /> Create Return
-        </button>
+        {hasPermission('create-sales-returns') && (
+          <button
+            onClick={handleAdd}
+            className="flex items-center gap-2 px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium rounded-sm transition-colors cursor-pointer"
+          >
+            <Plus className="w-4 h-4" /> Create Return
+          </button>
+        )}
       </div>
 
       {/* Form */}

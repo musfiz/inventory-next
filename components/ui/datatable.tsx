@@ -30,6 +30,7 @@ export interface ServerDataTableProps<T = any> {
   fetchData?: (
     params: any
   ) => Promise<{ data: T[]; total: number; page: number; per_page: number }>;
+  data?: T[];
   pageSize?: number;
   enableSearch?: boolean;
   searchPlaceholder?: string;
@@ -50,6 +51,7 @@ export default function DataTable<T extends Record<string, any>>({
   columns,
   apiEndpoint,
   fetchData,
+  data: initialData,
   pageSize = 10,
   enableSearch = true,
   searchPlaceholder = 'Search...',
@@ -57,7 +59,7 @@ export default function DataTable<T extends Record<string, any>>({
   enableSorting = true,
   baseApiPath = '/api/v1',
 }: ServerDataTableProps<T>) {
-  const [data, setData] = useState<T[]>([]);
+  const [data, setData] = useState<T[]>(initialData || []);
   const [loading, setLoading] = useState(false);
   const [pagination, setPagination] = useState<PaginationData>({
     page: 1,
@@ -148,6 +150,26 @@ export default function DataTable<T extends Record<string, any>>({
 
   // Single effect to handle all data fetching
   useEffect(() => {
+    if (initialData) {
+      // Client-side: filter by search, compute pagination
+      let filtered = initialData;
+      const q = debouncedSearch.toLowerCase();
+      if (debouncedSearch) {
+        filtered = initialData.filter(row =>
+          Object.values(row).some(v =>
+            String(v).toLowerCase().includes(q)
+          )
+        );
+      }
+      const total = filtered.length;
+      const totalPages = Math.ceil(total / pagination.pageSize);
+      const page = Math.min(pagination.page, Math.max(totalPages, 1));
+      setPagination(prev => ({ ...prev, total, totalPages }));
+      const start = (page - 1) * pagination.pageSize;
+      setData(filtered.slice(start, start + pagination.pageSize));
+      return;
+    }
+
     const searchChanged = prevSearchRef.current !== debouncedSearch;
     const endpointChanged = prevEndpointRef.current !== apiEndpoint;
 
@@ -164,7 +186,7 @@ export default function DataTable<T extends Record<string, any>>({
     // Otherwise fetch data
     fetchDataInternal();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [pagination.page, debouncedSearch, sorting, apiEndpoint, refreshTrigger]);
+  }, [pagination.page, debouncedSearch, sorting, apiEndpoint, refreshTrigger, initialData]);
 
   const table = useReactTable({
     data,

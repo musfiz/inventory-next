@@ -6,6 +6,7 @@ import { Eye, Edit, Trash2, Rows4, X, Building2, MapPin, FileText, CreditCard, S
 import { ColumnDef } from '@tanstack/react-table';
 import DataTable from '@/components/ui/datatable';
 import tenantService from '@/services/tenantService';
+import { usePermissions } from '@/hooks/use-permissions';
 import type { Tenant as TenantDetail } from '@/types/api.types';
 
 interface TenantRow {
@@ -21,6 +22,14 @@ interface TenantRow {
 
 export default function TenantsPage() {
   const router = useRouter();
+  const { isSuperAdmin, isHydrated, hasPermission } = usePermissions();
+
+  useEffect(() => {
+    if (isHydrated && !isSuperAdmin) {
+      router.push('/access-denied');
+    }
+  }, [isSuperAdmin, isHydrated, router]);
+
   const [detailsOpen, setDetailsOpen] = useState(false);
   const [detailsTenant, setDetailsTenant] = useState<TenantDetail | null>(null);
   const [detailsLoading, setDetailsLoading] = useState(false);
@@ -138,27 +147,33 @@ export default function TenantsPage() {
           >
             <Eye className="w-3.5 h-3.5" />
           </button>
-          <button
-            className="p-1 text-blue-600 hover:text-blue-900 dark:text-blue-400 dark:hover:text-blue-300 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded"
-            title="Edit"
-            onClick={() => router.push(`/tenants/${row.original.id}/edit`)}
-          >
-            <Edit className="w-3.5 h-3.5" />
-          </button>
-          <button
-            className="p-1 text-purple-600 hover:text-purple-900 dark:text-purple-400 dark:hover:text-purple-300 hover:bg-purple-50 dark:hover:bg-purple-900/20 rounded"
-            title="Settings"
-            onClick={() => router.push(`/tenants/${row.original.id}/settings`)}
-          >
-            <Settings className="w-3.5 h-3.5" />
-          </button>
-          <button
-            className="p-1 text-red-600 hover:text-red-900 dark:text-red-400 dark:hover:text-red-300 hover:bg-red-50 dark:bg-red-900/20 rounded"
-            title="Delete"
-            onClick={() => console.log('Delete', row.original.id)}
-          >
-            <Trash2 className="w-3.5 h-3.5" />
-          </button>
+          {hasPermission('update-tenants') && (
+            <button
+              className="p-1 text-blue-600 hover:text-blue-900 dark:text-blue-400 dark:hover:text-blue-300 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded"
+              title="Edit"
+              onClick={() => router.push(`/tenants/${row.original.id}/edit`)}
+            >
+              <Edit className="w-3.5 h-3.5" />
+            </button>
+          )}
+          {hasPermission('update-tenants') && (
+            <button
+              className="p-1 text-purple-600 hover:text-purple-900 dark:text-purple-400 dark:hover:text-purple-300 hover:bg-purple-50 dark:hover:bg-purple-900/20 rounded"
+              title="Settings"
+              onClick={() => router.push(`/tenants/${row.original.id}/settings`)}
+            >
+              <Settings className="w-3.5 h-3.5" />
+            </button>
+          )}
+          {hasPermission('delete-tenants') && (
+            <button
+              className="p-1 text-red-600 hover:text-red-900 dark:text-red-400 dark:hover:text-red-300 hover:bg-red-50 dark:bg-red-900/20 rounded"
+              title="Delete"
+              onClick={() => console.log('Delete', row.original.id)}
+            >
+              <Trash2 className="w-3.5 h-3.5" />
+            </button>
+          )}
         </div>
       ),
     },
@@ -423,7 +438,7 @@ export default function TenantsPage() {
               >
                 Close
               </button>
-              {detailsTenant && (
+              {detailsTenant && hasPermission('update-tenants') && (
                 <button
                   onClick={() => { setDetailsOpen(false); router.push(`/tenants/${detailsTenant.id}/edit`); }}
                   className="px-3 py-1.5 text-xs font-medium rounded-md bg-indigo-600 hover:bg-indigo-700 text-white transition-colors"

@@ -1,12 +1,23 @@
 'use client';
 
 import Link from 'next/link';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Package2 } from 'lucide-react';
 import { ColumnDef } from '@tanstack/react-table';
 import DataTable from '@/components/ui/datatable';
+import { usePermissions } from '@/hooks/use-permissions';
+import { useRouter } from 'next/navigation';
 
 export default function StockListPage() {
+  const router = useRouter();
+  const { hasPermission, isHydrated } = usePermissions();
+
+  useEffect(() => {
+    if (isHydrated && !hasPermission('view-stocks')) {
+      router.push('/access-denied');
+    }
+  }, [hasPermission, isHydrated, router]);
+
   const [refreshKey, setRefreshKey] = useState(0);
 
   const columns: ColumnDef<any>[] = [
@@ -78,18 +89,22 @@ export default function StockListPage() {
           <Package2 className="w-5 h-5 text-blue-600" /> Stocks
         </h1>
         <div className="flex items-center gap-2">
-          <Link
-            href="/stock/add"
-            className="inline-flex items-center px-3 py-1.5 rounded-md bg-blue-600 text-white text-sm font-medium hover:bg-blue-700 transition-colors"
-          >
-            Add Stock
-          </Link>
-          <Link
-            href="/stock/movement"
-            className="inline-flex items-center px-3 py-1.5 rounded-md bg-slate-100 text-slate-700 text-sm font-medium hover:bg-slate-200 transition-colors dark:bg-slate-800 dark:text-slate-200 dark:hover:bg-slate-700"
-          >
-            Stock Movement
-          </Link>
+          {hasPermission('create-stocks') && (
+            <Link
+              href="/stock/add"
+              className="inline-flex items-center px-3 py-1.5 rounded-md bg-blue-600 text-white text-sm font-medium hover:bg-blue-700 transition-colors"
+            >
+              Add Stock
+            </Link>
+          )}
+          {hasPermission('view-stock-movements') && (
+            <Link
+              href="/stock/movement"
+              className="inline-flex items-center px-3 py-1.5 rounded-md bg-slate-100 text-slate-700 text-sm font-medium hover:bg-slate-200 transition-colors dark:bg-slate-800 dark:text-slate-200 dark:hover:bg-slate-700"
+            >
+              Stock Movement
+            </Link>
+          )}
         </div>
       </div>
 
