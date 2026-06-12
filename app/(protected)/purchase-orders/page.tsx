@@ -29,7 +29,7 @@ export default function PurchaseOrdersPage() {
   const { hasPermission, isHydrated } = usePermissions();
 
   useEffect(() => {
-    if (isHydrated && !hasPermission('view-purchase-orders')) {
+    if (isHydrated && !hasPermission('view-purchase-order')) {
       router.push('/access-denied');
     }
   }, [hasPermission, isHydrated, router]);

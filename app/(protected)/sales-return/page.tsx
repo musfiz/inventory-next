@@ -653,7 +653,7 @@ export default function SalesReturnsPage() {
 
       {/* Header */}
       <div className="flex items-center justify-between">
-        <h1 className="text-xl font-bold text-gray-900 dark:text-gray-100">Sales Returns</h1>
+        <h1 className="text-xl font-bold text-gray-900 dark:text-gray-100">Sales Return</h1>
         {hasPermission('create-sales-returns') && (
           <button
             onClick={handleAdd}
@@ -959,7 +959,7 @@ export default function SalesReturnsPage() {
                         className={inputCls} />
                       <p className="text-[10px] text-gray-500 mt-0.5">
                         Max: ৳{(Math.abs(balance) || 0).toFixed(2)}
-      {settleLoading ? ' · loading fresh balance…' : ''}
+                        {settleLoading ? ' · loading fresh balance…' : ''}
                       </p>
                     </div>
                     <div>

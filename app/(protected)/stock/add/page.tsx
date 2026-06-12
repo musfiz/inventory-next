@@ -15,9 +15,10 @@ export default function StockAddPage() {
   const router = useRouter();
 
   useEffect(() => {
-    if (!isHydrated) return;
-    if (!hasPermission('create-stocks')) router.replace('/dashboard');
-  }, [isHydrated, hasPermission, router]);
+    if (isHydrated && !hasPermission('create-stock')) {
+      router.push('/access-denied');
+    }
+  }, [hasPermission, isHydrated, router]);
 
   const [selectedTenant, setSelectedTenant] = useState<any>(null);
   const [defaultTenantOptions, setDefaultTenantOptions] = useState<any[]>([]);

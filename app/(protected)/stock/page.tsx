@@ -13,7 +13,7 @@ export default function StockListPage() {
   const { hasPermission, isHydrated } = usePermissions();
 
   useEffect(() => {
-    if (isHydrated && !hasPermission('view-stocks')) {
+    if (isHydrated && !hasPermission('view-stock')) {
       router.push('/access-denied');
     }
   }, [hasPermission, isHydrated, router]);

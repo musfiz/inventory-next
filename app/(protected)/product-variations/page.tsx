@@ -140,7 +140,7 @@ export default function ProductVariationsPage() {
       meta: { width: '10%' },
       cell: ({ row }) => (
         <div className="flex items-center gap-1">
-          {hasPermission('update-products') && (
+          {(hasPermission('update-product-variation') || hasPermission('update-products')) && (
             <button
               className="p-1 text-blue-600 hover:text-blue-900 dark:text-blue-400 dark:hover:text-blue-300 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded cursor-pointer"
               title="Edit"

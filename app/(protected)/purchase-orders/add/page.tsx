@@ -80,9 +80,10 @@ function AddPurchaseOrderPage() {
   const router = useRouter();
 
   useEffect(() => {
-    if (!isHydrated) return;
-    if (!hasPermission('create-purchases')) router.replace('/dashboard');
-  }, [isHydrated, hasPermission, router]);
+    if (isHydrated && !hasPermission('create-purchase-order')) {
+      router.push('/access-denied');
+    }
+  }, [hasPermission, isHydrated, router]);
 
   const formRef = useRef<HTMLFormElement | null>(null);
   const searchParams = useSearchParams();

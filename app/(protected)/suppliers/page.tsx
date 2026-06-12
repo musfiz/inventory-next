@@ -17,9 +17,10 @@ export default function SupplierListPage() {
   const router = useRouter();
 
   useEffect(() => {
-    if (!isHydrated) return;
-    if (!hasPermission('view-suppliers')) router.replace('/dashboard');
-  }, [isHydrated, hasPermission, router]);
+    if (isHydrated && !hasPermission('view-supplier')) {
+      router.push('/access-denied');
+    }
+  }, [hasPermission, isHydrated, router]);
 
   const [showForm, setShowForm] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
@@ -458,7 +459,7 @@ export default function SupplierListPage() {
               type="submit"
               className="flex items-center justify-center gap-2 px-5 py-1.5 text-sm bg-indigo-600 hover:bg-indigo-700 disabled:bg-gray-400 text-white rounded-sm transition-colors cursor-pointer"
             >
-                <GiSave className="w-4 h-4" />
+              <GiSave className="w-4 h-4" />
               {isEditing ? 'Update Supplier' : 'Save Supplier'}
             </button>
             <button
