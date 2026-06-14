@@ -108,6 +108,17 @@ export default function CustomDatePicker({
         .react-datepicker {
           z-index: 9999 !important;
         }
+        /* Show adjacent-month days faded for better context */
+        .react-datepicker__day--outside-month {
+          opacity: 0.35;
+          pointer-events: auto;
+          cursor: pointer;
+        }
+        .react-datepicker__day--outside-month:hover {
+          opacity: 0.6;
+          background: #f0f0f0;
+          border-radius: 0.3rem;
+        }
       `}</style>
     </div>
   );

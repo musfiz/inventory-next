@@ -74,6 +74,7 @@ export default function TrialBalancePage() {
   // Group rows by account type for the sectioned view
   const grouped = useMemo(() => {
     if (!report) return {} as Record<AccountType, TrialBalanceRow[]>;
+    if (!report.data) return {} as Record<AccountType, TrialBalanceRow[]>;
     const filtered = report.data.filter(
       (r) =>
         !search ||
