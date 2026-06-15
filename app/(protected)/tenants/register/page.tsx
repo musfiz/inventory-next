@@ -7,11 +7,12 @@ import { notify } from '@/lib/notifications';
 import { tenantService } from '@/services/tenantService';
 import { GiSave } from 'react-icons/gi';
 import { usePermissions } from '@/hooks/use-permissions';
-import { BUSINESS_TYPES, SUBSCRIPTION_PLANS, SUBSCRIPTION_STATUSES } from '@/lib/constants';
+import BusinessTypeSelect from '@/components/ui/business-type-select';
+import { SUBSCRIPTION_PLANS, SUBSCRIPTION_STATUSES } from '@/lib/constants';
 
 interface TenantFormData {
   business_name: string;
-  business_type: string;
+  business_type_id: number | null;
   contact_person: string;
   phone: string;
   email: string;
@@ -52,7 +53,7 @@ export default function TenantRegistrationPage() {
   const [errors, setErrors] = useState<Record<string, string[]>>({});
   const [formData, setFormData] = useState<TenantFormData>({
     business_name: '',
-    business_type: 'other',
+    business_type_id: null,
     contact_person: '',
     phone: '',
     email: '',
@@ -182,24 +183,14 @@ export default function TenantRegistrationPage() {
                 <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-2">
                   Business Type
                 </label>
-                <select
-                  name="business_type"
-                  value={formData.business_type}
-                  onChange={handleInputChange}
-                  className={getInputClassName(
-                    'business_type',
-                    'w-full px-2.5 py-1 text-sm bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-sm text-gray-900 dark:text-gray-100 focus:outline-none focus:border-indigo-500 dark:focus:border-indigo-400'
-                  )}
-                >
-                  {BUSINESS_TYPES.map(type => (
-                    <option key={type.value} value={type.value}>
-                      {type.label}
-                    </option>
-                  ))}
-                </select>
-                {getFieldError('business_type') && (
+                <BusinessTypeSelect
+                  value={formData.business_type_id}
+                  onChange={(id) => setFormData(prev => ({ ...prev, business_type_id: id }))}
+                  placeholder="Select business type"
+                />
+                {errors.business_type_id && (
                   <p className="mt-1 text-xs text-red-600 dark:text-red-400">
-                    {getFieldError('business_type')}
+                    {errors.business_type_id[0]}
                   </p>
                 )}
               </div>

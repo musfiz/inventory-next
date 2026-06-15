@@ -3,6 +3,12 @@
  * Defines request and response types for all API endpoints
  */
 
+// Business Type - can be string (name) or object with id and name
+export type BusinessType = {
+  id: number;
+  name: string
+};
+
 export interface TenantSettings {
   default_printer_type?: 'a4' | 'thermal';
   thermal_paper_size?: '80mm' | '53mm' | '58mm';
@@ -30,7 +36,8 @@ export interface Tenant {
   id: string;
   business_name: string;
   slug: string;
-  business_type?: string;
+  business_type?: BusinessType;
+  business_type_id?: number;
   contact_person?: string;
   phone?: string;
   email?: string;
@@ -79,7 +86,8 @@ export interface Product {
   id: string;
   uuid?: string;
   tenant_id?: string;
-  business_type?: string;
+  business_type?: BusinessType;
+  business_type_id?: number;
   sku?: string;
   name: string;
   slug?: string;
@@ -198,25 +206,8 @@ export interface Category {
   name: string;
   description?: string;
   parent_id?: string;
-  business_type?:
-  | 'pharmacy'
-  | 'electric'
-  | 'electronics'
-  | 'fashion'
-  | 'furniture'
-  | 'bookshop'
-  | 'departmental'
-  | 'computer'
-  | 'clothing'
-  | 'footwear'
-  | 'cosmetics'
-  | 'stationery'
-  | 'grocery'
-  | 'hardware'
-  | 'restaurant'
-  | 'cafe'
-  | 'supermarket'
-  | 'other';
+  business_type?: BusinessType;
+  business_type_id?: number;
   parent?: Category;
   children?: Category[];
   is_active: boolean;
@@ -236,7 +227,8 @@ export interface Unit {
 export interface CreateProductRequest {
   // Required fields
   name: string;
-  business_type: string;
+  business_type: BusinessType;
+  business_type_id?: number;
   category_id: string;
   brand_id: string;
   // pricing fields removed for product table (kept in product variations)
@@ -268,25 +260,8 @@ export interface CreateCategoryRequest {
   name: string;
   description?: string;
   parent_id?: string;
-  business_type?:
-  | 'pharmacy'
-  | 'electric'
-  | 'electronics'
-  | 'fashion'
-  | 'furniture'
-  | 'bookshop'
-  | 'departmental'
-  | 'computer'
-  | 'clothing'
-  | 'footwear'
-  | 'cosmetics'
-  | 'stationery'
-  | 'grocery'
-  | 'hardware'
-  | 'restaurant'
-  | 'cafe'
-  | 'supermarket'
-  | 'other';
+  business_type?: BusinessType;
+  business_type_id?: number;
   image_url?: string;
   sort_order?: number;
   is_active?: boolean;
@@ -327,25 +302,8 @@ export interface ProductImageListResponse {
 export interface Brand {
   id: string;
   name: string;
-  business_type?:
-  | 'pharmacy'
-  | 'electric'
-  | 'electronics'
-  | 'fashion'
-  | 'furniture'
-  | 'bookshop'
-  | 'departmental'
-  | 'computer'
-  | 'clothing'
-  | 'footwear'
-  | 'cosmetics'
-  | 'stationery'
-  | 'grocery'
-  | 'hardware'
-  | 'restaurant'
-  | 'cafe'
-  | 'supermarket'
-  | 'other';
+  business_type?: BusinessType;
+  business_type_id?: number;
   description?: string;
   logo_url?: string;
   is_active: boolean;
@@ -432,6 +390,7 @@ export interface RegisterTenantRequest {
   name: string;
   phone: string;
   business_type: string;
+  business_type_id?: number;
   address?: string;
   city?: string;
   country?: string;

@@ -10,7 +10,7 @@ import commonService from '@/services/commonService';
 import { Category } from '@/types/api.types';
 import DataTable from '@/components/ui/datatable';
 import CustomSelect from '@/components/ui/custom-select';
-import { BUSINESS_TYPES } from '@/lib/constants';
+import BusinessTypeSelect from '@/components/ui/business-type-select';
 import { useRouter } from 'next/navigation';
 import { usePermissions } from '@/hooks/use-permissions';
 
@@ -30,25 +30,7 @@ export default function CategoriesPage() {
   const [formData, setFormData] = useState({
     name: '',
     description: '',
-    business_type: 'other' as
-      | 'pharmacy'
-      | 'electric'
-      | 'electronics'
-      | 'fashion'
-      | 'furniture'
-      | 'bookshop'
-      | 'departmental'
-      | 'computer'
-      | 'clothing'
-      | 'footwear'
-      | 'cosmetics'
-      | 'stationery'
-      | 'grocery'
-      | 'hardware'
-      | 'restaurant'
-      | 'cafe'
-      | 'supermarket'
-      | 'other',
+    business_type_id: null as number | null,
     is_active: true,
     parent_id: undefined as string | undefined,
   });
@@ -111,7 +93,7 @@ export default function CategoriesPage() {
     setFormData({
       name: '',
       description: '',
-      business_type: 'other',
+      business_type_id: null,
       is_active: true,
       parent_id: undefined,
     });
@@ -127,7 +109,7 @@ export default function CategoriesPage() {
     setFormData({
       name: category.name,
       description: category.description || '',
-      business_type: category.business_type || 'other',
+      business_type_id: (category as any).business_type_id ?? null,
       is_active: category.is_active,
       parent_id: category.parent_id || undefined,
     });
@@ -343,17 +325,12 @@ export default function CategoriesPage() {
                 <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-0.5">
                   Business Type
                 </label>
-                <CustomSelect
-                  value={BUSINESS_TYPES.find(type => type.value === formData.business_type) || null}
-                  onChange={option =>
-                    setFormData({
-                      ...formData,
-                      business_type: (option?.value as typeof formData.business_type) || 'other',
-                    })
+                <BusinessTypeSelect
+                  value={formData.business_type_id}
+                  onChange={(id) =>
+                    setFormData({ ...formData, business_type_id: id })
                   }
-                  options={[...BUSINESS_TYPES]}
                   placeholder="Select business type"
-                  className="text-sm"
                 />
               </div>
               <div>
