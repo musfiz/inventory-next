@@ -26,6 +26,7 @@ interface TenantSettingsFormData {
   pos_logo_position: string;
   pos_show_tax_breakdown: boolean;
   store_notification_email: string;
+  business_short_name: string;
   store_date_format: string;
   store_time_format: string;
   store_currency_position: string;
@@ -49,6 +50,7 @@ const EMPTY_FORM: TenantSettingsFormData = {
   pos_logo_position: 'top',
   pos_show_tax_breakdown: true,
   store_notification_email: '',
+  business_short_name: '',
   store_date_format: 'Y-m-d',
   store_time_format: 'H:i:s',
   store_currency_position: 'before',
@@ -104,7 +106,11 @@ export default function TenantSettingsPage() {
     >
   ) => {
     const { name, value } = e.target;
-    setFormData((prev) => ({ ...prev, [name]: value }));
+    const nextValue =
+      name === 'business_short_name'
+        ? value.toUpperCase().replace(/[^A-Z]/g, '').slice(0, 5)
+        : value;
+    setFormData((prev) => ({ ...prev, [name]: nextValue }));
 
     if (errors[name]) {
       setErrors((prev) => {
@@ -411,6 +417,24 @@ export default function TenantSettingsPage() {
                 {getFieldError('store_notification_email') && (
                   <p className="mt-1 text-xs text-red-600 dark:text-red-400">
                     {getFieldError('store_notification_email')}
+                  </p>
+                )}
+              </div>
+
+              <div>
+                <label className={labelClass}>Business Short Name</label>
+                <input
+                  type="text"
+                  name="business_short_name"
+                  value={formData.business_short_name}
+                  onChange={handleInputChange}
+                  className={getInputClassName('business_short_name', inputBase)}
+                  placeholder="ABC"
+                  maxLength={5}
+                />
+                {getFieldError('business_short_name') && (
+                  <p className="mt-1 text-xs text-red-600 dark:text-red-400">
+                    {getFieldError('business_short_name')}
                   </p>
                 )}
               </div>

@@ -13,6 +13,7 @@ export interface TenantSettings {
   pos_logo_position?: 'top' | 'bottom';
   pos_show_tax_breakdown?: boolean;
   store_notification_email?: string | null;
+  business_short_name?: string;
   store_date_format?: string;
   store_time_format?: string;
   store_currency_position?: 'before' | 'after';
