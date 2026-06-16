@@ -7,10 +7,10 @@ import { notify } from '@/lib/notifications';
 import { productService } from '@/services';
 import { Brand, Category, Unit } from '@/types/api.types';
 import CustomSelect, { SelectOption } from '@/components/ui/custom-select';
+import BusinessTypeSelect from '@/components/ui/business-type-select';
 import commonService from '@/services/commonService';
 import { useAuthStore } from '@/stores/auth-store';
 import { usePermissions } from '@/hooks/use-permissions';
-import { BUSINESS_TYPES } from '@/lib/constants';
 import { GiSave } from 'react-icons/gi';
 
 interface ProductFormData {
@@ -72,11 +72,7 @@ function AddProductPage() {
 
   // Business type state — for non-super-admin, locked to their tenant's business_type
   const [businessType, setBusinessType] = useState<string>(isSuperAdmin ? '' : tenantBusinessType);
-  const [selectedBusinessType, setSelectedBusinessType] = useState<SelectOption | null>(
-    isSuperAdmin
-      ? null
-      : BUSINESS_TYPES.find((bt) => bt.value === tenantBusinessType) || null
-  );
+  const [businessTypeId, setBusinessTypeId] = useState<number | null>(null);
 
   // Edit-mode state
   const [editingId, setEditingId] = useState<number | null>(null);
@@ -272,10 +268,14 @@ function AddProductPage() {
         });
         // Reflect business_type in the selector (locked either way)
         if (p.business_type) {
-          setBusinessType(p.business_type);
-          setSelectedBusinessType(
-            BUSINESS_TYPES.find((bt) => bt.value === p.business_type) || null
-          );
+          if (typeof p.business_type === 'object' && p.business_type?.name) {
+            setBusinessType(p.business_type.name);
+          } else {
+            setBusinessType(String(p.business_type));
+          }
+        }
+        if (p.business_type_id) {
+          setBusinessTypeId(Number(p.business_type_id));
         }
         // Pre-populate the visible CustomSelect labels
         if (p.category) {
@@ -283,6 +283,9 @@ function AddProductPage() {
         }
         if (p.brand) {
           setSelectedBrand({ value: String(p.brand.id), label: p.brand.name });
+        } else if (p.brand_id) {
+          // Keep the previous brand selected even when relation payload is missing.
+          setSelectedBrand({ value: String(p.brand_id), label: `Brand #${p.brand_id}` });
         }
         if (p.unit) {
           setSelectedUnit({
@@ -299,6 +302,18 @@ function AddProductPage() {
     return () => { mounted = false; };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [editId]);
+
+  useEffect(() => {
+    if (!formData.brand_id) return;
+    if (defaultBrandOptions.length === 0) return;
+
+    const matched = defaultBrandOptions.find((o) => o.value === formData.brand_id);
+    if (!matched) return;
+
+    if (!selectedBrand || selectedBrand.value !== matched.value || selectedBrand.label !== matched.label) {
+      setSelectedBrand(matched);
+    }
+  }, [formData.brand_id, defaultBrandOptions, selectedBrand]);
 
   const handleCategoryChange = (option: SelectOption | null) => {
     setSelectedCategory(option);
@@ -351,9 +366,11 @@ function AddProductPage() {
     }
   };
 
-  const handleBusinessTypeChange = (option: SelectOption | null) => {
-    setSelectedBusinessType(option);
-    setBusinessType(option?.value || '');
+  const handleBusinessTypeChange = (id: number | null) => {
+    setBusinessTypeId(id);
+    if (!id) {
+      setBusinessType('');
+    }
 
     // Reset category and brand selections when business type changes
     setSelectedCategory(null);
@@ -370,6 +387,15 @@ function AddProductPage() {
 
     // Reset loaded state to allow reloading with new business type
     hasLoadedData.current = false;
+
+    // Clear business_type error when selected
+    if (errors['business_type']) {
+      setErrors(prev => {
+        const newErrors = { ...prev };
+        delete newErrors['business_type'];
+        return newErrors;
+      });
+    }
   };
 
   const handleInputChange = (
@@ -422,7 +448,7 @@ function AddProductPage() {
 
     try {
       // Prepare data for submission
-      const submitData = {
+      const submitData: any = {
         ...formData,
         business_type: businessType, // Add business type
         tax_rate: formData.tax_rate ? parseFloat(formData.tax_rate) : 0,
@@ -490,8 +516,8 @@ function AddProductPage() {
                   value={formData.name}
                   onChange={handleInputChange}
                   className={`w-full px-2.5 py-1 text-sm bg-white dark:bg-gray-700 border ${hasFieldError('name')
-                      ? 'border-red-500 focus:border-red-500'
-                      : 'border-gray-300 dark:border-gray-600 focus:border-indigo-500 dark:focus:border-indigo-400'
+                    ? 'border-red-500 focus:border-red-500'
+                    : 'border-gray-300 dark:border-gray-600 focus:border-indigo-500 dark:focus:border-indigo-400'
                     } rounded-sm text-gray-900 dark:text-gray-100 focus:outline-none`}
                   placeholder="Enter product name"
                 />
@@ -507,17 +533,17 @@ function AddProductPage() {
                   Business Type <span className="text-red-500">*</span>
                 </label>
                 {isSuperAdmin ? (
-                  <CustomSelect
-                    value={selectedBusinessType}
+                  <BusinessTypeSelect
+                    value={businessTypeId}
                     onChange={handleBusinessTypeChange}
-                    options={BUSINESS_TYPES.map(bt => ({ value: bt.value, label: bt.label }))}
-                    placeholder="Select business type..."
+                    onChangeDetail={({ name }) => setBusinessType(name || '')}
+                    placeholder="Select business type"
                     isInvalid={hasFieldError('business_type')}
                   />
                 ) : (
                   <input
                     type="text"
-                    value={selectedBusinessType?.label || tenantBusinessType || '—'}
+                    value={tenantBusinessType || '—'}
                     disabled
                     className="w-full px-2.5 py-1 text-sm bg-gray-100 dark:bg-gray-600 border border-gray-300 dark:border-gray-600 rounded-sm text-gray-700 dark:text-gray-300 cursor-not-allowed"
                   />
@@ -540,8 +566,8 @@ function AddProductPage() {
                 onChange={handleInputChange}
                 rows={2}
                 className={`w-full px-2.5 py-1 text-sm bg-white dark:bg-gray-700 border ${hasFieldError('description')
-                    ? 'border-red-500 focus:border-red-500'
-                    : 'border-gray-300 dark:border-gray-600 focus:border-indigo-500 dark:focus:border-indigo-400'
+                  ? 'border-red-500 focus:border-red-500'
+                  : 'border-gray-300 dark:border-gray-600 focus:border-indigo-500 dark:focus:border-indigo-400'
                   } rounded-sm text-gray-900 dark:text-gray-100 focus:outline-none`}
                 placeholder="Enter product description"
               />
@@ -637,8 +663,8 @@ function AddProductPage() {
                   value={formData.type}
                   onChange={handleInputChange}
                   className={`w-full px-2.5 py-1 text-sm bg-white dark:bg-gray-700 border ${hasFieldError('type')
-                      ? 'border-red-500 focus:border-red-500'
-                      : 'border-gray-300 dark:border-gray-600 focus:border-indigo-500 dark:focus:border-indigo-400'
+                    ? 'border-red-500 focus:border-red-500'
+                    : 'border-gray-300 dark:border-gray-600 focus:border-indigo-500 dark:focus:border-indigo-400'
                     } rounded-sm text-gray-900 dark:text-gray-100 focus:outline-none`}
                 >
                   <option value="simple">Simple Product</option>
@@ -660,8 +686,8 @@ function AddProductPage() {
                   value={formData.status}
                   onChange={handleInputChange}
                   className={`w-full px-2.5 py-1 text-sm bg-white dark:bg-gray-700 border ${hasFieldError('status')
-                      ? 'border-red-500 focus:border-red-500'
-                      : 'border-gray-300 dark:border-gray-600 focus:border-indigo-500 dark:focus:border-indigo-400'
+                    ? 'border-red-500 focus:border-red-500'
+                    : 'border-gray-300 dark:border-gray-600 focus:border-indigo-500 dark:focus:border-indigo-400'
                     } rounded-sm text-gray-900 dark:text-gray-100 focus:outline-none`}
                 >
                   <option value="active">Active</option>
@@ -699,8 +725,8 @@ function AddProductPage() {
                   min="0"
                   max="100"
                   className={`w-full px-2.5 py-1 text-sm bg-white dark:bg-gray-700 border ${hasFieldError('tax_rate')
-                      ? 'border-red-500 focus:border-red-500'
-                      : 'border-gray-300 dark:border-gray-600 focus:border-indigo-500 dark:focus:border-indigo-400'
+                    ? 'border-red-500 focus:border-red-500'
+                    : 'border-gray-300 dark:border-gray-600 focus:border-indigo-500 dark:focus:border-indigo-400'
                     } rounded-sm text-gray-900 dark:text-gray-100 focus:outline-none`}
                   placeholder="0.00"
                 />
@@ -745,8 +771,8 @@ function AddProductPage() {
                   onChange={handleInputChange}
                   min="0"
                   className={`w-full px-2.5 py-1 text-sm bg-white dark:bg-gray-700 border ${hasFieldError('low_stock_threshold')
-                      ? 'border-red-500 focus:border-red-500'
-                      : 'border-gray-300 dark:border-gray-600 focus:border-indigo-500 dark:focus:border-indigo-400'
+                    ? 'border-red-500 focus:border-red-500'
+                    : 'border-gray-300 dark:border-gray-600 focus:border-indigo-500 dark:focus:border-indigo-400'
                     } rounded-sm text-gray-900 dark:text-gray-100 focus:outline-none`}
                   placeholder="10"
                 />
@@ -768,8 +794,8 @@ function AddProductPage() {
                   onChange={handleInputChange}
                   min="0"
                   className={`w-full px-2.5 py-1 text-sm bg-white dark:bg-gray-700 border ${hasFieldError('reorder_point')
-                      ? 'border-red-500 focus:border-red-500'
-                      : 'border-gray-300 dark:border-gray-600 focus:border-indigo-500 dark:focus:border-indigo-400'
+                    ? 'border-red-500 focus:border-red-500'
+                    : 'border-gray-300 dark:border-gray-600 focus:border-indigo-500 dark:focus:border-indigo-400'
                     } rounded-sm text-gray-900 dark:text-gray-100 focus:outline-none`}
                   placeholder="Reorder point"
                 />
@@ -791,8 +817,8 @@ function AddProductPage() {
                   onChange={handleInputChange}
                   min="0"
                   className={`w-full px-2.5 py-1 text-sm bg-white dark:bg-gray-700 border ${hasFieldError('display_order')
-                      ? 'border-red-500 focus:border-red-500'
-                      : 'border-gray-300 dark:border-gray-600 focus:border-indigo-500 dark:focus:border-indigo-400'
+                    ? 'border-red-500 focus:border-red-500'
+                    : 'border-gray-300 dark:border-gray-600 focus:border-indigo-500 dark:focus:border-indigo-400'
                     } rounded-sm text-gray-900 dark:text-gray-100 focus:outline-none`}
                   placeholder="Display order"
                 />

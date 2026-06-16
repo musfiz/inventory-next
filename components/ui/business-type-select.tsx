@@ -7,12 +7,13 @@ import { businessTypeService } from '@/services/businessTypeService';
 interface BusinessTypeSelectProps {
   value?: string | number | null;
   onChange: (businessTypeId: number | null) => void;
+  onChangeDetail?: (detail: { id: number | null; name: string | null }) => void;
   placeholder?: string;
   isDisabled?: boolean;
   isInvalid?: boolean;
 }
 
-export default function BusinessTypeSelect({ value, onChange, placeholder = 'Select business type', isDisabled = false, isInvalid = false }: BusinessTypeSelectProps) {
+export default function BusinessTypeSelect({ value, onChange, onChangeDetail, placeholder = 'Select business type', isDisabled = false, isInvalid = false }: BusinessTypeSelectProps) {
   const [defaultOptions, setDefaultOptions] = useState<{ value: string; label: string }[]>([]);
   const [selected, setSelected] = useState<any>(null);
 
@@ -59,7 +60,10 @@ export default function BusinessTypeSelect({ value, onChange, placeholder = 'Sel
       value={selected}
       onChange={(opt) => {
         setSelected(opt);
-        onChange(opt ? parseInt(opt.value, 10) : null);
+        const id = opt ? parseInt(opt.value, 10) : null;
+        const name = opt?.label ?? null;
+        onChange(id);
+        onChangeDetail?.({ id, name });
       }}
       loadOptions={loadOptions}
       defaultOptions={defaultOptions}
