@@ -9,7 +9,7 @@ import DataTable from '@/components/ui/datatable';
 import { User } from '@/types';
 import { useAuthStore } from '@/stores/auth-store';
 import { usePermissions } from '@/hooks/use-permissions';
-import { confirm, notify, success } from '@/lib/notifications';
+import { confirm, notify } from '@/lib/notifications';
 import { userService } from '@/services';
 
 
@@ -132,7 +132,7 @@ export default function UsersPage() {
     try {
       if (mode === 'add') {
         await userService.createUser(form as any);
-        success('User created successfully');
+        notify.success('User created successfully');
       } else if (editingId) {
         const updateData: any = {
           name: form.name,
@@ -147,7 +147,7 @@ export default function UsersPage() {
           updateData.password_confirmation = form.password_confirmation;
         }
         await userService.updateUser(editingId, updateData);
-        success('User updated successfully');
+        notify.success('User updated successfully');
       }
       setShowForm(false);
       resetForm();
@@ -181,7 +181,7 @@ export default function UsersPage() {
 
     try {
       await userService.deleteUser(user.id);
-      success('User deleted successfully');
+      notify.success('User deleted successfully');
       setRefreshKey(prev => prev + 1);
     } catch (error: any) {
       notify.error(error.response?.data?.message || 'Failed to delete user');

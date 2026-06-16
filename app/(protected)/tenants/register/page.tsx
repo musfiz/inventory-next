@@ -29,9 +29,9 @@ interface TenantFormData {
   subscription_plan: string;
   subscription_status: string;
   subscription_ends_at: string;
-  max_users: number;
-  max_products: number;
-  max_warehouses: number;
+  max_users: number | '';
+  max_products: number | '';
+  max_warehouses: number | '';
   is_active: boolean;
 }
 
@@ -80,13 +80,14 @@ export default function TenantRegistrationPage() {
     e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>
   ) => {
     const { name, value, type } = e.target;
+    const isLimitField = name === 'max_users' || name === 'max_products' || name === 'max_warehouses';
     setFormData(prev => ({
       ...prev,
       [name]:
         type === 'checkbox'
           ? (e.target as HTMLInputElement).checked
-          : name.includes('max_')
-            ? parseInt(value) || 0
+          : isLimitField
+            ? (value === '' ? '' : parseInt(value, 10) || 0)
             : value,
     }));
 
@@ -113,13 +114,34 @@ export default function TenantRegistrationPage() {
       : baseClassName;
   };
 
+  const handleLimitInputFocus = (e: React.FocusEvent<HTMLInputElement>) => {
+    e.target.select();
+  };
+
+  const handleLimitInputBlur = (e: React.FocusEvent<HTMLInputElement>) => {
+    const { name, value } = e.target;
+    if (value !== '') return;
+
+    setFormData(prev => ({
+      ...prev,
+      [name]: 0,
+    }));
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
     setErrors({}); // Clear previous errors
 
     try {
-      await tenantService.storeTenant(formData);
+      const submitData = {
+        ...formData,
+        max_users: formData.max_users === '' ? 0 : Number(formData.max_users),
+        max_products: formData.max_products === '' ? 0 : Number(formData.max_products),
+        max_warehouses: formData.max_warehouses === '' ? 0 : Number(formData.max_warehouses),
+      };
+
+      await tenantService.storeTenant(submitData as any);
       notify.success('Tenant created successfully!');
       router.push('/tenants');
     } catch (error: any) {
@@ -556,6 +578,8 @@ export default function TenantRegistrationPage() {
                   name="max_users"
                   value={formData.max_users}
                   onChange={handleInputChange}
+                  onFocus={handleLimitInputFocus}
+                  onBlur={handleLimitInputBlur}
                   min="1"
                   className={getInputClassName(
                     'max_users',
@@ -578,6 +602,8 @@ export default function TenantRegistrationPage() {
                   name="max_products"
                   value={formData.max_products}
                   onChange={handleInputChange}
+                  onFocus={handleLimitInputFocus}
+                  onBlur={handleLimitInputBlur}
                   min="1"
                   className={getInputClassName(
                     'max_products',
@@ -600,6 +626,8 @@ export default function TenantRegistrationPage() {
                   name="max_warehouses"
                   value={formData.max_warehouses}
                   onChange={handleInputChange}
+                  onFocus={handleLimitInputFocus}
+                  onBlur={handleLimitInputBlur}
                   min="1"
                   className={getInputClassName(
                     'max_warehouses',

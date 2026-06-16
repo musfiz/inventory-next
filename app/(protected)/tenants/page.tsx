@@ -12,7 +12,7 @@ import type { BusinessType, Tenant as TenantDetail } from '@/types/api.types';
 interface TenantRow {
   id: number;
   business_name: string;
-  business_type: BusinessType;
+  business_type?: BusinessType | null;
   email: string;
   phone: string;
   is_active: boolean;
@@ -96,9 +96,10 @@ export default function TenantsPage() {
       accessorKey: 'business_type',
       header: 'Type',
       cell: ({ row }) => {
+        const businessTypeName = row.original.business_type?.name;
         return (
           <span className="text-xs text-gray-600 dark:text-gray-400 capitalize">
-            {row.original.business_type.name || '—'}
+            {businessTypeName || '—'}
           </span>
         );
       },
