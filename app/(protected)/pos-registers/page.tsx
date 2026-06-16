@@ -9,6 +9,7 @@ import { posRegisterService, commonService, customerService, warehouseService } 
 import type { PosRegister } from '@/services/posRegisterService';
 import DataTable from '@/components/ui/datatable';
 import CustomSelect from '@/components/ui/custom-select';
+import TenantSelect from '@/components/ui/tenant-select';
 import { useRouter } from 'next/navigation';
 import { usePermissions } from '@/hooks/use-permissions';
 import { useAuthStore } from '@/stores/auth-store';
@@ -199,14 +200,14 @@ export default function PosRegisterPage() {
     setIsEditing(true);
     setCurrent(r);
     setFormData({
-      tenant_id: isSuperAdmin ? r.tenant_id : undefined,
-      warehouse_id: r.warehouse_id,
+      tenant_id: isSuperAdmin && r.tenant_id ? String(r.tenant_id) : undefined,
+      warehouse_id: r.warehouse_id ? String(r.warehouse_id) : undefined,
       code: r.code || '',
       name: r.name,
       location: r.location || '',
       terminal_id: r.terminal_id || '',
       device_info: r.device_info ? JSON.stringify(r.device_info) : '',
-      default_customer_id: r.default_customer_id,
+      default_customer_id: r.default_customer_id ? String(r.default_customer_id) : undefined,
       default_payment_method: r.default_payment_method || 'cash',
       default_tax_rate: String(r.default_tax_rate ?? '0.00'),
       allow_price_override: !!r.allow_price_override,
@@ -222,9 +223,11 @@ export default function PosRegisterPage() {
       is_online: !!r.is_online,
     });
     setFormErrors({});
-    if (isSuperAdmin && r.tenant_id) setSelectedTenant({ value: r.tenant_id, label: r.tenant?.business_name || '' });
-    if (r.warehouse_id) setSelectedWarehouse({ value: r.warehouse_id, label: r.warehouse?.name || '' });
-    if (r.default_customer_id) setSelectedCustomer({ value: r.default_customer_id, label: r.default_customer?.name || '' });
+    if (isSuperAdmin && r.tenant_id) setSelectedTenant({ value: String(r.tenant_id), label: r.tenant?.business_name || '' });
+    if (r.warehouse_id) setSelectedWarehouse({ value: String(r.warehouse_id), label: r.warehouse?.name || '' });
+    else setSelectedWarehouse(null);
+    if (r.default_customer_id) setSelectedCustomer({ value: String(r.default_customer_id), label: r.default_customer?.name || '' });
+    else setSelectedCustomer(null);
     setShowForm(true);
   };
 
@@ -249,7 +252,7 @@ export default function PosRegisterPage() {
         location: formData.location,
         terminal_id: formData.terminal_id,
         device_info: formData.device_info ? JSON.parse(formData.device_info) : null,
-        default_customer_id: formData.default_customer_id,
+        default_customer_id: formData.default_customer_id ? String(formData.default_customer_id) : null,
         default_payment_method: formData.default_payment_method,
         default_tax_rate: formData.default_tax_rate,
         allow_price_override: formData.allow_price_override,
@@ -368,20 +371,19 @@ export default function PosRegisterPage() {
             {isSuperAdmin && (
               <div className="grid grid-cols-1 md:grid-cols-3 gap-1.5">
                 <div>
-                  <CustomSelect
-                    value={selectedTenant}
-                    onChange={option => {
-                      setFormData({ ...formData, tenant_id: option?.value || undefined });
-                      setSelectedTenant(option);
-                      if (option?.value && formErrors.tenant_id) {
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-0.5">Tenant <span className="text-red-500">*</span></label>
+                  <TenantSelect
+                    value={formData.tenant_id ?? null}
+                    onChange={(tenantId) => {
+                      const nextTenantId = tenantId ? String(tenantId) : undefined;
+                      setFormData({ ...formData, tenant_id: nextTenantId });
+                      setSelectedTenant(nextTenantId ? { value: nextTenantId, label: '' } : null);
+                      if (nextTenantId && formErrors.tenant_id) {
                         const { tenant_id, ...rest } = formErrors;
                         setFormErrors(rest);
                       }
                     }}
-                    loadOptions={loadTenantOptions}
-                    defaultOptions={defaultTenantOptions}
                     placeholder="Select tenant"
-                    className="text-sm"
                     isInvalid={!!formErrors.tenant_id}
                   />
                   {formErrors.tenant_id && <p className="text-red-600 text-xs mt-1">{formErrors.tenant_id}</p>}
@@ -461,7 +463,17 @@ export default function PosRegisterPage() {
 
               <div>
                 <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-0.5">Default Customer</label>
-                <CustomSelect value={selectedCustomer} onChange={opt => { setFormData({ ...formData, default_customer_id: opt?.value }); setSelectedCustomer(opt); }} loadOptions={loadCustomerOptions} defaultOptions={defaultCustomerOptions} placeholder="Select customer" className="text-sm" />
+                <CustomSelect
+                  value={selectedCustomer}
+                  onChange={opt => {
+                    setFormData({ ...formData, default_customer_id: opt?.value ? String(opt.value) : undefined });
+                    setSelectedCustomer(opt || null);
+                  }}
+                  loadOptions={loadCustomerOptions}
+                  defaultOptions={defaultCustomerOptions}
+                  placeholder="Select customer"
+                  className="text-sm"
+                />
               </div>
             </div>
 

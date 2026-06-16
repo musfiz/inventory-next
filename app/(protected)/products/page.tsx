@@ -182,7 +182,7 @@ export default function ProductsPage() {
           meta: { width: '15%' },
           cell: ({ row }: any) => (
             <span className="px-1.5 py-0.5 text-xs font-medium rounded bg-purple-100 text-purple-800 dark:bg-purple-900/30 dark:text-purple-400 capitalize">
-              {row.original.business_type?.replace('_', ' ') || '-'}
+              {row.original.business_type?.name || '-'}
             </span>
           ),
         },

@@ -233,7 +233,7 @@ export default function BrandsPage() {
       cell: ({ row }) => (
         <div className="flex items-center">
           <span className="text-xs text-gray-600 dark:text-gray-400 capitalize">
-            {row.original.business_type || 'Other'}
+            {row.original.business_type?.name || 'Other'}
           </span>
         </div>
       ),

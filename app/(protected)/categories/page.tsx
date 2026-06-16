@@ -214,7 +214,7 @@ export default function CategoriesPage() {
       header: 'Business Type',
       cell: ({ row }) => (
         <span className="text-gray-600 dark:text-gray-400 capitalize">
-          {row.original.business_type || 'Other'}
+          {row.original.business_type?.name || 'Other'}
         </span>
       ),
     },
@@ -231,8 +231,8 @@ export default function CategoriesPage() {
       cell: ({ row }) => (
         <span
           className={`px-2 py-1 text-xs rounded-full ${row.original.is_active
-              ? 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400'
-              : 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400'
+            ? 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400'
+            : 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400'
             }`}
         >
           {row.original.is_active ? 'Active' : 'Inactive'}

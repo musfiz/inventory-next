@@ -20,7 +20,7 @@ export default function TenantSelect({ value, onChange, placeholder = 'Select te
   const loadOptions = async (input: string) => {
     try {
       const tenants = await commonService.getTenantsForDropdown({ search: input });
-      const opts = (tenants || []).map((t: any) => ({ value: t.id, label: t.business_name }));
+      const opts = (tenants || []).map((t: any) => ({ value: String(t.id), label: t.business_name }));
       if (!input && defaultOptions.length === 0) setDefaultOptions(opts);
       return opts;
     } catch (err) {
@@ -39,12 +39,12 @@ export default function TenantSelect({ value, onChange, placeholder = 'Select te
         setDefaultOptions(opts);
         if (value) {
           const valueStr = String(value);
-          const found = opts.find(o => o.value === valueStr);
+          const found = opts.find(o => String(o.value) === valueStr);
           if (found) setSelected(found);
           else {
             // try to fetch by searching the id
             const more = await loadOptions('');
-            const f = more.find(o => o.value === valueStr);
+            const f = more.find(o => String(o.value) === valueStr);
             if (f) setSelected(f);
           }
         } else {
@@ -62,7 +62,7 @@ export default function TenantSelect({ value, onChange, placeholder = 'Select te
       value={selected}
       onChange={(opt) => {
         setSelected(opt);
-        onChange(opt?.value || null);
+        onChange(opt?.value ? String(opt.value) : null);
       }}
       loadOptions={loadOptions}
       defaultOptions={defaultOptions}
