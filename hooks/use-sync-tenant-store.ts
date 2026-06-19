@@ -1,4 +1,5 @@
 import { useEffect, useRef } from 'react';
+import { usePathname } from 'next/navigation';
 import { useAuthStore } from '@/stores/auth-store';
 import { useTenantStore } from '@/stores/tenant-store';
 import tenantService from '@/services/tenantService';
@@ -16,16 +17,25 @@ import tenantService from '@/services/tenantService';
  *   • the store already has settings for the same tenant,
  *   • the user has no tenant_id (tenant users) or no selectedTenant
  *     (super-admins).
+ *   • not on a page that requires tenant settings.
  */
 export function useSyncTenantStore() {
+  const pathname = usePathname();
   const user = useAuthStore(s => s.user);
   const hydrated = useAuthStore(s => s.hydrated);
   const { selectedTenant, tenantSettings, setSelectedTenant, setTenantSettings } = useTenantStore();
 
   const syncedForRef = useRef<string | null>(null);
 
+  // Only sync settings on pages that need them (tenant detail, settings, or general settings)
+  const shouldSyncSettings = pathname && (
+    pathname.includes('/tenants/[id]') ||
+    pathname.match(/\/tenants\/\d+/) ||
+    pathname === '/settings'
+  );
+
   useEffect(() => {
-    if (!hydrated || !user) return;
+    if (!hydrated || !user || !shouldSyncSettings) return;
 
     let tenantId: string | null = null;
 
@@ -50,5 +60,5 @@ export function useSyncTenantStore() {
         setTenantSettings(settings);
       })
       .catch(() => {});
-  }, [hydrated, user?.id, user?.tenant_id, selectedTenant?.id]);
+  }, [hydrated, user?.id, user?.tenant_id, selectedTenant?.id, shouldSyncSettings]);
 }

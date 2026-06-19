@@ -10,7 +10,7 @@ import commonService from '@/services/commonService';
 import { Category } from '@/types/api.types';
 import DataTable from '@/components/ui/datatable';
 import CustomSelect from '@/components/ui/custom-select';
-import { BUSINESS_TYPES } from '@/lib/constants';
+import BusinessTypeSelect from '@/components/ui/business-type-select';
 import { useRouter } from 'next/navigation';
 import { usePermissions } from '@/hooks/use-permissions';
 
@@ -30,25 +30,7 @@ export default function CategoriesPage() {
   const [formData, setFormData] = useState({
     name: '',
     description: '',
-    business_type: 'other' as
-      | 'pharmacy'
-      | 'electric'
-      | 'electronics'
-      | 'fashion'
-      | 'furniture'
-      | 'bookshop'
-      | 'departmental'
-      | 'computer'
-      | 'clothing'
-      | 'footwear'
-      | 'cosmetics'
-      | 'stationery'
-      | 'grocery'
-      | 'hardware'
-      | 'restaurant'
-      | 'cafe'
-      | 'supermarket'
-      | 'other',
+    business_type_id: null as number | null,
     is_active: true,
     parent_id: undefined as string | undefined,
   });
@@ -111,7 +93,7 @@ export default function CategoriesPage() {
     setFormData({
       name: '',
       description: '',
-      business_type: 'other',
+      business_type_id: null,
       is_active: true,
       parent_id: undefined,
     });
@@ -127,7 +109,7 @@ export default function CategoriesPage() {
     setFormData({
       name: category.name,
       description: category.description || '',
-      business_type: category.business_type || 'other',
+      business_type_id: (category as any).business_type_id ?? null,
       is_active: category.is_active,
       parent_id: category.parent_id || undefined,
     });
@@ -232,7 +214,7 @@ export default function CategoriesPage() {
       header: 'Business Type',
       cell: ({ row }) => (
         <span className="text-gray-600 dark:text-gray-400 capitalize">
-          {row.original.business_type || 'Other'}
+          {row.original.business_type?.name || 'Other'}
         </span>
       ),
     },
@@ -249,8 +231,8 @@ export default function CategoriesPage() {
       cell: ({ row }) => (
         <span
           className={`px-2 py-1 text-xs rounded-full ${row.original.is_active
-              ? 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400'
-              : 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400'
+            ? 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400'
+            : 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400'
             }`}
         >
           {row.original.is_active ? 'Active' : 'Inactive'}
@@ -343,17 +325,12 @@ export default function CategoriesPage() {
                 <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-0.5">
                   Business Type
                 </label>
-                <CustomSelect
-                  value={BUSINESS_TYPES.find(type => type.value === formData.business_type) || null}
-                  onChange={option =>
-                    setFormData({
-                      ...formData,
-                      business_type: (option?.value as typeof formData.business_type) || 'other',
-                    })
+                <BusinessTypeSelect
+                  value={formData.business_type_id}
+                  onChange={(id) =>
+                    setFormData({ ...formData, business_type_id: id })
                   }
-                  options={[...BUSINESS_TYPES]}
                   placeholder="Select business type"
-                  className="text-sm"
                 />
               </div>
               <div>

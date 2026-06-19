@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { useState, useEffect } from 'react';
-import { Package2 } from 'lucide-react';
+import { Package2, PlusIcon } from 'lucide-react';
 import { ColumnDef } from '@tanstack/react-table';
 import DataTable from '@/components/ui/datatable';
 import { usePermissions } from '@/hooks/use-permissions';
@@ -94,6 +94,7 @@ export default function StockListPage() {
               href="/stock/add"
               className="inline-flex items-center px-3 py-1.5 rounded-md bg-blue-600 text-white text-sm font-medium hover:bg-blue-700 transition-colors"
             >
+              <PlusIcon className="w-5 h-5" />
               Add Stock
             </Link>
           )}
@@ -102,6 +103,7 @@ export default function StockListPage() {
               href="/stock/movement"
               className="inline-flex items-center px-3 py-1.5 rounded-md bg-slate-100 text-slate-700 text-sm font-medium hover:bg-slate-200 transition-colors dark:bg-slate-800 dark:text-slate-200 dark:hover:bg-slate-700"
             >
+              &larr;
               Stock Movement
             </Link>
           )}

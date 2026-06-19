@@ -7,11 +7,12 @@ import { notify } from '@/lib/notifications';
 import { tenantService } from '@/services/tenantService';
 import { GiSave } from 'react-icons/gi';
 import { usePermissions } from '@/hooks/use-permissions';
-import { BUSINESS_TYPES, SUBSCRIPTION_PLANS, SUBSCRIPTION_STATUSES } from '@/lib/constants';
+import BusinessTypeSelect from '@/components/ui/business-type-select';
+import { SUBSCRIPTION_PLANS, SUBSCRIPTION_STATUSES } from '@/lib/constants';
 
 interface TenantFormData {
   business_name: string;
-  business_type: string;
+  business_type_id: number | null;
   contact_person: string;
   phone: string;
   email: string;
@@ -28,9 +29,9 @@ interface TenantFormData {
   subscription_plan: string;
   subscription_status: string;
   subscription_ends_at: string;
-  max_users: number;
-  max_products: number;
-  max_warehouses: number;
+  max_users: number | '';
+  max_products: number | '';
+  max_warehouses: number | '';
   is_active: boolean;
 }
 
@@ -52,7 +53,7 @@ export default function TenantRegistrationPage() {
   const [errors, setErrors] = useState<Record<string, string[]>>({});
   const [formData, setFormData] = useState<TenantFormData>({
     business_name: '',
-    business_type: 'other',
+    business_type_id: null,
     contact_person: '',
     phone: '',
     email: '',
@@ -79,13 +80,14 @@ export default function TenantRegistrationPage() {
     e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>
   ) => {
     const { name, value, type } = e.target;
+    const isLimitField = name === 'max_users' || name === 'max_products' || name === 'max_warehouses';
     setFormData(prev => ({
       ...prev,
       [name]:
         type === 'checkbox'
           ? (e.target as HTMLInputElement).checked
-          : name.includes('max_')
-            ? parseInt(value) || 0
+          : isLimitField
+            ? (value === '' ? '' : parseInt(value, 10) || 0)
             : value,
     }));
 
@@ -112,13 +114,34 @@ export default function TenantRegistrationPage() {
       : baseClassName;
   };
 
+  const handleLimitInputFocus = (e: React.FocusEvent<HTMLInputElement>) => {
+    e.target.select();
+  };
+
+  const handleLimitInputBlur = (e: React.FocusEvent<HTMLInputElement>) => {
+    const { name, value } = e.target;
+    if (value !== '') return;
+
+    setFormData(prev => ({
+      ...prev,
+      [name]: 0,
+    }));
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
     setErrors({}); // Clear previous errors
 
     try {
-      await tenantService.storeTenant(formData);
+      const submitData = {
+        ...formData,
+        max_users: formData.max_users === '' ? 0 : Number(formData.max_users),
+        max_products: formData.max_products === '' ? 0 : Number(formData.max_products),
+        max_warehouses: formData.max_warehouses === '' ? 0 : Number(formData.max_warehouses),
+      };
+
+      await tenantService.storeTenant(submitData as any);
       notify.success('Tenant created successfully!');
       router.push('/tenants');
     } catch (error: any) {
@@ -182,24 +205,14 @@ export default function TenantRegistrationPage() {
                 <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-2">
                   Business Type
                 </label>
-                <select
-                  name="business_type"
-                  value={formData.business_type}
-                  onChange={handleInputChange}
-                  className={getInputClassName(
-                    'business_type',
-                    'w-full px-2.5 py-1 text-sm bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-sm text-gray-900 dark:text-gray-100 focus:outline-none focus:border-indigo-500 dark:focus:border-indigo-400'
-                  )}
-                >
-                  {BUSINESS_TYPES.map(type => (
-                    <option key={type.value} value={type.value}>
-                      {type.label}
-                    </option>
-                  ))}
-                </select>
-                {getFieldError('business_type') && (
+                <BusinessTypeSelect
+                  value={formData.business_type_id}
+                  onChange={(id) => setFormData(prev => ({ ...prev, business_type_id: id }))}
+                  placeholder="Select business type"
+                />
+                {errors.business_type_id && (
                   <p className="mt-1 text-xs text-red-600 dark:text-red-400">
-                    {getFieldError('business_type')}
+                    {errors.business_type_id[0]}
                   </p>
                 )}
               </div>
@@ -565,6 +578,8 @@ export default function TenantRegistrationPage() {
                   name="max_users"
                   value={formData.max_users}
                   onChange={handleInputChange}
+                  onFocus={handleLimitInputFocus}
+                  onBlur={handleLimitInputBlur}
                   min="1"
                   className={getInputClassName(
                     'max_users',
@@ -587,6 +602,8 @@ export default function TenantRegistrationPage() {
                   name="max_products"
                   value={formData.max_products}
                   onChange={handleInputChange}
+                  onFocus={handleLimitInputFocus}
+                  onBlur={handleLimitInputBlur}
                   min="1"
                   className={getInputClassName(
                     'max_products',
@@ -609,6 +626,8 @@ export default function TenantRegistrationPage() {
                   name="max_warehouses"
                   value={formData.max_warehouses}
                   onChange={handleInputChange}
+                  onFocus={handleLimitInputFocus}
+                  onBlur={handleLimitInputBlur}
                   min="1"
                   className={getInputClassName(
                     'max_warehouses',

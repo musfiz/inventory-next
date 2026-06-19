@@ -228,7 +228,13 @@ export default function SuperAdminDashboard() {
           <BarChart data={revenueByType} layout="vertical" margin={{ left: 20 }}>
             <CartesianGrid strokeDasharray="3 3" stroke="#374151" opacity={0.3} />
             <XAxis type="number" tick={{ fontSize: 11, fill: '#9CA3AF' }} tickFormatter={v => formatCurrency(v)} />
-            <YAxis dataKey="business_type" type="category" tick={{ fontSize: 11, fill: '#9CA3AF' }} width={100} />
+            <YAxis 
+              dataKey="business_type" 
+              type="category" 
+              tick={{ fontSize: 11, fill: '#9CA3AF' }} 
+              width={100}
+              tickFormatter={(value: any) => typeof value === 'object' ? value?.name || 'Unknown' : value}
+            />
               <Tooltip contentStyle={{ backgroundColor: '#1F2937', border: 'none', borderRadius: '8px', color: '#F9FAFB' }} formatter={(v: any) => formatCurrency(Number(v))} />
             <Bar dataKey="pos_revenue" stackId="a" fill="#3B82F6" name="POS Revenue" radius={[0, 0, 0, 0]} />
             <Bar dataKey="so_revenue" stackId="a" fill="#6366F1" name="SO Revenue" radius={[0, 4, 4, 0]} />
@@ -309,23 +315,26 @@ export default function SuperAdminDashboard() {
                   </tr>
                 </thead>
                 <tbody>
-                  {recentRegs.map(reg => (
-                    <tr key={reg.id} className="border-b border-gray-100 dark:border-gray-700/50 hover:bg-gray-50 dark:hover:bg-gray-700/30">
-                      <td className="py-2 text-gray-900 dark:text-gray-100 font-medium">{reg.business_name}</td>
-                      <td className="py-2 text-gray-600 dark:text-gray-400 capitalize">{reg.business_type}</td>
-                      <td className="py-2">
-                        <span className={`px-1.5 py-0.5 rounded text-xs font-medium ${
-                          reg.subscription_plan === 'enterprise' ? 'bg-purple-100 text-purple-700 dark:bg-purple-900/40 dark:text-purple-300' :
-                          reg.subscription_plan === 'professional' ? 'bg-indigo-100 text-indigo-700 dark:bg-indigo-900/40 dark:text-indigo-300' :
-                          reg.subscription_plan === 'basic' ? 'bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300' :
-                          'bg-gray-100 text-gray-700 dark:bg-gray-700 dark:text-gray-300'
-                        }`}>
-                          {reg.subscription_plan}
-                        </span>
-                      </td>
-                      <td className="py-2 text-gray-500 dark:text-gray-400">{new Date(reg.created_at).toLocaleDateString()}</td>
-                    </tr>
-                  ))}
+                  {recentRegs.map(reg => {
+                    const businessTypeName = typeof reg.business_type === 'object' ? reg.business_type?.name : reg.business_type;
+                    return (
+                      <tr key={reg.id} className="border-b border-gray-100 dark:border-gray-700/50 hover:bg-gray-50 dark:hover:bg-gray-700/30">
+                        <td className="py-2 text-gray-900 dark:text-gray-100 font-medium">{reg.business_name}</td>
+                        <td className="py-2 text-gray-600 dark:text-gray-400 capitalize">{businessTypeName || '—'}</td>
+                        <td className="py-2">
+                          <span className={`px-1.5 py-0.5 rounded text-xs font-medium ${
+                            reg.subscription_plan === 'enterprise' ? 'bg-purple-100 text-purple-700 dark:bg-purple-900/40 dark:text-purple-300' :
+                            reg.subscription_plan === 'professional' ? 'bg-indigo-100 text-indigo-700 dark:bg-indigo-900/40 dark:text-indigo-300' :
+                            reg.subscription_plan === 'basic' ? 'bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300' :
+                            'bg-gray-100 text-gray-700 dark:bg-gray-700 dark:text-gray-300'
+                          }`}>
+                            {reg.subscription_plan}
+                          </span>
+                        </td>
+                        <td className="py-2 text-gray-500 dark:text-gray-400">{new Date(reg.created_at).toLocaleDateString()}</td>
+                      </tr>
+                    );
+                  })}
                   {recentRegs.length === 0 && (
                     <tr><td colSpan={4} className="py-4 text-center text-gray-500">No recent registrations</td></tr>
                   )}

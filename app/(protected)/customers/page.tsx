@@ -38,6 +38,7 @@ export default function CustomersPage() {
     state: '',
     country: 'Bangladesh',
     type: 'retail',
+    notes: '',
     credit_limit: '',
     status: 'active',
   });
@@ -72,6 +73,7 @@ export default function CustomersPage() {
       state: '',
       country: 'Bangladesh',
       type: 'retail',
+      notes: '',
       credit_limit: '',
       status: 'active',
     });
@@ -94,6 +96,7 @@ export default function CustomersPage() {
       state: customer.state || '',
       country: customer.country || 'Bangladesh',
       type: customer.type || 'retail',
+      notes: customer.notes || '',
       credit_limit: customer.credit_limit || '',
       status: customer.status || 'active',
     });
@@ -131,6 +134,7 @@ export default function CustomersPage() {
         state: formData.state,
         country: formData.country,
         type: formData.type,
+        notes: formData.notes,
         credit_limit: formData.credit_limit || 0,
         status: formData.status,
       };
@@ -308,9 +312,26 @@ export default function CustomersPage() {
   columns.push({
     id: 'type',
     header: 'Type',
-    cell: ({ row }) => (
-      <span className="text-xs text-gray-600 dark:text-gray-300 capitalize">{row.original.type || '-'}</span>
-    ),
+    cell: ({ row }) => {
+      const type = String(row.original.type || '').toLowerCase();
+      const typeStyle: Record<string, string> = {
+        own: 'bg-amber-100 text-amber-800 dark:bg-amber-900/40 dark:text-amber-200',
+        retail: 'bg-sky-100 text-sky-800 dark:bg-sky-900/40 dark:text-sky-200',
+        wholesale: 'bg-amber-100 text-amber-800 dark:bg-amber-900/40 dark:text-amber-200',
+        corporate: 'bg-emerald-100 text-emerald-800 dark:bg-emerald-900/40 dark:text-emerald-200',
+        dealer: 'bg-rose-100 text-rose-800 dark:bg-rose-900/40 dark:text-rose-200',
+      };
+
+      if (!type) {
+        return <span className="text-xs text-gray-500 dark:text-gray-400">-</span>;
+      }
+
+      return (
+        <span className={`inline-flex items-center px-2 py-0.5 text-xs font-medium rounded-full capitalize ${typeStyle[type] || 'bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-200'}`}>
+          {type}
+        </span>
+      );
+    },
   });
 
   // Status column
@@ -466,8 +487,19 @@ export default function CustomersPage() {
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-0.5">Address</label>
-                <input type="text" placeholder="Dhaka" value={formData.address} onChange={e => setFormData({ ...formData, address: e.target.value })} className={`w-full px-2 py-1.25 text-sm border rounded-sm focus:outline-none focus:ring-1 focus:ring-blue-500 dark:focus:ring-blue-400 focus:border-transparent dark:bg-gray-700 dark:text-gray-100 ${formErrors.address ? 'border-red-500' : 'border-gray-300 dark:border-gray-600'}`} />
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-0.5">Type</label>
+                <select
+                  value={formData.type}
+                  onChange={e => setFormData({ ...formData, type: e.target.value })}
+                  className={`w-full px-2 py-1.25 text-sm border rounded-sm focus:outline-none focus:ring-1 focus:ring-blue-500 dark:focus:ring-blue-400 focus:border-transparent bg-white dark:bg-gray-700 dark:text-gray-100 ${formErrors.type ? 'border-red-500' : 'border-gray-300 dark:border-gray-600'}`}
+                >
+                  <option value="own">Own</option>
+                  <option value="retail">Retail</option>
+                  <option value="wholesale">Wholesale</option>
+                  <option value="corporate">Corporate</option>
+                  <option value="dealer">Dealer</option>
+                </select>
+                {formErrors.type && <p className="text-red-600 text-xs mt-1">{formErrors.type}</p>}
               </div>
 
               <div>
@@ -481,6 +513,31 @@ export default function CustomersPage() {
                   <option value="inactive">Inactive</option>
                   <option value="blacklisted">Blacklisted</option>
                 </select>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-1.5">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-0.5">Address</label>
+                <textarea
+                  placeholder="Dhaka"
+                  rows={3}
+                  value={formData.address}
+                  onChange={e => setFormData({ ...formData, address: e.target.value })}
+                  className={`w-full px-2 py-1.25 text-sm border rounded-sm focus:outline-none focus:ring-1 focus:ring-blue-500 dark:focus:ring-blue-400 focus:border-transparent dark:bg-gray-700 dark:text-gray-100 ${formErrors.address ? 'border-red-500' : 'border-gray-300 dark:border-gray-600'}`}
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-0.5">Notes</label>
+                <textarea
+                  placeholder="Optional notes"
+                  rows={3}
+                  value={formData.notes}
+                  onChange={e => setFormData({ ...formData, notes: e.target.value })}
+                  className={`w-full px-2 py-1.25 text-sm border rounded-sm focus:outline-none focus:ring-1 focus:ring-blue-500 dark:focus:ring-blue-400 focus:border-transparent dark:bg-gray-700 dark:text-gray-100 ${formErrors.notes ? 'border-red-500' : 'border-gray-300 dark:border-gray-600'}`}
+                />
+                {formErrors.notes && <p className="text-red-600 text-xs mt-1">{formErrors.notes}</p>}
               </div>
             </div>
 

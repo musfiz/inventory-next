@@ -20,7 +20,7 @@ class CategoryService {
     name: string;
     description?: string;
     parent_id?: string;
-    business_type?: string;
+    business_type_id?: number | null;
     image_url?: string;
     sort_order?: number;
     is_active: boolean;

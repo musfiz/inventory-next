@@ -9,7 +9,7 @@ class CommonService {
   async getCategoriesForDropdown(params?: {
     search?: string;
     only_parent?: boolean;
-    business_type?: string;
+    business_type_id?: number;
   }): Promise<Category[]> {
     const response = await apiClient.get<{
       data: Category[];
@@ -25,7 +25,7 @@ class CommonService {
    */
   async getBrandsForDropdown(params?: {
     search?: string;
-    business_type?: string;
+    business_type_id?: number;
   }): Promise<Brand[]> {
     const response = await apiClient.get<{
       data: Brand[];

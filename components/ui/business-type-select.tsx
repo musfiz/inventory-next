@@ -2,34 +2,33 @@
 
 import { useEffect, useState } from 'react';
 import CustomSelect from './custom-select';
-import { commonService } from '@/services';
+import { businessTypeService } from '@/services/businessTypeService';
 
-interface TenantSelectProps {
-  value?: string | null;
-  onChange: (tenantId?: string | null) => void;
+interface BusinessTypeSelectProps {
+  value?: string | number | null;
+  onChange: (businessTypeId: number | null) => void;
+  onChangeDetail?: (detail: { id: number | null; name: string | null }) => void;
   placeholder?: string;
   isDisabled?: boolean;
   isInvalid?: boolean;
 }
 
-export default function TenantSelect({ value, onChange, placeholder = 'Select tenant', isDisabled = false, isInvalid = false }: TenantSelectProps) {
+export default function BusinessTypeSelect({ value, onChange, onChangeDetail, placeholder = 'Select business type', isDisabled = false, isInvalid = false }: BusinessTypeSelectProps) {
   const [defaultOptions, setDefaultOptions] = useState<{ value: string; label: string }[]>([]);
   const [selected, setSelected] = useState<any>(null);
 
-  // loader for react-select
   const loadOptions = async (input: string) => {
     try {
-      const tenants = await commonService.getTenantsForDropdown({ search: input });
-      const opts = (tenants || []).map((t: any) => ({ value: String(t.id), label: t.business_name }));
+      const types = await businessTypeService.getForDropdown({ search: input || undefined });
+      const opts = (types || []).map((t) => ({ value: String(t.id), label: t.name }));
       if (!input && defaultOptions.length === 0) setDefaultOptions(opts);
       return opts;
     } catch (err) {
-      console.error('TenantSelect loadOptions error', err);
+      console.error('BusinessTypeSelect loadOptions error', err);
       return [] as { value: string; label: string }[];
     }
   };
 
-  // preload default options and selected label when value provided
   useEffect(() => {
     let mounted = true;
     (async () => {
@@ -39,12 +38,11 @@ export default function TenantSelect({ value, onChange, placeholder = 'Select te
         setDefaultOptions(opts);
         if (value) {
           const valueStr = String(value);
-          const found = opts.find(o => String(o.value) === valueStr);
+          const found = opts.find((o) => o.value === valueStr);
           if (found) setSelected(found);
           else {
-            // try to fetch by searching the id
             const more = await loadOptions('');
-            const f = more.find(o => String(o.value) === valueStr);
+            const f = more.find((o) => o.value === valueStr);
             if (f) setSelected(f);
           }
         } else {
@@ -62,7 +60,10 @@ export default function TenantSelect({ value, onChange, placeholder = 'Select te
       value={selected}
       onChange={(opt) => {
         setSelected(opt);
-        onChange(opt?.value ? String(opt.value) : null);
+        const id = opt ? parseInt(opt.value, 10) : null;
+        const name = opt?.label ?? null;
+        onChange(id);
+        onChangeDetail?.({ id, name });
       }}
       loadOptions={loadOptions}
       defaultOptions={defaultOptions}

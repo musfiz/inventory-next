@@ -34,6 +34,7 @@ export { default as dashboardService } from './dashboardService';
 export { default as accountService } from './accountService';
 export { default as expenseService } from './expenseService';
 export { default as journalService } from './journalService';
+export { default as businessTypeService } from './businessTypeService';
 
 // Re-export types for convenience
 export type {

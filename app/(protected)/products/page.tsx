@@ -6,6 +6,7 @@ import { Eye, Edit, Trash2, Rows4, Package2, Plus, Image, X } from 'lucide-react
 import { ColumnDef } from '@tanstack/react-table';
 import DataTable from '@/components/ui/datatable';
 import CustomSelect from '@/components/ui/custom-select';
+import BusinessTypeSelect from '@/components/ui/business-type-select';
 import { Product } from '@/types/api.types';
 import { productService } from '@/services';
 import apiClient from '@/lib/api/axios';
@@ -29,7 +30,7 @@ export default function ProductsPage() {
   const [uploading, setUploading] = useState(false);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
-  const [businessType, setBusinessType] = useState<string>('');
+  const [businessTypeId, setBusinessTypeId] = useState<number | null>(null);
   const [refreshKey, setRefreshKey] = useState(0);
 
   const handleFile = (file: File) => {
@@ -46,8 +47,8 @@ export default function ProductsPage() {
       const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL || '';
       let url = `${backendUrl}/api/v1/products/sample-excel`;
 
-      if (isSuperAdmin && businessType) {
-        url += `?business_type=${encodeURIComponent(businessType)}`;
+      if (isSuperAdmin && businessTypeId) {
+        url += `?business_type_id=${encodeURIComponent(businessTypeId)}`;
       }
 
       window.open(url, '_blank');
@@ -66,7 +67,7 @@ export default function ProductsPage() {
     }
 
     // Validate business type for super admin
-    if (isSuperAdmin && !businessType) {
+    if (isSuperAdmin && !businessTypeId) {
       notify.error('Please select a business type');
       return;
     }
@@ -87,8 +88,8 @@ export default function ProductsPage() {
       const formData = new FormData();
       formData.append('file', selectedFile);
 
-      if (isSuperAdmin && businessType) {
-        formData.append('business_type', businessType);
+      if (isSuperAdmin && businessTypeId) {
+        formData.append('business_type_id', String(businessTypeId));
       }
 
       const response = await apiClient.post('/api/v1/products/bulk-upload', formData, {
@@ -98,7 +99,7 @@ export default function ProductsPage() {
       notify.success(response.data.message || 'Products uploaded successfully');
       setShowBulkUpload(false);
       clearFile();
-      setBusinessType('');
+      setBusinessTypeId(null);
       setRefreshKey(prev => prev + 1); // Refresh the product list
     } catch (err: any) {
       const errorMessage = err?.response?.data?.message || 'Bulk upload failed';
@@ -108,27 +109,8 @@ export default function ProductsPage() {
     }
   };
 
-  // Business type options - matching brand page
-  const businessTypeOptions = [
-    { value: 'pharmacy', label: 'Pharmacy' },
-    { value: 'electric', label: 'Electric' },
-    { value: 'electronics', label: 'Electronics' },
-    { value: 'fashion', label: 'Fashion' },
-    { value: 'furniture', label: 'Furniture' },
-    { value: 'bookshop', label: 'Bookshop' },
-    { value: 'departmental', label: 'Departmental' },
-    { value: 'computer', label: 'Computer' },
-    { value: 'clothing', label: 'Clothing' },
-    { value: 'footwear', label: 'Footwear' },
-    { value: 'cosmetics', label: 'Cosmetics' },
-    { value: 'stationery', label: 'Stationery' },
-    { value: 'grocery', label: 'Grocery' },
-    { value: 'hardware', label: 'Hardware' },
-    { value: 'restaurant', label: 'Restaurant' },
-    { value: 'cafe', label: 'Cafe' },
-    { value: 'supermarket', label: 'Supermarket' },
-    { value: 'other', label: 'Other' },
-  ];
+  // Business type options (empty - using BusinessTypeSelect instead)
+  const businessTypeOptions: { value: string; label: string }[] = [];
 
   // Check permissions only after store is hydrated
   useEffect(() => {
@@ -200,7 +182,7 @@ export default function ProductsPage() {
           meta: { width: '15%' },
           cell: ({ row }: any) => (
             <span className="px-1.5 py-0.5 text-xs font-medium rounded bg-purple-100 text-purple-800 dark:bg-purple-900/30 dark:text-purple-400 capitalize">
-              {row.original.business_type?.replace('_', ' ') || '-'}
+              {row.original.business_type?.name || '-'}
             </span>
           ),
         },
@@ -396,11 +378,9 @@ export default function ProductsPage() {
                 <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                   Business Type <span className="text-red-500">*</span>
                 </label>
-                <CustomSelect
-                  className="w-full text-sm"
-                  value={businessTypeOptions.find(t => t.value === businessType) || null}
-                  onChange={option => setBusinessType(option?.value || '')}
-                  options={businessTypeOptions}
+                <BusinessTypeSelect
+                  value={businessTypeId}
+                  onChange={(id) => setBusinessTypeId(id)}
                   placeholder="Select Business Type"
                   isDisabled={uploading}
                 />

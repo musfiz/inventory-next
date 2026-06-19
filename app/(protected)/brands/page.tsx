@@ -6,6 +6,7 @@ import { GiSave } from 'react-icons/gi';
 import { ColumnDef } from '@tanstack/react-table';
 import DataTable from '@/components/ui/datatable';
 import CustomSelect from '@/components/ui/custom-select';
+import BusinessTypeSelect from '@/components/ui/business-type-select';
 import { Brand } from '@/types';
 import { notify, confirm } from '@/lib/notifications';
 import brandService from '@/services/brandService';
@@ -22,7 +23,7 @@ export default function BrandsPage() {
     if (!isSuperAdmin) router.replace('/dashboard');
   }, [isHydrated, isSuperAdmin, router]);
 
-  const [businessTypeFilter, setBusinessTypeFilter] = useState<string>('');
+  const [businessTypeFilterId, setBusinessTypeFilterId] = useState<number | null>(null);
 
   const [showForm, setShowForm] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
@@ -78,7 +79,7 @@ export default function BrandsPage() {
       await brandService.storeBrand({
         id: isEditing && currentBrand?.id ? currentBrand.id : undefined,
         name: formData.name,
-        business_type: businessTypeFilter,
+        business_type_id: businessTypeFilterId,
         description: formData.description,
         is_active: formData.is_active,
         logo_url: formData.logo_url,
@@ -141,27 +142,8 @@ export default function BrandsPage() {
     }
   };
 
-  // Business type options
-  const businessTypeOptions = [
-    { value: 'pharmacy', label: 'Pharmacy' },
-    { value: 'electric', label: 'Electric' },
-    { value: 'electronics', label: 'Electronics' },
-    { value: 'fashion', label: 'Fashion' },
-    { value: 'furniture', label: 'Furniture' },
-    { value: 'bookshop', label: 'Bookshop' },
-    { value: 'departmental', label: 'Departmental' },
-    { value: 'computer', label: 'Computer' },
-    { value: 'clothing', label: 'Clothing' },
-    { value: 'footwear', label: 'Footwear' },
-    { value: 'cosmetics', label: 'Cosmetics' },
-    { value: 'stationery', label: 'Stationery' },
-    { value: 'grocery', label: 'Grocery' },
-    { value: 'hardware', label: 'Hardware' },
-    { value: 'restaurant', label: 'Restaurant' },
-    { value: 'cafe', label: 'Cafe' },
-    { value: 'supermarket', label: 'Supermarket' },
-    { value: 'other', label: 'Other' },
-  ];
+  // Business type options (fallback for display only)
+  const businessTypeOptions: { value: string; label: string }[] = [];
 
   const columns: ColumnDef<Brand>[] = [
     {
@@ -251,7 +233,7 @@ export default function BrandsPage() {
       cell: ({ row }) => (
         <div className="flex items-center">
           <span className="text-xs text-gray-600 dark:text-gray-400 capitalize">
-            {row.original.business_type || 'Other'}
+            {row.original.business_type?.name || 'Other'}
           </span>
         </div>
       ),
@@ -304,7 +286,7 @@ export default function BrandsPage() {
   // Build API endpoint with filters
   const buildApiEndpoint = () => {
     const params = new URLSearchParams();
-    if (businessTypeFilter) params.append('business_type', businessTypeFilter);
+    if (businessTypeFilterId) params.append('business_type_id', String(businessTypeFilterId));
     const queryString = params.toString();
     return `brand${queryString ? `?${queryString}` : ''}`;
   };
@@ -334,11 +316,9 @@ export default function BrandsPage() {
           <div className="flex gap-3">
             {/* Business Type Filter */}
             <div className="md:col-span-2">
-              <CustomSelect
-                className={'w-64 text-xs'}
-                value={businessTypeOptions.find(t => t.value === businessTypeFilter) || null}
-                onChange={option => setBusinessTypeFilter(option?.value || '')}
-                options={[{ value: '', label: 'All Business Types' }, ...businessTypeOptions]}
+              <BusinessTypeSelect
+                value={businessTypeFilterId}
+                onChange={(id) => setBusinessTypeFilterId(id)}
                 placeholder="Filter by business type"
               />
             </div>

@@ -9,6 +9,7 @@ export interface Tenant {
   business_name: string;
   slug: string;
   business_type?: string;
+  business_type_id?: number;
   contact_person?: string;
   phone?: string;
   email?: string;
@@ -47,6 +48,7 @@ export interface User {
   permissions?: string[];
   tenant?: Tenant;
   business_type?: string;
+  business_type_id?: number;
   created_at?: string;
   updated_at?: string;
   last_login_at?: string;

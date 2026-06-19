@@ -13,7 +13,7 @@ class BrandService {
   async storeBrand(data: {
     id?: string;
     name: string;
-    business_type: string;
+    business_type_id?: number | null;
     description: string;
     is_active: boolean;
     logo_url?: File | null;
@@ -22,7 +22,7 @@ class BrandService {
 
     if (data.id) formData.append('id', data.id);
     formData.append('name', data.name);
-    formData.append('business_type', data.business_type);
+    if (data.business_type_id) formData.append('business_type_id', String(data.business_type_id));
     formData.append('description', data.description);
     formData.append('is_active', data.is_active ? '1' : '0');
 

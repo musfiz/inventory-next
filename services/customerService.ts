@@ -11,11 +11,12 @@ export interface Customer {
   company_name?: string;
   contact_person?: string;
   address?: string;
+  notes?: string;
   city?: string;
   state?: string;
   country?: string;
   nid_number?: string;
-  type?: 'retail' | 'wholesale' | 'corporate' | 'dealer';
+  type?: 'own' | 'retail' | 'wholesale' | 'corporate' | 'dealer';
   credit_limit?: number;
   current_balance?: number;
   outstanding_balance?: number;

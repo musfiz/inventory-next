@@ -40,6 +40,7 @@ import { PiUserListDuotone } from 'react-icons/pi';
 import { VscEditSession } from "react-icons/vsc";
 import { TbCreditCardRefund } from "react-icons/tb";
 import { AiOutlineProduct } from "react-icons/ai";
+import { GiShop } from "react-icons/gi";
 
 interface SidebarProps {
   sidebarOpen: boolean;
@@ -213,6 +214,7 @@ const navigation: NavigationItem[] = [
     icon: Settings,
     superAdminOnly: true,
     children: [
+      { name: 'Business Types', href: '/business-types', icon: GiShop, superAdminOnly: true },
       { name: 'Brands', href: '/brands', icon: Building2, superAdminOnly: true },
       { name: 'Units', href: '/units', icon: Package, superAdminOnly: true },
       { name: 'Modules', href: '/modules', icon: LayersPlus, superAdminOnly: true },

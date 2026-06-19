@@ -107,7 +107,7 @@ export interface PlanDistItem {
 }
 
 export interface RevenueByType {
-  business_type: string;
+  business_type: string | { id: number; name: string } | null;
   pos_revenue: number;
   so_revenue: number;
   total: number;
@@ -128,14 +128,14 @@ export interface ActiveUsersItem {
 export interface TopTenant {
   tenant_id: number;
   name: string;
-  business_type: string;
+  business_type: string | { id: number; name: string } | null;
   value: number;
 }
 
 export interface RecentRegistration {
   id: number;
   business_name: string;
-  business_type: string;
+  business_type: string | { id: number; name: string } | null;
   subscription_plan: string;
   contact_person: string;
   email: string;

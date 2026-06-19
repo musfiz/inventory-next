@@ -7,12 +7,12 @@ import { ColumnDef } from '@tanstack/react-table';
 import DataTable from '@/components/ui/datatable';
 import tenantService from '@/services/tenantService';
 import { usePermissions } from '@/hooks/use-permissions';
-import type { Tenant as TenantDetail } from '@/types/api.types';
+import type { BusinessType, Tenant as TenantDetail } from '@/types/api.types';
 
 interface TenantRow {
   id: number;
   business_name: string;
-  business_type: string;
+  business_type?: BusinessType | null;
   email: string;
   phone: string;
   is_active: boolean;
@@ -95,11 +95,14 @@ export default function TenantsPage() {
     {
       accessorKey: 'business_type',
       header: 'Type',
-      cell: ({ row }) => (
-        <span className="text-xs text-gray-600 dark:text-gray-400 capitalize">
-          {row.original.business_type}
-        </span>
-      ),
+      cell: ({ row }) => {
+        const businessTypeName = row.original.business_type?.name;
+        return (
+          <span className="text-xs text-gray-600 dark:text-gray-400 capitalize">
+            {businessTypeName || '—'}
+          </span>
+        );
+      },
     },
     {
       accessorKey: 'email',
@@ -308,7 +311,7 @@ export default function TenantsPage() {
                       </div>
                       <dl className="bg-indigo-50 dark:bg-indigo-950/30 px-3 py-2">
                         {([
-                          ['Type', val(detailsTenant.business_type)],
+                          ['Type', val(detailsTenant.business_type?.name)],
                           ['Contact Person', val(detailsTenant.contact_person)],
                           ['Currency', val(detailsTenant.currency)],
                           ['Timezone', val(detailsTenant.timezone)],
