@@ -142,7 +142,7 @@ export default function SettingsPage() {
         avatar: form.avatar,
       });
 
-      setUser(updatedUser);
+      setUser(updatedUser as import('@/types').User);
       setErrors({});
       setForm(prev => ({
         ...prev,

@@ -73,7 +73,7 @@ export const useAuth = ({ middleware, redirectIfAuthenticated }: UseAuthOptions 
     setErrors([]);
 
     axios
-      .post('/v1/register', props)
+      .post('/api/v1/register', props)
       .then(() => mutate())
       .catch(error => {
         if (error.response.status !== 422) throw error;
@@ -94,7 +94,7 @@ export const useAuth = ({ middleware, redirectIfAuthenticated }: UseAuthOptions 
     setErrors([]);
 
     axios
-      .post('/v1/login', props)
+      .post('/api/v1/login', props)
       .then(() => mutate())
       .catch(error => {
         if (error.response.status !== 422) throw error;
@@ -118,7 +118,7 @@ export const useAuth = ({ middleware, redirectIfAuthenticated }: UseAuthOptions 
     setStatus(null);
 
     axios
-      .post('/v1/forgot-password', { email })
+      .post('/api/v1/forgot-password', { email })
       .then(response => setStatus(response.data.status))
       .catch(error => {
         if (error.response.status !== 422) throw error;
@@ -142,7 +142,7 @@ export const useAuth = ({ middleware, redirectIfAuthenticated }: UseAuthOptions 
     setStatus(null);
 
     axios
-      .post('/v1/reset-password', { token: params.token, ...props })
+      .post('/api/v1/reset-password', { token: params.token, ...props })
       .then(response => router.push('/login?reset=' + btoa(response.data.status)))
       .catch(error => {
         if (error.response.status !== 422) throw error;
@@ -153,13 +153,13 @@ export const useAuth = ({ middleware, redirectIfAuthenticated }: UseAuthOptions 
 
   const resendEmailVerification = ({ setStatus }: { setStatus: (status: any) => void }) => {
     axios
-      .post('/v1/email/verification-notification')
+      .post('/api/v1/email/verification-notification')
       .then(response => setStatus(response.data.status));
   };
 
   const logout = async () => {
     if (!error) {
-      await axios.post('/v1/logout').then(() => mutate());
+      await axios.post('/api/v1/logout').then(() => mutate());
     }
     clearAuth();
     window.location.href = '/';

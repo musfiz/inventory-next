@@ -14,11 +14,14 @@ import {
 } from 'recharts';
 import KpiCard from './KpiCard';
 import ChartCard from './ChartCard';
+import QuickActions from './QuickActions';
+import AlertsPanel from './AlertsPanel';
+import ActivityFeed from './ActivityFeed';
 import dashboardService, {
   TenantSummary, SalesTrendItem, TopProduct,
   PaymentMethod, StockMovementDay, PurchaseVsSalesItem,
   CategoryInventory, WarehouseStockItem, CustomerType,
-  PosSessionToday, LowStockItem
+  PosSessionToday, LowStockItem, Alert, ActivityItem
 } from '@/services/dashboardService';
 import { useAuthStore } from '@/stores/auth-store';
 
@@ -55,6 +58,8 @@ export default function TenantDashboard() {
   const [customerDist, setCustomerDist] = useState<CustomerType[]>([]);
   const [posSessions, setPosSessions] = useState<PosSessionToday[]>([]);
   const [lowStock, setLowStock] = useState<LowStockItem[]>([]);
+  const [alerts, setAlerts] = useState<Alert[]>([]);
+  const [activityFeed, setActivityFeed] = useState<ActivityItem[]>([]);
 
   const [salesPeriod, setSalesPeriod] = useState('30d');
   const [productPeriod, setProductPeriod] = useState('30d');
@@ -62,7 +67,7 @@ export default function TenantDashboard() {
   const loadData = useCallback(async () => {
     setLoading(true);
     try {
-      const [sum, trend, prods, payments, movements, pvs, invCat, wStock, cDist, sessions, lowItems] = await Promise.all([
+      const [sum, trend, prods, payments, movements, pvs, invCat, wStock, cDist, sessions, lowItems, alertItems, activity] = await Promise.all([
         dashboardService.getSummary(),
         dashboardService.getSalesTrend(salesPeriod),
         dashboardService.getTopProducts(productPeriod),
@@ -74,6 +79,8 @@ export default function TenantDashboard() {
         dashboardService.getCustomerDistribution(),
         dashboardService.getPosSessionsToday(),
         dashboardService.getLowStockItems(),
+        dashboardService.getAlerts(),
+        dashboardService.getActivityFeed(),
       ]);
       setSummary(sum);
       setSalesTrend(trend);
@@ -86,6 +93,8 @@ export default function TenantDashboard() {
       setCustomerDist(cDist);
       setPosSessions(sessions);
       setLowStock(lowItems);
+      setAlerts(alertItems);
+      setActivityFeed(activity);
     } catch (e) {
       console.error('Dashboard load error:', e);
     } finally {
@@ -132,6 +141,9 @@ export default function TenantDashboard() {
           Here&apos;s what&apos;s happening with your business today.
         </p>
       </div>
+
+      {/* Quick Actions */}
+      <QuickActions />
 
       {/* KPI Row 1 — Today's Performance */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
@@ -513,38 +525,50 @@ export default function TenantDashboard() {
           </div>
         </div>
 
-        {/* Customer Distribution */}
-        <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 shadow-sm">
-          <div className="px-5 pt-4 pb-2">
-            <h3 className="text-sm font-semibold text-gray-900 dark:text-gray-100">Customer Types</h3>
-          </div>
-          <div className="px-5 pb-4 h-52">
-            {loading ? (
-              <div className="w-full h-full flex items-center justify-center">
-                <div className="w-8 h-8 border-2 border-blue-500 border-t-transparent rounded-full animate-spin" />
+        {/* Alerts Panel */}
+        <AlertsPanel alerts={alerts} loading={loading} />
+      </div>
+
+      {/* Activity Feed */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <div className="lg:col-span-2">
+          <ActivityFeed items={activityFeed} loading={loading} />
+        </div>
+        <div>
+          {customerDist.length > 0 && (
+            <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 shadow-sm">
+              <div className="px-5 pt-4 pb-2">
+                <h3 className="text-sm font-semibold text-gray-900 dark:text-gray-100">Customer Types</h3>
               </div>
-            ) : (
-              <ResponsiveContainer width="100%" height="100%">
-                <PieChart>
-                  <Pie
-                    data={customerDist}
-                    cx="50%"
-                    cy="50%"
-                    innerRadius={40}
-                    outerRadius={70}
-                    dataKey="count"
-                    nameKey="type"
-                  >
-                    {customerDist.map((_, idx) => (
-                      <Cell key={idx} fill={CATEGORY_COLORS[idx % CATEGORY_COLORS.length]} />
-                    ))}
-                  </Pie>
-                  <Tooltip contentStyle={{ backgroundColor: '#1F2937', border: 'none', borderRadius: '8px', color: '#F9FAFB' }} />
-                  <Legend wrapperStyle={{ fontSize: '11px' }} />
-                </PieChart>
-              </ResponsiveContainer>
-            )}
-          </div>
+              <div className="px-5 pb-4 h-52">
+                {loading ? (
+                  <div className="w-full h-full flex items-center justify-center">
+                    <div className="w-8 h-8 border-2 border-blue-500 border-t-transparent rounded-full animate-spin" />
+                  </div>
+                ) : (
+                  <ResponsiveContainer width="100%" height="100%">
+                    <PieChart>
+                      <Pie
+                        data={customerDist}
+                        cx="50%"
+                        cy="50%"
+                        innerRadius={40}
+                        outerRadius={70}
+                        dataKey="count"
+                        nameKey="type"
+                      >
+                        {customerDist.map((_, idx) => (
+                          <Cell key={idx} fill={CATEGORY_COLORS[idx % CATEGORY_COLORS.length]} />
+                        ))}
+                      </Pie>
+                      <Tooltip contentStyle={{ backgroundColor: '#1F2937', border: 'none', borderRadius: '8px', color: '#F9FAFB' }} />
+                      <Legend wrapperStyle={{ fontSize: '11px' }} />
+                    </PieChart>
+                  </ResponsiveContainer>
+                )}
+              </div>
+            </div>
+          )}
         </div>
       </div>
 

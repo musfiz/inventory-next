@@ -151,6 +151,23 @@ export interface ExpiringSubscription {
   contact_email: string;
 }
 
+export interface Alert {
+  id: number;
+  alert_type: string;
+  title: string;
+  message: string;
+  priority: 'critical' | 'high' | 'medium' | 'low';
+  created_at: string;
+}
+
+export interface ActivityItem {
+  user_name: string;
+  action: string;
+  subject_type: string;
+  reference: string;
+  created_at: string;
+}
+
 export interface LowStockItem {
   product_name: string;
   variation_name: string;
@@ -234,6 +251,17 @@ class DashboardService {
     const params: Record<string, any> = { limit };
     if (tenantId) params.tenant_id = tenantId;
     const res = await apiClient.get<ApiResponse<LowStockItem[]>>(`${this.base}/low-stock-items`, { params });
+    return res.data.data;
+  }
+
+  // Alerts & Activity (Tenant)
+  async getAlerts(limit = 10) {
+    const res = await apiClient.get<ApiResponse<Alert[]>>(`${this.base}/alerts`, { params: { limit } });
+    return res.data.data;
+  }
+
+  async getActivityFeed(limit = 10) {
+    const res = await apiClient.get<ApiResponse<ActivityItem[]>>(`${this.base}/activity-feed`, { params: { limit } });
     return res.data.data;
   }
 

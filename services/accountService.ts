@@ -3,6 +3,7 @@ import type { ApiResponse, PaginatedResponse } from '@/types/api.types';
 import type {
   Account,
   AccountFormData,
+  BalanceSheetLine,
   BalanceSheetReport,
   CashFlowReport,
   LedgerLine,
@@ -122,24 +123,24 @@ class AccountService {
       name: item.name,
       balance: item.balance ?? 0,
     });
-    const assetsLines = (raw.assets ?? []).map(toLine);
-    const liabilitiesLines = (raw.liabilities ?? []).map(toLine);
-    const equityLines = (raw.equity ?? []).map(toLine);
+    const assetsLines: BalanceSheetLine[] = (raw.assets ?? []).map(toLine);
+    const liabilitiesLines: BalanceSheetLine[] = (raw.liabilities ?? []).map(toLine);
+    const equityLines: BalanceSheetLine[] = (raw.equity ?? []).map(toLine);
     const currentAssets = assetsLines
-      .filter((l) => l.code.startsWith('11'))
-      .reduce((s, l) => s + l.balance, 0);
+      .filter((l: BalanceSheetLine) => l.code.startsWith('11'))
+      .reduce((s: number, l: BalanceSheetLine) => s + l.balance, 0);
     const fixedAssets = assetsLines
-      .filter((l) => l.code.startsWith('12'))
-      .reduce((s, l) => s + l.balance, 0);
+      .filter((l: BalanceSheetLine) => l.code.startsWith('12'))
+      .reduce((s: number, l: BalanceSheetLine) => s + l.balance, 0);
     const currentLiabilities = liabilitiesLines
-      .filter((l) => !l.code.startsWith('25') && !l.code.startsWith('26'))
-      .reduce((s, l) => s + l.balance, 0);
+      .filter((l: BalanceSheetLine) => !l.code.startsWith('25') && !l.code.startsWith('26'))
+      .reduce((s: number, l: BalanceSheetLine) => s + l.balance, 0);
     const longTermLiabilities = liabilitiesLines
-      .filter((l) => l.code.startsWith('25') || l.code.startsWith('26'))
-      .reduce((s, l) => s + l.balance, 0);
-    const totalAssets = raw.totals?.total_assets ?? assetsLines.reduce((s, l) => s + l.balance, 0);
-    const totalLiabilities = raw.totals?.total_liabilities ?? liabilitiesLines.reduce((s, l) => s + l.balance, 0);
-    const totalEquity = raw.totals?.total_equity ?? equityLines.reduce((s, l) => s + l.balance, 0);
+      .filter((l: BalanceSheetLine) => l.code.startsWith('25') || l.code.startsWith('26'))
+      .reduce((s: number, l: BalanceSheetLine) => s + l.balance, 0);
+    const totalAssets = raw.totals?.total_assets ?? assetsLines.reduce((s: number, l: BalanceSheetLine) => s + l.balance, 0);
+    const totalLiabilities = raw.totals?.total_liabilities ?? liabilitiesLines.reduce((s: number, l: BalanceSheetLine) => s + l.balance, 0);
+    const totalEquity = raw.totals?.total_equity ?? equityLines.reduce((s: number, l: BalanceSheetLine) => s + l.balance, 0);
     const totalLe = raw.totals?.total_liabilities_equity ?? totalLiabilities + totalEquity;
     return {
       as_of_date: raw.as_of_date,

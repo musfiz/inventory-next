@@ -1,21 +1,23 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
-import { useRouter } from 'next/navigation';
-import { Package, Plus, X, RefreshCw } from 'lucide-react';
+import { useCallback, useEffect, useState } from 'react';
+import { useParams, useRouter } from 'next/navigation';
+import { Package, RefreshCw, X } from 'lucide-react';
+import { GiSave } from 'react-icons/gi';
+import CustomSelect, { SelectOption } from '@/components/ui/custom-select';
+import { usePermissions } from '@/hooks/use-permissions';
 import { notify } from '@/lib/notifications';
-import productVariationService from '@/services/productVariationService';
+import commonService from '@/services/commonService';
 import attributeService from '@/services/attributeService';
 import attributeValueService from '@/services/attributeValueService';
-import CustomSelect, { SelectOption } from '@/components/ui/custom-select';
+import productVariationService from '@/services/productVariationService';
 import type {
-  Product,
   Attribute,
   AttributeValue,
+  Product,
+  ProductVariationAttribute,
   VariationAttributeInput,
 } from '@/types/api.types';
-import commonService from '@/services/commonService';
-import { GiSave } from "react-icons/gi";
 
 interface VariationFormData {
   product_id: string;
@@ -36,9 +38,59 @@ interface SelectedAttribute {
   display_order: number;
 }
 
-export default function AddProductVariationPage() {
+const EMPTY_FORM: VariationFormData = {
+  product_id: '',
+  sku: '',
+  name: '',
+  cost_price: '',
+  selling_price: '',
+  dp: '',
+  mrp: '',
+  is_active: true,
+  is_default: false,
+  display_order: '0',
+};
+
+const toSelectOption = (product: Product): SelectOption => ({
+  value: product.id,
+  label: product.name,
+});
+
+const toSelectedAttribute = (item: ProductVariationAttribute, index: number): SelectedAttribute | null => {
+  if (!item.attribute_id || !item.attribute_value_id) {
+    return null;
+  }
+
+  const attribute =
+    item.attribute ??
+    ({
+      id: item.attribute_id,
+      name: '',
+    } as Attribute);
+
+  const value =
+    item.attribute_value ??
+    ({
+      id: item.attribute_value_id,
+      value: '',
+      display_value: '',
+    } as AttributeValue);
+
+  return {
+    attribute,
+    value,
+    display_order: item.display_order ?? index,
+  };
+};
+
+export default function EditProductVariationPage() {
+  const params = useParams();
   const router = useRouter();
+  const { hasPermission, isHydrated } = usePermissions();
+  const variationId = params.id as string;
+
   const [isLoading, setIsLoading] = useState(false);
+  const [isFetching, setIsFetching] = useState(true);
   const [errors, setErrors] = useState<Record<string, string[]>>({});
   const [attributes, setAttributes] = useState<Attribute[]>([]);
   const [selectedProduct, setSelectedProduct] = useState<SelectOption | null>(null);
@@ -48,23 +100,15 @@ export default function AddProductVariationPage() {
   const [generatingSku, setGeneratingSku] = useState(false);
   const [defaultProductOptions, setDefaultProductOptions] = useState<SelectOption[]>([]);
   const [businessType, setBusinessType] = useState<string>('');
+  const [statusValue, setStatusValue] = useState<string>('1');
+  const [formData, setFormData] = useState<VariationFormData>(EMPTY_FORM);
 
-  const [formData, setFormData] = useState<VariationFormData>({
-    product_id: '',
-    sku: '',
-    name: '',
-    cost_price: '',
-    selling_price: '',
-    dp: '',
-    mrp: '',
-    is_active: true,
-    is_default: false,
-    display_order: '0', // Will be set automatically by backend
-  });
+  useEffect(() => {
+    if (isHydrated && !hasPermission('update-product-variation') && !hasPermission('update-products')) {
+      router.push('/access-denied');
+    }
+  }, [hasPermission, isHydrated, router]);
 
-  const [statusValue, setStatusValue] = useState<string>('1'); // 1 = Active, 0 = Inactive
-
-  // Auto-generate variation name from attributes
   useEffect(() => {
     if (selectedAttributes.length > 0) {
       const name = selectedAttributes
@@ -88,10 +132,9 @@ export default function AddProductVariationPage() {
     if (!selectedProduct?.value) return;
 
     try {
-      // Fetch the product details to get business_type
       const params = { search: selectedProduct.label };
       const productsData: Product[] = await commonService.getProductsForDropdown(params);
-      const product = productsData.find((p: Product) => p.id === selectedProduct.value);
+      const product = productsData.find((item: Product) => item.id === selectedProduct.value);
 
       if (product?.business_type) {
         setBusinessType(product.business_type.name);
@@ -102,22 +145,17 @@ export default function AddProductVariationPage() {
     }
   }, [selectedProduct, loadAttributes]);
 
-  // Load attributes for async select with search
   const loadAttributeOptions = useCallback(
     async (inputValue: string): Promise<SelectOption[]> => {
       try {
         const attributesData = await attributeService.searchAttributes(inputValue || undefined, 10);
-
-        // Filter out already selected attributes
         const usedAttributeIds = selectedAttributes.map(sa => sa.attribute.id);
         const availableAttrs = attributesData.filter(attr => !usedAttributeIds.includes(attr.id));
 
-        const options = availableAttrs.map((attribute: Attribute) => ({
+        return availableAttrs.map((attribute: Attribute) => ({
           value: attribute.id,
           label: attribute.name,
         }));
-
-        return options;
       } catch (error) {
         console.error('Failed to load attributes:', error);
         return [];
@@ -126,31 +164,21 @@ export default function AddProductVariationPage() {
     [businessType, selectedAttributes]
   );
 
-  // Load products for async select with search
   const loadProductOptions = useCallback(async (inputValue: string): Promise<SelectOption[]> => {
     try {
       const params: { search?: string } = {};
-
-      // Add search parameter only if inputValue is provided
       if (inputValue && inputValue.trim()) {
         params.search = inputValue.trim();
       }
 
       const productsData = await commonService.getProductsForDropdown(params);
-
-      const options = productsData.map((product: Product) => ({
-        value: product.id,
-        label: product.name,
-      }));
-
-      return options;
+      return productsData.map((product: Product) => toSelectOption(product));
     } catch (error) {
       console.error('Failed to load products:', error);
       return [];
     }
   }, []);
 
-  // Load default product options on mount
   useEffect(() => {
     const loadDefaultProducts = async () => {
       const options = await loadProductOptions('');
@@ -160,12 +188,48 @@ export default function AddProductVariationPage() {
     loadDefaultProducts();
   }, [loadProductOptions]);
 
-  // Load product details and attributes when product is selected
   useEffect(() => {
     if (selectedProduct) {
       loadProductAndAttributes();
     }
   }, [selectedProduct, loadProductAndAttributes]);
+
+  useEffect(() => {
+    const loadVariation = async () => {
+      if (!variationId) return;
+
+      setIsFetching(true);
+      try {
+        const variation = await productVariationService.getVariation(variationId);
+        const normalizedAttributes = (variation.variation_attributes ?? [])
+          .map((item, index) => toSelectedAttribute(item, index))
+          .filter((item): item is SelectedAttribute => item !== null);
+
+        setFormData({
+          product_id: variation.product_id ?? '',
+          sku: variation.sku ?? '',
+          name: variation.name ?? '',
+          cost_price: variation.cost_price != null ? String(variation.cost_price) : '',
+          selling_price: variation.selling_price != null ? String(variation.selling_price) : '',
+          dp: variation.dp != null ? String(variation.dp) : '',
+          mrp: variation.mrp != null ? String(variation.mrp) : '',
+          is_active: variation.is_active ?? true,
+          is_default: variation.is_default ?? false,
+          display_order: variation.display_order != null ? String(variation.display_order) : '0',
+        });
+        setSelectedProduct(variation.product ? toSelectOption(variation.product) : null);
+        setSelectedAttributes(normalizedAttributes);
+        setStatusValue(variation.is_active ? '1' : '0');
+      } catch (error: any) {
+        notify.error(error.response?.data?.message || 'Failed to load variation');
+        router.push('/product-variations');
+      } finally {
+        setIsFetching(false);
+      }
+    };
+
+    loadVariation();
+  }, [router, variationId]);
 
   const handleProductChange = (option: SelectOption | null) => {
     setSelectedProduct(option);
@@ -173,7 +237,6 @@ export default function AddProductVariationPage() {
       ...prev,
       product_id: option?.value || '',
     }));
-    // Reset attributes when product changes
     setSelectedAttributes([]);
     setErrors(prev => {
       const newErrors = { ...prev };
@@ -182,11 +245,6 @@ export default function AddProductVariationPage() {
     });
   };
 
-  /**
-   * Generate SKU based on product name and selected attributes
-   * Format: PRODUCT-INITIALS-ATTRIBUTE1-INITIALS-NUMBERS
-   * Example: Ceiling Fan with Royal Blue and 48 Inch -> CF-RB-48
-   */
   const handleGenerateSku = async () => {
     if (!formData.product_id) {
       notify.error('Please select a product first');
@@ -195,16 +253,11 @@ export default function AddProductVariationPage() {
 
     setGeneratingSku(true);
     try {
-      // Get product name from selected product
       const productName = selectedProduct?.label || '';
-
-      // Get attribute values as text array (display_value or value)
-      // Filter out any undefined/empty values to ensure string[]
       const attributeValues = selectedAttributes
         .map(sa => sa.value.value || sa.value.display_value || '')
         .filter(val => val.trim() !== '');
 
-      // Generate SKU with product name and attribute values as text
       const sku = await productVariationService.generateSku(
         formData.product_id,
         productName,
@@ -235,7 +288,6 @@ export default function AddProductVariationPage() {
 
     if (!attribute || !value) return;
 
-    // Check if attribute already added
     if (selectedAttributes.some(sa => sa.attribute.id === attribute.id)) {
       notify.error('This attribute is already added');
       return;
@@ -250,54 +302,44 @@ export default function AddProductVariationPage() {
       },
     ]);
 
-    // Reset selections to blank state
     setSelectedValueForAdd(null);
     setSelectedAttributeForAdd(null);
   };
 
-  // Handle attribute selection change: reset value and load attribute values
   useEffect(() => {
-    // Reset value when attribute changes
     setSelectedValueForAdd(null);
 
-    // Load attribute values if an attribute is selected
     const loadAttributeValues = async () => {
       if (!selectedAttributeForAdd?.value) return;
 
       try {
-        // Fetch attribute values
-        const attributeValues = await attributeValueService.getAttributeValues(
-          selectedAttributeForAdd.value
-        );
+        const attributeValues = await attributeValueService.getAttributeValues(selectedAttributeForAdd.value);
 
-        // Update or create attribute in state with values
         setAttributes(prev => {
-          // Check if we already have this attribute with values
           const existingIndex = prev.findIndex(a => a.id === selectedAttributeForAdd.value);
 
           if (existingIndex >= 0) {
-            // Skip if already has values
             if (prev[existingIndex].values && prev[existingIndex].values!.length > 0) {
               return prev;
             }
-            // Update existing attribute with values
+
             const updated = [...prev];
             updated[existingIndex] = {
               ...updated[existingIndex],
               values: attributeValues,
             };
+
             return updated;
-          } else {
-            // Create minimal attribute object with values
-            return [
-              ...prev,
-              {
-                id: selectedAttributeForAdd.value,
-                name: selectedAttributeForAdd.label,
-                values: attributeValues,
-              } as Attribute,
-            ];
           }
+
+          return [
+            ...prev,
+            {
+              id: selectedAttributeForAdd.value,
+              name: selectedAttributeForAdd.label,
+              values: attributeValues,
+            } as Attribute,
+          ];
         });
       } catch (error) {
         console.error('Error loading attribute values:', error);
@@ -348,14 +390,14 @@ export default function AddProductVariationPage() {
     setErrors({});
 
     try {
-      // Prepare attributes data
       const attributes: VariationAttributeInput[] = selectedAttributes.map(sa => ({
         attribute_id: sa.attribute.id,
         attribute_value_id: sa.value.id,
         display_order: sa.display_order,
       }));
 
-      const submitData = {
+      await productVariationService.updateVariation({
+        id: variationId,
         product_id: formData.product_id,
         sku: formData.sku,
         name: formData.name,
@@ -365,66 +407,27 @@ export default function AddProductVariationPage() {
         mrp: formData.mrp ? parseFloat(formData.mrp) : undefined,
         is_active: statusValue === '1',
         is_default: formData.is_default,
-        // display_order will be set automatically by backend (last row + 1)
+        display_order: parseInt(formData.display_order, 10) || 0,
         attributes: attributes.length > 0 ? attributes : undefined,
-      };
+      });
 
-      await productVariationService.createVariation(submitData);
-      notify.success('Product variation created successfully!');
-      // Clear the form instead of navigating away
-      clearForm();
+      notify.success('Product variation updated successfully!');
+      router.push('/product-variations');
     } catch (error: any) {
       if (error.response?.data?.errors) {
         setErrors(error.response.data.errors);
       } else {
-        notify.error(error.response?.data?.message || 'Failed to create variation');
+        notify.error(error.response?.data?.message || 'Failed to update variation');
       }
     } finally {
       setIsLoading(false);
     }
   };
 
-  const clearForm = () => {
-    setFormData({
-      product_id: '',
-      sku: '',
-      name: '',
-      cost_price: '',
-      selling_price: '',
-      dp: '',
-      mrp: '',
-      is_active: true,
-      is_default: false,
-      display_order: '0',
-    });
-
-    setSelectedProduct(null);
-    setSelectedAttributes([]);
-    setSelectedAttributeForAdd(null);
-    setSelectedValueForAdd(null);
-    setGeneratingSku(false);
-    setStatusValue('1');
-    setErrors({});
-  };
-
-  // Find selected attribute from both loaded attributes and the selectedAttributeForAdd
-  const getSelectedAttribute = (): Attribute | undefined => {
-    if (!selectedAttributeForAdd?.value) return undefined;
-
-    // First try to find in already loaded attributes
-    let attr = attributes.find(a => a.id === selectedAttributeForAdd.value);
-
-    // If not found, check in selected attributes
-    if (!attr) {
-      attr = selectedAttributes.find(
-        sa => sa.attribute.id === selectedAttributeForAdd.value
-      )?.attribute;
-    }
-
-    return attr;
-  };
-
-  const selectedAttribute = getSelectedAttribute();
+  const selectedAttribute = selectedAttributeForAdd?.value
+    ? attributes.find(a => a.id === selectedAttributeForAdd.value) ||
+    selectedAttributes.find(sa => sa.attribute.id === selectedAttributeForAdd.value)?.attribute
+    : undefined;
 
   const valueOptions: SelectOption[] =
     selectedAttribute?.values?.map(v => ({
@@ -432,22 +435,32 @@ export default function AddProductVariationPage() {
       label: v.display_value || v.value,
     })) || [];
 
+  if (isFetching) {
+    return (
+      <div className="space-y-2">
+        <div className="flex items-center gap-2">
+          <Package className="w-5 h-5 text-indigo-600 dark:text-indigo-400" />
+          <h1 className="text-base font-bold text-gray-900 dark:text-gray-100">Edit Product Variation</h1>
+        </div>
+        <div className="rounded-md border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 p-4 text-sm text-gray-600 dark:text-gray-300">
+          Loading variation...
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-2">
-      {/* Header */}
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
-          <div>
-            <h1 className="text-base font-bold text-gray-900 dark:text-gray-100 flex items-center gap-2">
-              <Package className="w-5 h-5 text-indigo-600 dark:text-indigo-400" />
-              Add Product Variation
-            </h1>
-          </div>
+          <h1 className="text-base font-bold text-gray-900 dark:text-gray-100 flex items-center gap-2">
+            <Package className="w-5 h-5 text-indigo-600 dark:text-indigo-400" />
+            Edit Product Variation
+          </h1>
         </div>
       </div>
 
       <form onSubmit={handleSubmit} className="space-y-1" autoComplete="off">
-        {/* Product Selection */}
         <div className="bg-white dark:bg-gray-800 rounded-md shadow-sm border border-gray-200 dark:border-gray-700 p-3">
           <div className="mb-2">
             <h3 className="text-base font-semibold text-gray-900 dark:text-gray-100 mb-2">
@@ -467,9 +480,7 @@ export default function AddProductVariationPage() {
                   isInvalid={hasFieldError('product_id')}
                 />
                 {hasFieldError('product_id') && (
-                  <p className="mt-1 text-xs text-red-600 dark:text-red-400">
-                    {getFieldError('product_id')}
-                  </p>
+                  <p className="mt-1 text-xs text-red-600 dark:text-red-400">{getFieldError('product_id')}</p>
                 )}
               </div>
 
@@ -489,7 +500,6 @@ export default function AddProductVariationPage() {
               </div>
             </div>
 
-            {/* Status & Options */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mt-3">
               <div className="flex items-center">
                 <input
@@ -507,14 +517,12 @@ export default function AddProductVariationPage() {
           </div>
         </div>
 
-        {/* Attributes Section */}
         <div className="bg-white dark:bg-gray-800 rounded-md shadow-sm border border-gray-200 dark:border-gray-700 p-3">
           <div className="mb-2">
             <h3 className="text-base font-semibold text-gray-900 dark:text-gray-100 mb-2">
               Variation Attributes
             </h3>
 
-            {/* Add Attribute Controls */}
             {selectedProduct && (
               <div className="mb-3 p-2.5 bg-gray-50 dark:bg-gray-900 rounded-sm">
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
@@ -563,12 +571,9 @@ export default function AddProductVariationPage() {
               </div>
             )}
 
-            {/* Selected Attributes (Pills) */}
             <div className="flex flex-wrap gap-2">
               {selectedAttributes.length === 0 ? (
-                <p className="text-xs text-gray-500 dark:text-gray-400 italic">
-                  No attributes added yet
-                </p>
+                <p className="text-xs text-gray-500 dark:text-gray-400 italic">No attributes added yet</p>
               ) : (
                 selectedAttributes.map(sa => (
                   <div
@@ -590,7 +595,6 @@ export default function AddProductVariationPage() {
               )}
             </div>
 
-            {/* Auto-generated Name */}
             {formData.name && (
               <div className="mt-2 p-2 bg-blue-50 dark:bg-blue-900/20 rounded-sm">
                 <p className="text-xs text-blue-800 dark:text-blue-200">
@@ -601,7 +605,6 @@ export default function AddProductVariationPage() {
           </div>
         </div>
 
-        {/* SKU Section - Moved after Attributes */}
         <div className="bg-white dark:bg-gray-800 rounded-md shadow-sm border border-gray-200 dark:border-gray-700 p-3">
           <div className="mb-2">
             <h3 className="text-base font-semibold text-gray-900 dark:text-gray-100 mb-2">
@@ -619,8 +622,8 @@ export default function AddProductVariationPage() {
                     value={formData.sku}
                     onChange={handleInputChange}
                     className={`flex-1 px-2.5 py-1 text-sm bg-white dark:bg-gray-700 border ${hasFieldError('sku')
-                        ? 'border-red-500 focus:border-red-500'
-                        : 'border-gray-300 dark:border-gray-600 focus:border-indigo-500 dark:focus:border-indigo-400'
+                      ? 'border-red-500 focus:border-red-500'
+                      : 'border-gray-300 dark:border-gray-600 focus:border-indigo-500 dark:focus:border-indigo-400'
                       } rounded-sm text-gray-900 dark:text-gray-100 focus:outline-none`}
                     placeholder="Enter SKU or generate one"
                   />
@@ -628,28 +631,23 @@ export default function AddProductVariationPage() {
                     type="button"
                     onClick={handleGenerateSku}
                     disabled={generatingSku}
-                    className="px-2.5 py-1 bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 text-gray-700 dark:text-gray-300 rounded-sm transition-colors disabled:opacity-50 text-sm  cursor-pointer"
+                    className="px-2.5 py-1 bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 text-gray-700 dark:text-gray-300 rounded-sm transition-colors disabled:opacity-50 text-sm cursor-pointer"
                     title="Generate SKU"
                   >
                     <RefreshCw className={`w-3.5 h-3.5 ${generatingSku ? 'animate-spin' : ''}`} />
                   </button>
                 </div>
                 {hasFieldError('sku') && (
-                  <p className="mt-1 text-xs text-red-600 dark:text-red-400">
-                    {getFieldError('sku')}
-                  </p>
+                  <p className="mt-1 text-xs text-red-600 dark:text-red-400">{getFieldError('sku')}</p>
                 )}
               </div>
             </div>
           </div>
         </div>
 
-        {/* Pricing */}
         <div className="bg-white dark:bg-gray-800 rounded-md shadow-sm border border-gray-200 dark:border-gray-700 p-3">
           <div className="mb-2">
-            <h3 className="text-base font-semibold text-gray-900 dark:text-gray-100 mb-2">
-              Pricing
-            </h3>
+            <h3 className="text-base font-semibold text-gray-900 dark:text-gray-100 mb-2">Pricing</h3>
             <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
               <div>
                 <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-2">
@@ -663,15 +661,13 @@ export default function AddProductVariationPage() {
                   step="0.01"
                   min="0.01"
                   className={`w-full px-2.5 py-1 text-sm bg-white dark:bg-gray-700 border ${hasFieldError('cost_price')
-                      ? 'border-red-500 focus:border-red-500'
-                      : 'border-gray-300 dark:border-gray-600 focus:border-indigo-500 dark:focus:border-indigo-400'
+                    ? 'border-red-500 focus:border-red-500'
+                    : 'border-gray-300 dark:border-gray-600 focus:border-indigo-500 dark:focus:border-indigo-400'
                     } rounded-sm text-gray-900 dark:text-gray-100 focus:outline-none`}
                   placeholder="0.00"
                 />
                 {hasFieldError('cost_price') && (
-                  <p className="mt-1 text-xs text-red-600 dark:text-red-400">
-                    {getFieldError('cost_price')}
-                  </p>
+                  <p className="mt-1 text-xs text-red-600 dark:text-red-400">{getFieldError('cost_price')}</p>
                 )}
               </div>
 
@@ -687,22 +683,18 @@ export default function AddProductVariationPage() {
                   step="0.01"
                   min="0.01"
                   className={`w-full px-2.5 py-1 text-sm bg-white dark:bg-gray-700 border ${hasFieldError('selling_price')
-                      ? 'border-red-500 focus:border-red-500'
-                      : 'border-gray-300 dark:border-gray-600 focus:border-indigo-500 dark:focus:border-indigo-400'
+                    ? 'border-red-500 focus:border-red-500'
+                    : 'border-gray-300 dark:border-gray-600 focus:border-indigo-500 dark:focus:border-indigo-400'
                     } rounded-sm text-gray-900 dark:text-gray-100 focus:outline-none`}
                   placeholder="0.00"
                 />
                 {hasFieldError('selling_price') && (
-                  <p className="mt-1 text-xs text-red-600 dark:text-red-400">
-                    {getFieldError('selling_price')}
-                  </p>
+                  <p className="mt-1 text-xs text-red-600 dark:text-red-400">{getFieldError('selling_price')}</p>
                 )}
               </div>
 
               <div>
-                <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-2">
-                  DP
-                </label>
+                <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-2">DP</label>
                 <input
                   type="number"
                   name="dp"
@@ -716,9 +708,7 @@ export default function AddProductVariationPage() {
               </div>
 
               <div>
-                <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-2">
-                  MRP
-                </label>
+                <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-2">MRP</label>
                 <input
                   type="number"
                   name="mrp"
@@ -734,7 +724,6 @@ export default function AddProductVariationPage() {
           </div>
         </div>
 
-        {/* Action Buttons */}
         <div className="flex justify-start gap-2 pt-2">
           <button
             type="submit"
@@ -742,7 +731,7 @@ export default function AddProductVariationPage() {
             className="flex items-center justify-center gap-2 px-5 py-1.5 text-sm bg-indigo-600 hover:bg-indigo-700 disabled:bg-gray-400 text-white rounded-sm transition-colors cursor-pointer"
           >
             <GiSave className="w-4 h-4" />
-            {isLoading ? 'Saving...' : 'Save Variation'}
+            {isLoading ? 'Updating...' : 'Update Variation'}
           </button>
           <button
             type="button"

@@ -1,6 +1,7 @@
 // Re-export all API types
 export * from './api.types';
 export * from './permission.types';
+import type { BusinessType } from './api.types';
 
 // Legacy interface kept for backward compatibility
 // Use types from api.ts for new code
@@ -8,7 +9,7 @@ export interface Tenant {
   id: string;
   business_name: string;
   slug: string;
-  business_type?: string;
+  business_type?: BusinessType;
   business_type_id?: number;
   contact_person?: string;
   phone?: string;
