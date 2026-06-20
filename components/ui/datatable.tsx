@@ -1,6 +1,7 @@
 'use client';
 
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, Suspense } from 'react';
+import { useSearchParams, useRouter } from 'next/navigation';
 import {
   useReactTable,
   getCoreRowModel,
@@ -47,7 +48,7 @@ interface PaginationData {
   totalPages: number;
 }
 
-export default function DataTable<T extends Record<string, any>>({
+function DataTableInner<T extends Record<string, any>>({
   columns,
   apiEndpoint,
   fetchData,
@@ -59,27 +60,49 @@ export default function DataTable<T extends Record<string, any>>({
   enableSorting = true,
   baseApiPath = '/api/v1',
 }: ServerDataTableProps<T>) {
+  const searchParams = useSearchParams();
+  const router = useRouter();
+
+  const urlPage = Math.max(1, parseInt(searchParams.get('page') || '1', 10) || 1);
+  const urlSearch = searchParams.get('search') || '';
+  const urlSortBy = searchParams.get('sortBy') || '';
+  const urlSortOrder = searchParams.get('sortOrder') || '';
+
   const [data, setData] = useState<T[]>(initialData || []);
   const [loading, setLoading] = useState(false);
   const [pagination, setPagination] = useState<PaginationData>({
-    page: 1,
+    page: urlPage,
     pageSize,
     total: 0,
     totalPages: 0,
   });
-  const [searchQuery, setSearchQuery] = useState('');
-  const [debouncedSearch, setDebouncedSearch] = useState('');
-  const [sorting, setSorting] = useState<SortingState>([]);
+  const [searchQuery, setSearchQuery] = useState(urlSearch);
+  const [debouncedSearch, setDebouncedSearch] = useState(urlSearch);
+  const [sorting, setSorting] = useState<SortingState>(
+    urlSortBy ? [{ id: urlSortBy, desc: urlSortOrder === 'desc' }] : []
+  );
   const [refreshTrigger, setRefreshTrigger] = useState(0);
-  const prevSearchRef = useRef('');
+  const prevSearchRef = useRef(urlSearch);
   const prevEndpointRef = useRef(apiEndpoint);
+  const initialSyncDone = useRef(false);
 
-  // Manual refresh function
+  const updateURL = (overrides: Record<string, string | undefined | null>) => {
+    const params = new URLSearchParams(searchParams.toString());
+    for (const [key, value] of Object.entries(overrides)) {
+      if (value) {
+        params.set(key, value);
+      } else {
+        params.delete(key);
+      }
+    }
+    const qs = params.toString();
+    router.replace(qs ? `?${qs}` : window.location.pathname, { scroll: false });
+  };
+
   const handleRefresh = () => {
     setRefreshTrigger(prev => prev + 1);
   };
 
-  // Fetch data from server
   const fetchDataInternal = async () => {
     setLoading(true);
     try {
@@ -93,10 +116,8 @@ export default function DataTable<T extends Record<string, any>>({
 
       let result;
       if (fetchData) {
-        // Use custom fetchData function
         result = await fetchData(params);
       } else if (apiEndpoint) {
-        // Use API endpoint
         const queryParams = new URLSearchParams();
         Object.entries(params).forEach(([key, value]) => {
           if (value !== undefined) {
@@ -112,12 +133,10 @@ export default function DataTable<T extends Record<string, any>>({
         throw new Error('Either apiEndpoint or fetchData must be provided');
       }
 
-      // Handle custom pagination format
       setData(result.data || []);
       if (result.pagination) {
         setPagination(result.pagination);
       } else if (result.meta) {
-        // Handle Laravel-style pagination with meta object
         setPagination(prev => ({
           ...prev,
           page: result.meta.current_page,
@@ -139,19 +158,15 @@ export default function DataTable<T extends Record<string, any>>({
     }
   };
 
-  // Debounce search query
   useEffect(() => {
     const timer = setTimeout(() => {
       setDebouncedSearch(searchQuery);
     }, 300);
-
     return () => clearTimeout(timer);
   }, [searchQuery]);
 
-  // Single effect to handle all data fetching
   useEffect(() => {
     if (initialData) {
-      // Client-side: filter by search, compute pagination
       let filtered = initialData;
       const q = debouncedSearch.toLowerCase();
       if (debouncedSearch) {
@@ -173,20 +188,30 @@ export default function DataTable<T extends Record<string, any>>({
     const searchChanged = prevSearchRef.current !== debouncedSearch;
     const endpointChanged = prevEndpointRef.current !== apiEndpoint;
 
-    // Update refs
     prevSearchRef.current = debouncedSearch;
     prevEndpointRef.current = apiEndpoint;
 
-    // If search or endpoint changed, reset to page 1
     if ((searchChanged || endpointChanged) && pagination.page !== 1) {
       setPagination(prev => ({ ...prev, page: 1 }));
-      return; // Don't fetch yet, let the page change trigger the fetch
+      return;
     }
 
-    // Otherwise fetch data
     fetchDataInternal();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [pagination.page, debouncedSearch, sorting, apiEndpoint, refreshTrigger, initialData]);
+
+  useEffect(() => {
+    if (!initialSyncDone.current) {
+      initialSyncDone.current = true;
+      return;
+    }
+    updateURL({
+      page: pagination.page > 1 ? String(pagination.page) : null,
+      search: debouncedSearch || null,
+      sortBy: sorting[0]?.id || null,
+      sortOrder: sorting[0]?.desc ? 'desc' : sorting[0]?.id ? 'asc' : null,
+    });
+  }, [pagination.page, debouncedSearch, sorting]);
 
   const table = useReactTable({
     data,
@@ -194,7 +219,7 @@ export default function DataTable<T extends Record<string, any>>({
     state: {
       sorting,
       pagination: {
-        pageIndex: pagination.page - 1, // Convert 1-based to 0-based for TanStack Table
+        pageIndex: pagination.page - 1,
         pageSize: pagination.pageSize,
       },
     },
@@ -215,7 +240,6 @@ export default function DataTable<T extends Record<string, any>>({
 
   return (
     <div className="space-y-2">
-      {/* Search Bar and Refresh Button */}
       <div className="flex items-center gap-2">
         {enableSearch && (
           <div className="relative flex-1 max-w-sm">
@@ -247,7 +271,6 @@ export default function DataTable<T extends Record<string, any>>({
         </button>
       </div>
 
-      {/* Table */}
       <div className="bg-white dark:bg-gray-800 shadow-sm dark:shadow-gray-900/50 rounded-md overflow-hidden border border-gray-200 dark:border-gray-700">
         <div className="overflow-x-auto overflow-y-auto max-h-[calc(100vh-200px)]">
           <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
@@ -334,7 +357,6 @@ export default function DataTable<T extends Record<string, any>>({
           </table>
         </div>
 
-        {/* Pagination */}
         {enablePagination && pagination.totalPages > 0 && (
           <div className="bg-gray-50 dark:bg-gray-900/30 px-3 py-2 border-t border-gray-200 dark:border-gray-700">
             <div className="flex items-center justify-between">
@@ -404,7 +426,7 @@ export default function DataTable<T extends Record<string, any>>({
                   <ChevronRight className="h-3.5 w-3.5" />
                 </button>
                 <button
-                  onClick={() => goToPage(pagination.totalPages)}
+                  onClick={() => goToPage(pagination.page)}
                   disabled={pagination.page === pagination.totalPages || loading}
                   className="p-1 rounded text-gray-600 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors cursor-pointer"
                 >
@@ -417,5 +439,19 @@ export default function DataTable<T extends Record<string, any>>({
         )}
       </div>
     </div>
+  );
+}
+
+export default function DataTable<T extends Record<string, any>>(
+  props: ServerDataTableProps<T>
+) {
+  return (
+    <Suspense fallback={
+      <div className="flex items-center justify-center py-8">
+        <Loader2 className="h-5 w-5 animate-spin text-gray-400" />
+      </div>
+    }>
+      <DataTableInner {...props} />
+    </Suspense>
   );
 }

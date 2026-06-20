@@ -13,17 +13,17 @@ import brandService from '@/services/brandService';
 import { formatDate } from '@/lib/utils/date';
 import { useRouter } from 'next/navigation';
 import { usePermissions } from '@/hooks/use-permissions';
+import { useAuthStore } from '@/stores/auth-store';
 
 export default function BrandsPage() {
   const { isSuperAdmin, isHydrated } = usePermissions();
+  const user = useAuthStore(state => state.user);
   const router = useRouter();
 
-  useEffect(() => {
-    if (!isHydrated) return;
-    if (!isSuperAdmin) router.replace('/dashboard');
-  }, [isHydrated, isSuperAdmin, router]);
-
-  const [businessTypeFilterId, setBusinessTypeFilterId] = useState<number | null>(null);
+  const tenantBusinessTypeId = (user as any)?.tenant?.business_type?.id ?? null;
+  const [businessTypeFilterId, setBusinessTypeFilterId] = useState<number | null>(
+    isSuperAdmin ? null : tenantBusinessTypeId
+  );
 
   const [showForm, setShowForm] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
@@ -76,10 +76,11 @@ export default function BrandsPage() {
     }
 
     try {
+      const effectiveBtId = isSuperAdmin ? businessTypeFilterId : tenantBusinessTypeId;
       await brandService.storeBrand({
         id: isEditing && currentBrand?.id ? currentBrand.id : undefined,
         name: formData.name,
-        business_type_id: businessTypeFilterId,
+        business_type_id: effectiveBtId,
         description: formData.description,
         is_active: formData.is_active,
         logo_url: formData.logo_url,
@@ -226,18 +227,22 @@ export default function BrandsPage() {
         </div>
       ),
     },
-    {
-      accessorKey: 'business_type',
-      header: 'Business Type',
-      meta: { width: '12%' },
-      cell: ({ row }) => (
-        <div className="flex items-center">
-          <span className="text-xs text-gray-600 dark:text-gray-400 capitalize">
-            {row.original.business_type?.name || 'Other'}
-          </span>
-        </div>
-      ),
-    },
+    ...(isSuperAdmin
+      ? [
+          {
+            accessorKey: 'business_type',
+            header: 'Business Type',
+            meta: { width: '12%' },
+            cell: ({ row }: any) => (
+              <div className="flex items-center">
+                <span className="text-xs text-gray-600 dark:text-gray-400 capitalize">
+                  {row.original.business_type?.name || 'Other'}
+                </span>
+              </div>
+            ),
+          },
+        ]
+      : []),
     {
       accessorKey: 'created_at',
       header: 'Created At',
@@ -286,7 +291,8 @@ export default function BrandsPage() {
   // Build API endpoint with filters
   const buildApiEndpoint = () => {
     const params = new URLSearchParams();
-    if (businessTypeFilterId) params.append('business_type_id', String(businessTypeFilterId));
+    const effectiveBtId = isSuperAdmin ? businessTypeFilterId : tenantBusinessTypeId;
+    if (effectiveBtId) params.append('business_type_id', String(effectiveBtId));
     const queryString = params.toString();
     return `brand${queryString ? `?${queryString}` : ''}`;
   };
@@ -311,20 +317,22 @@ export default function BrandsPage() {
       </div>
 
       {/* Filters */}
-      <div className="bg-white dark:bg-gray-800 rounded-md shadow-sm border border-gray-200 dark:border-gray-700 p-1">
-        <div className="flex items-center justify-between">
-          <div className="flex gap-3">
-            {/* Business Type Filter */}
-            <div className="md:col-span-2">
-              <BusinessTypeSelect
-                value={businessTypeFilterId}
-                onChange={(id) => setBusinessTypeFilterId(id)}
-                placeholder="Filter by business type"
-              />
+      {isSuperAdmin && (
+        <div className="bg-white dark:bg-gray-800 rounded-md shadow-sm border border-gray-200 dark:border-gray-700 p-1">
+          <div className="flex items-center justify-between">
+            <div className="flex gap-3">
+              {/* Business Type Filter */}
+              <div className="md:col-span-2">
+                <BusinessTypeSelect
+                  value={businessTypeFilterId}
+                  onChange={(id) => setBusinessTypeFilterId(id)}
+                  placeholder="Filter by business type"
+                />
+              </div>
             </div>
           </div>
         </div>
-      </div>
+      )}
 
       {/* Add/Edit Brand Form */}
       {showForm && (

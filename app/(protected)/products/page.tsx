@@ -23,6 +23,7 @@ export default function ProductsPage() {
   const router = useRouter();
   const user = useAuthStore(state => state.user);
   const isSuperAdmin = user?.user_type === 'super_admin';
+  const tenantBusinessTypeId = (user as any)?.tenant?.business_type?.id ?? null;
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const { hasPermission, isHydrated } = usePermissions();
 
@@ -47,8 +48,9 @@ export default function ProductsPage() {
       const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL || '';
       let url = `${backendUrl}/api/v1/products/sample-excel`;
 
-      if (isSuperAdmin && businessTypeId) {
-        url += `?business_type_id=${encodeURIComponent(businessTypeId)}`;
+      const btId = isSuperAdmin ? businessTypeId : tenantBusinessTypeId;
+      if (btId) {
+        url += `?business_type_id=${encodeURIComponent(btId)}`;
       }
 
       window.open(url, '_blank');
@@ -66,7 +68,7 @@ export default function ProductsPage() {
       return;
     }
 
-    // Validate business type for super admin
+    // Validate business type for super admin (tenant uses their own)
     if (isSuperAdmin && !businessTypeId) {
       notify.error('Please select a business type');
       return;
@@ -88,8 +90,9 @@ export default function ProductsPage() {
       const formData = new FormData();
       formData.append('file', selectedFile);
 
-      if (isSuperAdmin && businessTypeId) {
-        formData.append('business_type_id', String(businessTypeId));
+      const btId = isSuperAdmin ? businessTypeId : tenantBusinessTypeId;
+      if (btId) {
+        formData.append('business_type_id', String(btId));
       }
 
       const response = await apiClient.post('/api/v1/products/bulk-upload', formData, {
@@ -312,6 +315,9 @@ export default function ProductsPage() {
   const buildApiEndpoint = () => {
     const params = new URLSearchParams();
     if (statusFilter !== 'all') params.append('status', statusFilter);
+    if (!isSuperAdmin && tenantBusinessTypeId) {
+      params.append('business_type_id', String(tenantBusinessTypeId));
+    }
     const queryString = params.toString();
     return `products${queryString ? `?${queryString}` : ''}`;
   };
@@ -346,7 +352,7 @@ export default function ProductsPage() {
           >
             <ImDownload className="w-4 h-4" /> Product Sample(Excel)
           </button>
-          {hasPermission('create-products') && (
+          {hasPermission('create-product') && (
             <button
               onClick={() => setShowBulkUpload(!showBulkUpload)}
               className="flex items-center gap-2 px-3 py-1.5 bg-green-600 hover:bg-green-700 text-white text-sm font-medium rounded-sm transition-colors duration-200 cursor-pointer"
@@ -355,7 +361,7 @@ export default function ProductsPage() {
               Product Upload (Bulk)
             </button>
           )}
-          {hasPermission('create-products') && (
+          {hasPermission('create-product') && (
             <button
               onClick={() => router.push('/products/add')}
               className="flex items-center gap-2 px-3 py-1.5 bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-medium rounded-sm transition-colors duration-200 cursor-pointer"

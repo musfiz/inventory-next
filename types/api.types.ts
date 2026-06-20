@@ -207,7 +207,7 @@ export interface Category {
   description?: string;
   parent_id?: string;
   business_type?: BusinessType;
-  business_type_id?: number;
+  business_types?: BusinessType[];
   parent?: Category;
   children?: Category[];
   is_active: boolean;
@@ -260,8 +260,8 @@ export interface CreateCategoryRequest {
   name: string;
   description?: string;
   parent_id?: string;
-  business_type?: BusinessType;
-  business_type_id?: number;
+  business_types?: BusinessType[];
+  business_type_ids: number[];
   image_url?: string;
   sort_order?: number;
   is_active?: boolean;

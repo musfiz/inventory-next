@@ -60,6 +60,7 @@ function AddProductPage() {
     (user as any)?.tenant?.business_type ||
     (user as any)?.business_type ||
     '';
+  const tenantBusinessTypeId = (user as any)?.tenant?.business_type?.id ?? null;
 
   const [isLoading, setIsLoading] = useState(false);
   const [errors, setErrors] = useState<Record<string, string[]>>({});
@@ -108,67 +109,59 @@ function AddProductPage() {
   const loadCategoryOptions = useCallback(
     async (inputValue: string): Promise<SelectOption[]> => {
       try {
-        const params: { search?: string; business_type?: string } = {};
+        const params: { search?: string; business_type_id?: number } = {};
 
-        // Add search parameter only if inputValue is provided
         if (inputValue && inputValue.trim()) {
           params.search = inputValue.trim();
         }
 
-        // Add business_type filter if set (for tenant users, use their business type)
-        if (businessType) {
-          params.business_type = businessType;
+        const btId = isSuperAdmin ? businessTypeId : tenantBusinessTypeId;
+        if (btId) {
+          params.business_type_id = btId;
         }
 
-        console.log('📦 Loading categories with params:', params);
         const categoriesData = await commonService.getCategoriesForDropdown(params);
-        console.log('📦 Categories loaded:', categoriesData.length);
 
         const options = categoriesData.map((category: Category) => ({
           value: category.id.toString(),
           label: category.name,
         }));
 
-        // Store default options for initial load
         if (!inputValue && defaultCategoryOptions.length === 0) {
           setDefaultCategoryOptions(options);
         }
 
         return options;
       } catch (error) {
-        console.error('❌ Failed to load categories:', error);
+        console.error('Failed to load categories:', error);
         return [];
       }
     },
-    [businessType]
+    [businessTypeId, isSuperAdmin]
   );
 
   // Load brands for async select with search
   const loadBrandOptions = useCallback(
     async (inputValue: string): Promise<SelectOption[]> => {
       try {
-        const params: { search?: string; business_type?: string } = {};
+        const params: { search?: string; business_type_id?: number } = {};
 
-        // Add search parameter only if inputValue is provided
         if (inputValue && inputValue.trim()) {
           params.search = inputValue.trim();
         }
 
-        // Add business_type filter if set (for tenant users, use their business type)
-        if (businessType) {
-          params.business_type = businessType;
+        const btId = isSuperAdmin ? businessTypeId : tenantBusinessTypeId;
+        if (btId) {
+          params.business_type_id = btId;
         }
 
-        console.log('🏷️ Loading brands with params:', params);
         const brandsData = await commonService.getBrandsForDropdown(params);
-        console.log('🏷️ Brands loaded:', brandsData.length);
 
         const options = brandsData.map((brand: Brand) => ({
           value: brand.id.toString(),
           label: brand.name,
         }));
 
-        // Store default options for initial load
         if (!inputValue && defaultBrandOptions.length === 0) {
           setDefaultBrandOptions(options);
         }
@@ -179,7 +172,7 @@ function AddProductPage() {
         return [];
       }
     },
-    [businessType]
+    [businessTypeId, isSuperAdmin]
   );
 
   // Load units for async select with search
@@ -213,10 +206,9 @@ function AddProductPage() {
 
   // Load dropdown data when business type is set
   useEffect(() => {
-    // Only load when business type is available (either selected by super admin or set from tenant data)
-    const shouldLoad = businessType !== '';
+    const btId = isSuperAdmin ? businessTypeId : tenantBusinessTypeId;
+    const shouldLoad = btId !== null;
 
-    // Prevent duplicate calls
     if (shouldLoad && !hasLoadedData.current && !isLoadingData.current) {
       const loadData = async () => {
         isLoadingData.current = true;
@@ -232,7 +224,7 @@ function AddProductPage() {
       loadData();
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [businessType]);
+  }, [businessTypeId, isSuperAdmin]);
 
   // Edit mode: load existing product and prefill the form
   useEffect(() => {
@@ -432,10 +424,11 @@ function AddProductPage() {
     setIsLoading(true);
     setErrors({});
 
-    // Client-side validation
+    const effectiveBtId = isSuperAdmin ? businessTypeId : tenantBusinessTypeId;
+
     const validationErrors: Record<string, string[]> = {};
 
-    if (!businessType) {
+    if (!effectiveBtId) {
       validationErrors.business_type = ['Business type is required'];
     }
 
@@ -447,10 +440,10 @@ function AddProductPage() {
     }
 
     try {
-      // Prepare data for submission
       const submitData: any = {
         ...formData,
-        business_type: businessType, // Add business type
+        business_type: businessType,
+        business_type_id: effectiveBtId,
         tax_rate: formData.tax_rate ? parseFloat(formData.tax_rate) : 0,
         low_stock_threshold: formData.low_stock_threshold
           ? parseInt(formData.low_stock_threshold)
@@ -543,7 +536,7 @@ function AddProductPage() {
                 ) : (
                   <input
                     type="text"
-                    value={tenantBusinessType || '—'}
+                    value={typeof tenantBusinessType === 'object' ? (tenantBusinessType as any)?.name || '—' : tenantBusinessType || '—'}
                     disabled
                     className="w-full px-2.5 py-1 text-sm bg-gray-100 dark:bg-gray-600 border border-gray-300 dark:border-gray-600 rounded-sm text-gray-700 dark:text-gray-300 cursor-not-allowed"
                   />
@@ -914,7 +907,7 @@ function AddProductPage() {
 
         {/* Submit Button */}
         <div className="flex justify-start">
-          {hasPermission(editingId ? 'update-products' : 'create-products') && (
+          {hasPermission(editingId ? 'update-product' : 'create-product') && (
             <button
               type="submit"
               disabled={isLoading}

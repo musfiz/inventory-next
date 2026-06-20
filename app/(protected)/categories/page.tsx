@@ -1,7 +1,7 @@
 'use client';
 
-import { useState, useEffect } from 'react';
-import { FolderOpen, Plus, Edit, Trash2, Eye, X, Download } from 'lucide-react';
+import { useState, useCallback, useRef } from 'react';
+import { FolderOpen, Plus, Edit, Trash2, X, Download } from 'lucide-react';
 import { GiSave } from 'react-icons/gi';
 import { ColumnDef } from '@tanstack/react-table';
 import { notify } from '@/lib/notifications';
@@ -10,18 +10,17 @@ import commonService from '@/services/commonService';
 import { Category } from '@/types/api.types';
 import DataTable from '@/components/ui/datatable';
 import CustomSelect from '@/components/ui/custom-select';
-import BusinessTypeSelect from '@/components/ui/business-type-select';
+import BusinessTypeMultiSelect from '@/components/ui/business-type-multi-select';
 import { useRouter } from 'next/navigation';
 import { usePermissions } from '@/hooks/use-permissions';
+import { useAuthStore } from '@/stores/auth-store';
 
 export default function CategoriesPage() {
   const { isSuperAdmin, isHydrated } = usePermissions();
+  const user = useAuthStore(state => state.user);
   const router = useRouter();
 
-  useEffect(() => {
-    if (!isHydrated) return;
-    if (!isSuperAdmin) router.replace('/dashboard');
-  }, [isHydrated, isSuperAdmin, router]);
+  const tenantBusinessTypeId = (user as any)?.tenant?.business_type?.id ?? null;
 
   const [showForm, setShowForm] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
@@ -30,12 +29,13 @@ export default function CategoriesPage() {
   const [formData, setFormData] = useState({
     name: '',
     description: '',
-    business_type_id: null as number | null,
+    business_type_ids: isSuperAdmin ? [] as number[] : (tenantBusinessTypeId ? [tenantBusinessTypeId] : []),
     is_active: true,
     parent_id: undefined as string | undefined,
   });
   const [formErrors, setFormErrors] = useState<{ [key: string]: string }>({});
   const [refreshKey, setRefreshKey] = useState(0);
+  const lastSavedBusinessTypeIds = useRef<number[]>([]);
 
   const [defaultParentOptions, setDefaultParentOptions] = useState<
     { value: string; label: string }[]
@@ -50,72 +50,87 @@ export default function CategoriesPage() {
     }
   };
 
-  const loadParentCategoryOptions = async (
-    inputValue: string
-  ): Promise<{ value: string; label: string }[]> => {
-    try {
-      const params: { search?: string; only_parent?: boolean } = {};
-      params.only_parent = true;
-      if (inputValue && inputValue.trim()) {
-        params.search = inputValue.trim();
+  const loadParentCategoryOptions = useCallback(
+    async (
+      inputValue: string,
+      businessTypeIds?: number[]
+    ): Promise<{ value: string; label: string }[]> => {
+      try {
+        const params: { search?: string; only_parent?: boolean; business_type_id?: number } = {};
+        params.only_parent = true;
+        if (inputValue && inputValue.trim()) {
+          params.search = inputValue.trim();
+        }
+        const ids = businessTypeIds ?? formData.business_type_ids;
+        const effectiveBtId = isSuperAdmin ? (ids[0] ?? null) : tenantBusinessTypeId;
+        if (effectiveBtId) {
+          params.business_type_id = effectiveBtId;
+        }
+
+        const categories = await commonService.getCategoriesForDropdown(params);
+
+        // Filter out current category when editing
+        const filteredCategories = categories.filter(
+          cat => !isEditing || cat.id !== currentCategory?.id
+        );
+
+        const options = filteredCategories.map(cat => ({
+          value: cat.id,
+          label: cat.name,
+        }));
+
+        // Update parent categories state
+        setParentCategories(filteredCategories);
+
+        // Store default options for initial load
+        if (!inputValue && defaultParentOptions.length === 0) {
+          setDefaultParentOptions(options);
+        }
+
+        return options;
+      } catch (error) {
+        console.error('Failed to load parent categories:', error);
+        return [];
       }
-
-      const categories = await commonService.getCategoriesForDropdown(params);
-
-      // Filter out current category when editing
-      const filteredCategories = categories.filter(
-        cat => !isEditing || cat.id !== currentCategory?.id
-      );
-
-      const options = filteredCategories.map(cat => ({
-        value: cat.id,
-        label: cat.name,
-      }));
-
-      // Update parent categories state
-      setParentCategories(filteredCategories);
-
-      // Store default options for initial load
-      if (!inputValue && defaultParentOptions.length === 0) {
-        setDefaultParentOptions(options);
-      }
-
-      return options;
-    } catch (error) {
-      console.error('Failed to load parent categories:', error);
-      return [];
-    }
-  };
+    },
+    [formData.business_type_ids, isSuperAdmin, tenantBusinessTypeId, isEditing, currentCategory?.id]
+  );
 
   const handleAddCategory = () => {
     setIsEditing(false);
     setCurrentCategory(null);
+    const initialIds = isSuperAdmin
+      ? (lastSavedBusinessTypeIds.current.length > 0 ? lastSavedBusinessTypeIds.current : [])
+      : (tenantBusinessTypeId ? [tenantBusinessTypeId] : []);
     setFormData({
       name: '',
       description: '',
-      business_type_id: null,
+      business_type_ids: initialIds,
       is_active: true,
       parent_id: undefined,
     });
     setFormErrors({});
-    // Load default parent category options
-    loadParentCategoryOptions('');
+    setDefaultParentOptions([]);
+    loadParentCategoryOptions('', initialIds);
     setShowForm(true);
   };
 
   const handleEditCategory = (category: Category) => {
     setIsEditing(true);
     setCurrentCategory(category);
+    const initialIds = isSuperAdmin
+      ? ((category as any).business_types?.map((bt: any) => bt.id) ?? [])
+      : (tenantBusinessTypeId ? [tenantBusinessTypeId] : []);
     setFormData({
       name: category.name,
       description: category.description || '',
-      business_type_id: (category as any).business_type_id ?? null,
+      business_type_ids: initialIds,
       is_active: category.is_active,
       parent_id: category.parent_id || undefined,
     });
     setFormErrors({});
-    // Load default parent category options
-    loadParentCategoryOptions('');
+    setDefaultParentOptions([]);
+    loadParentCategoryOptions('', initialIds);
     setShowForm(true);
   };
 
@@ -123,6 +138,9 @@ export default function CategoriesPage() {
     const errors: { [key: string]: string } = {};
     if (!formData.name.trim()) {
       errors.name = 'Name is required';
+    }
+    if (formData.business_type_ids.length === 0) {
+      errors.business_type_ids = 'At least one business type is required';
     }
     setFormErrors(errors);
     return Object.keys(errors).length === 0;
@@ -135,12 +153,28 @@ export default function CategoriesPage() {
     try {
       const submitData = {
         ...formData,
+        business_type_ids: isSuperAdmin
+          ? formData.business_type_ids
+          : (tenantBusinessTypeId ? [tenantBusinessTypeId] : []),
         ...(isEditing && currentCategory && { id: currentCategory.id }),
       };
 
       await categoryService.storeCategory(submitData);
       notify.success(isEditing ? 'Category updated successfully' : 'Category created successfully');
-      setShowForm(false);
+      lastSavedBusinessTypeIds.current = formData.business_type_ids;
+      if (isEditing) {
+        setShowForm(false);
+      } else {
+        setFormData(prev => ({
+          name: '',
+          description: '',
+          business_type_ids: prev.business_type_ids,
+          is_active: true,
+          parent_id: undefined,
+        }));
+        setFormErrors({});
+        setDefaultParentOptions([]);
+      }
       setRefreshKey(prev => prev + 1);
     } catch (error: unknown) {
       const axiosError = error as {
@@ -209,15 +243,32 @@ export default function CategoriesPage() {
         </span>
       ),
     },
-    {
-      accessorKey: 'business_type',
-      header: 'Business Type',
-      cell: ({ row }) => (
-        <span className="text-gray-600 dark:text-gray-400 capitalize">
-          {row.original.business_type?.name || 'Other'}
-        </span>
-      ),
-    },
+    ...(isSuperAdmin
+      ? [
+          {
+            accessorKey: 'business_type',
+            header: 'Business Types',
+            cell: ({ row }: any) => {
+              const types = (row.original as any).business_types;
+              if (!types || types.length === 0) {
+                return <span className="text-gray-400 text-xs">Other</span>;
+              }
+              return (
+                <div className="flex flex-wrap gap-1">
+                  {types.map((bt: any) => (
+                    <span
+                      key={bt.id}
+                      className="inline-flex items-center px-2 py-0.5 text-xs font-medium rounded-full bg-indigo-100 text-indigo-800 dark:bg-indigo-900/40 dark:text-indigo-300"
+                    >
+                      {bt.name}
+                    </span>
+                  ))}
+                </div>
+              );
+            },
+          },
+        ]
+      : []),
     {
       accessorKey: 'description',
       header: 'Description',
@@ -266,6 +317,9 @@ export default function CategoriesPage() {
   // Build API endpoint with filters
   const buildApiEndpoint = () => {
     const params = new URLSearchParams();
+    if (!isSuperAdmin && tenantBusinessTypeId) {
+      params.append('business_type_id', String(tenantBusinessTypeId));
+    }
     const queryString = params.toString();
     return `categories${queryString ? `?${queryString}` : ''}`;
   };
@@ -321,18 +375,24 @@ export default function CategoriesPage() {
                 />
                 {formErrors.name && <p className="text-red-600 text-xs mt-1">{formErrors.name}</p>}
               </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-0.5">
-                  Business Type
-                </label>
-                <BusinessTypeSelect
-                  value={formData.business_type_id}
-                  onChange={(id) =>
-                    setFormData({ ...formData, business_type_id: id })
-                  }
-                  placeholder="Select business type"
-                />
-              </div>
+              {isSuperAdmin && (
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-0.5">
+                    Business Types
+                  </label>
+                  <BusinessTypeMultiSelect
+                    value={formData.business_type_ids}
+                    onChange={(ids) =>
+                      setFormData({ ...formData, business_type_ids: ids })
+                    }
+                    placeholder="Select business types"
+                    isInvalid={!!formErrors.business_type_ids}
+                  />
+                  {formErrors.business_type_ids && (
+                    <p className="text-red-600 text-xs mt-1">{formErrors.business_type_ids}</p>
+                  )}
+                </div>
+              )}
               <div>
                 <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-0.5">
                   Parent Category
