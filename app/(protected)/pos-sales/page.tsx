@@ -10,7 +10,6 @@ import {
   Minus,
   Trash2,
   User,
-  Tag,
   Printer,
   Mail,
   XCircle,
@@ -105,7 +104,6 @@ export default function POSSalesPage() {
   const [isLoading, setIsLoading] = useState(false);
   const [productsLoading, setProductsLoading] = useState(false);
   const [productsError, setProductsError] = useState<string | null>(null);
-  const [orderNumber, setOrderNumber] = useState('');
   const searchDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const hasMountedRef = useRef(false);
 
@@ -158,7 +156,6 @@ export default function POSSalesPage() {
   }, []);
 
   useEffect(() => {
-    generateOrderNumber();
     loadCategories();
   }, []);
 
@@ -385,14 +382,6 @@ export default function POSSalesPage() {
     }
   };
 
-  const generateOrderNumber = () => {
-    const date = new Date();
-    const random = Math.floor(Math.random() * 10000)
-      .toString()
-      .padStart(4, '0');
-    setOrderNumber(`POS${date.getTime()}${random}`);
-  };
-
   // ── Super Admin Context Dialog Handlers ──────────────────────────────────────
 
   const handleDialogTenantChange = (opt: any) => {
@@ -577,7 +566,6 @@ export default function POSSalesPage() {
     setCustomer({ name: 'Walk-in Customer' });
     setDiscount(0);
     setNote('');
-    generateOrderNumber();
     // Resolve paper size: API response → tenant store → default 80mm
     const rawSize = printSettings?.thermal_paper_size ?? tenantSettings?.thermal_paper_size ?? '80mm';
     const mappedSize = rawSize === '53mm' ? '58mm' : '80mm';
@@ -635,7 +623,6 @@ export default function POSSalesPage() {
       setCustomer({ name: 'Walk-in Customer' });
       setDiscount(0);
       setNote('');
-      generateOrderNumber();
       notify.success('Order held successfully');
     } catch {
       notify.error('Failed to hold order. Please try again.');
@@ -648,7 +635,6 @@ export default function POSSalesPage() {
     setDiscount(orderData.discount ?? 0);
     setDiscountType(orderData.discountType ?? 'amount');
     setNote(orderData.note ?? '');
-    generateOrderNumber();
   };
 
   /**
@@ -797,7 +783,6 @@ export default function POSSalesPage() {
             </div>
             <div>
               <h1 className="text-xl font-bold text-gray-900 dark:text-gray-100">POS Sales</h1>
-              <p className="text-xs text-gray-500 dark:text-gray-400">Order #{orderNumber}</p>
             </div>
             {/* Context info bar */}
             {activeSession && (

@@ -5,6 +5,7 @@ import { ColumnDef } from '@tanstack/react-table';
 import { List, Building2, Eye, CreditCard, X } from 'lucide-react';
 import DataTable from '@/components/ui/datatable';
 import { usePermissions } from '@/hooks/use-permissions';
+import { useAuthStore } from '@/stores/auth-store';
 import CustomSelect from '@/components/ui/custom-select';
 import { commonService, posRegisterService } from '@/services';
 import posService from '@/services/posService';
@@ -26,6 +27,7 @@ const PAYMENT_METHOD_OPTIONS = [
 
 export default function PosOrdersPage() {
   const { isSuperAdmin, isHydrated } = usePermissions();
+  const { user } = useAuthStore();
 
   const [refreshKey, setRefreshKey] = useState(0);
   const [selectedTenant, setSelectedTenant] = useState<any>(null);
@@ -58,6 +60,19 @@ export default function PosOrdersPage() {
       .catch(() => { });
   }, [isHydrated, isSuperAdmin]);
 
+  // Load registers for non-super-admin users on mount
+  useEffect(() => {
+    if (!isHydrated || isSuperAdmin) return;
+    setRegisterLoading(true);
+    posRegisterService
+      .dropdown()
+      .then((list: any[]) =>
+        setRegisterOptions((list || []).map((r: any) => ({ value: r.id, label: r.name })))
+      )
+      .catch(() => { })
+      .finally(() => setRegisterLoading(false));
+  }, [isHydrated, isSuperAdmin]);
+
   const handleTenantChange = (opt: any) => {
     setSelectedTenant(opt);
     setSelectedRegister(null);
@@ -82,7 +97,11 @@ export default function PosOrdersPage() {
 
   const buildApiEndpoint = () => {
     const params = new URLSearchParams();
-    if (isSuperAdmin && selectedTenant?.value) params.set('tenant_id', String(selectedTenant.value));
+    if (isSuperAdmin && selectedTenant?.value) {
+      params.set('tenant_id', String(selectedTenant.value));
+    } else if (!isSuperAdmin && user?.tenant_id) {
+      params.set('tenant_id', String(user.tenant_id));
+    }
     if (selectedRegister?.value) params.set('register_id', String(selectedRegister.value));
     const qs = params.toString();
     return `/pos/orders${qs ? `?${qs}` : ''}`;
@@ -275,10 +294,10 @@ export default function PosOrdersPage() {
             // which makes due <= 0 anyway. When the store owes the
             // client, the right flow is the pos-refund "Settle
             // Payment" dialog (action=refund) — not this button.
-            const grand    = Number(row.original.grand_total     ?? 0);
-            const paid     = Number(row.original.paid_amount     ?? 0);
+            const grand = Number(row.original.grand_total ?? 0);
+            const paid = Number(row.original.paid_amount ?? 0);
             const returned = Number(row.original.returned_amount ?? 0);
-            const due      = grand - returned - paid;
+            const due = grand - returned - paid;
             if (!(paid > 0 && due > 0)) return null;
             return (
               <button
@@ -319,12 +338,12 @@ export default function PosOrdersPage() {
     // distinctly from the payment badge above.
     const s = (status ?? '').toLowerCase();
     const map: Record<string, string> = {
-      completed:           'bg-gray-100 text-gray-700',
-      confirmed:           'bg-blue-100 text-blue-700',
-      pending:             'bg-yellow-100 text-yellow-700',
-      cancelled:           'bg-red-100 text-red-700',
-      refunded:            'bg-purple-100 text-purple-700',
-      partially_refunded:  'bg-amber-100 text-amber-700',
+      completed: 'bg-gray-100 text-gray-700',
+      confirmed: 'bg-blue-100 text-blue-700',
+      pending: 'bg-yellow-100 text-yellow-700',
+      cancelled: 'bg-red-100 text-red-700',
+      refunded: 'bg-purple-100 text-purple-700',
+      partially_refunded: 'bg-amber-100 text-amber-700',
     };
     const label = s ? s.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase()) : '—';
     return (
@@ -343,13 +362,13 @@ export default function PosOrdersPage() {
         </h1>
       </div>
 
-      {/* Super Admin Tenant / Register Filter */}
-      {isSuperAdmin && (
-        <div className="bg-white border border-gray-200 rounded-sm p-3">
-          <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2 flex items-center gap-1">
-            <Building2 className="w-3.5 h-3.5" /> Filter by Tenant &amp; Register
-          </p>
-          <div className="flex flex-wrap gap-3">
+      {/* Tenant / Register Filter */}
+      <div className="bg-white border border-gray-200 rounded-sm p-3">
+        <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2 flex items-center gap-1">
+          <Building2 className="w-3.5 h-3.5" /> Filter by {isSuperAdmin ? 'Tenant & Register' : 'Register'}
+        </p>
+        <div className="flex flex-wrap gap-3">
+          {isSuperAdmin && (
             <div className="w-72">
               <CustomSelect
                 value={selectedTenant}
@@ -365,21 +384,21 @@ export default function PosOrdersPage() {
                 className="text-sm"
               />
             </div>
-            <div className="w-72">
-              <CustomSelect
-                key={`reg-${selectedTenant?.value ?? 'none'}`}
-                value={selectedRegister}
-                onChange={handleRegisterChange}
-                defaultOptions={registerOptions}
-                isLoading={registerLoading}
-                placeholder={selectedTenant ? 'All Registers' : 'Select tenant first'}
-                isDisabled={!selectedTenant}
-                className="text-sm"
-              />
-            </div>
+          )}
+          <div className="w-72">
+            <CustomSelect
+              key={isSuperAdmin ? `reg-${selectedTenant?.value ?? 'none'}` : 'reg-non-super'}
+              value={selectedRegister}
+              onChange={handleRegisterChange}
+              options={registerOptions}
+              isLoading={registerLoading}
+              placeholder={isSuperAdmin && !selectedTenant ? 'Select tenant first' : 'All Registers'}
+              isDisabled={isSuperAdmin && !selectedTenant}
+              className="text-sm"
+            />
           </div>
         </div>
-      )}
+      </div>
 
       <DataTable
         key={refreshKey}
@@ -532,33 +551,33 @@ export default function PosOrdersPage() {
                             const returned = Number(it.returned_quantity ?? 0);
                             const qty = Number(it.quantity ?? 0);
                             return (
-                            <tr key={it.id} className={idx % 2 === 0 ? 'bg-white' : 'bg-blue-50'}>
-                              <td className="px-3 py-2 text-gray-400 text-xs">{idx + 1}</td>
-                              <td className="px-3 py-2 font-medium text-gray-800">
-                                {it.product?.name || it.item_name || '—'}
-                              </td>
-                              <td className="px-3 py-2 text-gray-500">{it.variation?.name || '—'}</td>
-                              <td className="px-3 py-2 text-center">
-                                <span className={`px-2 py-0.5 rounded-full text-xs font-semibold ${returned > 0 && returned >= qty ? 'bg-gray-100 text-gray-500 line-through' : 'bg-blue-100 text-blue-700'}`}>
-                                  {it.quantity}
-                                </span>
-                              </td>
-                              <td className="px-3 py-2 text-center">
-                                {returned > 0 ? (
-                                  <span className="bg-purple-100 text-purple-700 px-2 py-0.5 rounded-full text-xs font-semibold" title={`${returned} of ${qty} returned`}>
-                                    {returned}
+                              <tr key={it.id} className={idx % 2 === 0 ? 'bg-white' : 'bg-blue-50'}>
+                                <td className="px-3 py-2 text-gray-400 text-xs">{idx + 1}</td>
+                                <td className="px-3 py-2 font-medium text-gray-800">
+                                  {it.product?.name || it.item_name || '—'}
+                                </td>
+                                <td className="px-3 py-2 text-gray-500">{it.variation?.name || '—'}</td>
+                                <td className="px-3 py-2 text-center">
+                                  <span className={`px-2 py-0.5 rounded-full text-xs font-semibold ${returned > 0 && returned >= qty ? 'bg-gray-100 text-gray-500 line-through' : 'bg-blue-100 text-blue-700'}`}>
+                                    {it.quantity}
                                   </span>
-                                ) : (
-                                  <span className="text-gray-300 text-xs">—</span>
-                                )}
-                              </td>
-                              <td className="px-3 py-2 text-right text-gray-800">
-                                ৳{Number(it.unit_price ?? 0).toFixed(2)}
-                              </td>
-                              <td className="px-3 py-2 text-right font-semibold text-gray-800">
-                                ৳{Number(it.line_total ?? 0).toFixed(2)}
-                              </td>
-                            </tr>
+                                </td>
+                                <td className="px-3 py-2 text-center">
+                                  {returned > 0 ? (
+                                    <span className="bg-purple-100 text-purple-700 px-2 py-0.5 rounded-full text-xs font-semibold" title={`${returned} of ${qty} returned`}>
+                                      {returned}
+                                    </span>
+                                  ) : (
+                                    <span className="text-gray-300 text-xs">—</span>
+                                  )}
+                                </td>
+                                <td className="px-3 py-2 text-right text-gray-800">
+                                  ৳{Number(it.unit_price ?? 0).toFixed(2)}
+                                </td>
+                                <td className="px-3 py-2 text-right font-semibold text-gray-800">
+                                  ৳{Number(it.line_total ?? 0).toFixed(2)}
+                                </td>
+                              </tr>
                             );
                           })
                         )}
@@ -584,11 +603,11 @@ export default function PosOrdersPage() {
                           // think something is broken.
                           const statusCls =
                             p.status === 'completed' ? 'bg-emerald-100 text-emerald-700' :
-                            p.status === 'pending'   ? 'bg-amber-100 text-amber-700' :
-                            p.status === 'refunded'  ? 'bg-purple-100 text-purple-700' :
-                            p.status === 'failed'    ? 'bg-red-100 text-red-700' :
-                            p.status === 'cancelled' ? 'bg-gray-200 text-gray-700' :
-                                                       'bg-gray-100 text-gray-600';
+                              p.status === 'pending' ? 'bg-amber-100 text-amber-700' :
+                                p.status === 'refunded' ? 'bg-purple-100 text-purple-700' :
+                                  p.status === 'failed' ? 'bg-red-100 text-red-700' :
+                                    p.status === 'cancelled' ? 'bg-gray-200 text-gray-700' :
+                                      'bg-gray-100 text-gray-600';
                           return (
                             <div key={p.id} className="flex items-center justify-between text-xs bg-white rounded-lg px-3 py-1.5 border border-gray-100">
                               <div className="flex items-center gap-2">

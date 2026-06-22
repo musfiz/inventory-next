@@ -29,7 +29,7 @@ export default function TenantSelect({ value, onChange, placeholder = 'Select te
     }
   };
 
-  // preload default options and selected label when value provided
+  // preload default options on mount
   useEffect(() => {
     let mounted = true;
     (async () => {
@@ -37,25 +37,20 @@ export default function TenantSelect({ value, onChange, placeholder = 'Select te
         const opts = await loadOptions('');
         if (!mounted) return;
         setDefaultOptions(opts);
-        if (value) {
-          const valueStr = String(value);
-          const found = opts.find(o => String(o.value) === valueStr);
-          if (found) setSelected(found);
-          else {
-            // try to fetch by searching the id
-            const more = await loadOptions('');
-            const f = more.find(o => String(o.value) === valueStr);
-            if (f) setSelected(f);
-          }
-        } else {
-          setSelected(null);
-        }
       } catch (e) {
         console.error(e);
       }
     })();
     return () => { mounted = false; };
-  }, [value]);
+  }, []);
+
+  // sync selected state when value prop changes (without re-fetching)
+  useEffect(() => {
+    if (!value) { setSelected(null); return; }
+    const valueStr = String(value);
+    const found = defaultOptions.find(o => String(o.value) === valueStr);
+    if (found) setSelected(found);
+  }, [value, defaultOptions]);
 
   return (
     <CustomSelect

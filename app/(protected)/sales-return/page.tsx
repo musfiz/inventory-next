@@ -1,7 +1,8 @@
 'use client';
 
-import { useEffect, useRef, useState } from 'react';
-import { Plus, X, CheckCircle, Check, Printer, Ban } from 'lucide-react';
+import { useEffect, useState } from 'react';
+import { Plus, X, CheckCircle, Check, Ban, AlertTriangle, Undo2, FileText, Receipt, ListChecks, Info, Eye } from 'lucide-react';
+import { GiSave } from 'react-icons/gi';
 import { ColumnDef } from '@tanstack/react-table';
 import { notify, confirm } from '@/lib/notifications';
 import { salesReturnService, salesOrderService } from '@/services';
@@ -13,7 +14,7 @@ import { useRouter } from 'next/navigation';
 import { usePermissions } from '@/hooks/use-permissions';
 import { useAuthStore } from '@/stores/auth-store';
 import apiClient from '@/lib/api/axios';
-import { SalesReturnCreditNote } from '@/components/print/invoices';
+import { SalesReturnPrintMenu } from '@/components/print/SalesReturnPrintMenu';
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
@@ -145,9 +146,9 @@ export default function SalesReturnsPage() {
   const [returnLines, setReturnLines] = useState<ReturnLineItem[]>([]);
   const [loadingItems, setLoadingItems] = useState(false);
 
-  // Credit note print
-  const [printReturn, setPrintReturn] = useState<SalesReturn | null>(null);
-  const printRef = useRef<HTMLDivElement>(null);
+  // Details dialog
+  const [showDetailsDialog, setShowDetailsDialog] = useState(false);
+  const [detailsTarget, setDetailsTarget] = useState<SalesReturn | null>(null);
 
   // Settle payment dialog
   const [showSettleDialog, setShowSettleDialog] = useState(false);
@@ -160,35 +161,60 @@ export default function SalesReturnsPage() {
     (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) =>
       setForm(f => ({ ...f, [field]: e.target.value }));
 
-  const getOrderBalance = (ret: SalesReturn) => {
-    const so = (ret as any).sales_order;
-    const grandTotal = Number(so?.grand_total ?? 0);
-    const returnedAmount = Number(so?.returned_amount ?? 0);
-    const paidAmount = Number(so?.paid_amount ?? 0);
-    const effectiveTotal = Math.max(0, grandTotal - returnedAmount);
+  const getReturnBalance = (ret: SalesReturn) => {
+    const refundAmount = Number(ret.refund_amount ?? 0);
+    const settlements = ((ret as any).settlement_payments ?? []) as Array<any>;
+    const alreadySettled = settlements.reduce((sum: number, p: any) => sum + Number(p.amount ?? 0), 0);
     return {
-      grandTotal,
-      returnedAmount,
-      paidAmount,
-      effectiveTotal,
-      balance: effectiveTotal - paidAmount,
+      refundAmount,
+      alreadySettled,
+      balance: refundAmount - alreadySettled,
     };
   };
 
-  // ── Dropdown loaders ──────────────────────────────────────────────────────
+  // ── Sales order dropdown ─────────────────────────────────────────────────
 
-  const loadOrderOptions = async (input: string) => {
+  const [soKey, setSoKey] = useState(0);
+  const [soDefaultOpts, setSoDefaultOpts] = useState<{ value: string; label: string; raw: any }[]>([]);
+
+  const fetchOrders = async (input: string, tenantId: string) => {
     try {
-      const res = await apiClient.get('/api/v1/sales-order', {
-        params: { search: input, per_page: input ? 20 : 10, status: 'delivered,completed,returned' },
-      });
-      const items = res.data?.data?.data ?? res.data?.data ?? [];
+      const params: Record<string, any> = {
+        per_page: input ? 20 : 6,
+        status: 'delivered,returned,confirmed,processing,ready,shipped,cancelled',
+      };
+      params.tenant_id = tenantId;
+      if (input) params.search = input;
+      const res = await apiClient.get('/api/v1/sales-order', { params });
+      const items = res.data?.data ?? [];
       return items.map((o: any) => ({
         value: o.id,
         label: `${o.invoice_number ?? o.order_number} — ${o.customer?.name ?? 'Walk-in'}`,
         raw: o,
       }));
-    } catch { return []; }
+    } catch (e) {
+      console.error('fetchOrders error', e);
+      return [];
+    }
+  };
+
+  // When tenant changes, pre-fetch default options + force remount
+  useEffect(() => {
+    setSelectedOrder(null);
+    setReturnLines([]);
+    setOrderItems([]);
+    setForm(f => ({ ...f, sales_order_id: '' }));
+    if (!form.tenant_id) {
+      setSoDefaultOpts([]);
+      return;
+    }
+    fetchOrders('', form.tenant_id).then(setSoDefaultOpts);
+    setSoKey(k => k + 1);
+  }, [form.tenant_id]);
+
+  const loadOrderOptions = async (input: string) => {
+    if (!form.tenant_id) return [];
+    return fetchOrders(input, form.tenant_id);
   };
 
   // When order is selected: fetch its items
@@ -426,27 +452,6 @@ export default function SalesReturnsPage() {
     } catch (err: any) { notify.error(err?.response?.data?.message || 'Failed to delete'); }
   };
 
-  const handlePrint = async (ret: SalesReturn) => {
-    try {
-      const full = await salesReturnService.show(ret.id);
-      setPrintReturn(full ?? null);
-      setTimeout(() => {
-        if (printRef.current) {
-          const win = window.open('', '_blank');
-          if (win) {
-            win.document.write(`<html><head><title>Credit Note</title>
-              <style>body{font-family:sans-serif;margin:0;padding:16px}@media print{body{padding:0}}</style>
-              </head><body>${printRef.current.innerHTML}</body></html>`);
-            win.document.close();
-            win.focus();
-            win.print();
-            win.close();
-          }
-        }
-      }, 150);
-    } catch { notify.error('Failed to load return details'); }
-  };
-
   const openSettle = async (ret: SalesReturn) => {
     try {
       setSettleLoading(true);
@@ -454,11 +459,11 @@ export default function SalesReturnsPage() {
 
       const full = await salesReturnService.show(ret.id);
       const target = full ?? ret;
-      const { balance } = getOrderBalance(target);
+      const { balance } = getReturnBalance(target);
 
       setSettleTarget(target);
       setSettleForm({
-        action: balance >= 0 ? 'collect' : 'refund',
+        action: balance > 0 ? 'refund' : 'collect',
         amount: Math.abs(balance).toFixed(2),
         payment_method: 'cash',
         notes: '',
@@ -510,66 +515,24 @@ export default function SalesReturnsPage() {
       ),
     },
     {
-      id: 'order_payment_status', header: 'Order Payment',
-      cell: ({ row }) => {
-        const payment = String((row.original as any).sales_order?.payment_status ?? '').toLowerCase();
-        if (!payment) return <span className="text-xs text-gray-400">-</span>;
-        const map: Record<string, string> = {
-          pending: 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200',
-          partial: 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200',
-          paid: 'bg-emerald-100 text-emerald-800 dark:bg-emerald-900 dark:text-emerald-200',
-          overdue: 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200',
-        };
-        return (
-          <span className={`px-2 py-0.5 text-xs rounded-full font-medium capitalize ${map[payment] ?? 'bg-gray-100 text-gray-600'}`}>
-            {payment}
-          </span>
-        );
-      },
-    },
-    {
       accessorKey: 'customer_id', header: 'Customer',
       cell: ({ row }) => <span className="text-xs">{(row.original as any).customer?.name ?? '-'}</span>,
     },
     {
       accessorKey: 'return_date', header: 'Date',
-      cell: ({ row }) => <span className="text-xs">{fmtDate(row.original.return_date)}</span>,
-    },
-    {
-      accessorKey: 'reason', header: 'Reason',
-      cell: ({ row }) => <span className="text-xs">{reasonLabel(row.original.reason)}</span>,
-    },
-    {
-      accessorKey: 'refund_amount', header: 'Refund Total',
-      cell: ({ row }) => <span className="font-mono text-xs font-semibold">{fmtNum(row.original.refund_amount)}</span>,
-    },
-    {
-      id: 'order_balance', header: 'Balance',
       cell: ({ row }) => {
-        const r = row.original;
-        if (r.status !== 'completed') return <span className="text-xs text-gray-400">-</span>;
-        const { balance } = getOrderBalance(r);
-        if (balance === 0) {
-          return <span className="text-xs font-semibold text-emerald-600">Settled</span>;
-        }
-        return (
-          <span className={`text-xs font-semibold ${balance > 0 ? 'text-amber-600' : 'text-red-600'}`}>
-            {balance > 0 ? 'Collect: ' : 'Refund: '}{fmtNum(Math.abs(balance))}
-          </span>
-        );
+        const d = row.original.return_date;
+        const formatted = d ? new Date(d).toLocaleDateString('en-GB') : '-';
+        return <span className="text-xs">{formatted}</span>;
       },
     },
     {
-      accessorKey: 'refund_method', header: 'Method',
-      cell: ({ row }) => <span className="text-xs">{methodLabel(row.original.refund_method)}</span>,
+      accessorKey: 'refund_amount', header: 'Refund',
+      cell: ({ row }) => <span className="font-mono text-xs font-semibold">{fmtNum(row.original.refund_amount)}</span>,
     },
     {
       accessorKey: 'status', header: 'Status',
       cell: ({ row }) => statusBadge(row.original.status),
-    },
-    {
-      accessorKey: 'approved_by', header: 'Approved By',
-      cell: ({ row }) => <span className="text-xs">{(row.original as any).approver?.name ?? '-'}</span>,
     },
     {
       id: 'actions', header: 'Actions',
@@ -577,6 +540,10 @@ export default function SalesReturnsPage() {
         const r = row.original;
         return (
           <div className="flex items-center gap-1">
+            <button onClick={() => { setDetailsTarget(r); setShowDetailsDialog(true); }} title="View Details"
+              className="p-1 rounded text-gray-500 hover:text-gray-700 hover:bg-gray-100 dark:hover:bg-gray-700 cursor-pointer">
+              <Eye className="w-4 h-4" />
+            </button>
             {r.status === 'pending' && hasPermission('approve-sales-returns') && (
               <button onClick={() => handleApprove(r)} title="Approve"
                 className="p-1 rounded text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/30 cursor-pointer">
@@ -592,10 +559,7 @@ export default function SalesReturnsPage() {
             {r.status === 'completed' && (
               <>
                 {hasPermission('print-sales-returns') && (
-                  <button onClick={() => handlePrint(r)} title="Print Credit Note"
-                    className="p-1 rounded text-purple-600 hover:bg-purple-50 dark:hover:bg-purple-900/30 cursor-pointer">
-                    <Printer className="w-4 h-4" />
-                  </button>
+                  <SalesReturnPrintMenu returnDoc={r} />
                 )}
                 {hasPermission('settle-sales-returns') && (
                   <button onClick={() => openSettle(r)} title="Settle Payment"
@@ -640,24 +604,23 @@ export default function SalesReturnsPage() {
   const inputCls = 'w-full px-2 py-1.5 text-sm border rounded-sm focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-transparent border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100';
   const labelCls = 'block text-sm font-medium text-gray-700 dark:text-gray-300 mb-0.5';
   const errCls = 'text-xs text-red-500 mt-0.5';
-  const sectionCls = 'text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400 border-b border-gray-200 dark:border-gray-600 pb-1 mb-2 mt-3';
+  const sectionCls =
+    'text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide ' +
+    'flex items-center gap-1.5 mt-4 mb-2';
 
   // ── Render ────────────────────────────────────────────────────────────────
 
   return (
     <div className="space-y-2">
-      {/* Hidden print area */}
-      <div ref={printRef} style={{ display: 'none' }}>
-        {printReturn && <SalesReturnCreditNote returnDoc={printReturn} />}
-      </div>
-
       {/* Header */}
       <div className="flex items-center justify-between">
-        <h1 className="text-xl font-bold text-gray-900 dark:text-gray-100">Sales Return</h1>
+        <h1 className="text-base font-bold text-gray-900 dark:text-gray-100 flex items-center gap-2">
+          <Undo2 className="w-5 h-5 text-blue-600 dark:text-blue-400" /> Sales Returns
+        </h1>
         {hasPermission('create-sales-returns') && (
           <button
             onClick={handleAdd}
-            className="flex items-center gap-2 px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium rounded-sm transition-colors cursor-pointer"
+            className="flex items-center justify-center gap-2 px-5 py-1.5 text-sm bg-blue-600 hover:bg-blue-700 disabled:bg-gray-400 text-white rounded-sm transition-colors cursor-pointer"
           >
             <Plus className="w-4 h-4" /> Create Return
           </button>
@@ -666,9 +629,10 @@ export default function SalesReturnsPage() {
 
       {/* Form */}
       {showForm && (
-        <div className="bg-white dark:bg-gray-800 rounded-md shadow-sm p-4">
-          <div className="flex items-center justify-between mb-3">
-            <h2 className="text-base font-semibold text-gray-900 dark:text-gray-100">
+        <div className="bg-white dark:bg-gray-800 rounded-md shadow-sm border border-gray-200 dark:border-gray-700 p-3">
+          <div className="flex items-center justify-between mb-2">
+            <h2 className="text-base font-semibold text-gray-900 dark:text-gray-100 flex items-center gap-2">
+              <FileText className="w-4 h-4 text-blue-600 dark:text-blue-400" />
               {form.id ? `Edit Return — ${form.id}` : 'Create New Return'}
             </h2>
             <button onClick={handleCancel} className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 cursor-pointer">
@@ -695,15 +659,16 @@ export default function SalesReturnsPage() {
             )}
 
             {/* ── Order Selection ── */}
-            <p className={sectionCls}>Original Sales Order</p>
+            <p className={sectionCls}><Receipt className="w-3.5 h-3.5" /> Original Sales Order</p>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
               <div className="md:col-span-2">
                 <label className={labelCls}>Sales Order <span className="text-red-500">*</span></label>
                 <CustomSelect
+                  key={`so-${soKey}`}
                   value={selectedOrder}
                   onChange={handleOrderChange}
                   loadOptions={loadOrderOptions}
-                  defaultOptions={!form.id}
+                  defaultOptions={soDefaultOpts}
                   placeholder="Search by invoice # or customer…"
                   className="text-sm"
                   isDisabled={!!form.id}
@@ -715,43 +680,58 @@ export default function SalesReturnsPage() {
             {/* ── Return Items ── */}
             {(loadingItems || returnLines.length > 0) && (
               <>
-                <p className={sectionCls}>Items to Return</p>
+                <p className={sectionCls}><ListChecks className="w-3.5 h-3.5" /> Items to Return</p>
+                {/* Caution banner — same UX as POS refund */}
+                <div className="flex items-start gap-2 p-2.5 rounded-md bg-rose-50 dark:bg-rose-900/20 border border-rose-200 dark:border-rose-800 text-rose-800 dark:text-rose-200 text-xs">
+                  <AlertTriangle className="w-4 h-4 mt-0.5 shrink-0" />
+                  <div>
+                    <strong className="font-semibold">Caution:</strong>{' '}
+                    The items shown on this page will be returned once you submit. Please verify the
+                    quantities and conditions carefully before confirming — returns restore stock to inventory and
+                    cannot be easily undone.
+                  </div>
+                </div>
                 {loadingItems ? (
-                  <p className="text-sm text-gray-500 py-2">Loading items…</p>
+                  <div className="flex items-center justify-center py-6 text-sm text-gray-500">
+                    <div className="animate-spin w-5 h-5 border-2 border-blue-500 border-t-transparent rounded-full mr-2" />
+                    Loading order items…
+                  </div>
                 ) : (
-                  <div className="overflow-x-auto">
+                  <div className="overflow-x-auto rounded-lg border border-gray-200 dark:border-gray-600">
                     <table className="w-full text-xs border-collapse">
                       <thead>
-                        <tr className="bg-gray-50 dark:bg-gray-700">
-                          <th className="text-left px-2 py-1.5 border border-gray-200 dark:border-gray-600">Item</th>
-                          <th className="text-center px-2 py-1.5 border border-gray-200 dark:border-gray-600 w-24">Max Returnable</th>
-                          <th className="text-center px-2 py-1.5 border border-gray-200 dark:border-gray-600 w-28">Return Qty <span className="text-red-500">*</span></th>
-                          <th className="text-right px-2 py-1.5 border border-gray-200 dark:border-gray-600 w-24">Unit Price</th>
-                          <th className="text-center px-2 py-1.5 border border-gray-200 dark:border-gray-600 w-32">Condition <span className="text-red-500">*</span></th>
-                          <th className="text-left px-2 py-1.5 border border-gray-200 dark:border-gray-600">Item Note</th>
-                          <th className="text-right px-2 py-1.5 border border-gray-200 dark:border-gray-600 w-20">Total</th>
-                          <th className="px-2 py-1.5 border border-gray-200 dark:border-gray-600 w-8"></th>
+                        <tr className="bg-gradient-to-r from-blue-600 to-indigo-600 text-white">
+                          <th className="text-left px-3 py-2 font-semibold">Item</th>
+                          <th className="text-center px-3 py-2 font-semibold w-32">Max Returnable</th>
+                          <th className="text-center px-3 py-2 font-semibold w-28">Return Qty <span className="text-red-200">*</span></th>
+                          <th className="text-right px-3 py-2 font-semibold w-24">Unit Price</th>
+                          <th className="text-center px-3 py-2 font-semibold w-32">Condition <span className="text-red-200">*</span></th>
+                          <th className="text-left px-3 py-2 font-semibold">Item Note</th>
+                          <th className="text-right px-3 py-2 font-semibold w-24">Total</th>
+                          <th className="px-3 py-2 font-semibold w-10"></th>
                         </tr>
                       </thead>
                       <tbody>
                         {returnLines.map((line, i) => (
-                          <tr key={line.sales_order_item_id} className="even:bg-gray-50 dark:even:bg-gray-700/40">
-                            <td className="px-2 py-1 border border-gray-200 dark:border-gray-600">
+                          <tr key={line.sales_order_item_id} className={i % 2 === 0 ? 'bg-white dark:bg-gray-800' : 'bg-blue-50/50 dark:bg-gray-700/30'}>
+                            <td className="px-3 py-2 border-t border-gray-200 dark:border-gray-600">
                               {line.item_name}
                             </td>
-                            <td className="px-2 py-1 border border-gray-200 dark:border-gray-600 text-center text-gray-500">
+                            <td className="px-3 py-2 border-t border-gray-200 dark:border-gray-600 text-center text-gray-500">
                               {line.max_returnable}
                             </td>
-                            <td className="px-2 py-1 border border-gray-200 dark:border-gray-600">
+                            <td className="px-3 py-2 border-t border-gray-200 dark:border-gray-600">
                               <input
                                 type="number" step="0.001" min="0" max={line.max_returnable}
                                 value={line.quantity_returned}
                                 onChange={e => updateLine(line.sales_order_item_id, 'quantity_returned', e.target.value)}
+                                onFocus={e => e.target.select()}
+                                onKeyDown={e => { if (e.key === 'Enter') e.preventDefault(); }}
                                 className={`${inputCls} text-center`}
                               />
                               {errors[`items.${i}.qty`] && <p className={errCls}>{errors[`items.${i}.qty`]}</p>}
                             </td>
-                            <td className="px-2 py-1 border border-gray-200 dark:border-gray-600 text-right">
+                            <td className="px-3 py-2 border-t border-gray-200 dark:border-gray-600 text-right font-mono">
                               <input
                                 type="number" step="0.01" min="0"
                                 value={line.unit_price}
@@ -759,7 +739,7 @@ export default function SalesReturnsPage() {
                                 className={`${inputCls} text-right`}
                               />
                             </td>
-                            <td className="px-2 py-1 border border-gray-200 dark:border-gray-600">
+                            <td className="px-3 py-2 border-t border-gray-200 dark:border-gray-600">
                               <select
                                 value={line.condition}
                                 onChange={e => updateLine(line.sales_order_item_id, 'condition', e.target.value)}
@@ -768,7 +748,7 @@ export default function SalesReturnsPage() {
                                 {CONDITIONS.map(c => <option key={c.value} value={c.value}>{c.label}</option>)}
                               </select>
                             </td>
-                            <td className="px-2 py-1 border border-gray-200 dark:border-gray-600">
+                            <td className="px-3 py-2 border-t border-gray-200 dark:border-gray-600">
                               <input
                                 type="text"
                                 value={line.reason}
@@ -777,12 +757,14 @@ export default function SalesReturnsPage() {
                                 className={inputCls}
                               />
                             </td>
-                            <td className="px-2 py-1 border border-gray-200 dark:border-gray-600 text-right font-mono font-semibold">
+                            <td className="px-3 py-2 border-t border-gray-200 dark:border-gray-600 text-right font-mono font-semibold">
                               {(Number(line.quantity_returned) * Number(line.unit_price)).toFixed(2)}
                             </td>
-                            <td className="px-2 py-1 border border-gray-200 dark:border-gray-600 text-center">
+                            <td className="px-3 py-2 border-t border-gray-200 dark:border-gray-600 text-center">
                               <button type="button" onClick={() => removeLine(line.sales_order_item_id)}
-                                className="text-red-500 hover:text-red-700 cursor-pointer">
+                                className="text-red-500 hover:text-red-700 hover:bg-red-50 dark:hover:bg-red-900/20 rounded p-1 cursor-pointer"
+                                title="Remove line"
+                                aria-label="Remove return line">
                                 <X className="w-3.5 h-3.5" />
                               </button>
                             </td>
@@ -790,14 +772,14 @@ export default function SalesReturnsPage() {
                         ))}
                       </tbody>
                       <tfoot>
-                        <tr className="bg-gray-100 dark:bg-gray-700 font-semibold">
-                          <td colSpan={6} className="px-2 py-1.5 text-right text-xs border border-gray-200 dark:border-gray-600">
+                        <tr className="bg-blue-50 dark:bg-blue-900/20 font-semibold">
+                          <td colSpan={6} className="px-3 py-2 text-right text-xs border-t border-gray-200 dark:border-gray-600">
                             Refund Total
                           </td>
-                          <td className="px-2 py-1.5 text-right font-mono text-sm border border-gray-200 dark:border-gray-600">
+                          <td className="px-3 py-2 text-right font-mono text-sm border-t border-gray-200 dark:border-gray-600 text-blue-700 dark:text-blue-300">
                             {totalRefund.toFixed(2)}
                           </td>
-                          <td className="border border-gray-200 dark:border-gray-600"></td>
+                          <td className="border-t border-gray-200 dark:border-gray-600"></td>
                         </tr>
                       </tfoot>
                     </table>
@@ -808,7 +790,7 @@ export default function SalesReturnsPage() {
             )}
 
             {/* ── Return Details ── */}
-            <p className={sectionCls}>Return Details</p>
+            <p className={sectionCls}><Info className="w-3.5 h-3.5" /> Return Details</p>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
               <div>
                 <label className={labelCls}>Return Reason <span className="text-red-500">*</span></label>
@@ -828,18 +810,16 @@ export default function SalesReturnsPage() {
 
               <div>
                 <label className={labelCls}>Notes</label>
-                <textarea rows={2} value={form.notes} onChange={sf('notes')}
+                <textarea rows={1} value={form.notes} onChange={sf('notes')}
                   className={inputCls} placeholder="Additional notes…" />
               </div>
             </div>
 
             {/* Buttons */}
-            <div className="flex gap-2 pt-2">
-              <button
-                type="submit"
-                disabled={submitting}
-                className="px-4 py-1.5 bg-blue-600 text-white text-sm font-medium rounded-sm hover:bg-blue-700 transition-colors cursor-pointer disabled:opacity-60"
-              >
+            <div className="flex gap-2 pt-3">
+              <button type="submit" disabled={submitting}
+                className="flex items-center justify-center gap-2 px-5 py-1.5 text-sm bg-blue-600 hover:bg-blue-700 disabled:bg-gray-400 text-white rounded-sm transition-colors cursor-pointer disabled:opacity-60 disabled:cursor-not-allowed">
+                <GiSave className="w-4 h-4" />
                 {submitting ? 'Saving…' : form.id ? 'Update Return' : 'Submit Return'}
               </button>
               <button type="button" onClick={handleCancel}
@@ -861,6 +841,185 @@ export default function SalesReturnsPage() {
         searchPlaceholder="Search returns…"
       />
 
+      {/* Details Dialog */}
+      {showDetailsDialog && detailsTarget && (() => {
+        const d = detailsTarget;
+        const so = (d as any).sales_order ?? {};
+        const items = (d as any).return_items ?? [];
+        const customerName = (d as any).customer?.name ?? so.customer?.name ?? '-';
+        return (
+          <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+            <div className="bg-white dark:bg-gray-800 rounded-xl shadow-2xl w-full max-w-lg flex flex-col max-h-[90vh]">
+              {/* Header */}
+              <div className="bg-gradient-to-r from-blue-600 to-indigo-600 px-5 py-4 rounded-t-xl flex items-center justify-between text-white shrink-0">
+                <div>
+                  <h2 className="font-bold text-lg">Return Details</h2>
+                  <p className="text-sm opacity-80">{d.return_number} · {so.invoice_number ?? '-'}</p>
+                </div>
+                <button onClick={() => setShowDetailsDialog(false)}
+                  className="rounded-full p-1 hover:bg-white/20 transition-colors">
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+
+              {/* Body */}
+              <div className="p-5 space-y-5 overflow-y-auto">
+                {/* Summary cards */}
+                <div className="grid grid-cols-2 gap-2 text-sm">
+                  <div className="bg-indigo-50 dark:bg-indigo-900/30 rounded-lg p-3">
+                    <p className="text-xs text-gray-500 dark:text-gray-400 mb-0.5">Return Date</p>
+                    <p className="font-semibold text-gray-800 dark:text-gray-100">{d.return_date ? new Date(d.return_date).toLocaleDateString('en-GB') : '-'}</p>
+                  </div>
+                  <div className="bg-emerald-50 dark:bg-emerald-900/30 rounded-lg p-3">
+                    <p className="text-xs text-gray-500 dark:text-gray-400 mb-0.5">Status</p>
+                    <div className="mt-0.5">{statusBadge(d.status)}</div>
+                  </div>
+                  <div className="bg-blue-50 dark:bg-blue-900/30 rounded-lg p-3">
+                    <p className="text-xs text-gray-500 dark:text-gray-400 mb-0.5">Customer</p>
+                    <p className="font-semibold text-gray-800 dark:text-gray-100">{customerName}</p>
+                  </div>
+                  <div className="bg-amber-50 dark:bg-amber-900/30 rounded-lg p-3">
+                    <p className="text-xs text-gray-500 dark:text-gray-400 mb-0.5">Reason</p>
+                    <p className="font-semibold text-gray-800 dark:text-gray-100 capitalize">{reasonLabel(d.reason)}</p>
+                  </div>
+                  <div className="bg-red-50 dark:bg-red-900/30 rounded-lg p-3">
+                    <p className="text-xs text-gray-500 dark:text-gray-400 mb-0.5">Refund Amount</p>
+                    <p className="font-semibold text-red-600">{fmtNum(d.refund_amount)}</p>
+                  </div>
+                </div>
+
+                {/* Details list */}
+                <div>
+                  <p className="text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400 mb-2 flex items-center gap-1.5">
+                    <FileText className="w-3.5 h-3.5" />Details
+                  </p>
+                  <div className="rounded-lg border border-gray-200 dark:border-gray-600 divide-y divide-gray-100 dark:divide-gray-700 text-xs">
+                    <div className="flex items-center justify-between px-3 py-2">
+                      <span className="text-gray-500 dark:text-gray-400">Return Number</span>
+                      <span className="font-mono font-semibold text-gray-800 dark:text-gray-200">{d.return_number}</span>
+                    </div>
+                    <div className="flex items-center justify-between px-3 py-2">
+                      <span className="text-gray-500 dark:text-gray-400">Invoice Number</span>
+                      <span className="font-mono font-semibold text-gray-800 dark:text-gray-200">{so.invoice_number ?? '-'}</span>
+                    </div>
+                    <div className="flex items-center justify-between px-3 py-2">
+                      <span className="text-gray-500 dark:text-gray-400">Customer</span>
+                      <span className="font-semibold text-gray-800 dark:text-gray-200">{customerName}</span>
+                    </div>
+                    <div className="flex items-center justify-between px-3 py-2">
+                      <span className="text-gray-500 dark:text-gray-400">Refund Method</span>
+                      <span className="font-semibold text-gray-800 dark:text-gray-200 capitalize">{methodLabel(d.refund_method)}</span>
+                    </div>
+                    <div className="flex items-center justify-between px-3 py-2">
+                      <span className="text-gray-500 dark:text-gray-400">Created At</span>
+                      <span className="text-gray-800 dark:text-gray-200">{d.created_at ? fmtDate(d.created_at) : '-'}</span>
+                    </div>
+                    {(d as any).approved_at && (
+                      <div className="flex items-center justify-between px-3 py-2">
+                        <span className="text-gray-500 dark:text-gray-400">Approved At</span>
+                        <span className="text-gray-800 dark:text-gray-200">{fmtDate((d as any).approved_at)}</span>
+                      </div>
+                    )}
+                    {(d as any).completed_at && (
+                      <div className="flex items-center justify-between px-3 py-2">
+                        <span className="text-gray-500 dark:text-gray-400">Completed At</span>
+                        <span className="text-gray-800 dark:text-gray-200">{fmtDate((d as any).completed_at)}</span>
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                {/* Approver & Notes grid */}
+                <div className="grid grid-cols-2 gap-3">
+                  {(d as any).approver && (
+                    <div className="bg-gray-50 dark:bg-gray-700/40 rounded-lg p-3 text-xs">
+                      <p className="text-gray-500 dark:text-gray-400 mb-0.5">Approved By</p>
+                      <p className="font-semibold text-gray-800 dark:text-gray-100">{(d as any).approver?.name}</p>
+                    </div>
+                  )}
+                  {d.notes && (
+                    <div className="bg-gray-50 dark:bg-gray-700/40 rounded-lg p-3 text-xs col-span-2">
+                      <p className="text-gray-500 dark:text-gray-400 mb-0.5">Notes</p>
+                      <p className="text-gray-800 dark:text-gray-100">{d.notes}</p>
+                    </div>
+                  )}
+                </div>
+
+                {/* Return Items Table */}
+                {items.length > 0 && (
+                  <div>
+                    <p className="text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400 mb-2 flex items-center gap-1.5">
+                      <ListChecks className="w-3.5 h-3.5" />Returned Items ({items.length})
+                    </p>
+                    <div className="overflow-x-auto rounded-lg border border-gray-200 dark:border-gray-600">
+                      <table className="w-full text-xs border-collapse">
+                        <thead className="bg-gradient-to-r from-blue-600 to-indigo-600 text-white">
+                          <tr>
+                            <th className="px-3 py-2 text-left font-semibold">Item</th>
+                            <th className="px-3 py-2 text-center font-semibold">Qty</th>
+                            <th className="px-3 py-2 text-center font-semibold">Condition</th>
+                            <th className="px-3 py-2 text-right font-semibold">Price</th>
+                            <th className="px-3 py-2 text-right font-semibold">Total</th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-gray-100 dark:divide-gray-700">
+                          {items.map((it: any, i: number) => (
+                            <tr key={i} className="hover:bg-gray-50 dark:hover:bg-gray-800/50 odd:bg-gray-50/50 dark:odd:bg-gray-800/20">
+                              <td className="px-3 py-2 text-gray-800 dark:text-gray-200">
+                                <p className="font-medium">{it.product?.name ?? it.item_name ?? '-'}</p>
+                                {(it.variation?.name || it.item_code) && <p className="text-[10px] text-gray-500">{it.variation?.name ?? it.item_code}</p>}
+                              </td>
+                              <td className="px-3 py-2 text-center text-gray-800 dark:text-gray-200">{it.quantity ?? 0}</td>
+                              <td className="px-3 py-2 text-center text-gray-800 dark:text-gray-200 capitalize">{it.condition ?? '-'}</td>
+                              <td className="px-3 py-2 text-right text-gray-800 dark:text-gray-200 font-mono">{fmtNum(it.unit_price)}</td>
+                              <td className="px-3 py-2 text-right text-gray-800 dark:text-gray-200 font-mono font-semibold">{fmtNum((it.quantity ?? 0) * (it.unit_price ?? 0))}</td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+                )}
+
+                {/* Settlement history */}
+                {((d as any).settlement_payments ?? []).length > 0 && (
+                  <div>
+                    <p className="text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400 mb-2 flex items-center gap-1.5">
+                      Settlement History
+                    </p>
+                    {(d as any).settlement_payments.map((p: any, idx: number) => (
+                      <div key={p.id ?? idx} className="text-xs bg-gray-50 dark:bg-gray-700/40 rounded-md px-3 py-2 flex items-start justify-between gap-2 mb-1.5">
+                        <div>
+                          <p className="font-semibold text-gray-700 dark:text-gray-200 capitalize">
+                            {p.action} via {String(p.payment_method ?? '-').replace('_', ' ')}
+                          </p>
+                          <p className="text-gray-500 dark:text-gray-400">
+                            {p.created_at ? fmtDate(p.created_at) : '-'}
+                            {p.creator?.name ? ` • ${p.creator.name}` : ''}
+                          </p>
+                          {p.notes && <p className="text-gray-500 mt-0.5">{p.notes}</p>}
+                        </div>
+                        <p className={`font-bold shrink-0 ${p.action === 'refund' ? 'text-red-600' : 'text-emerald-600'}`}>
+                          {p.action === 'refund' ? '-' : '+'}{fmtNum(p.amount)}
+                        </p>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              {/* Footer */}
+              <div className="px-5 pb-5 shrink-0">
+                <button onClick={() => setShowDetailsDialog(false)}
+                  className="w-full px-4 py-1.5 text-sm border border-gray-300 dark:border-gray-600 rounded-sm text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors">
+                  Close
+                </button>
+              </div>
+            </div>
+          </div>
+        );
+      })()}
+
       {/* Settle Payment Dialog */}
       {showSettleDialog && (() => {
         if (settleLoading) {
@@ -878,13 +1037,11 @@ export default function SalesReturnsPage() {
 
         if (!settleTarget) return null;
 
-        const so = (settleTarget as any).sales_order;
-        const grandTotal = Number(so?.grand_total ?? 0);
-        const returnedAmount = Number(so?.returned_amount ?? 0);
-        const paidAmount = Number(so?.paid_amount ?? 0);
-        const effectiveTotal = Math.max(0, grandTotal - returnedAmount);
-        const balance = effectiveTotal - paidAmount;
+        const refundAmount = Number(settleTarget.refund_amount ?? 0);
         const settlements = ((settleTarget as any).settlement_payments ?? []) as Array<any>;
+        const alreadySettled = settlements.reduce((sum: number, p: any) => sum + Number(p.amount ?? 0), 0);
+        const balance = refundAmount - alreadySettled;
+        const so = (settleTarget as any).sales_order;
         return (
           <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
             <div className="bg-white dark:bg-gray-800 rounded-xl shadow-2xl w-full max-w-md flex flex-col">
@@ -904,20 +1061,20 @@ export default function SalesReturnsPage() {
               <div className="p-5 space-y-3">
                 <div className="grid grid-cols-2 gap-2 text-sm">
                   <div className="bg-blue-50 dark:bg-blue-900/30 rounded-lg p-3">
-                    <p className="text-xs text-gray-500 dark:text-gray-400 mb-0.5">Invoice Total</p>
-                    <p className="font-semibold text-gray-800 dark:text-gray-100">{fmtNum(grandTotal)}</p>
+                    <p className="text-xs text-gray-500 dark:text-gray-400 mb-0.5">Return Total</p>
+                    <p className="font-semibold text-gray-800 dark:text-gray-100">{fmtNum(settleTarget.total_amount ?? 0)}</p>
                   </div>
                   <div className="bg-orange-50 dark:bg-orange-900/30 rounded-lg p-3">
-                    <p className="text-xs text-gray-500 dark:text-gray-400 mb-0.5">Returned</p>
-                    <p className="font-semibold text-orange-600">{fmtNum(returnedAmount)}</p>
+                    <p className="text-xs text-gray-500 dark:text-gray-400 mb-0.5">Refund Amount</p>
+                    <p className="font-semibold text-orange-600">{fmtNum(refundAmount)}</p>
                   </div>
                   <div className="bg-indigo-50 dark:bg-indigo-900/30 rounded-lg p-3">
-                    <p className="text-xs text-gray-500 dark:text-gray-400 mb-0.5">Net Order</p>
-                    <p className="font-semibold text-indigo-600">{fmtNum(effectiveTotal)}</p>
+                    <p className="text-xs text-gray-500 dark:text-gray-400 mb-0.5">Already Settled</p>
+                    <p className="font-semibold text-indigo-600">{fmtNum(alreadySettled)}</p>
                   </div>
                   <div className="bg-emerald-50 dark:bg-emerald-900/30 rounded-lg p-3">
-                    <p className="text-xs text-gray-500 dark:text-gray-400 mb-0.5">Paid</p>
-                    <p className="font-semibold text-emerald-600">{fmtNum(paidAmount)}</p>
+                    <p className="text-xs text-gray-500 dark:text-gray-400 mb-0.5">Balance</p>
+                    <p className={`font-semibold ${balance > 0 ? 'text-red-600' : 'text-emerald-600'}`}>{fmtNum(Math.abs(balance))}</p>
                   </div>
                 </div>
 
@@ -925,14 +1082,14 @@ export default function SalesReturnsPage() {
                 <div className={`rounded-lg p-3 text-center ${balance === 0
                   ? 'bg-green-100 dark:bg-green-900/40 text-green-800 dark:text-green-200'
                   : balance > 0
-                    ? 'bg-amber-100 dark:bg-amber-900/40 text-amber-800 dark:text-amber-200'
-                    : 'bg-red-100 dark:bg-red-900/40 text-red-800 dark:text-red-200'
+                    ? 'bg-red-100 dark:bg-red-900/40 text-red-800 dark:text-red-200'
+                    : 'bg-amber-100 dark:bg-amber-900/40 text-amber-800 dark:text-amber-200'
                   }`}>
                   {balance === 0 ? (
-                    <p className="font-semibold text-sm">Order is fully settled — no action needed</p>
+                    <p className="font-semibold text-sm">This return is fully settled — no action needed</p>
                   ) : (
                     <>
-                      <p className="text-xs mb-0.5">{balance > 0 ? 'Customer still owes' : 'Refund due to customer'}</p>
+                      <p className="text-xs mb-0.5">{balance > 0 ? 'Refund due to customer' : 'Customer owes'}</p>
                       <p className="font-bold text-xl">{fmtNum(Math.abs(balance))}</p>
                     </>
                   )}

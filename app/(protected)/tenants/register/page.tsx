@@ -8,6 +8,7 @@ import { tenantService } from '@/services/tenantService';
 import { GiSave } from 'react-icons/gi';
 import { usePermissions } from '@/hooks/use-permissions';
 import BusinessTypeSelect from '@/components/ui/business-type-select';
+import CustomDatePicker from '@/components/ui/date-picker';
 import { SUBSCRIPTION_PLANS, SUBSCRIPTION_STATUSES } from '@/lib/constants';
 
 interface TenantFormData {
@@ -521,15 +522,19 @@ export default function TenantRegistrationPage() {
                 <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-2">
                   Subscription End At
                 </label>
-                <input
-                  type="date"
-                  name="subscription_ends_at"
+                <CustomDatePicker
                   value={formData.subscription_ends_at}
-                  onChange={handleInputChange}
-                  className={getInputClassName(
-                    'subscription_ends_at',
-                    'w-full px-2.5 py-1 text-sm bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-sm text-gray-900 dark:text-gray-100 focus:outline-none focus:border-indigo-500 dark:focus:border-indigo-400'
-                  )}
+                  onChange={(value) => {
+                    setFormData(prev => ({ ...prev, subscription_ends_at: value }));
+                    if (errors.subscription_ends_at) {
+                      setErrors(prev => {
+                        const newErrors = { ...prev };
+                        delete newErrors.subscription_ends_at;
+                        return newErrors;
+                      });
+                    }
+                  }}
+                  className={getFieldError('subscription_ends_at') ? 'border-red-500 focus:border-red-500' : ''}
                 />
                 {getFieldError('subscription_ends_at') && (
                   <p className="mt-1 text-xs text-red-600 dark:text-red-400">
@@ -542,15 +547,19 @@ export default function TenantRegistrationPage() {
                 <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-2">
                   Trial Ends At
                 </label>
-                <input
-                  type="date"
-                  name="trial_ends_at"
+                <CustomDatePicker
                   value={formData.trial_ends_at}
-                  onChange={handleInputChange}
-                  className={getInputClassName(
-                    'trial_ends_at',
-                    'w-full px-2.5 py-1 text-sm bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-sm text-gray-900 dark:text-gray-100 focus:outline-none focus:border-indigo-500 dark:focus:border-indigo-400'
-                  )}
+                  onChange={(value) => {
+                    setFormData(prev => ({ ...prev, trial_ends_at: value }));
+                    if (errors.trial_ends_at) {
+                      setErrors(prev => {
+                        const newErrors = { ...prev };
+                        delete newErrors.trial_ends_at;
+                        return newErrors;
+                      });
+                    }
+                  }}
+                  className={getFieldError('trial_ends_at') ? 'border-red-500 focus:border-red-500' : ''}
                 />
                 {getFieldError('trial_ends_at') && (
                   <p className="mt-1 text-xs text-red-600 dark:text-red-400">

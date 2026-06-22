@@ -330,10 +330,7 @@ function NavItem({
       {item.href && !hasChildren ? (
         <Link
           href={item.href}
-          onClick={() => {
-            setMobileMenuOpen(false);
-            setOpenItems(new Set());
-          }}
+          onClick={() => setMobileMenuOpen(false)}
           className={`
             relative group flex items-center px-3 py-1 text-sm font-medium rounded-md transition-colors cursor-pointer
             ${depth > 0 && sidebarOpen ? 'ml-4' : ''}

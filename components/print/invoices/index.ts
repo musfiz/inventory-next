@@ -13,6 +13,8 @@ export { default as PurchaseOrderInvoice } from './PurchaseOrderInvoice';
 export { default as PurchaseOrderThermal } from './PurchaseOrderThermal';
 
 export { SalesReturnCreditNote, PosRefundCreditNote } from './CreditNote';
+export { CreditNoteA4 } from './CreditNoteA4';
+export { CreditNoteThermal } from './CreditNoteThermal';
 
 // ── Shared utilities ──────────────────────────────────────────────────────────
 export { fmt, fmtDateTime, buildQrUrl } from './shared';

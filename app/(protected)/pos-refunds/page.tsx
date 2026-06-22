@@ -1,13 +1,13 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
-import { Plus, X, CheckCircle, Check, Printer, RefreshCw, AlertTriangle, Ban, Undo2, FileText, Receipt, ListChecks, Info } from 'lucide-react';
+import { Plus, X, CheckCircle, Check, RefreshCw, AlertTriangle, Ban, Undo2, FileText, Receipt, ListChecks, Info } from 'lucide-react';
 import { ColumnDef } from '@tanstack/react-table';
 import { notify, confirm, info as notifyInfo } from '@/lib/notifications';
 import { posRefundService } from '@/services';
 import Swal from 'sweetalert2';
 import type { PosRefund } from '@/services/posRefundService';
-import type { PosOrderItemForRefund, PosRefundItem } from '@/types/api.types';
+import type { PosOrderItemForRefund } from '@/types/api.types';
 import DataTable from '@/components/ui/datatable';
 import CustomSelect from '@/components/ui/custom-select';
 import TenantSelect from '@/components/ui/tenant-select';
@@ -15,7 +15,7 @@ import { useRouter } from 'next/navigation';
 import { usePermissions } from '@/hooks/use-permissions';
 import { useAuthStore } from '@/stores/auth-store';
 import apiClient from '@/lib/api/axios';
-import { PosRefundCreditNote } from '@/components/print/invoices';
+import { PosRefundPrintMenu } from '@/components/print';
 import { GiSave } from 'react-icons/gi';
 
 // ─── Constants ────────────────────────────────────────────────────────────────
@@ -64,7 +64,7 @@ function statusBadge(status?: string) {
 
 function fmtDate(d?: string | null) {
   if (!d) return '-';
-  return new Date(d).toLocaleString();
+  return new Date(d).toLocaleDateString('en-GB');
 }
 
 function fmtNum(n?: string | number | null) {
@@ -140,11 +140,6 @@ export default function PosRefundsPage() {
     }
   }, [refundLines.length]);
 
-  // Print
-  const [printRefund, setPrintRefund] = useState<PosRefund | null>(null);
-  const [printItems, setPrintItems] = useState<Array<{ item_name: string; item_code?: string; quantity: number; unit_price: number; variation?: { sku?: string; name?: string } }>>([]);
-  const printRef = useRef<HTMLDivElement>(null);
-
   // Settle
   const [showSettleDialog, setShowSettleDialog] = useState(false);
   const [settleTarget, setSettleTarget] = useState<PosRefund | null>(null);
@@ -154,15 +149,40 @@ export default function PosRefundsPage() {
 
   // ── Dropdown loaders ──────────────────────────────────────────────────────
 
-  const loadOrderOptions = async (input: string) => {
+  const [soKey, setSoKey] = useState(0);
+  const [soDefaultOpts, setSoDefaultOpts] = useState<{ value: string; label: string; raw: any }[]>([]);
+
+  const fetchOrders = async (input: string, tid: string) => {
     try {
-      const res = await apiClient.get('/api/v1/pos/orders', { params: { search: input, per_page: input ? 20 : 10 } });
+      const params: Record<string, any> = { per_page: input ? 20 : 6 };
+      params.tenant_id = tid;
+      if (input) params.search = input;
+      const res = await apiClient.get('/api/v1/pos/orders', { params });
       const items = res.data?.data?.data ?? res.data?.data ?? [];
       return items.map((o: any) => ({
         value: o.id,
         label: o.invoice_number ?? o.order_number ?? `#${o.id}`,
+        raw: o,
       }));
     } catch { return []; }
+  };
+
+  // When tenant changes, pre-fetch default options + force remount
+  useEffect(() => {
+    setSelectedOrder(null);
+    setOrderItems([]);
+    setRefundLines([]);
+    if (!tenantId) {
+      setSoDefaultOpts([]);
+      return;
+    }
+    fetchOrders('', tenantId).then(setSoDefaultOpts);
+    setSoKey(k => k + 1);
+  }, [tenantId]);
+
+  const loadOrderOptions = async (input: string) => {
+    if (!tenantId) return [];
+    return fetchOrders(input, tenantId);
   };
 
   // When order selected: load its items
@@ -340,7 +360,7 @@ export default function PosRefundsPage() {
     const serverMessage = String(err?.response?.data?.message ?? '');
     notify.warning(
       serverMessage ||
-        'This item is no longer fully returnable — another refund was just recorded on this order.'
+      'This item is no longer fully returnable — another refund was just recorded on this order.'
     );
     if (!selectedOrder?.value) return;
     try {
@@ -530,36 +550,6 @@ export default function PosRefundsPage() {
     }
   };
 
-  const handlePrint = async (refund: PosRefund) => {
-    try {
-      const full = await posRefundService.show(refund.id);
-      if (!full) return;
-      const items = (full.items ?? []).map((item: PosRefundItem) => ({
-        item_name: (item.product as any)?.name ?? `Product #${item.product_id}`,
-        item_code: undefined,
-        quantity: Number(item.quantity_returned),
-        unit_price: Number(item.unit_price),
-        variation: item.variation ?? undefined,
-      }));
-      setPrintRefund(full);
-      setPrintItems(items);
-      setTimeout(() => {
-        if (printRef.current) {
-          const win = window.open('', '_blank');
-          if (win) {
-            win.document.write(`<html><head><title>Credit Note</title>
-              <style>body{font-family:sans-serif;margin:0;padding:16px}@media print{body{padding:0}}</style>
-              </head><body>${printRef.current.innerHTML}</body></html>`);
-            win.document.close();
-            win.focus();
-            win.print();
-            win.close();
-          }
-        }
-      }, 150);
-    } catch { notify.error('Failed to load refund details'); }
-  };
-
   // P0-4: open the settle dialog with a fresh server read of the
   // refund. The list row omits `pos_order.paid_amount` updates
   // from any settlements that just happened, so using it directly
@@ -575,9 +565,9 @@ export default function PosRefundsPage() {
       const full = await posRefundService.show(refund.id);
       const target = full ?? refund;
       const po = (target as any).pos_order ?? (refund as any).pos_order;
-      const grandTotal     = Number(po?.grand_total ?? 0);
+      const grandTotal = Number(po?.grand_total ?? 0);
       const returnedAmount = Number(po?.returned_amount ?? 0);
-      const paidAmount     = Number(po?.paid_amount ?? 0);
+      const paidAmount = Number(po?.paid_amount ?? 0);
       const effectiveTotal = Math.max(0, grandTotal - returnedAmount);
       const balance = effectiveTotal - paidAmount;
 
@@ -655,10 +645,6 @@ export default function PosRefundsPage() {
       cell: ({ row }) => statusBadge(row.original.status),
     },
     {
-      accessorKey: 'approved_by', header: 'Approved By',
-      cell: ({ row }) => <span className="text-xs">{(row.original as any).approved_by_user?.name ?? '-'}</span>,
-    },
-    {
       accessorKey: 'completed_at', header: 'Completed At',
       cell: ({ row }) => <span className="text-xs">{fmtDate(row.original.completed_at)}</span>,
     },
@@ -688,10 +674,7 @@ export default function PosRefundsPage() {
               </button>
             )}
             {r.status === 'completed' && (
-              <button onClick={() => handlePrint(r)} title="Print Credit Note"
-                className="p-1 rounded text-purple-600 hover:bg-purple-50 dark:hover:bg-purple-900/30 cursor-pointer">
-                <Printer className="w-4 h-4" />
-              </button>
+              <PosRefundPrintMenu refundDoc={r} />
             )}
             {r.status === 'completed' && (
               <button onClick={() => openSettle(r)} title="Settle Payment"
@@ -744,11 +727,6 @@ export default function PosRefundsPage() {
 
   return (
     <div className="space-y-2">
-      {/* Hidden print area */}
-      <div ref={printRef} style={{ display: 'none' }}>
-        {printRefund && <PosRefundCreditNote refund={printRefund} items={printItems} />}
-      </div>
-
       {/* Header */}
       <div className="flex items-center justify-between">
         <h1 className="text-base font-bold text-gray-900 dark:text-gray-100 flex items-center gap-2">
@@ -808,10 +786,11 @@ export default function PosRefundsPage() {
                 <div className="flex items-end gap-2">
                   <div className="w-1/2">
                     <CustomSelect
+                      key={`pos-so-${soKey}`}
                       value={selectedOrder}
                       onChange={handleOrderChange}
                       loadOptions={loadOrderOptions}
-                      defaultOptions={true}
+                      defaultOptions={soDefaultOpts}
                       placeholder="Search by order / invoice #…"
                       className="text-sm"
                     />
@@ -1094,7 +1073,7 @@ export default function PosRefundsPage() {
                         className={inputCls} />
                       <p className="text-[10px] text-gray-500 mt-0.5">
                         Max: ৳{(Math.abs(balance) || 0).toFixed(2)}
-      {settleLoading ? ' · loading fresh balance…' : ''}
+                        {settleLoading ? ' · loading fresh balance…' : ''}
                       </p>
                     </div>
                     <div>
