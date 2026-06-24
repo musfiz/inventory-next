@@ -39,6 +39,9 @@ export interface ServerDataTableProps<T = any> {
   enableSorting?: boolean;
   baseApiPath?: string;
   searchValue?: string;
+  filterParams?: Record<string, string | number | undefined | null>;
+  maxHeight?: string;
+  refreshKey?: number;
 }
 
 interface PaginationData {
@@ -59,6 +62,9 @@ function DataTableInner<T extends Record<string, any>>({
   enablePagination = true,
   enableSorting = true,
   baseApiPath = '/api/v1',
+  filterParams,
+  maxHeight,
+  refreshKey,
 }: ServerDataTableProps<T>) {
   const searchParams = useSearchParams();
   const router = useRouter();
@@ -82,9 +88,12 @@ function DataTableInner<T extends Record<string, any>>({
     urlSortBy ? [{ id: urlSortBy, desc: urlSortOrder === 'desc' }] : []
   );
   const [refreshTrigger, setRefreshTrigger] = useState(0);
+  const prevRefreshKeyRef = useRef(refreshKey);
   const prevSearchRef = useRef(urlSearch);
   const prevEndpointRef = useRef(apiEndpoint);
+  const prevFilterParamsKeyRef = useRef('');
   const initialSyncDone = useRef(false);
+  const filterParamsKey = JSON.stringify(filterParams);
 
   const updateURL = (overrides: Record<string, string | undefined | null>) => {
     const params = new URLSearchParams(searchParams.toString());
@@ -116,11 +125,11 @@ function DataTableInner<T extends Record<string, any>>({
 
       let result;
       if (fetchData) {
-        result = await fetchData(params);
+        result = await fetchData({ ...params, ...filterParams });
       } else if (apiEndpoint) {
         const queryParams = new URLSearchParams();
-        Object.entries(params).forEach(([key, value]) => {
-          if (value !== undefined) {
+        [...Object.entries(params), ...Object.entries(filterParams || {})].forEach(([key, value]) => {
+          if (value !== undefined && value !== null && value !== '') {
             queryParams.append(key, value.toString());
           }
         });
@@ -159,6 +168,13 @@ function DataTableInner<T extends Record<string, any>>({
   };
 
   useEffect(() => {
+    if (refreshKey !== undefined && prevRefreshKeyRef.current !== undefined && refreshKey !== prevRefreshKeyRef.current) {
+      setRefreshTrigger(prev => prev + 1);
+    }
+    prevRefreshKeyRef.current = refreshKey;
+  }, [refreshKey]);
+
+  useEffect(() => {
     const timer = setTimeout(() => {
       setDebouncedSearch(searchQuery);
     }, 300);
@@ -187,18 +203,20 @@ function DataTableInner<T extends Record<string, any>>({
 
     const searchChanged = prevSearchRef.current !== debouncedSearch;
     const endpointChanged = prevEndpointRef.current !== apiEndpoint;
+    const filterChanged = prevFilterParamsKeyRef.current !== filterParamsKey;
 
     prevSearchRef.current = debouncedSearch;
     prevEndpointRef.current = apiEndpoint;
+    prevFilterParamsKeyRef.current = filterParamsKey;
 
-    if ((searchChanged || endpointChanged) && pagination.page !== 1) {
+    if ((searchChanged || endpointChanged || filterChanged) && pagination.page !== 1) {
       setPagination(prev => ({ ...prev, page: 1 }));
       return;
     }
 
     fetchDataInternal();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [pagination.page, debouncedSearch, sorting, apiEndpoint, refreshTrigger, initialData]);
+  }, [pagination.page, debouncedSearch, sorting, apiEndpoint, refreshTrigger, initialData, filterParamsKey]);
 
   useEffect(() => {
     if (!initialSyncDone.current) {
@@ -272,7 +290,7 @@ function DataTableInner<T extends Record<string, any>>({
       </div>
 
       <div className="bg-white dark:bg-gray-800 shadow-sm dark:shadow-gray-900/50 rounded-md overflow-hidden border border-gray-200 dark:border-gray-700">
-        <div className="overflow-x-auto overflow-y-auto max-h-[calc(100vh-200px)]">
+        <div className="overflow-x-auto overflow-y-auto" style={maxHeight ? { maxHeight } : { maxHeight: 'calc(100vh - 200px)' }}>
           <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
             <thead className="bg-gray-50 dark:bg-gray-900/50 sticky top-0 z-10">
               {table.getHeaderGroups().map(headerGroup => (
@@ -426,7 +444,7 @@ function DataTableInner<T extends Record<string, any>>({
                   <ChevronRight className="h-3.5 w-3.5" />
                 </button>
                 <button
-                  onClick={() => goToPage(pagination.page)}
+                  onClick={() => goToPage(pagination.totalPages)}
                   disabled={pagination.page === pagination.totalPages || loading}
                   className="p-1 rounded text-gray-600 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors cursor-pointer"
                 >

@@ -10,6 +10,7 @@ import commonService from '@/services/commonService';
 import { Category } from '@/types/api.types';
 import DataTable from '@/components/ui/datatable';
 import CustomSelect from '@/components/ui/custom-select';
+import BusinessTypeSelect from '@/components/ui/business-type-select';
 import BusinessTypeMultiSelect from '@/components/ui/business-type-multi-select';
 import { useRouter } from 'next/navigation';
 import { usePermissions } from '@/hooks/use-permissions';
@@ -21,6 +22,9 @@ export default function CategoriesPage() {
   const router = useRouter();
 
   const tenantBusinessTypeId = (user as any)?.tenant?.business_type?.id ?? null;
+  const [businessTypeFilterId, setBusinessTypeFilterId] = useState<number | null>(
+    isSuperAdmin ? null : tenantBusinessTypeId
+  );
 
   const [showForm, setShowForm] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
@@ -170,10 +174,9 @@ export default function CategoriesPage() {
           description: '',
           business_type_ids: prev.business_type_ids,
           is_active: true,
-          parent_id: undefined,
+          parent_id: prev.parent_id,
         }));
         setFormErrors({});
-        setDefaultParentOptions([]);
       }
       setRefreshKey(prev => prev + 1);
     } catch (error: unknown) {
@@ -245,29 +248,29 @@ export default function CategoriesPage() {
     },
     ...(isSuperAdmin
       ? [
-          {
-            accessorKey: 'business_type',
-            header: 'Business Types',
-            cell: ({ row }: any) => {
-              const types = (row.original as any).business_types;
-              if (!types || types.length === 0) {
-                return <span className="text-gray-400 text-xs">Other</span>;
-              }
-              return (
-                <div className="flex flex-wrap gap-1">
-                  {types.map((bt: any) => (
-                    <span
-                      key={bt.id}
-                      className="inline-flex items-center px-2 py-0.5 text-xs font-medium rounded-full bg-indigo-100 text-indigo-800 dark:bg-indigo-900/40 dark:text-indigo-300"
-                    >
-                      {bt.name}
-                    </span>
-                  ))}
-                </div>
-              );
-            },
+        {
+          accessorKey: 'business_type',
+          header: 'Business Types',
+          cell: ({ row }: any) => {
+            const types = (row.original as any).business_types;
+            if (!types || types.length === 0) {
+              return <span className="text-gray-400 text-xs">Other</span>;
+            }
+            return (
+              <div className="flex flex-wrap gap-1">
+                {types.map((bt: any) => (
+                  <span
+                    key={bt.id}
+                    className="inline-flex items-center px-2 py-0.5 text-xs font-medium rounded-full bg-indigo-100 text-indigo-800 dark:bg-indigo-900/40 dark:text-indigo-300"
+                  >
+                    {bt.name}
+                  </span>
+                ))}
+              </div>
+            );
           },
-        ]
+        },
+      ]
       : []),
     {
       accessorKey: 'description',
@@ -314,15 +317,9 @@ export default function CategoriesPage() {
     },
   ];
 
-  // Build API endpoint with filters
-  const buildApiEndpoint = () => {
-    const params = new URLSearchParams();
-    if (!isSuperAdmin && tenantBusinessTypeId) {
-      params.append('business_type_id', String(tenantBusinessTypeId));
-    }
-    const queryString = params.toString();
-    return `categories${queryString ? `?${queryString}` : ''}`;
-  };
+  const buildApiEndpoint = () => 'categories';
+
+  const effectiveBusinessTypeId = isSuperAdmin ? businessTypeFilterId : tenantBusinessTypeId;
 
   return (
     <div className="space-y-2">
@@ -351,6 +348,22 @@ export default function CategoriesPage() {
           </button>
         </div>
       </div>
+
+      {/* Filters */}
+      {isSuperAdmin && (
+        <div className="bg-white dark:bg-gray-800 rounded-md shadow-sm border border-gray-200 dark:border-gray-700 p-1">
+          <div className="flex items-center justify-between">
+            <div className="flex gap-3">
+              <BusinessTypeSelect
+                value={businessTypeFilterId}
+                onChange={(id) => setBusinessTypeFilterId(id)}
+                placeholder="Filter by business type"
+                isClearable
+              />
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Add/Edit Category Form */}
       {showForm && (
@@ -469,12 +482,13 @@ export default function CategoriesPage() {
 
       {/* DataTable */}
       <DataTable
-        key={refreshKey}
+        refreshKey={refreshKey}
         columns={columns}
         apiEndpoint={buildApiEndpoint()}
         pageSize={15}
         enableSearch={true}
-        searchPlaceholder="Search by unit name, short name..."
+        searchPlaceholder="Search by category name, description..."
+        filterParams={{ business_type_id: effectiveBusinessTypeId }}
       />
     </div>
   );

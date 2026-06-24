@@ -21,6 +21,7 @@ interface CustomSelectProps {
   defaultOptions?: boolean | SelectOption[];
   isInvalid?: boolean;
   autoFocus?: boolean;
+  isClearable?: boolean;
 }
 
 const customStyles = (isInvalid?: boolean): StylesConfig<SelectOption, false> => ({
@@ -125,6 +126,7 @@ export default function CustomSelect({
   defaultOptions = false,
   isInvalid = false,
   autoFocus = false,
+  isClearable = false,
 }: CustomSelectProps) {
   const styles = customStyles(isInvalid);
 
@@ -148,6 +150,7 @@ export default function CustomSelect({
         defaultMenuIsOpen={false}
         menuPortalTarget={typeof document !== 'undefined' ? document.body : undefined}
         menuPosition="fixed"
+        isClearable={isClearable}
       />
     );
   }
@@ -168,6 +171,7 @@ export default function CustomSelect({
       isLoading={isLoading}
       menuPortalTarget={typeof document !== 'undefined' ? document.body : undefined}
       menuPosition="fixed"
+      isClearable={isClearable}
     />
   );
 }

@@ -11,9 +11,11 @@ interface BusinessTypeSelectProps {
   placeholder?: string;
   isDisabled?: boolean;
   isInvalid?: boolean;
+  isClearable?: boolean;
+  className?: string;
 }
 
-export default function BusinessTypeSelect({ value, onChange, onChangeDetail, placeholder = 'Select business type', isDisabled = false, isInvalid = false }: BusinessTypeSelectProps) {
+export default function BusinessTypeSelect({ value, onChange, onChangeDetail, placeholder = 'Select business type', isDisabled = false, isInvalid = false, isClearable = true, className = 'w-72' }: BusinessTypeSelectProps) {
   const [defaultOptions, setDefaultOptions] = useState<{ value: string; label: string }[]>([]);
   const [selected, setSelected] = useState<any>(null);
 
@@ -70,6 +72,8 @@ export default function BusinessTypeSelect({ value, onChange, onChangeDetail, pl
       placeholder={placeholder}
       isDisabled={isDisabled}
       isInvalid={isInvalid}
+      isClearable={isClearable}
+      className={className}
     />
   );
 }
