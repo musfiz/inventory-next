@@ -495,7 +495,7 @@ export function SalesOrderInvoiceA4({ order, copyLabel }: SalesOrderInvoiceA4Pro
                     padding: '0 1mm',
                     fontVariantNumeric: 'tabular-nums',
                     color: '#4b5563',
-                    borderBottom: '1px dotted #9ca3af',
+                    // borderBottom: '1px dotted #9ca3af',
                     minWidth: '10mm',
                   }}
                 >
@@ -508,7 +508,7 @@ export function SalesOrderInvoiceA4({ order, copyLabel }: SalesOrderInvoiceA4Pro
                     padding: '0 1mm',
                     fontVariantNumeric: 'tabular-nums',
                     color: '#4b5563',
-                    borderBottom: '1px dotted #9ca3af',
+                    // borderBottom: '1px dotted #9ca3af',
                     minWidth: '16mm',
                   }}
                 >
@@ -521,7 +521,7 @@ export function SalesOrderInvoiceA4({ order, copyLabel }: SalesOrderInvoiceA4Pro
                     padding: '0 1mm',
                     fontVariantNumeric: 'tabular-nums',
                     color: '#4b5563',
-                    borderBottom: '1px dotted #9ca3af',
+                    // borderBottom: '1px dotted #9ca3af',
                     minWidth: '14mm',
                   }}
                 >
@@ -534,7 +534,7 @@ export function SalesOrderInvoiceA4({ order, copyLabel }: SalesOrderInvoiceA4Pro
                     padding: '0 1mm',
                     fontVariantNumeric: 'tabular-nums',
                     color: '#4b5563',
-                    borderBottom: '1px dotted #9ca3af',
+                    // borderBottom: '1px dotted #9ca3af',
                     minWidth: '10mm',
                   }}
                 >
@@ -1014,7 +1014,7 @@ export function SalesOrderInvoiceA4({ order, copyLabel }: SalesOrderInvoiceA4Pro
           </div>
         </div>
 
-        {qrSrc && (
+        {/* {qrSrc && (
           <div
             style={{
               display: 'flex',
@@ -1034,7 +1034,7 @@ export function SalesOrderInvoiceA4({ order, copyLabel }: SalesOrderInvoiceA4Pro
               Scan to verify · {invoiceNo}
             </div>
           </div>
-        )}
+        )} */}
 
         <div style={{ textAlign: 'right' }}>
           <div

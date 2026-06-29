@@ -403,7 +403,6 @@ export function SalesOrderInvoiceThermal({
                       textAlign: 'center',
                       padding: '0 0.5mm',
                       fontVariantNumeric: 'tabular-nums',
-                      borderBottom: '1px dotted #000',
                       minWidth: '10mm',
                       alignSelf: 'center',
                     }}
@@ -417,7 +416,6 @@ export function SalesOrderInvoiceThermal({
                         textAlign: 'right',
                         padding: '0 0.5mm',
                         fontVariantNumeric: 'tabular-nums',
-                        borderBottom: '1px dotted #000',
                         minWidth: '14mm',
                         alignSelf: 'center',
                       }}
@@ -463,9 +461,8 @@ export function SalesOrderInvoiceThermal({
         <Row label="Subtotal" value={fmt(subTotal)} />
         {discAmt > 0 && (
           <Row
-            label={`Discount${
-              discType === 'percentage' && discValue > 0 ? ` (${discValue}%)` : ''
-            }`}
+            label={`Discount${discType === 'percentage' && discValue > 0 ? ` (${discValue}%)` : ''
+              }`}
             value={`−${fmt(discAmt)}`}
           />
         )}
@@ -541,7 +538,6 @@ export function SalesOrderInvoiceThermal({
             <div
               key={p.id ?? pi}
               style={{
-                borderBottom: '1px dotted #d4d4d4',
                 padding: '0.6mm 0',
               }}
             >
@@ -596,7 +592,6 @@ export function SalesOrderInvoiceThermal({
                     fontWeight: 700,
                     fontVariantNumeric: 'tabular-nums',
                     whiteSpace: 'nowrap',
-                    borderBottom: '1px dotted #000',
                     minWidth: '16mm',
                     alignSelf: 'center',
                   }}
@@ -623,12 +618,12 @@ export function SalesOrderInvoiceThermal({
         </>
       )}
 
-      <RuleDashed />
+      {/* <RuleDashed /> */}
 
       {/* ═══════════════════════════════════════════════
           G) QR CODE
           ═══════════════════════════════════════════════ */}
-      {qrSrc && (
+      {/* {qrSrc && (
         <section
           style={{
             display: 'flex',
@@ -667,7 +662,7 @@ export function SalesOrderInvoiceThermal({
             </div>
           </div>
         </section>
-      )}
+      )} */}
 
       <RuleDashed />
 

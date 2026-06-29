@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useRef, Suspense } from 'react';
 import { useSearchParams } from 'next/navigation';
-import { ShoppingCart, Plus, Minus, RotateCcw } from 'lucide-react';
+import { ShoppingCart, Plus, Minus, RotateCcw, DollarSign, CreditCard, Smartphone, Building2, FileText, BadgeCheck, MoreHorizontal, Lock } from 'lucide-react';
 import CustomSelect from '@/components/ui/custom-select';
 import CustomDatePicker from '@/components/ui/date-picker';
 import { notify } from '@/lib/notifications';
@@ -22,6 +22,7 @@ import { useAuthStore } from '@/stores/auth-store';
 
 type DiscountType = 'amount' | 'percent';
 type PaymentStatus = 'pending' | 'partial' | 'paid' | 'overdue';
+type PaymentMethod = 'cash' | 'card' | 'bkash' | 'nagad' | 'rocket' | 'bank_transfer' | 'check' | 'credit' | 'other';
 
 interface OrderItem {
   product_id?: string;
@@ -30,7 +31,7 @@ interface OrderItem {
   variation_name?: string;
   quantity_ordered: number;
   cost_price: number;
-  variationOptions?: { value: string; label: string }[];
+  variationOptions?: { value: string; label: string; cost_price?: number }[];
 }
 
 interface OrderForm {
@@ -56,6 +57,18 @@ const PAYMENT_STATUS_LIST: { value: PaymentStatus; label: string }[] = [
   { value: 'overdue', label: 'Overdue' },
 ];
 
+const PAYMENT_METHODS: { value: PaymentMethod; label: string; icon: any; activeClass: string; idleClass: string }[] = [
+  { value: 'cash', label: 'Cash', icon: DollarSign, activeClass: 'border-green-500  bg-green-500  text-white', idleClass: 'border-green-200  dark:border-green-800  text-green-600  dark:text-green-400  hover:bg-green-50  dark:hover:bg-green-900/20' },
+  { value: 'card', label: 'Card', icon: CreditCard, activeClass: 'border-blue-500   bg-blue-500   text-white', idleClass: 'border-blue-200   dark:border-blue-800   text-blue-600   dark:text-blue-400   hover:bg-blue-50   dark:hover:bg-blue-900/20' },
+  { value: 'bkash', label: 'bKash', icon: Smartphone, activeClass: 'border-pink-500   bg-pink-500   text-white', idleClass: 'border-pink-200   dark:border-pink-800   text-pink-600   dark:text-pink-400   hover:bg-pink-50   dark:hover:bg-pink-900/20' },
+  { value: 'nagad', label: 'Nagad', icon: Smartphone, activeClass: 'border-orange-500 bg-orange-500 text-white', idleClass: 'border-orange-200 dark:border-orange-800 text-orange-600 dark:text-orange-400 hover:bg-orange-50 dark:hover:bg-orange-900/20' },
+  { value: 'rocket', label: 'Rocket', icon: Smartphone, activeClass: 'border-purple-500 bg-purple-500 text-white', idleClass: 'border-purple-200 dark:border-purple-800 text-purple-600 dark:text-purple-400 hover:bg-purple-50 dark:hover:bg-purple-900/20' },
+  { value: 'bank_transfer', label: 'Bank', icon: Building2, activeClass: 'border-teal-500   bg-teal-500   text-white', idleClass: 'border-teal-200   dark:border-teal-800   text-teal-600   dark:text-teal-400   hover:bg-teal-50   dark:hover:bg-teal-900/20' },
+  { value: 'check', label: 'Check', icon: FileText, activeClass: 'border-amber-500  bg-amber-500  text-white', idleClass: 'border-amber-200  dark:border-amber-800  text-amber-600  dark:text-amber-400  hover:bg-amber-50  dark:hover:bg-amber-900/20' },
+  { value: 'credit', label: 'Credit', icon: BadgeCheck, activeClass: 'border-indigo-500 bg-indigo-500 text-white', idleClass: 'border-indigo-200 dark:border-indigo-800 text-indigo-600 dark:text-indigo-400 hover:bg-indigo-50 dark:hover:bg-indigo-900/20' },
+  { value: 'other', label: 'Other', icon: MoreHorizontal, activeClass: 'border-gray-500  bg-gray-500   text-white', idleClass: 'border-gray-200   dark:border-gray-600   text-gray-500   dark:text-gray-400   hover:bg-gray-50   dark:hover:bg-gray-700/40' },
+];
+
 // Shared class tokens used across form controls for visual consistency
 const inputCls =
   'w-full px-2 py-1.5 text-sm bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 ' +
@@ -63,6 +76,12 @@ const inputCls =
   'focus:ring-blue-500 dark:focus:ring-blue-400 focus:border-transparent';
 
 const selectCls = inputCls; // same visual as text input
+
+// Shared class for the small numeric inputs inside the order summary card
+const summaryInputCls =
+  'w-24 px-2 py-1 text-xs text-right border border-gray-300 dark:border-gray-600 rounded-sm ' +
+  'bg-white dark:bg-gray-700 dark:text-gray-100 focus:outline-none focus:ring-1 focus:ring-blue-500 ' +
+  '[&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none';
 
 // ─── Component ────────────────────────────────────────────────────────────────
 
@@ -107,9 +126,23 @@ function AddPurchaseOrderPage() {
   const [note, setNote] = useState('');
   const [discount, setDiscount] = useState('0');
   const [discountType, setDiscountType] = useState<DiscountType>('percent');
-  const [vat, setVat] = useState('0');
+  const [tax, setTax] = useState('0');
   const [shipping, setShipping] = useState('0');
   const [paymentStatus, setPaymentStatus] = useState<PaymentStatus>('pending');
+  const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>('cash');
+  const [paidAmount, setPaidAmount] = useState('0');
+  const [paymentDate, setPaymentDate] = useState(() => new Date().toISOString().slice(0, 10));
+  const [tenderedAmount, setTenderedAmount] = useState('0');
+  const [cardLastFour, setCardLastFour] = useState('');
+  const [processingFee, setProcessingFee] = useState('0');
+  const [mobileNumber, setMobileNumber] = useState('');
+  const [mobileTxnId, setMobileTxnId] = useState('');
+  const [bankName, setBankName] = useState('');
+  const [bankAccount, setBankAccount] = useState('');
+  const [txnReference, setTxnReference] = useState('');
+  const [checkNumber, setCheckNumber] = useState('');
+  const [checkDate, setCheckDate] = useState('');
+  const [paymentNotes, setPaymentNotes] = useState('');
 
   // ── UI state ────────────────────────────────────────────────────────────────
   const [errors, setErrors] = useState<Record<string, string[]>>({});
@@ -134,11 +167,12 @@ function AddPurchaseOrderPage() {
     ? (subtotal * discountValue) / 100
     : discountValue;
 
-  const vatPercent = Number(vat) || 0;
-  const vatAmount = ((subtotal - discountAmount) * vatPercent) / 100;
+  const taxPercent = Number(tax) || 0;
+  const taxAmount = ((subtotal - discountAmount) * taxPercent) / 100;
 
   const shippingCost = Number(shipping) || 0;
-  const grandTotal = subtotal - discountAmount + vatAmount + shippingCost;
+  const grandTotal = subtotal - discountAmount + taxAmount + shippingCost;
+  const changeAmount = Math.max(0, (parseFloat(tenderedAmount) || 0) - (parseFloat(paidAmount) || 0));
 
   // ─── Micro-helpers ────────────────────────────────────────────────────────────
 
@@ -193,7 +227,7 @@ function AddPurchaseOrderPage() {
       const res: any = await productVariationService.getVariations({ product_id: productId, per_page: 50 });
       const list = res?.data || res || [];
       const opts = (Array.isArray(list) ? list : list.data || []).map((v: any) => ({
-        value: v.id, label: v.name || v.sku || v.id,
+        value: v.id, label: v.name || v.sku || v.id, cost_price: v.cost_price ?? v.price ?? 0,
       }));
 
       setItemField(idx, 'variationOptions', opts);
@@ -202,14 +236,18 @@ function AddPurchaseOrderPage() {
       if (opts.length === 1) {
         setItemField(idx, 'variation_id', opts[0].value);
         setItemField(idx, 'variation_name', opts[0].label);
+        if (opts[0].cost_price > 0) setItemField(idx, 'cost_price', opts[0].cost_price);
       }
     } catch { /* silent — variation preload failure is non-critical */ }
   };
 
-  const onVariationSelect = (idx: number, variationId?: string, label?: string) => {
+  const onVariationSelect = (idx: number, variationId?: string, label?: string, costPrice?: number) => {
     setItemField(idx, 'variation_id', variationId);
     setItemField(idx, 'variation_name', label || '');
-    // NOTE: cost_price is intentionally NOT auto-filled — user enters it manually
+
+    if (costPrice !== undefined && costPrice > 0) {
+      setItemField(idx, 'cost_price', costPrice);
+    }
   };
 
   // ─── Async dropdown loaders ───────────────────────────────────────────────────
@@ -254,7 +292,7 @@ function AddPurchaseOrderPage() {
       const res: any = await productVariationService.getVariations({ product_id: productId, search });
       const list = res?.data ?? res ?? [];
       return (Array.isArray(list) ? list : list.data || list).map((v: any) => ({
-        value: v.id, label: v.name || v.sku || v.id,
+        value: v.id, label: v.name || v.sku || v.id, cost_price: v.cost_price ?? v.price ?? 0,
       }));
     } catch { return []; }
   };
@@ -331,6 +369,14 @@ function AddPurchaseOrderPage() {
     return () => { mounted = false; };
   }, [formData.tenant_id]);
 
+  // Auto-update payment status based on paid amount vs grand total
+  useEffect(() => {
+    const paid = parseFloat(paidAmount) || 0;
+    if (paid <= 0) setPaymentStatus('pending');
+    else if (paid < grandTotal) setPaymentStatus('partial');
+    else setPaymentStatus('paid');
+  }, [paidAmount, grandTotal]);
+
   // Edit mode: load existing PO and prefill the form
   useEffect(() => {
     if (!editId) return;
@@ -352,10 +398,17 @@ function AddPurchaseOrderPage() {
           status: po.status || 'draft',
         });
         setNote(po.notes || '');
-        setDiscount(String(po.discount_percentage ?? po.discount_amount ?? 0));
-        setDiscountType(po.discount_percentage ? 'percent' : 'amount');
-        setVat(String(po.vat ?? 0));
+        const rawDiscountType = po.discount_type === 'percentage' ? 'percent' : 'amount';
+        setDiscountType(rawDiscountType as DiscountType);
+        setDiscount(String(po.discount_value ?? po.discount_percentage ?? po.discount_amount ?? 0));
+        setTax(String(
+          po.tax_amount && po.sub_total > 0
+            ? ((po.tax_amount / (po.sub_total - (po.discount_amount ?? 0))) * 100).toFixed(4)
+            : (po.tax ?? 0)
+        ));
         setShipping(String(po.shipping_charge ?? 0));
+        setPaidAmount(String(po.paid_amount ?? '0'));
+        setPaymentMethod((po.payment_method as PaymentMethod) ?? 'cash');
         setPaymentStatus((po.payment_status || 'pending') as PaymentStatus);
 
         const prefilled: OrderItem[] = (po.items || []).map((it: any) => ({
@@ -379,7 +432,7 @@ function AddPurchaseOrderPage() {
               });
               const list = res?.data || res || [];
               const opts = (Array.isArray(list) ? list : list.data || []).map((v: any) => ({
-                value: v.id, label: v.name || v.sku || v.id,
+                value: v.id, label: v.name || v.sku || v.id, cost_price: v.cost_price ?? v.price ?? 0,
               }));
               setItemField(i, 'variationOptions', opts);
             } catch { /* ignore */ }
@@ -481,17 +534,43 @@ function AddPurchaseOrderPage() {
       const payload = {
         ...formData,
         items: collapsedItems.map(({ __key, ...rest }) => rest),
-        note,
+        notes: note,
         payment_status: paymentStatus,
         discount: discountValue,
         discount_type: discountType,
         discount_amount: discountAmount,
         discount_percentage: discountType === 'percent' ? discountValue : null,
-        vat: vatPercent,
-        shipping: shippingCost,
+        tax: taxPercent,
+        shipping_charge: shippingCost,
         sub_total: subtotal,
-        vat_amount: vatAmount,
-        total_amount: Number(Math.round(grandTotal).toFixed(2)),
+        tax_amount: taxAmount,
+        grand_total: Number(Math.round(grandTotal).toFixed(2)),
+        payment_method: paymentMethod,
+        paid_amount: parseFloat(paidAmount) || 0,
+        payment_date: paymentDate || undefined,
+        ...(paymentMethod === 'cash' && {
+          tendered_amount: parseFloat(tenderedAmount) || 0,
+          change_amount: changeAmount,
+        }),
+        ...(paymentMethod === 'card' && {
+          card_last_four: cardLastFour || undefined,
+          processing_fee: parseFloat(processingFee) || 0,
+          transaction_reference: txnReference || undefined,
+        }),
+        ...(['bkash', 'nagad', 'rocket'].includes(paymentMethod) && {
+          mobile_number: mobileNumber || undefined,
+          mobile_transaction_id: mobileTxnId || undefined,
+        }),
+        ...(paymentMethod === 'bank_transfer' && {
+          bank_name: bankName || undefined,
+          bank_account: bankAccount || undefined,
+          transaction_reference: txnReference || undefined,
+        }),
+        ...(paymentMethod === 'check' && {
+          check_number: checkNumber || undefined,
+          check_date: checkDate || undefined,
+        }),
+        ...(paymentNotes && { payment_notes: paymentNotes }),
       };
 
       if (editingId) {
@@ -531,9 +610,23 @@ function AddPurchaseOrderPage() {
     setItems([]);
     setNote('');
     setDiscount('0');
-    setVat('0');
+    setTax('0');
     setShipping('0');
     setPaymentStatus('pending');
+    setPaymentMethod('cash');
+    setPaidAmount('0');
+    setPaymentDate(new Date().toISOString().slice(0, 10));
+    setTenderedAmount('0');
+    setCardLastFour('');
+    setProcessingFee('0');
+    setMobileNumber('');
+    setMobileTxnId('');
+    setBankName('');
+    setBankAccount('');
+    setTxnReference('');
+    setCheckNumber('');
+    setCheckDate('');
+    setPaymentNotes('');
     setErrors({});
   };
 
@@ -549,15 +642,6 @@ function AddPurchaseOrderPage() {
           {editingId ? `Edit Purchase Order` : 'Add Purchase Order'}
           {loadingEdit && <span className="text-xs text-gray-500 ml-2">Loading…</span>}
         </h1>
-        {!editingId && (
-          <button
-            type="button"
-            onClick={addItem}
-            className="flex items-center gap-1.5 px-3 py-1.5 bg-green-600 hover:bg-green-700 text-white text-sm font-medium rounded-sm transition-colors"
-          >
-            <Plus className="w-4 h-4" /> Add Item
-          </button>
-        )}
       </div>
 
       <form ref={formRef} onSubmit={handleSubmit} className="space-y-2" autoComplete="off">
@@ -703,7 +787,18 @@ function AddPurchaseOrderPage() {
                 </span>
               )}
             </h3>
-            {hasErr('items') && <p className="text-xs text-red-600">{err('items')}</p>}
+            <div className="flex items-center gap-2">
+              {hasErr('items') && <p className="text-xs text-red-600">{err('items')}</p>}
+              {!editingId && (
+                <button
+                  type="button"
+                  onClick={addItem}
+                  className="flex items-center gap-1.5 px-3 py-1 text-white text-xs font-medium rounded-sm transition-colors bg-green-600 hover:bg-green-700"
+                >
+                  <Plus className="w-3.5 h-3.5" /> Add Item
+                </button>
+              )}
+            </div>
           </div>
 
           {/* Column headers */}
@@ -757,7 +852,7 @@ function AddPurchaseOrderPage() {
                   <div className="col-span-6">
                     <CustomSelect
                       value={it.variation_id ? { value: it.variation_id, label: it.variation_name || '' } : null}
-                      onChange={(o: any) => onVariationSelect(idx, o?.value, o?.label)}
+                      onChange={(o: any) => onVariationSelect(idx, o?.value, o?.label, o?.cost_price)}
                       loadOptions={(search: string) =>
                         it.product_id ? loadVariations(it.product_id, search) : Promise.resolve([])
                       }
@@ -894,7 +989,7 @@ function AddPurchaseOrderPage() {
                         onChange={e => setDiscount(e.target.value)}
                         onKeyDown={preventMinus}
                         onFocus={e => e.target.select()}
-                        className="w-24 px-2 py-1 text-xs text-right border border-gray-300 dark:border-gray-600 rounded-sm bg-white dark:bg-gray-700 dark:text-gray-100 focus:outline-none focus:ring-1 focus:ring-blue-500 [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                        className={summaryInputCls}
                       />
                     </div>
 
@@ -906,25 +1001,25 @@ function AddPurchaseOrderPage() {
                       </div>
                     )}
 
-                    {/* VAT input */}
+                    {/* Tax input */}
                     <div className="flex items-center justify-between gap-2">
-                      <span className="text-xs text-gray-500 dark:text-gray-400">VAT (%)</span>
+                      <span className="text-xs text-gray-500 dark:text-gray-400">Tax (%)</span>
                       <input
                         type="number"
                         step="0.01"
-                        value={vat}
-                        onChange={e => setVat(e.target.value)}
+                        value={tax}
+                        onChange={e => setTax(e.target.value)}
                         onKeyDown={preventMinus}
                         onFocus={e => e.target.select()}
-                        className="w-24 px-2 py-1 text-xs text-right border border-gray-300 dark:border-gray-600 rounded-sm bg-white dark:bg-gray-700 dark:text-gray-100 focus:outline-none focus:ring-1 focus:ring-blue-500 [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                        className={summaryInputCls}
                       />
                     </div>
 
-                    {/* Computed VAT amount */}
-                    {vatAmount > 0 && (
+                    {/* Computed Tax amount */}
+                    {taxAmount > 0 && (
                       <div className="flex justify-between text-xs text-green-600 dark:text-green-400 px-1">
-                        <span>↳ VAT amount</span>
-                        <span>+{vatAmount.toFixed(2)}</span>
+                        <span>↳ Tax amount</span>
+                        <span>+{taxAmount.toFixed(2)}</span>
                       </div>
                     )}
 
@@ -938,7 +1033,7 @@ function AddPurchaseOrderPage() {
                         onChange={e => setShipping(e.target.value)}
                         onKeyDown={preventMinus}
                         onFocus={e => e.target.select()}
-                        className="w-24 px-2 py-1 text-xs text-right border border-gray-300 dark:border-gray-600 rounded-sm bg-white dark:bg-gray-700 dark:text-gray-100 focus:outline-none focus:ring-1 focus:ring-blue-500 [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                        className={summaryInputCls}
                       />
                     </div>
 
@@ -956,6 +1051,286 @@ function AddPurchaseOrderPage() {
             </div>
           )}
         </div>
+
+        {/* ── Section 3: Payment Details ────────────────────────────────────────── */}
+        {!editingId && items.length > 0 && (
+          <div className="bg-white dark:bg-gray-800 rounded-md shadow-sm border border-gray-200 dark:border-gray-700 p-3">
+            <h3 className="text-sm font-semibold text-gray-900 dark:text-gray-100 mb-3 flex items-center gap-2">
+              <DollarSign className="w-4 h-4 text-green-600 dark:text-green-400" />
+              Payment Details
+            </h3>
+
+            {/* Two-column layout: left = method buttons (2/5), right = inputs (3/5) */}
+            <div className="flex gap-3">
+
+              {/* ── Left: Payment Method Buttons ─────────────────────────────── */}
+              <div className="w-2/5 flex-shrink-0">
+                <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1.5">
+                  Payment Method
+                </label>
+                <div className="grid grid-cols-3 gap-1.5">
+                  {PAYMENT_METHODS.map(method => {
+                    const Icon = method.icon;
+                    const isActive = paymentMethod === method.value;
+                    return (
+                      <button
+                        key={method.value}
+                        type="button"
+                        onClick={() => setPaymentMethod(method.value)}
+                        className={`flex flex-col items-center justify-center gap-0.5 px-1.5 py-2 rounded border-2 transition-all text-xs font-semibold ${isActive ? method.activeClass : method.idleClass}`}
+                      >
+                        <Icon className="w-3.5 h-3.5 flex-shrink-0" />
+                        <span>{method.label}</span>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {/* ── Right: All Inputs ─────────────────────────────────────────── */}
+              <div className="w-3/5 min-w-0">
+
+                {/* Amount paid + payment date */}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mb-3">
+                  <div>
+                    <label className="block text-xs font-semibold text-blue-600 dark:text-blue-400 mb-1">
+                      Amount Paid
+                    </label>
+                    <input
+                      type="number"
+                      step="0.01"
+                      min="0"
+                      value={paidAmount}
+                      onChange={e => setPaidAmount(e.target.value)}
+                      onKeyDown={preventMinus}
+                      onFocus={e => e.target.select()}
+                      placeholder="0.00"
+                      className="w-full px-2 py-1.5 text-sm font-semibold text-right text-blue-700 dark:text-blue-300 bg-blue-50 dark:bg-blue-900/20 border-2 border-blue-400 dark:border-blue-500 rounded-sm focus:outline-none [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                    />
+                    {grandTotal > 0 && (
+                      <p className="mt-0.5 text-xs text-gray-500 dark:text-gray-400">
+                        Grand Total: <span className="font-semibold">{grandTotal.toFixed(2)}</span>
+                        {(parseFloat(paidAmount) || 0) > 0 && (parseFloat(paidAmount) || 0) < grandTotal && (
+                          <> &middot; Due: <span className="text-red-500 font-semibold">{(grandTotal - (parseFloat(paidAmount) || 0)).toFixed(2)}</span></>
+                        )}
+                      </p>
+                    )}
+                  </div>
+                  <div>
+                    <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">
+                      Payment Date
+                    </label>
+                    <CustomDatePicker
+                      value={paymentDate}
+                      onChange={v => {
+                        setPaymentDate(v);
+                        clearErr('payment_date');
+                      }}
+                      className={hasErr('payment_date') ? 'border-red-500' : ''}
+                    />
+                    {hasErr('payment_date') && (
+                      <p className="mt-1 text-xs text-red-600">{err('payment_date')}</p>
+                    )}
+                  </div>
+                </div>
+
+                {/* Cash: tendered amount + change */}
+                {paymentMethod === 'cash' && (
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mb-3">
+                    <div>
+                      <label className="block text-xs font-semibold text-amber-600 dark:text-amber-400 mb-1">
+                        Tendered Amount
+                      </label>
+                      <input
+                        type="number"
+                        step="0.01"
+                        min="0"
+                        value={tenderedAmount}
+                        onChange={e => setTenderedAmount(e.target.value)}
+                        onKeyDown={preventMinus}
+                        onFocus={e => e.target.select()}
+                        placeholder="0.00"
+                        className="w-full px-2 py-1.5 text-sm font-semibold text-right text-amber-700 dark:text-amber-300 bg-amber-50 dark:bg-amber-900/20 border-2 border-amber-400 dark:border-amber-500 rounded-sm focus:outline-none [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-xs font-semibold text-green-600 dark:text-green-400 mb-1">
+                        Change
+                      </label>
+                      <div className={`w-full px-2 py-1.5 text-sm font-bold text-right rounded-sm border-2 pointer-events-none ${changeAmount > 0
+                        ? 'text-green-700 dark:text-green-300 bg-green-50 dark:bg-green-900/20 border-green-400 dark:border-green-500'
+                        : 'text-gray-400 dark:text-gray-500 bg-gray-50 dark:bg-gray-700/50 border-gray-200 dark:border-gray-600'
+                        }`}>
+                        {changeAmount.toFixed(2)}
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {/* Card: last 4 digits + processing fee + reference */}
+                {paymentMethod === 'card' && (
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-3 mb-3">
+                    <div>
+                      <label className="block text-xs font-semibold text-blue-600 dark:text-blue-400 mb-1">
+                        Card Last 4 Digits
+                      </label>
+                      <input
+                        type="text"
+                        maxLength={4}
+                        value={cardLastFour}
+                        onChange={e => setCardLastFour(e.target.value.replace(/\D/g, '').slice(0, 4))}
+                        placeholder="1234"
+                        className="w-full px-2 py-1.5 text-sm font-semibold text-blue-700 dark:text-blue-300 bg-blue-50 dark:bg-blue-900/20 border-2 border-blue-400 dark:border-blue-500 rounded-sm focus:outline-none"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-xs font-semibold text-blue-600 dark:text-blue-400 mb-1">
+                        Processing Fee
+                      </label>
+                      <input
+                        type="number"
+                        step="0.01"
+                        min="0"
+                        value={processingFee}
+                        onChange={e => setProcessingFee(e.target.value)}
+                        onKeyDown={preventMinus}
+                        onFocus={e => e.target.select()}
+                        placeholder="0.00"
+                        className="w-full px-2 py-1.5 text-sm font-semibold text-right text-blue-700 dark:text-blue-300 bg-blue-50 dark:bg-blue-900/20 border-2 border-blue-400 dark:border-blue-500 rounded-sm focus:outline-none [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-xs font-semibold text-blue-600 dark:text-blue-400 mb-1">
+                        Transaction Reference
+                      </label>
+                      <input
+                        type="text"
+                        value={txnReference}
+                        onChange={e => setTxnReference(e.target.value)}
+                        placeholder="TXN-XXXX"
+                        className="w-full px-2 py-1.5 text-sm font-semibold text-blue-700 dark:text-blue-300 bg-blue-50 dark:bg-blue-900/20 border-2 border-blue-400 dark:border-blue-500 rounded-sm focus:outline-none"
+                      />
+                    </div>
+                  </div>
+                )}
+
+                {/* Mobile payments: bKash / Nagad / Rocket */}
+                {['bkash', 'nagad', 'rocket'].includes(paymentMethod) && (
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mb-3">
+                    <div>
+                      <label className="block text-xs font-semibold text-pink-600 dark:text-pink-400 mb-1">
+                        Mobile Number
+                      </label>
+                      <input
+                        type="text"
+                        value={mobileNumber}
+                        onChange={e => setMobileNumber(e.target.value)}
+                        placeholder="01XXXXXXXXX"
+                        className="w-full px-2 py-1.5 text-sm font-semibold text-pink-700 dark:text-pink-300 bg-pink-50 dark:bg-pink-900/20 border-2 border-pink-400 dark:border-pink-500 rounded-sm focus:outline-none"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-xs font-semibold text-pink-600 dark:text-pink-400 mb-1">
+                        Transaction ID
+                      </label>
+                      <input
+                        type="text"
+                        value={mobileTxnId}
+                        onChange={e => setMobileTxnId(e.target.value)}
+                        placeholder="TXN ID"
+                        className="w-full px-2 py-1.5 text-sm font-semibold text-pink-700 dark:text-pink-300 bg-pink-50 dark:bg-pink-900/20 border-2 border-pink-400 dark:border-pink-500 rounded-sm focus:outline-none"
+                      />
+                    </div>
+                  </div>
+                )}
+
+                {/* Bank transfer */}
+                {paymentMethod === 'bank_transfer' && (
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-3 mb-3">
+                    <div>
+                      <label className="block text-xs font-semibold text-teal-600 dark:text-teal-400 mb-1">
+                        Bank Name
+                      </label>
+                      <input
+                        type="text"
+                        value={bankName}
+                        onChange={e => setBankName(e.target.value)}
+                        placeholder="e.g. Dutch Bangla Bank"
+                        className="w-full px-2 py-1.5 text-sm font-semibold text-teal-700 dark:text-teal-300 bg-teal-50 dark:bg-teal-900/20 border-2 border-teal-400 dark:border-teal-500 rounded-sm focus:outline-none"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-xs font-semibold text-teal-600 dark:text-teal-400 mb-1">
+                        Account Number
+                      </label>
+                      <input
+                        type="text"
+                        value={bankAccount}
+                        onChange={e => setBankAccount(e.target.value)}
+                        placeholder="Account number"
+                        className="w-full px-2 py-1.5 text-sm font-semibold text-teal-700 dark:text-teal-300 bg-teal-50 dark:bg-teal-900/20 border-2 border-teal-400 dark:border-teal-500 rounded-sm focus:outline-none"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-xs font-semibold text-teal-600 dark:text-teal-400 mb-1">
+                        Transaction Reference
+                      </label>
+                      <input
+                        type="text"
+                        value={txnReference}
+                        onChange={e => setTxnReference(e.target.value)}
+                        placeholder="TXN-XXXX"
+                        className="w-full px-2 py-1.5 text-sm font-semibold text-teal-700 dark:text-teal-300 bg-teal-50 dark:bg-teal-900/20 border-2 border-teal-400 dark:border-teal-500 rounded-sm focus:outline-none"
+                      />
+                    </div>
+                  </div>
+                )}
+
+                {/* Check */}
+                {paymentMethod === 'check' && (
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mb-3">
+                    <div>
+                      <label className="block text-xs font-semibold text-amber-600 dark:text-amber-400 mb-1">
+                        Check Number
+                      </label>
+                      <input
+                        type="text"
+                        value={checkNumber}
+                        onChange={e => setCheckNumber(e.target.value)}
+                        placeholder="CHK-XXXX"
+                        className="w-full px-2 py-1.5 text-sm font-semibold text-amber-700 dark:text-amber-300 bg-amber-50 dark:bg-amber-900/20 border-2 border-amber-400 dark:border-amber-500 rounded-sm focus:outline-none"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-xs font-semibold text-amber-600 dark:text-amber-400 mb-1">
+                        Check Date
+                      </label>
+                      <CustomDatePicker
+                        value={checkDate}
+                        onChange={v => setCheckDate(v)}
+                      />
+                    </div>
+                  </div>
+                )}
+
+                {/* Payment notes */}
+                <div>
+                  <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">
+                    Payment Notes <span className="font-normal text-gray-400">(optional)</span>
+                  </label>
+                  <textarea
+                    value={paymentNotes}
+                    onChange={e => setPaymentNotes(e.target.value)}
+                    placeholder="Add any notes for this payment..."
+                    rows={1}
+                    className={`${inputCls} resize-none`}
+                  />
+                </div>
+
+              </div>{/* end right inputs */}
+            </div>{/* end two-column flex */}
+          </div>
+        )}
 
         {/* ── Action buttons ────────────────────────────────────────────────────── */}
         <div className="flex items-center gap-2 pt-1">

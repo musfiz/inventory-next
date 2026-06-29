@@ -260,8 +260,8 @@ export function PosOrderInvoiceA4({ order, copyLabel }: PosOrderInvoiceA4Props) 
                 <td style={{ textAlign: 'right' }}>
                   {order.order_date
                     ? new Date(order.order_date).toLocaleTimeString(undefined, {
-                        hour: '2-digit', minute: '2-digit',
-                      })
+                      hour: '2-digit', minute: '2-digit',
+                    })
                     : '-'}
                 </td>
               </tr>
@@ -494,7 +494,6 @@ export function PosOrderInvoiceA4({ order, copyLabel }: PosOrderInvoiceA4Props) 
                     padding: '0 1mm',
                     fontVariantNumeric: 'tabular-nums',
                     color: '#4b5563',
-                    borderBottom: '1px dotted #9ca3af',
                     minWidth: '10mm',
                   }}
                 >
@@ -507,7 +506,6 @@ export function PosOrderInvoiceA4({ order, copyLabel }: PosOrderInvoiceA4Props) 
                     padding: '0 1mm',
                     fontVariantNumeric: 'tabular-nums',
                     color: '#4b5563',
-                    borderBottom: '1px dotted #9ca3af',
                     minWidth: '16mm',
                   }}
                 >
@@ -520,7 +518,6 @@ export function PosOrderInvoiceA4({ order, copyLabel }: PosOrderInvoiceA4Props) 
                     padding: '0 1mm',
                     fontVariantNumeric: 'tabular-nums',
                     color: '#4b5563',
-                    borderBottom: '1px dotted #9ca3af',
                     minWidth: '14mm',
                   }}
                 >
@@ -533,7 +530,6 @@ export function PosOrderInvoiceA4({ order, copyLabel }: PosOrderInvoiceA4Props) 
                     padding: '0 1mm',
                     fontVariantNumeric: 'tabular-nums',
                     color: '#4b5563',
-                    borderBottom: '1px dotted #9ca3af',
                     minWidth: '10mm',
                   }}
                 >
@@ -1073,7 +1069,7 @@ export function PosOrderInvoiceA4({ order, copyLabel }: PosOrderInvoiceA4Props) 
           </div>
         </div>
 
-        {qrSrc && (
+        {/* {qrSrc && (
           <div
             style={{
               display: 'flex',
@@ -1093,7 +1089,7 @@ export function PosOrderInvoiceA4({ order, copyLabel }: PosOrderInvoiceA4Props) 
               Scan to verify · {invoiceNo}
             </div>
           </div>
-        )}
+        )} */}
 
         <div style={{ textAlign: 'right' }}>
           <div

@@ -287,11 +287,11 @@ export function PosOrderInvoiceThermal({
           }}
         >
           <span style={{ alignSelf: 'center' }}>Item</span>
-          <span style={{ textAlign: 'center', minWidth: '10mm', alignSelf: 'center' }}>Qty</span>
+          <span style={{ textAlign: 'center', minWidth: '7mm', alignSelf: 'center' }}>Qty</span>
           {!is58 && (
-            <span style={{ textAlign: 'right', minWidth: '14mm', alignSelf: 'center' }}>Price</span>
+            <span style={{ textAlign: 'right', minWidth: '10mm', alignSelf: 'center' }}>Price</span>
           )}
-          <span style={{ textAlign: 'right', minWidth: '16mm', alignSelf: 'center' }}>Total</span>
+          <span style={{ textAlign: 'right', minWidth: '12mm', alignSelf: 'center' }}>Total</span>
         </div>
 
         {items.length === 0 ? (
@@ -362,7 +362,7 @@ export function PosOrderInvoiceThermal({
                         {it.variation.name}
                       </span>
                     )}
-                    <span
+                    {/* <span
                       style={{
                         display: 'block',
                         fontSize: '0.72em',
@@ -374,7 +374,7 @@ export function PosOrderInvoiceThermal({
                       @{fmt(price)}
                       {disc > 0 ? ` · −${fmt(disc)}` : ''}
                       {tax > 0 ? ` · VAT ${tax}%` : ''}
-                    </span>
+                    </span> */}
                   </span>
 
                   <span
@@ -382,8 +382,7 @@ export function PosOrderInvoiceThermal({
                       textAlign: 'center',
                       padding: '0 0.5mm',
                       fontVariantNumeric: 'tabular-nums',
-                      borderBottom: '1px dotted #000',
-                      minWidth: '10mm',
+                      minWidth: '7mm',
                       alignSelf: 'center',
                     }}
                   >
@@ -396,8 +395,7 @@ export function PosOrderInvoiceThermal({
                         textAlign: 'right',
                         padding: '0 0.5mm',
                         fontVariantNumeric: 'tabular-nums',
-                        borderBottom: '1px dotted #000',
-                        minWidth: '14mm',
+                        minWidth: '10mm',
                         alignSelf: 'center',
                       }}
                     >
@@ -412,7 +410,7 @@ export function PosOrderInvoiceThermal({
                       fontWeight: 700,
                       fontVariantNumeric: 'tabular-nums',
                       whiteSpace: 'nowrap',
-                      minWidth: '16mm',
+                      minWidth: '12mm',
                       alignSelf: 'center',
                     }}
                   >
@@ -442,11 +440,10 @@ export function PosOrderInvoiceThermal({
         <Row label="Subtotal" value={fmt(subTotal)} />
         {discAmt > 0 && (
           <Row
-            label={`Discount${
-              discType === 'percent' || discType === 'percentage'
-                ? ` (${discValue}%)`
-                : ''
-            }`}
+            label={`Discount${discType === 'percent' || discType === 'percentage'
+              ? ` (${discValue}%)`
+              : ''
+              }`}
             value={`−${fmt(discAmt)}`}
           />
         )}
@@ -493,7 +490,7 @@ export function PosOrderInvoiceThermal({
         />
       </section>
 
-      <RuleDouble />
+      {/* <RuleDouble /> */}
 
       {/* ═══════════════════════════════════════════════
           F) PAYMENT HISTORY
@@ -507,7 +504,6 @@ export function PosOrderInvoiceThermal({
               fontWeight: 700,
               textTransform: 'uppercase',
               letterSpacing: '0.08em',
-              padding: '1mm 0',
               borderTop: '1px dashed #000',
               borderBottom: '1px dashed #000',
               margin: '1mm 0',
@@ -523,7 +519,7 @@ export function PosOrderInvoiceThermal({
               key={p.id ?? pi}
               style={{
                 borderBottom: '1px dotted #d4d4d4',
-                padding: '0.6mm 0',
+                padding: '0',
               }}
             >
               <div
@@ -559,7 +555,6 @@ export function PosOrderInvoiceThermal({
                       display: 'block',
                       fontSize: '0.78em',
                       color: '#6b6b6b',
-                      marginTop: '0.2mm',
                     }}
                   >
                     {p.payment_date
@@ -576,7 +571,6 @@ export function PosOrderInvoiceThermal({
                     fontWeight: 700,
                     fontVariantNumeric: 'tabular-nums',
                     whiteSpace: 'nowrap',
-                    borderBottom: '1px dotted #000',
                     minWidth: '16mm',
                     alignSelf: 'center',
                   }}
@@ -590,7 +584,6 @@ export function PosOrderInvoiceThermal({
                     textAlign: 'right',
                     fontSize: '0.62em',
                     color: '#6b6b6b',
-                    marginTop: '0.2mm',
                     textTransform: 'uppercase',
                     letterSpacing: '0.04em',
                   }}
@@ -603,12 +596,12 @@ export function PosOrderInvoiceThermal({
         </>
       )}
 
-      <RuleDashed />
+      {/* <RuleDashed /> */}
 
       {/* ═══════════════════════════════════════════════
           G) QR CODE
           ═══════════════════════════════════════════════ */}
-      {qrSrc && (
+      {/* {qrSrc && (
         <section
           style={{
             display: 'flex',
@@ -647,7 +640,7 @@ export function PosOrderInvoiceThermal({
             </div>
           </div>
         </section>
-      )}
+      )} */}
 
       <RuleDashed />
 
