@@ -1,7 +1,7 @@
 'use client';
 
-import { useEffect, useState } from 'react';
-import Select from 'react-select';
+import { useEffect, useRef, useState, useCallback } from 'react';
+import AsyncSelect from 'react-select/async';
 import { businessTypeService } from '@/services/businessTypeService';
 
 interface Option {
@@ -141,27 +141,47 @@ export default function BusinessTypeMultiSelect({
   isDisabled = false,
   isInvalid = false,
 }: BusinessTypeMultiSelectProps) {
-  const [options, setOptions] = useState<Option[]>([]);
+  const [selected, setSelected] = useState<Option[]>([]);
+  const isUserAction = useRef(false);
 
+  // Resolve parent value to selected Option[] on mount and external changes
   useEffect(() => {
-    let mounted = true;
-    loadAllOptions().then((opts) => {
-      if (mounted) setOptions(opts);
-    });
-    return () => { mounted = false; };
+    if (isUserAction.current) {
+      isUserAction.current = false;
+      return;
+    }
+    if (value && value.length > 0) {
+      loadAllOptions().then(all => {
+        setSelected(all.filter(o => value.includes(Number(o.value))));
+      });
+    } else {
+      setSelected([]);
+    }
+  }, [value]);
+
+  const loadOptions = useCallback(async (input: string) => {
+    try {
+      const types = await businessTypeService.getForDropdown({ search: input || undefined });
+      return (types || []).map((t: any) => ({ value: String(t.id), label: t.name }));
+    } catch (err) {
+      console.error('BusinessTypeMultiSelect loadOptions error', err);
+      return [];
+    }
   }, []);
 
-  const selectedValues = options.filter((o) => value?.includes(Number(o.value)));
-
   return (
-    <Select
+    <AsyncSelect
       isMulti
-      value={selectedValues}
+      value={selected}
       onChange={(newValue) => {
-        const ids = (newValue as Option[] | null)?.map((o) => Number(o.value)) ?? [];
+        isUserAction.current = true;
+        const items = newValue as Option[] | null;
+        setSelected(items ?? []);
+        const ids = items?.map((o) => Number(o.value)) ?? [];
         onChange(ids);
       }}
-      options={options}
+      loadOptions={loadOptions}
+      defaultOptions
       placeholder={placeholder}
       styles={customStyles(isInvalid)}
       theme={customTheme}
@@ -171,6 +191,7 @@ export default function BusinessTypeMultiSelect({
       closeMenuOnSelect={false}
       hideSelectedOptions={false}
       noOptionsMessage={() => 'No business types found'}
+      cacheOptions
     />
   );
 }
