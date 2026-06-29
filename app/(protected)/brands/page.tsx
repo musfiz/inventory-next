@@ -30,6 +30,7 @@ export default function BrandsPage() {
   const [currentBrand, setCurrentBrand] = useState<Brand | null>(null);
   const [formData, setFormData] = useState({
     name: '',
+    business_type_id: null as number | null,
     logo_url: null as File | null,
     description: '',
     is_active: true,
@@ -40,7 +41,7 @@ export default function BrandsPage() {
   const handleAddBrand = () => {
     setIsEditing(false);
     setCurrentBrand(null);
-    setFormData({ name: '', logo_url: null, description: '', is_active: true });
+    setFormData({ name: '', business_type_id: isSuperAdmin ? businessTypeFilterId : tenantBusinessTypeId, logo_url: null, description: '', is_active: true });
     setFormErrors({});
     setShowForm(true);
   };
@@ -51,6 +52,7 @@ export default function BrandsPage() {
 
     setFormData({
       name: brand.name,
+      business_type_id: brand.business_type_id ?? brand.business_type?.id ?? null,
       logo_url: null,
       description: brand.description || '',
       is_active: brand.is_active,
@@ -64,6 +66,9 @@ export default function BrandsPage() {
     if (!formData.name.trim()) {
       errors.name = 'Brand name is required';
     }
+    if (!formData.business_type_id) {
+      errors.business_type_id = 'Business type is required';
+    }
     setFormErrors(errors);
     return Object.keys(errors).length === 0;
   };
@@ -76,7 +81,11 @@ export default function BrandsPage() {
     }
 
     try {
-      const effectiveBtId = isSuperAdmin ? businessTypeFilterId : tenantBusinessTypeId;
+      const effectiveBtId = formData.business_type_id ?? (isSuperAdmin ? businessTypeFilterId : tenantBusinessTypeId);
+      if (!effectiveBtId) {
+        setFormErrors({ ...formErrors, business_type_id: 'Business type is required' });
+        return;
+      }
       await brandService.storeBrand({
         id: isEditing && currentBrand?.id ? currentBrand.id : undefined,
         name: formData.name,
@@ -93,9 +102,8 @@ export default function BrandsPage() {
       const errorData = error?.response?.data;
       if (errorData?.errors) {
         const errors = { ...errorData.errors };
-        if (errors.business_type) {
-          notify.error('Please select a business type before saving the brand');
-          delete errors.business_type;
+        if (errors.business_type_id) {
+          errors.business_type_id = Array.isArray(errors.business_type_id) ? errors.business_type_id[0] : errors.business_type_id;
         }
         setFormErrors(errors);
       } else {
@@ -169,7 +177,8 @@ export default function BrandsPage() {
       meta: { width: '8%' },
       cell: ({ row }) => {
         const logoUrl = row.original.logo_url;
-        const fullLogoUrl = logoUrl ? `${process.env.NEXT_PUBLIC_BACKEND_URL}/${logoUrl}` : null;
+        const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL?.replace(/\/$/, '') || '';
+        const fullLogoUrl = logoUrl ? `${backendUrl}${logoUrl}` : null;
         return (
           <div className="flex items-center justify-center">
             {fullLogoUrl ? (
@@ -229,19 +238,19 @@ export default function BrandsPage() {
     },
     ...(isSuperAdmin
       ? [
-          {
-            accessorKey: 'business_type',
-            header: 'Business Type',
-            meta: { width: '12%' },
-            cell: ({ row }: any) => (
-              <div className="flex items-center">
-                <span className="text-xs text-gray-600 dark:text-gray-400 capitalize">
-                  {row.original.business_type?.name || 'Other'}
-                </span>
-              </div>
-            ),
-          },
-        ]
+        {
+          accessorKey: 'business_type',
+          header: 'Business Type',
+          meta: { width: '12%' },
+          cell: ({ row }: any) => (
+            <div className="flex items-center">
+              <span className="text-xs text-gray-600 dark:text-gray-400 capitalize">
+                {row.original.business_type?.name || 'Other'}
+              </span>
+            </div>
+          ),
+        },
+      ]
       : []),
     {
       accessorKey: 'created_at',
@@ -340,16 +349,28 @@ export default function BrandsPage() {
           <h2 className="text-lg font-semibold mb-1.5 text-gray-900 dark:text-gray-100">
             {isEditing ? 'Edit Brand' : 'Add Brand'}
           </h2>
-          {formErrors.business_type && (
-            <p className="text-red-600 text-sm mb-2">{formErrors.business_type}</p>
-          )}
           <form
             onSubmit={handleFormSubmit}
             className="grid grid-cols-1 md:grid-cols-2 gap-1.5"
             encType="multipart/form-data"
           >
-            <div className="md:col-span-2 grid grid-cols-1 md:grid-cols-2 gap-1">
-              <div>
+            <div className="md:col-span-2 grid grid-cols-1 md:grid-cols-4 gap-1">
+              {isSuperAdmin && (
+                <div className="md:col-span-1">
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-0.5">
+                    Business Type
+                  </label>
+                  <BusinessTypeSelect
+                    value={formData.business_type_id}
+                    onChange={(id) => setFormData({ ...formData, business_type_id: id })}
+                    placeholder="Select business type"
+                    className="w-full"
+                    isInvalid={!!formErrors.business_type_id}
+                  />
+                  {formErrors.business_type_id && <p className="text-red-600 text-xs mt-1">{formErrors.business_type_id}</p>}
+                </div>
+              )}
+              <div className={isSuperAdmin ? 'md:col-span-2' : 'md:col-span-3'}>
                 <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-0.5">
                   Name
                 </label>
@@ -360,11 +381,10 @@ export default function BrandsPage() {
                   onChange={e => setFormData({ ...formData, name: e.target.value })}
                   className={`w-full px-2 py-1.5 text-sm border rounded-sm focus:outline-none focus:ring-1 focus:ring-indigo-500 dark:focus:ring-indigo-400 focus:border-transparent dark:bg-gray-700 dark:text-gray-100 ${formErrors.name ? 'border-red-500' : 'border-gray-300 dark:border-gray-600'
                     }`}
-                  required
                 />
                 {formErrors.name && <p className="text-red-600 text-xs mt-1">{formErrors.name}</p>}
               </div>
-              <div>
+              <div className="md:col-span-1">
                 <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-0.5">
                   Status
                 </label>
@@ -423,8 +443,9 @@ export default function BrandsPage() {
                         src={
                           formData.logo_url
                             ? URL.createObjectURL(formData.logo_url)
-                            : `${process.env.NEXT_PUBLIC_BACKEND_URL}/${currentBrand?.logo_url}` ||
-                            ''
+                            : currentBrand?.logo_url
+                              ? `${(process.env.NEXT_PUBLIC_BACKEND_URL || '').replace(/\/$/, '')}${currentBrand.logo_url}`
+                              : ''
                         }
                         alt="Logo Preview"
                         className="w-16 h-16 object-contain rounded border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-700 p-1"

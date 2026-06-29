@@ -196,6 +196,8 @@ export interface Brand {
   slug: string;
   description?: string;
   logo?: string;
+  logo_url?: string;
+  logo_path?: string;
   is_active: boolean;
   created_at?: string;
   updated_at?: string;
