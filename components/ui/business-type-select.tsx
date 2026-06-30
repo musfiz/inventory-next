@@ -4,6 +4,8 @@ import { useEffect, useState } from 'react';
 import CustomSelect from './custom-select';
 import { businessTypeService } from '@/services/businessTypeService';
 
+type SelectOption = { value: string; label: string };
+
 interface BusinessTypeSelectProps {
   value?: string | number | null;
   onChange: (businessTypeId: number | null) => void;
@@ -16,8 +18,8 @@ interface BusinessTypeSelectProps {
 }
 
 export default function BusinessTypeSelect({ value, onChange, onChangeDetail, placeholder = 'Select business type', isDisabled = false, isInvalid = false, isClearable = true, className = 'w-72' }: BusinessTypeSelectProps) {
-  const [defaultOptions, setDefaultOptions] = useState<{ value: string; label: string }[]>([]);
-  const [selected, setSelected] = useState<any>(null);
+  const [defaultOptions, setDefaultOptions] = useState<SelectOption[]>([]);
+  const [selected, setSelected] = useState<SelectOption | null>(null);
 
   const loadOptions = async (input: string) => {
     try {
@@ -27,7 +29,7 @@ export default function BusinessTypeSelect({ value, onChange, onChangeDetail, pl
       return opts;
     } catch (err) {
       console.error('BusinessTypeSelect loadOptions error', err);
-      return [] as { value: string; label: string }[];
+      return [] as SelectOption[];
     }
   };
 
@@ -43,9 +45,19 @@ export default function BusinessTypeSelect({ value, onChange, onChangeDetail, pl
           const found = opts.find((o) => o.value === valueStr);
           if (found) setSelected(found);
           else {
-            const more = await loadOptions('');
-            const f = more.find((o) => o.value === valueStr);
-            if (f) setSelected(f);
+            const id = parseInt(valueStr, 10);
+            if (!Number.isNaN(id)) {
+              const item = await businessTypeService.getById(id);
+              if (!mounted || !item) return;
+              const fallbackOption = { value: String(item.id), label: item.name };
+              setSelected(fallbackOption);
+              setDefaultOptions((prev) => {
+                if (prev.some((o) => o.value === fallbackOption.value)) return prev;
+                return [fallbackOption, ...prev];
+              });
+            } else {
+              setSelected(null);
+            }
           }
         } else {
           setSelected(null);

@@ -38,23 +38,24 @@ interface ProductFormData {
 export default function AddProductPageWrapper() {
   return (
     <Suspense fallback={<div className="p-4 text-sm">Loading…</div>}>
-      <AddProductPage />
+      <ProductFormPage />
     </Suspense>
   );
 }
 
-function AddProductPage() {
+export function ProductFormPage({ editRef }: { editRef?: string }) {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const editId = searchParams?.get('edit');
+  const editId = editRef || searchParams?.get('edit') || searchParams?.get('uuid');
+  const isEditMode = Boolean(editId);
   const user = useAuthStore(state => state.user);
   const { hasPermission, isHydrated } = usePermissions();
 
   useEffect(() => {
-    if (isHydrated && !hasPermission(editId ? 'edit-product' : 'create-product')) {
+    if (isHydrated && !hasPermission(isEditMode ? 'edit-product' : 'create-product')) {
       router.push('/access-denied');
     }
-  }, [hasPermission, isHydrated, router, editId]);
+  }, [hasPermission, isHydrated, router, isEditMode]);
   const isSuperAdmin = user?.user_type === 'super_admin';
   const tenantBusinessType =
     (user as any)?.tenant?.business_type ||
@@ -76,7 +77,7 @@ function AddProductPage() {
   const [businessTypeId, setBusinessTypeId] = useState<number | null>(null);
 
   // Edit-mode state
-  const [editingId, setEditingId] = useState<number | null>(null);
+  const [editingId, setEditingId] = useState<string | null>(null);
   const [loadingEdit, setLoadingEdit] = useState(false);
 
   // Track if initial data has been loaded to prevent duplicate API calls
@@ -236,7 +237,7 @@ function AddProductPage() {
         const res: any = await productService.getProduct(editId!);
         const p = res?.data?.product || res?.product || res;
         if (!mounted || !p) return;
-        setEditingId(p.id);
+        setEditingId(String(p.uuid || p.id));
         setFormData({
           name: p.name || '',
           description: p.description || '',
@@ -266,8 +267,11 @@ function AddProductPage() {
             setBusinessType(String(p.business_type));
           }
         }
-        if (p.business_type_id) {
-          setBusinessTypeId(Number(p.business_type_id));
+        const resolvedBusinessTypeId = p.business_type_id ?? p.business_type?.id;
+        if (resolvedBusinessTypeId) {
+          setBusinessTypeId(Number(resolvedBusinessTypeId));
+          // Reset loaded data to reload categories/brands with this business type
+          hasLoadedData.current = false;
         }
         // Pre-populate the visible CustomSelect labels
         if (p.category) {
@@ -452,7 +456,11 @@ function AddProductPage() {
         display_order: formData.display_order ? parseInt(formData.display_order) : 0,
       };
 
-      if (editingId) {
+      if (isEditMode) {
+        if (!editingId) {
+          notify.error('Product is still loading. Please try again.');
+          return;
+        }
         await productService.updateProduct(editingId, submitData);
         notify.success('Product updated successfully!');
         router.push('/products');
@@ -483,7 +491,7 @@ function AddProductPage() {
           <div>
             <h1 className="text-base font-bold text-gray-900 dark:text-gray-100 flex items-center gap-2">
               <Package2 className="w-5 h-5 text-indigo-600 dark:text-indigo-400" />
-              {editingId ? 'Edit Product' : 'Add Product'}
+              {isEditMode ? 'Edit Product' : 'Add Product'}
               {loadingEdit && <span className="text-xs text-gray-500 ml-2">Loading…</span>}
             </h1>
           </div>
@@ -907,7 +915,7 @@ function AddProductPage() {
 
         {/* Submit Button */}
         <div className="flex justify-start">
-          {hasPermission(editingId ? 'update-product' : 'create-product') && (
+          {hasPermission(isEditMode ? 'update-product' : 'create-product') && (
             <button
               type="submit"
               disabled={isLoading}
@@ -915,8 +923,8 @@ function AddProductPage() {
             >
               <GiSave className="w-4 h-4" />
               {isLoading
-                ? (editingId ? 'Updating...' : 'Creating...')
-                : (editingId ? 'Update Product' : 'Create Product')}
+                ? (isEditMode ? 'Updating...' : 'Creating...')
+                : (isEditMode ? 'Update Product' : 'Create Product')}
             </button>
           )}
         </div>

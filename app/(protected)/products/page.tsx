@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
-import { Eye, Edit, Trash2, Rows4, Package2, Plus, Image, X } from 'lucide-react';
+import { Edit, Trash2, Rows4, Package2, Plus, Image, X } from 'lucide-react';
 import { ColumnDef } from '@tanstack/react-table';
 import DataTable from '@/components/ui/datatable';
 import CustomSelect from '@/components/ui/custom-select';
@@ -246,18 +246,11 @@ export default function ProductsPage() {
       meta: { width: '15%' },
       cell: ({ row }) => (
         <div className="flex items-center gap-1">
-          <button
-            className="p-1 text-indigo-600 hover:text-indigo-900 dark:text-indigo-400 dark:hover:text-indigo-300 hover:bg-indigo-50 dark:hover:bg-indigo-900/20 rounded cursor-pointer"
-            title="View Details"
-            onClick={() => router.push(`/products/add?edit=${row.original.id}`)}
-          >
-            <Eye className="w-3.5 h-3.5" />
-          </button>
           {hasPermission('update-products') && (
             <button
               className="p-1 text-blue-600 hover:text-blue-900 dark:text-blue-400 dark:hover:text-blue-300 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded cursor-pointer"
               title="Edit"
-              onClick={() => router.push(`/products/add?edit=${row.original.id}`)}
+              onClick={() => router.push(`/products/${row.original.uuid || row.original.id}/edit`)}
             >
               <Edit className="w-3.5 h-3.5" />
             </button>
