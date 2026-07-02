@@ -7,6 +7,9 @@ import type {
   ApiResponse,
   Product,
   Attribute,
+  SimpleProduct,
+  BulkVariationItem,
+  BulkVariationResponseData,
 } from '@/types/api.types';
 
 /**
@@ -124,6 +127,36 @@ class ProductVariationService {
   async getAttributes(businessType?: string): Promise<Attribute[]> {
     const response = await apiClient.get<ApiResponse<Attribute[]>>(
       '/api/v1/product-variations/attributes'
+    );
+    return response.data.data;
+  }
+
+  /**
+   * Get simple products with no variations (for bulk add)
+   * GET /api/v1/product-variations/simple-products
+   */
+  async getSimpleProducts(params?: {
+    category_id?: string;
+    business_type_id?: number;
+    search?: string;
+  }): Promise<SimpleProduct[]> {
+    const response = await apiClient.get<{ success: boolean; data: SimpleProduct[] }>(
+      '/api/v1/product-variations/simple-products',
+      { params }
+    );
+    return response.data.data;
+  }
+
+  /**
+   * Bulk create variations
+   * POST /api/v1/product-variations/bulk-store
+   */
+  async bulkStore(
+    data: BulkVariationItem[]
+  ): Promise<{ created: number; failed: number; errors: any[] }> {
+    const response = await apiClient.post<ApiResponse<BulkVariationResponseData>>(
+      '/api/v1/product-variations/bulk-store',
+      { variations: data }
     );
     return response.data.data;
   }

@@ -17,7 +17,7 @@ interface BusinessTypeSelectProps {
   className?: string;
 }
 
-export default function BusinessTypeSelect({ value, onChange, onChangeDetail, placeholder = 'Select business type', isDisabled = false, isInvalid = false, isClearable = true, className = 'w-72' }: BusinessTypeSelectProps) {
+export default function BusinessTypeSelect({ value, onChange, onChangeDetail, placeholder = 'Select business type', isDisabled = false, isInvalid = false, isClearable = true, className = 'w-full' }: BusinessTypeSelectProps) {
   const [defaultOptions, setDefaultOptions] = useState<SelectOption[]>([]);
   const [selected, setSelected] = useState<SelectOption | null>(null);
 

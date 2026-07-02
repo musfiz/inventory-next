@@ -106,6 +106,12 @@ const navigation: NavigationItem[] = [
         permission: 'create-product-variation',
       },
       {
+        name: 'Bulk Add Variations',
+        href: '/product-variations/bulk-add',
+        icon: LayersPlus,
+        permission: 'create-product-variation',
+      },
+      {
         name: 'Product Barcodes',
         href: '/product-barcodes',
         icon: Barcode,

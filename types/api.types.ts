@@ -555,6 +555,47 @@ export interface ProductVariationListResponse {
   meta: PaginationMeta;
 }
 
+// ─── Bulk Variation Add Types ─────────────────────────────────────────────────
+
+export interface SimpleProduct {
+  id: string;
+  name: string;
+  category_id?: string;
+  brand_id?: string;
+  category?: Category;
+  brand?: Brand;
+}
+
+export interface SimpleProductListResponse {
+  data: SimpleProduct[];
+  meta?: PaginationMeta;
+}
+
+export interface BulkVariationItem {
+  product_id: string;
+  sku: string;
+  name?: string;
+  cost_price: number;
+  selling_price: number;
+}
+
+export interface BulkVariationRequest {
+  variations: BulkVariationItem[];
+}
+
+export interface BulkVariationResponseData {
+  created: number;
+  failed: number;
+  errors: BulkVariationError[];
+}
+
+export interface BulkVariationError {
+  row: number;
+  product_id: string;
+  sku?: string;
+  message: string;
+}
+
 // ─── Payment Types ────────────────────────────────────────────────────────────
 
 // (Payment / PaymentMethod / PaymentStatus / PaymentReferenceType are
