@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useRef } from 'react';
 import { usePermissions } from '@/hooks/use-permissions';
 import {
   LayoutDashboard,
@@ -285,8 +285,24 @@ function NavItem({
   const currentPath = itemPath ? `${itemPath}.${item.name}` : item.name;
   const isOpen = openItems.has(currentPath);
   const hasChildren = item.children && item.children.length > 0;
-  const isActive = item.href === pathname;
-  const isParentActive = item.children?.some(child => child.href === pathname);
+
+  const isPathMatch = (href?: string) => {
+    if (!href) return false;
+    return pathname === href || pathname.startsWith(`${href}/`);
+  };
+
+  const hasActiveDescendant = (node: NavigationItem): boolean => {
+    if (!node.children || node.children.length === 0) {
+      return false;
+    }
+
+    return node.children.some(
+      child => isPathMatch(child.href) || hasActiveDescendant(child)
+    );
+  };
+
+  const isActive = isPathMatch(item.href);
+  const isParentActive = hasActiveDescendant(item);
 
   const handleClick = () => {
     if (hasChildren) {
@@ -338,11 +354,11 @@ function NavItem({
           href={item.href}
           onClick={() => setMobileMenuOpen(false)}
           className={`
-            relative group flex items-center px-3 py-1 text-sm font-medium rounded-md transition-colors cursor-pointer
+            relative group flex items-center px-3 py-1.5 text-sm rounded-md transition-all duration-200 cursor-pointer
             ${depth > 0 && sidebarOpen ? 'ml-4' : ''}
             ${isActive
-              ? 'bg-indigo-100 dark:bg-indigo-900/30 text-indigo-900 dark:text-indigo-300'
-              : 'text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-700 hover:text-gray-900 dark:hover:text-gray-100'
+              ? 'font-bold text-indigo-700 dark:text-indigo-300'
+              : 'font-medium text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-700 hover:text-gray-900 dark:hover:text-gray-100'
             }
           `}
           title={!sidebarOpen ? item.name : undefined}
@@ -357,11 +373,11 @@ function NavItem({
           <button
             onClick={handleClick}
             className={`
-              relative group flex items-center px-3 py-2 text-sm font-medium rounded-md transition-colors cursor-pointer
+              relative group flex items-center px-3 py-2 text-sm rounded-md transition-all duration-200 cursor-pointer
               ${depth > 0 && sidebarOpen ? 'ml-4 w-[calc(100%-1rem)]' : 'w-full'}
-              ${isParentActive
-                ? 'bg-indigo-50 dark:bg-indigo-900/20 text-indigo-900 dark:text-indigo-300'
-                : 'text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-700 hover:text-gray-900 dark:hover:text-gray-100'
+              ${isParentActive || isActive
+                ? 'font-bold text-indigo-700 dark:text-indigo-300'
+                : 'font-medium text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-700 hover:text-gray-900 dark:hover:text-gray-100'
               }
             `}
             title={!sidebarOpen ? item.name : undefined}
@@ -405,6 +421,7 @@ function NavItem({
 export default function Sidebar({ sidebarOpen, mobileMenuOpen, setMobileMenuOpen }: SidebarProps) {
   const pathname = usePathname();
   const [openItems, setOpenItems] = useState<Set<string>>(new Set());
+  const lastAutoExpandedPath = useRef<string | null>(null);
   const { hasPermission, hasAnyPermission, isSuperAdmin } = usePermissions();
 
   // Recursive function to filter navigation based on permissions
@@ -464,17 +481,22 @@ export default function Sidebar({ sidebarOpen, mobileMenuOpen, setMobileMenuOpen
   ): string[] => {
     const paths: string[] = [];
 
+    const isPathMatch = (href?: string) => {
+      if (!href) return false;
+      return currentPath === href || currentPath.startsWith(`${href}/`);
+    };
+
     for (const item of items) {
       const itemPath = parentPath ? `${parentPath}.${item.name}` : item.name;
 
-      if (item.href === currentPath) {
+      if (isPathMatch(item.href)) {
         // Found the active item, return all parent paths
         return parentPath ? [parentPath] : [];
       }
 
       if (item.children) {
         const childPaths = findParentPaths(item.children, currentPath, itemPath);
-        if (childPaths.length > 0 || item.children.some(child => child.href === currentPath)) {
+        if (childPaths.length > 0 || item.children.some(child => isPathMatch(child.href))) {
           paths.push(itemPath);
           paths.push(...childPaths);
         }
@@ -487,9 +509,21 @@ export default function Sidebar({ sidebarOpen, mobileMenuOpen, setMobileMenuOpen
   // Open parent menus based on current pathname on mount and pathname change
   useEffect(() => {
     const parentPaths = findParentPaths(filteredNavigation, pathname);
-    if (parentPaths.length > 0) {
-      setOpenItems(new Set(parentPaths));
+    if (parentPaths.length === 0) {
+      return;
     }
+
+    setOpenItems(prev => {
+      const isRouteChanged = lastAutoExpandedPath.current !== pathname;
+      const shouldAutoExpand = isRouteChanged || prev.size === 0;
+
+      if (!shouldAutoExpand) {
+        return prev;
+      }
+
+      lastAutoExpandedPath.current = pathname;
+      return new Set(parentPaths);
+    });
   }, [pathname, filteredNavigation]);
 
   return (

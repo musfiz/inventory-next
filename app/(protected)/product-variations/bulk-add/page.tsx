@@ -409,9 +409,8 @@ export default function BulkVariationAddPage() {
               </thead>
               <tbody>
                 {variationRows.map((row) => (
-                  <tr key={row.productId} className={`border-b border-gray-100 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700/30 ${
-                    errors[row.productId] ? 'bg-red-50 dark:bg-red-900/10' : ''
-                  }`}>
+                  <tr key={row.productId} className={`border-b border-gray-100 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700/30 ${errors[row.productId] ? 'bg-red-50 dark:bg-red-900/10' : ''
+                    }`}>
                     <td className="px-2 py-2">
                       <button
                         onClick={() => removeProduct(row.productId)}
@@ -442,11 +441,10 @@ export default function BulkVariationAddPage() {
                           type="text"
                           value={row.sku}
                           onChange={(e) => updateRow(row.productId, 'sku', e.target.value)}
-                          className={`w-36 px-2 py-1 text-xs bg-white dark:bg-gray-700 border ${
-                            errors[row.productId]?.some(e => e.toLowerCase().includes('sku'))
+                          className={`w-36 px-2 py-1 text-xs bg-white dark:bg-gray-700 border ${errors[row.productId]?.some(e => e.toLowerCase().includes('sku'))
                               ? 'border-red-500'
                               : 'border-gray-300 dark:border-gray-600'
-                          } focus:border-indigo-500 rounded-sm text-gray-900 dark:text-gray-100 focus:outline-none`}
+                            } focus:border-indigo-500 rounded-sm text-gray-900 dark:text-gray-100 focus:outline-none`}
                           placeholder="Auto-generated"
                         />
                         <button
@@ -482,11 +480,10 @@ export default function BulkVariationAddPage() {
                         onChange={(e) => updateRow(row.productId, 'costPrice', e.target.value)}
                         step="0.01"
                         min="0"
-                        className={`w-28 px-2 py-1 text-xs bg-white dark:bg-gray-700 border ${
-                          errors[row.productId]?.some(e => e.toLowerCase().includes('cost'))
+                        className={`w-28 px-2 py-1 text-xs bg-white dark:bg-gray-700 border ${errors[row.productId]?.some(e => e.toLowerCase().includes('cost'))
                             ? 'border-red-500'
                             : 'border-gray-300 dark:border-gray-600'
-                        } focus:border-indigo-500 rounded-sm text-gray-900 dark:text-gray-100 focus:outline-none`}
+                          } focus:border-indigo-500 rounded-sm text-gray-900 dark:text-gray-100 focus:outline-none`}
                         placeholder="0.00"
                       />
                     </td>
@@ -497,11 +494,10 @@ export default function BulkVariationAddPage() {
                         onChange={(e) => updateRow(row.productId, 'sellingPrice', e.target.value)}
                         step="0.01"
                         min="0"
-                        className={`w-28 px-2 py-1 text-xs bg-white dark:bg-gray-700 border ${
-                          errors[row.productId]?.some(e => e.toLowerCase().includes('selling'))
+                        className={`w-28 px-2 py-1 text-xs bg-white dark:bg-gray-700 border ${errors[row.productId]?.some(e => e.toLowerCase().includes('selling'))
                             ? 'border-red-500'
                             : 'border-gray-300 dark:border-gray-600'
-                        } focus:border-indigo-500 rounded-sm text-gray-900 dark:text-gray-100 focus:outline-none`}
+                          } focus:border-indigo-500 rounded-sm text-gray-900 dark:text-gray-100 focus:outline-none`}
                         placeholder="0.00"
                       />
                     </td>
@@ -525,11 +521,10 @@ export default function BulkVariationAddPage() {
 
       {/* Result Summary */}
       {resultSummary?.show && (
-        <div className={`rounded-md shadow-sm border p-3 ${
-          resultSummary.failed === 0
+        <div className={`rounded-md shadow-sm border p-3 ${resultSummary.failed === 0
             ? 'bg-green-50 dark:bg-green-900/20 border-green-200 dark:border-green-800'
             : 'bg-yellow-50 dark:bg-yellow-900/20 border-yellow-200 dark:border-yellow-800'
-        }`}>
+          }`}>
           <div className="flex items-center gap-2 text-sm">
             {resultSummary.failed === 0 ? (
               <Check className="w-5 h-5 text-green-600 dark:text-green-400" />
