@@ -70,10 +70,13 @@ class PosService {
 
   /**
    * Get top-level categories (parent_id IS NULL) for POS category bar
+   * Optionally scoped to a tenant's business type via tenant_id.
    * GET /api/v1/pos/categories
    */
-  async getCategories(): Promise<{ id: number; name: string; image_url?: string }[]> {
-    const response = await apiClient.get(`/api/v1/pos/categories`);
+  async getCategories(tenantId?: string | number): Promise<{ id: number; name: string; image_url?: string }[]> {
+    const response = await apiClient.get(`/api/v1/pos/categories`, {
+      params: tenantId ? { tenant_id: tenantId } : undefined,
+    });
     return response.data.data;
   }
 

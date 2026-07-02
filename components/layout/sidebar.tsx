@@ -241,7 +241,7 @@ const navigation: NavigationItem[] = [
 function NavItem({
   item,
   sidebarOpen,
-  pathname,
+  activeHref,
   setMobileMenuOpen,
   depth = 0,
   isLast = false,
@@ -251,7 +251,7 @@ function NavItem({
 }: {
   item: NavigationItem;
   sidebarOpen: boolean;
-  pathname: string;
+  activeHref: string | null;
   setMobileMenuOpen: (open: boolean) => void;
   depth?: number;
   isLast?: boolean;
@@ -287,8 +287,8 @@ function NavItem({
   const hasChildren = item.children && item.children.length > 0;
 
   const isPathMatch = (href?: string) => {
-    if (!href) return false;
-    return pathname === href || pathname.startsWith(`${href}/`);
+    if (!href || !activeHref) return false;
+    return activeHref === href;
   };
 
   const hasActiveDescendant = (node: NavigationItem): boolean => {
@@ -401,7 +401,7 @@ function NavItem({
                   key={child.name}
                   item={child}
                   sidebarOpen={sidebarOpen}
-                  pathname={pathname}
+                  activeHref={activeHref}
                   setMobileMenuOpen={setMobileMenuOpen}
                   depth={depth + 1}
                   isLast={index === item.children!.length - 1}
@@ -473,17 +473,51 @@ export default function Sidebar({ sidebarOpen, mobileMenuOpen, setMobileMenuOpen
     return filterNavigationRecursive(navigation);
   }, [hasPermission, hasAnyPermission, isSuperAdmin]);
 
+  const flattenHrefs = (items: NavigationItem[]): string[] => {
+    const hrefs: string[] = [];
+
+    for (const item of items) {
+      if (item.href) {
+        hrefs.push(item.href);
+      }
+
+      if (item.children) {
+        hrefs.push(...flattenHrefs(item.children));
+      }
+    }
+
+    return hrefs;
+  };
+
+  const activeHref = useMemo(() => {
+    const hrefs = flattenHrefs(filteredNavigation);
+    let bestMatch: string | null = null;
+
+    for (const href of hrefs) {
+      const isMatch = pathname === href || pathname.startsWith(`${href}/`);
+      if (!isMatch) {
+        continue;
+      }
+
+      if (!bestMatch || href.length > bestMatch.length) {
+        bestMatch = href;
+      }
+    }
+
+    return bestMatch;
+  }, [pathname, filteredNavigation]);
+
   // Helper function to find all parent paths for a given pathname
   const findParentPaths = (
     items: NavigationItem[],
-    currentPath: string,
+    currentActiveHref: string | null,
     parentPath = ''
   ): string[] => {
     const paths: string[] = [];
 
     const isPathMatch = (href?: string) => {
-      if (!href) return false;
-      return currentPath === href || currentPath.startsWith(`${href}/`);
+      if (!href || !currentActiveHref) return false;
+      return currentActiveHref === href;
     };
 
     for (const item of items) {
@@ -495,7 +529,7 @@ export default function Sidebar({ sidebarOpen, mobileMenuOpen, setMobileMenuOpen
       }
 
       if (item.children) {
-        const childPaths = findParentPaths(item.children, currentPath, itemPath);
+        const childPaths = findParentPaths(item.children, currentActiveHref, itemPath);
         if (childPaths.length > 0 || item.children.some(child => isPathMatch(child.href))) {
           paths.push(itemPath);
           paths.push(...childPaths);
@@ -508,7 +542,7 @@ export default function Sidebar({ sidebarOpen, mobileMenuOpen, setMobileMenuOpen
 
   // Open parent menus based on current pathname on mount and pathname change
   useEffect(() => {
-    const parentPaths = findParentPaths(filteredNavigation, pathname);
+    const parentPaths = findParentPaths(filteredNavigation, activeHref);
     if (parentPaths.length === 0) {
       return;
     }
@@ -524,7 +558,7 @@ export default function Sidebar({ sidebarOpen, mobileMenuOpen, setMobileMenuOpen
       lastAutoExpandedPath.current = pathname;
       return new Set(parentPaths);
     });
-  }, [pathname, filteredNavigation]);
+  }, [pathname, activeHref, filteredNavigation]);
 
   return (
     <>
@@ -581,7 +615,7 @@ export default function Sidebar({ sidebarOpen, mobileMenuOpen, setMobileMenuOpen
                 key={item.name}
                 item={item}
                 sidebarOpen={sidebarOpen}
-                pathname={pathname}
+                activeHref={activeHref}
                 setMobileMenuOpen={setMobileMenuOpen}
                 openItems={openItems}
                 setOpenItems={setOpenItems}

@@ -478,7 +478,7 @@ export default function StockAddPage() {
               </span>
             </div>
             <div className="border border-gray-300 dark:border-gray-600 rounded-md overflow-hidden">
-              <div className="overflow-x-auto max-h-80 overflow-y-auto">
+              <div className="overflow-x-auto min-h-[500px] max-h-[70vh] overflow-y-auto">
                 <table className="w-full text-sm">
                   <thead className="bg-gray-100 dark:bg-gray-700 sticky top-0 z-10">
                     <tr>

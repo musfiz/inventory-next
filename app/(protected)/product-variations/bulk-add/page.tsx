@@ -197,9 +197,27 @@ export default function BulkVariationAddPage() {
     let hasErrors = false;
     const newErrors: Record<string, string[]> = {};
 
+    const skuToProductIds: Record<string, string[]> = {};
+    variationRows.forEach(row => {
+      const normalizedSku = row.sku.trim().toLowerCase();
+      if (!normalizedSku) return;
+      if (!skuToProductIds[normalizedSku]) {
+        skuToProductIds[normalizedSku] = [];
+      }
+      skuToProductIds[normalizedSku].push(row.productId);
+    });
+
+    const duplicateProductIds = new Set<string>();
+    Object.values(skuToProductIds).forEach(productIds => {
+      if (productIds.length > 1) {
+        productIds.forEach(pid => duplicateProductIds.add(pid));
+      }
+    });
+
     variationRows.forEach(row => {
       const rowErrors: string[] = [];
       if (!row.sku.trim()) rowErrors.push('SKU is required');
+      if (duplicateProductIds.has(row.productId)) rowErrors.push('Duplicate SKU found in request');
       if (!row.costPrice || parseFloat(row.costPrice) <= 0) rowErrors.push('Cost price must be greater than 0');
       if (!row.sellingPrice || parseFloat(row.sellingPrice) <= 0) rowErrors.push('Selling price must be greater than 0');
       if (rowErrors.length > 0) {
@@ -252,6 +270,21 @@ export default function BulkVariationAddPage() {
     } catch (error: any) {
       const msg = error?.response?.data?.message || 'Failed to create variations';
       notify.error(msg);
+      const bulkErrors = error?.response?.data?.data?.errors;
+      if (Array.isArray(bulkErrors)) {
+        const rowErrors: Record<string, string[]> = {};
+        bulkErrors.forEach((err: any) => {
+          const pid = String(err.product_id ?? '');
+          if (!pid) return;
+          if (!rowErrors[pid]) {
+            rowErrors[pid] = [];
+          }
+          rowErrors[pid].push(err.message || 'Validation failed');
+        });
+        if (Object.keys(rowErrors).length > 0) {
+          setErrors(rowErrors);
+        }
+      }
       if (error?.response?.data?.errors) {
         setErrors(error.response.data.errors);
       }

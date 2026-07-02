@@ -155,10 +155,6 @@ export default function POSSalesPage() {
     };
   }, []);
 
-  useEffect(() => {
-    loadCategories();
-  }, []);
-
   // Session gate — runs after auth is hydrated
   useEffect(() => {
     if (!isHydrated) return;
@@ -218,6 +214,16 @@ export default function POSSalesPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isHydrated, isSuperAdmin]);
 
+  // Reload categories when tenant context changes (tenant determines business type)
+  // Only fires when activeTenant has a valid id to avoid a race where the
+  // initial mount (activeTenant=null) sends an unfiltered request that
+  // overwrites the later business-type-filtered response.
+  useEffect(() => {
+    if (!activeTenant?.id) return;
+    loadCategories(activeTenant.id);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeTenant]);
+
   // Debounced server-side search: fires 400ms after the user stops typing
   useEffect(() => {
     if (!hasMountedRef.current) {
@@ -238,9 +244,9 @@ export default function POSSalesPage() {
 
   // ── Data Loading ────────────────────────────────────────────────────────────
 
-  const loadCategories = async () => {
+  const loadCategories = async (tenantId?: string | number) => {
     try {
-      const cats = await posService.getCategories();
+      const cats = await posService.getCategories(tenantId);
       setCategories(cats || []);
     } catch {
       // categories are non-critical, fail silently
