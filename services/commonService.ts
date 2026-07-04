@@ -51,7 +51,7 @@ class CommonService {
    * Get units for dropdown (simplified)
    * GET /api/v1/dropdown/unit
    */
-  async getProductsForDropdown(params?: { search?: string }): Promise<Unit[]> {
+  async getProductsForDropdown(params?: { search?: string; tenant_id?: number }): Promise<any[]> {
     const response = await apiClient.get<{
       data: Unit[];
     }>('/api/v1/dropdown/product', {
@@ -116,7 +116,7 @@ class CommonService {
    */
   async getVariationsByProduct(
     productId: string,
-    params?: { search?: string; warehouse_id?: number; is_brand?: boolean }
+    params?: { search?: string; warehouse_id?: number; is_brand?: boolean; is_category?: boolean }
   ): Promise<any[]> {
     const response = await apiClient.get<{
       data: any[];
