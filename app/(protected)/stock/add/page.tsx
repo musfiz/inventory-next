@@ -92,8 +92,31 @@ export default function StockAddPage() {
     const list = await commonService.getProductsForDropdown({ search: input, tenant_id }).catch(() => []);
     return (list || []).map((p: any) => ({
       value: p.id,
-      label: p.category?.name ? `${p.name} - ${p.category.name}${p.brand?.name ? ` / ${p.brand.name}` : ''}` : p.name,
+      label: p.name,
+      _product: p, // attach full product data for custom formatting
     }));
+  };
+
+  // Custom product option formatter - show product name + category/brand in dropdown, only name when selected
+  const formatProductOption = (option: any, context: any) => {
+    const p = option._product || option;
+    // Show only product name when selected (in input), show full format in dropdown
+    const isSelectedValue = context === 'value' || context === 'aria';
+    if (isSelectedValue) {
+      return <span className="text-gray-800 font-medium">{p.name}</span>;
+    }
+    return (
+      <div className="flex flex-col">
+        <span className="font-medium text-gray-900 dark:text-gray-100">{p.name}</span>
+        {(p.category?.name || p.brand?.name) && (
+          <span className="text-xs text-gray-500 dark:text-gray-400">
+            {p.category?.name && <span className="text-purple-600 dark:text-purple-400">{p.category.name}</span>}
+            {p.category?.name && p.brand?.name && <span className="mx-1">/</span>}
+            {p.brand?.name && <span className="text-cyan-600 dark:text-cyan-400">{p.brand.name}</span>}
+          </span>
+        )}
+      </div>
+    );
   };
 
   const loadWarehouseOptions = async (input: string) => {
@@ -133,7 +156,8 @@ export default function StockAddPage() {
       const list = await commonService.getProductsForDropdown({ tenant_id }).catch(() => []);
       setDefaultProductOptions((list || []).map((p: any) => ({
         value: p.id,
-        label: p.category?.name ? `${p.name} - ${p.category.name}${p.brand?.name ? ` / ${p.brand.name}` : ''}` : p.name,
+        label: p.name,
+        _product: p,
       })));
       setIsLoading(false);
     };
@@ -460,6 +484,7 @@ export default function StockAddPage() {
                   className="text-sm"
                   isInvalid={!!formErrors.product_id}
                   isDisabled={!canSelectProduct()}
+                  formatOptionLabel={formatProductOption}
                 />
               </div>
               {selectedProduct && (
