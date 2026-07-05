@@ -13,6 +13,7 @@ import CustomSelect from '@/components/ui/custom-select';
 import BarcodeStickerPrint from '@/components/print/barcode/BarcodeStickerPrint';
 import { useRouter } from 'next/navigation';
 import { usePermissions } from '@/hooks/use-permissions';
+import { useAuthStore } from '@/stores/auth-store';
 
 const BARCODE_TYPES = [
   { value: 'EAN13', label: 'EAN-13' },
@@ -22,7 +23,9 @@ const BARCODE_TYPES = [
 
 export default function ProductBarcodesPage() {
   const router = useRouter();
-  const { hasPermission, isHydrated } = usePermissions();
+  const { hasPermission, isHydrated, isSuperAdmin } = usePermissions();
+  const user = useAuthStore(state => state.user);
+  const tenantBusinessTypeId = user?.tenant?.business_type?.id ?? null;
 
   useEffect(() => {
     if (isHydrated && !hasPermission('view-product-barcode')) {
@@ -48,9 +51,12 @@ export default function ProductBarcodesPage() {
     inputValue: string
   ): Promise<{ value: string; label: string }[]> => {
     try {
-      const params: { search?: string } = {};
+      const params: { search?: string; tenant_id?: number } = {};
       if (inputValue && inputValue.trim()) {
         params.search = inputValue.trim();
+      }
+      if (!isSuperAdmin && tenantBusinessTypeId) {
+        params.tenant_id = tenantBusinessTypeId;
       }
 
       const products = await commonService.getProductsForDropdown(params);
@@ -252,6 +258,9 @@ export default function ProductBarcodesPage() {
   // Build API endpoint with filters
   const buildApiEndpoint = () => {
     const params = new URLSearchParams();
+    if (!isSuperAdmin && tenantBusinessTypeId) {
+      params.append('tenant_id', String(tenantBusinessTypeId));
+    }
     const queryString = params.toString();
     return `product-barcodes${queryString ? `?${queryString}` : ''}`;
   };

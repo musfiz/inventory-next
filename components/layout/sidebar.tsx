@@ -174,8 +174,8 @@ const navigation: NavigationItem[] = [
     permissions: ['view-customer', 'view-sales', 'create-sales', 'view-sales-return', 'view-payment'],
     children: [
       { name: 'Customer', href: '/customers', icon: MdSupervisedUserCircle, permission: 'view-customer' },
-      { name: 'Sales Orders', href: '/sales-orders', icon: BsReceiptCutoff, permission: 'view-sales' },
-      { name: 'Add Sales Order', href: '/sales-orders/add', icon: MdOutlinePostAdd, permission: 'create-sales' },
+      { name: 'Sales Orders', href: '/sales-orders', icon: BsReceiptCutoff, permission: 'view-sales-order' },
+      { name: 'Add Sales Order', href: '/sales-orders/add', icon: MdOutlinePostAdd, permission: 'create-sales-order' },
       { name: 'Sales Return', href: '/sales-return', icon: MdOutlineAssignmentReturn, permission: 'view-sales-return' },
       { name: 'Payments List', href: '/payments', icon: MdPayment, permission: 'view-payment' },
     ],

@@ -11,6 +11,7 @@ import { productImageService } from '@/services';
 import { notify, confirm } from '@/lib/notifications';
 import { ProductImage } from '@/types/api.types';
 import { usePermissions } from '@/hooks/use-permissions';
+import { useAuthStore } from '@/stores/auth-store';
 
 /**
  * Product Images Management Page
@@ -20,7 +21,9 @@ export default function ProductImagesPage() {
   const searchParams = useSearchParams();
   const router = useRouter();
   const productId = searchParams.get('product_id');
-  const { hasPermission, isHydrated } = usePermissions();
+  const { hasPermission, isHydrated, isSuperAdmin } = usePermissions();
+  const user = useAuthStore(state => state.user);
+  const tenantBusinessTypeId = user?.tenant?.business_type?.id ?? null;
   const [showAddForm, setShowAddForm] = useState(false);
   const [refreshKey, setRefreshKey] = useState(0);
 
@@ -93,7 +96,14 @@ export default function ProductImagesPage() {
     setShowAddForm(false);
   };
 
-  const apiEndpoint = 'products/images';
+  const apiEndpoint = (() => {
+    const params = new URLSearchParams();
+    if (!isSuperAdmin && tenantBusinessTypeId) {
+      params.append('tenant_id', String(tenantBusinessTypeId));
+    }
+    const queryString = params.toString();
+    return `products/images${queryString ? `?${queryString}` : ''}`;
+  })();
 
   return (
     <div className="space-y-1">
