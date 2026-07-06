@@ -51,12 +51,12 @@ export default function ProductBarcodesPage() {
     inputValue: string
   ): Promise<{ value: string; label: string }[]> => {
     try {
-      const params: { search?: string; tenant_id?: number } = {};
+      const params: { search?: string; business_type_id?: number } = {};
       if (inputValue && inputValue.trim()) {
         params.search = inputValue.trim();
       }
       if (!isSuperAdmin && tenantBusinessTypeId) {
-        params.tenant_id = tenantBusinessTypeId;
+        params.business_type_id = tenantBusinessTypeId;
       }
 
       const products = await commonService.getProductsForDropdown(params);
@@ -259,7 +259,7 @@ export default function ProductBarcodesPage() {
   const buildApiEndpoint = () => {
     const params = new URLSearchParams();
     if (!isSuperAdmin && tenantBusinessTypeId) {
-      params.append('tenant_id', String(tenantBusinessTypeId));
+      params.append('business_type_id', String(tenantBusinessTypeId));
     }
     const queryString = params.toString();
     return `product-barcodes${queryString ? `?${queryString}` : ''}`;

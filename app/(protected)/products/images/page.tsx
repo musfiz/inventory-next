@@ -99,7 +99,7 @@ export default function ProductImagesPage() {
   const apiEndpoint = (() => {
     const params = new URLSearchParams();
     if (!isSuperAdmin && tenantBusinessTypeId) {
-      params.append('tenant_id', String(tenantBusinessTypeId));
+      params.append('business_type_id', String(tenantBusinessTypeId));
     }
     const queryString = params.toString();
     return `products/images${queryString ? `?${queryString}` : ''}`;
