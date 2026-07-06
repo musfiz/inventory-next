@@ -1,5 +1,6 @@
 'use client';
 
+import React from 'react';
 import Select, { StylesConfig, ThemeConfig } from 'react-select';
 import AsyncSelect from 'react-select/async';
 
@@ -22,6 +23,7 @@ interface CustomSelectProps {
   isInvalid?: boolean;
   autoFocus?: boolean;
   isClearable?: boolean;
+  formatOptionLabel?: (option: SelectOption, context: any) => React.ReactNode;
 }
 
 const customStyles = (isInvalid?: boolean): StylesConfig<SelectOption, false> => ({
@@ -127,6 +129,7 @@ export default function CustomSelect({
   isInvalid = false,
   autoFocus = false,
   isClearable = false,
+  formatOptionLabel,
 }: CustomSelectProps) {
   const styles = customStyles(isInvalid);
 
@@ -151,6 +154,7 @@ export default function CustomSelect({
         menuPortalTarget={typeof document !== 'undefined' ? document.body : undefined}
         menuPosition="fixed"
         isClearable={isClearable}
+        formatOptionLabel={formatOptionLabel}
       />
     );
   }
@@ -172,6 +176,7 @@ export default function CustomSelect({
       menuPortalTarget={typeof document !== 'undefined' ? document.body : undefined}
       menuPosition="fixed"
       isClearable={isClearable}
+      formatOptionLabel={formatOptionLabel}
     />
   );
 }
