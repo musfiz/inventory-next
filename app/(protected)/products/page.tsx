@@ -250,7 +250,7 @@ export default function ProductsPage() {
             <button
               className="p-1 text-blue-600 hover:text-blue-900 dark:text-blue-400 dark:hover:text-blue-300 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded cursor-pointer"
               title="Edit"
-              onClick={() => router.push(`/products/${row.original.uuid || row.original.id}/edit`)}
+              onClick={() => router.push(`/products/edit?id=${row.original.uuid || row.original.id}`)}
             >
               <Edit className="w-3.5 h-3.5" />
             </button>

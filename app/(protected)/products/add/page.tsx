@@ -46,7 +46,7 @@ export default function AddProductPageWrapper() {
 export function ProductFormPage({ editRef }: { editRef?: string }) {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const editId = editRef || searchParams?.get('edit') || searchParams?.get('uuid');
+  const editId = editRef || searchParams?.get('id') || searchParams?.get('edit') || searchParams?.get('uuid');
   const isEditMode = Boolean(editId);
   const user = useAuthStore(state => state.user);
   const { hasPermission, isHydrated } = usePermissions();

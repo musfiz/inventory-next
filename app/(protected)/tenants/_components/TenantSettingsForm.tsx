@@ -2,15 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
-import {
-  ArrowLeft,
-  Barcode,
-  Printer,
-  Settings,
-  Store,
-  Monitor,
-  CheckSquare,
-} from 'lucide-react';
+import { ArrowLeft, Barcode, Printer, Settings, Store, Monitor, CheckSquare } from 'lucide-react';
 import { notify } from '@/lib/notifications';
 import { tenantService } from '@/services/tenantService';
 import { GiSave } from 'react-icons/gi';
@@ -63,7 +55,7 @@ const EMPTY_FORM: TenantSettingsFormData = {
   barcode_paper_size: '80mm',
 };
 
-export default function TenantSettingsPage() {
+export default function TenantSettingsPage({ tenantId: propTenantId }: { tenantId?: string } = {}) {
   const params = useParams();
   const router = useRouter();
   const { isSuperAdmin, isHydrated } = usePermissions();
@@ -74,7 +66,7 @@ export default function TenantSettingsPage() {
     }
   }, [isSuperAdmin, isHydrated, router]);
 
-  const tenantId = params.id as string;
+  const tenantId = propTenantId || (params.id as string);
 
   const [isLoading, setIsLoading] = useState(false);
   const [isFetching, setIsFetching] = useState(true);
@@ -86,7 +78,12 @@ export default function TenantSettingsPage() {
       setIsFetching(true);
       try {
         const data = await tenantService.getTenantSettings(tenantId);
-        setFormData({ ...EMPTY_FORM, ...data });
+        setFormData({
+          ...EMPTY_FORM,
+          ...data,
+          store_notification_email: data?.store_notification_email ?? '',
+          logo_url: data?.logo_url ?? '',
+        });
       } catch (error: any) {
         notify.error(
           error.response?.data?.message || 'Failed to load settings'
