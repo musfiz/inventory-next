@@ -112,6 +112,105 @@ export interface FailedJournalReport {
   error_breakdown?: { error_type: string; count: number }[];
 }
 
+// ── Stock Aging ─────────────────────────────────────────────────────────────
+
+export interface StockAgingRow {
+  product_name: string;
+  variation_name: string | null;
+  sku: string;
+  warehouse_name: string;
+  quantity: number;
+  last_received_date: string | null;
+  age_days: number;
+  bucket: '0_30' | '31_60' | '61_90' | '90_plus';
+  value: number;
+}
+
+export interface StockAgingReport {
+  data: StockAgingRow[];
+  summary: {
+    total_value_0_30: number;
+    total_value_31_60: number;
+    total_value_61_90: number;
+    total_value_90_plus: number;
+    count_0_30: number;
+    count_31_60: number;
+    count_61_90: number;
+    count_90_plus: number;
+  };
+}
+
+// ── ABC Analysis ────────────────────────────────────────────────────────────
+
+export interface AbcAnalysisRow {
+  rank: number;
+  product_name: string;
+  variation_name: string | null;
+  sku: string;
+  revenue: number;
+  quantity: number;
+  cumulative_pct: number;
+  class: 'A' | 'B' | 'C';
+}
+
+export interface AbcAnalysisReport {
+  data: AbcAnalysisRow[];
+  summary: {
+    a_count: number;
+    a_value: number;
+    b_count: number;
+    b_value: number;
+    c_count: number;
+    c_value: number;
+  };
+}
+
+// ── Dead Stock ──────────────────────────────────────────────────────────────
+
+export interface DeadStockRow {
+  product_name: string;
+  variation_name: string | null;
+  sku: string;
+  warehouse_name: string;
+  quantity: number;
+  unit_cost: number;
+  total_value: number;
+  last_sale_date: string | null;
+  days_since_last_sale: number;
+}
+
+export interface DeadStockReport {
+  data: DeadStockRow[];
+  summary: {
+    total_value: number;
+    total_skus: number;
+  };
+}
+
+// ── Stock Adjustment ────────────────────────────────────────────────────────
+
+export interface StockAdjustmentRow {
+  date: string;
+  product_name: string;
+  variation_name: string | null;
+  sku: string;
+  warehouse_name: string;
+  adjustment_type: string;
+  qty_change: number;
+  value: number;
+  reason: string | null;
+  approved_by: string | null;
+}
+
+export interface StockAdjustmentReport {
+  data: StockAdjustmentRow[];
+  summary: {
+    total_adjustment_value: number;
+    total_damage_value: number;
+    total_expiry_value: number;
+  };
+}
+
 // ── Inventory Report Types ──────────────────────────────────────────────────
 
 export interface StockValuationRow {
@@ -237,6 +336,70 @@ export interface StockStatusReport {
   };
 }
 
+// ── Sales by Category ───────────────────────────────────────────────────────
+
+export interface SalesByCategoryRow {
+  category_name: string;
+  product_count: number;
+  units_sold: number;
+  revenue: number;
+  cogs: number;
+  gross_profit: number;
+  margin_pct: number;
+  revenue_share_pct: number;
+}
+
+export interface SalesByCategoryReport {
+  data: SalesByCategoryRow[];
+  summary: {
+    total_revenue: number;
+    total_profit: number;
+  };
+}
+
+// ── Profit Margin ───────────────────────────────────────────────────────────
+
+export interface ProfitMarginRow {
+  group_name: string;
+  revenue: number;
+  cogs: number;
+  gross_profit: number;
+  margin_pct: number;
+  units_sold: number;
+  prev_revenue?: number;
+  prev_margin_pct?: number;
+}
+
+export interface ProfitMarginReport {
+  data: ProfitMarginRow[];
+  summary: {
+    total_gross_profit: number;
+    avg_margin: number;
+    items_below_target: number;
+  };
+}
+
+// ── Return Analysis ─────────────────────────────────────────────────────────
+
+export interface ReturnAnalysisRow {
+  product_name: string;
+  variation_name: string | null;
+  units_sold: number;
+  units_returned: number;
+  return_rate_pct: number;
+  refund_amount: number;
+  top_reason: string | null;
+}
+
+export interface ReturnAnalysisReport {
+  data: ReturnAnalysisRow[];
+  summary: {
+    total_returns: number;
+    avg_return_rate: number;
+    total_refund_amount: number;
+  };
+}
+
 // ── Sales Report Types ──────────────────────────────────────────────────────
 
 export interface SalesByProductRow {
@@ -304,6 +467,92 @@ export interface SalesTrendReport {
   };
 }
 
+// ── Cashier Performance ─────────────────────────────────────────────────────
+
+export interface CashierPerformanceRow {
+  cashier_name: string;
+  register_name: string;
+  sessions: number;
+  sale_count: number;
+  total_sales: number;
+  refund_count: number;
+  refund_amount: number;
+  avg_sale: number;
+  cash_variance: number;
+  items_per_sale: number;
+}
+
+export interface CashierPerformanceReport {
+  data: CashierPerformanceRow[];
+  summary: {
+    top_performer: string;
+    total_sales: number;
+    avg_variance: number;
+  };
+}
+
+// ── Payment Breakdown ───────────────────────────────────────────────────────
+
+export interface PaymentBreakdownRow {
+  payment_method: string;
+  transaction_count: number;
+  total_amount: number;
+  processing_fees: number;
+  net_amount: number;
+  pct_of_total: number;
+}
+
+export interface PaymentBreakdownReport {
+  data: PaymentBreakdownRow[];
+  summary: {
+    total_collected: number;
+    cash_pct: number;
+    digital_pct: number;
+  };
+}
+
+// ── POS Refund Summary ──────────────────────────────────────────────────────
+
+export interface PosRefundSummaryRow {
+  refund_number: string;
+  date: string;
+  original_order: string;
+  customer_name: string | null;
+  reason: string;
+  refund_method: string;
+  amount: number;
+  status: string;
+  approved_by: string | null;
+}
+
+export interface PosRefundSummaryReport {
+  data: PosRefundSummaryRow[];
+  summary: {
+    total_refunds: number;
+    refund_rate: number;
+    by_reason: Record<string, number>;
+  };
+}
+
+// ── Tax Return ──────────────────────────────────────────────────────────────
+
+export interface TaxReturnRow {
+  tax_type: string;
+  taxable_amount: number;
+  tax_collected: number;
+  tax_paid: number;
+  net_liability: number;
+}
+
+export interface TaxReturnReport {
+  data: TaxReturnRow[];
+  summary: {
+    total_tax_collected: number;
+    total_tax_paid: number;
+    net_tax_due: number;
+  };
+}
+
 // ── POS Report Types ────────────────────────────────────────────────────────
 
 export interface PosDailySalesRow {
@@ -356,6 +605,70 @@ export interface PosSessionSummaryReport {
   variance: number;
 }
 
+// ── Supplier Performance ────────────────────────────────────────────────────
+
+export interface SupplierPerformanceRow {
+  supplier_name: string;
+  total_pos: number;
+  on_time_delivery_pct: number;
+  avg_lead_time_days: number;
+  total_purchase_value: number;
+  return_rate_pct: number;
+  quality_score: number | null;
+}
+
+export interface SupplierPerformanceReport {
+  data: SupplierPerformanceRow[];
+  summary: {
+    avg_on_time_rate: number;
+    avg_lead_time: number;
+    best_supplier: string;
+  };
+}
+
+// ── Purchase by Supplier ────────────────────────────────────────────────────
+
+export interface PurchaseBySupplierRow {
+  supplier_name: string;
+  po_count: number;
+  total_items: number;
+  total_quantity: number;
+  total_value: number;
+  total_paid: number;
+  total_due: number;
+}
+
+export interface PurchaseBySupplierReport {
+  data: PurchaseBySupplierRow[];
+  summary: {
+    total_spend: number;
+    top_supplier: string;
+  };
+}
+
+// ── GRN Register ────────────────────────────────────────────────────────────
+
+export interface GrnRegisterRow {
+  grn_date: string;
+  po_number: string;
+  supplier_name: string;
+  warehouse_name: string;
+  product_name: string;
+  variation_name: string | null;
+  qty_received: number;
+  unit_cost: number;
+  total_cost: number;
+  received_by: string | null;
+}
+
+export interface GrnRegisterReport {
+  data: GrnRegisterRow[];
+  summary: {
+    total_receipts: number;
+    total_value: number;
+  };
+}
+
 // ── Purchase Report Types ───────────────────────────────────────────────────
 
 export interface PoSummaryRow {
@@ -383,6 +696,28 @@ export interface PoSummaryReport {
   };
 }
 
+// ── Customer Profitability ──────────────────────────────────────────────────
+
+export interface CustomerProfitabilityRow {
+  customer_name: string;
+  revenue: number;
+  cogs: number;
+  gross_profit: number;
+  margin_pct: number;
+  order_count: number;
+  returns: number;
+  net_profit: number;
+}
+
+export interface CustomerProfitabilityReport {
+  data: CustomerProfitabilityRow[];
+  summary: {
+    top_customer: string;
+    avg_margin: number;
+    total_profit: number;
+  };
+}
+
 // ── Customer Report Types ───────────────────────────────────────────────────
 
 export interface CustomerAgingRow {
@@ -406,6 +741,49 @@ export interface CustomerAgingReport {
   };
 }
 
+// ── Supplier Statement ──────────────────────────────────────────────────────
+
+export interface SupplierStatementRow {
+  date: string;
+  document_number: string;
+  type: string;
+  debit: number;
+  credit: number;
+  balance: number;
+}
+
+export interface SupplierStatementReport {
+  data: SupplierStatementRow[];
+  summary: {
+    opening_balance: number;
+    closing_balance: number;
+    total_purchased: number;
+    total_paid: number;
+  };
+}
+
+// ── Supplier Scorecard ──────────────────────────────────────────────────────
+
+export interface SupplierScorecardRow {
+  supplier_name: string;
+  total_spend: number;
+  po_count: number;
+  on_time_pct: number;
+  return_rate_pct: number;
+  price_competitiveness: number | null;
+  lead_time_days: number;
+  overall_score: number;
+}
+
+export interface SupplierScorecardReport {
+  data: SupplierScorecardRow[];
+  summary: {
+    best_supplier: string;
+    worst_supplier: string;
+    avg_score: number;
+  };
+}
+
 // ── Supplier Report Types ───────────────────────────────────────────────────
 
 export interface SupplierAgingRow {
@@ -424,6 +802,30 @@ export interface SupplierAgingReport {
   summary: {
     total_payable: number;
     overdue_supplier_count: number;
+  };
+}
+
+// ── Product Profitability ───────────────────────────────────────────────────
+
+export interface ProductProfitabilityRow {
+  product_name: string;
+  variation_name: string | null;
+  sku: string;
+  cost_price: number;
+  selling_price: number;
+  mrp: number;
+  margin: number;
+  margin_pct: number;
+  units_sold: number;
+  total_profit: number;
+}
+
+export interface ProductProfitabilityReport {
+  data: ProductProfitabilityRow[];
+  summary: {
+    avg_margin: number;
+    products_below_cost: number;
+    highest_margin_product: string;
   };
 }
 
