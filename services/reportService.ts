@@ -28,16 +28,18 @@ class ReportService {
 
   // ── Accounting (existing endpoints) ───────────────────────────────────────
 
-  async receivables(params: { as_of_date: string }): Promise<ReceivablesReport> {
+  async receivables(params: { as_of_date: string; tenant_id?: string }): Promise<ReceivablesReport> {
+    const { tenant_id, ...rest } = params;
     const response = await apiClient.get<ApiResponse<ReceivablesReport>>(`${this.base}/receivables`, {
-      params,
+      params: { ...rest, ...(tenant_id ? { tenant_id } : {}) },
     });
     return response.data.data;
   }
 
-  async payables(params: { as_of_date: string }): Promise<PayablesReport> {
+  async payables(params: { as_of_date: string; tenant_id?: string }): Promise<PayablesReport> {
+    const { tenant_id, ...rest } = params;
     const response = await apiClient.get<ApiResponse<PayablesReport>>(`${this.base}/payables`, {
-      params,
+      params: { ...rest, ...(tenant_id ? { tenant_id } : {}) },
     });
     return response.data.data;
   }
@@ -47,10 +49,12 @@ class ReportService {
     reference_type?: string;
     page?: number;
     per_page?: number;
+    tenant_id?: string;
   }): Promise<FailedJournalReport> {
+    const { tenant_id, ...rest } = params ?? {};
     const response = await apiClient.get<ApiResponse<FailedJournalReport>>(
       '/api/v1/admin/failed-journal-entries',
-      { params },
+      { params: { ...rest, ...(tenant_id ? { tenant_id } : {}) } },
     );
     return response.data.data;
   }
@@ -63,10 +67,12 @@ class ReportService {
     costing_method?: 'fifo' | 'lifo' | 'weighted_avg' | 'standard';
     category_id?: number | null;
     brand_id?: number | null;
+    tenant_id?: string;
   }): Promise<StockValuationReport> {
+    const { tenant_id, ...rest } = params;
     const response = await apiClient.get<ApiResponse<StockValuationReport>>(
       `${this.base}/inventory/stock-valuation`,
-      { params },
+      { params: { ...rest, ...(tenant_id ? { tenant_id } : {}) } },
     );
     return response.data.data;
   }
@@ -75,19 +81,23 @@ class ReportService {
     warehouse_id?: number | null;
     category_id?: number | null;
     severity?: 'critical' | 'low' | 'all';
+    tenant_id?: string;
   }): Promise<ReorderReport> {
+    const { tenant_id, ...rest } = params;
     const response = await apiClient.get<ApiResponse<ReorderReport>>(`${this.base}/inventory/reorder`, {
-      params,
+      params: { ...rest, ...(tenant_id ? { tenant_id } : {}) },
     });
     return response.data.data;
   }
 
   async lowStockReport(params: {
     warehouse_id?: number | null;
+    tenant_id?: string;
   }): Promise<GenericReportResponse> {
+    const { tenant_id, ...rest } = params;
     const response = await apiClient.get<ApiResponse<GenericReportResponse>>(
       `${this.base}/inventory/low-stock`,
-      { params },
+      { params: { ...rest, ...(tenant_id ? { tenant_id } : {}) } },
     );
     return response.data.data;
   }
@@ -100,10 +110,12 @@ class ReportService {
     start_date: string;
     end_date: string;
     reference_type?: string;
+    tenant_id?: string;
   }): Promise<StockMovementReport> {
+    const { tenant_id, ...rest } = params;
     const response = await apiClient.get<ApiResponse<StockMovementReport>>(
       `${this.base}/inventory/stock-movement`,
-      { params },
+      { params: { ...rest, ...(tenant_id ? { tenant_id } : {}) } },
     );
     return response.data.data;
   }
@@ -113,10 +125,12 @@ class ReportService {
     adjustment_type?: string;
     start_date: string;
     end_date: string;
+    tenant_id?: string;
   }): Promise<GenericReportResponse> {
+    const { tenant_id, ...rest } = params;
     const response = await apiClient.get<ApiResponse<GenericReportResponse>>(
       `${this.base}/inventory/stock-adjustment`,
-      { params },
+      { params: { ...rest, ...(tenant_id ? { tenant_id } : {}) } },
     );
     return response.data.data;
   }
@@ -125,10 +139,12 @@ class ReportService {
     warehouse_id?: number | null;
     urgency?: 'expired' | '7days' | '30days' | '60days' | 'all';
     product_id?: number | null;
+    tenant_id?: string;
   }): Promise<BatchExpiryReport> {
+    const { tenant_id, ...rest } = params;
     const response = await apiClient.get<ApiResponse<BatchExpiryReport>>(
       `${this.base}/inventory/batch-expiry`,
-      { params },
+      { params: { ...rest, ...(tenant_id ? { tenant_id } : {}) } },
     );
     return response.data.data;
   }
@@ -138,10 +154,12 @@ class ReportService {
     days_threshold?: number;
     category_id?: number | null;
     min_value?: number;
+    tenant_id?: string;
   }): Promise<GenericReportResponse> {
+    const { tenant_id, ...rest } = params;
     const response = await apiClient.get<ApiResponse<GenericReportResponse>>(
       `${this.base}/inventory/dead-stock`,
-      { params },
+      { params: { ...rest, ...(tenant_id ? { tenant_id } : {}) } },
     );
     return response.data.data;
   }
@@ -149,10 +167,12 @@ class ReportService {
   async stockAging(params: {
     warehouse_id?: number | null;
     category_id?: number | null;
+    tenant_id?: string;
   }): Promise<GenericReportResponse> {
+    const { tenant_id, ...rest } = params;
     const response = await apiClient.get<ApiResponse<GenericReportResponse>>(
       `${this.base}/inventory/stock-aging`,
-      { params },
+      { params: { ...rest, ...(tenant_id ? { tenant_id } : {}) } },
     );
     return response.data.data;
   }
@@ -162,10 +182,12 @@ class ReportService {
     end_date: string;
     metric?: 'revenue' | 'quantity' | 'profit';
     category_id?: number | null;
+    tenant_id?: string;
   }): Promise<GenericReportResponse> {
+    const { tenant_id, ...rest } = params;
     const response = await apiClient.get<ApiResponse<GenericReportResponse>>(
       `${this.base}/inventory/abc-analysis`,
-      { params },
+      { params: { ...rest, ...(tenant_id ? { tenant_id } : {}) } },
     );
     return response.data.data;
   }
@@ -175,10 +197,12 @@ class ReportService {
     start_date: string;
     end_date: string;
     category_id?: number | null;
+    tenant_id?: string;
   }): Promise<GenericReportResponse> {
+    const { tenant_id, ...rest } = params;
     const response = await apiClient.get<ApiResponse<GenericReportResponse>>(
       `${this.base}/inventory/shrinkage`,
-      { params },
+      { params: { ...rest, ...(tenant_id ? { tenant_id } : {}) } },
     );
     return response.data.data;
   }
@@ -189,10 +213,12 @@ class ReportService {
     warehouse_id?: number | null;
     category_id?: number | null;
     group_by?: 'product' | 'category' | 'brand';
+    tenant_id?: string;
   }): Promise<GenericReportResponse> {
+    const { tenant_id, ...rest } = params;
     const response = await apiClient.get<ApiResponse<GenericReportResponse>>(
       `${this.base}/inventory/turnover`,
-      { params },
+      { params: { ...rest, ...(tenant_id ? { tenant_id } : {}) } },
     );
     return response.data.data;
   }
@@ -207,10 +233,12 @@ class ReportService {
     brand_id?: number | null;
     source?: 'pos' | 'so' | 'all';
     sort_by?: 'revenue' | 'quantity' | 'profit';
+    tenant_id?: string;
   }): Promise<SalesByProductReport> {
+    const { tenant_id, ...rest } = params;
     const response = await apiClient.get<ApiResponse<SalesByProductReport>>(
       `${this.base}/sales/by-product`,
-      { params },
+      { params: { ...rest, ...(tenant_id ? { tenant_id } : {}) } },
     );
     return response.data.data;
   }
@@ -220,10 +248,12 @@ class ReportService {
     end_date: string;
     customer_type?: string;
     source?: 'pos' | 'so' | 'all';
+    tenant_id?: string;
   }): Promise<SalesByCustomerReport> {
+    const { tenant_id, ...rest } = params;
     const response = await apiClient.get<ApiResponse<SalesByCustomerReport>>(
       `${this.base}/sales/by-customer`,
-      { params },
+      { params: { ...rest, ...(tenant_id ? { tenant_id } : {}) } },
     );
     return response.data.data;
   }
@@ -233,10 +263,12 @@ class ReportService {
     end_date: string;
     warehouse_id?: number | null;
     source?: 'pos' | 'so' | 'all';
+    tenant_id?: string;
   }): Promise<GenericReportResponse> {
+    const { tenant_id, ...rest } = params;
     const response = await apiClient.get<ApiResponse<GenericReportResponse>>(
       `${this.base}/sales/by-category`,
-      { params },
+      { params: { ...rest, ...(tenant_id ? { tenant_id } : {}) } },
     );
     return response.data.data;
   }
@@ -245,10 +277,12 @@ class ReportService {
     start_date: string;
     end_date: string;
     user_id?: number | null;
+    tenant_id?: string;
   }): Promise<GenericReportResponse> {
+    const { tenant_id, ...rest } = params;
     const response = await apiClient.get<ApiResponse<GenericReportResponse>>(
       `${this.base}/sales/salesperson-performance`,
-      { params },
+      { params: { ...rest, ...(tenant_id ? { tenant_id } : {}) } },
     );
     return response.data.data;
   }
@@ -259,10 +293,12 @@ class ReportService {
     group_by?: 'product' | 'category' | 'brand' | 'customer';
     min_margin?: number;
     max_margin?: number;
+    tenant_id?: string;
   }): Promise<GenericReportResponse> {
+    const { tenant_id, ...rest } = params;
     const response = await apiClient.get<ApiResponse<GenericReportResponse>>(
       `${this.base}/sales/profit-margin`,
-      { params },
+      { params: { ...rest, ...(tenant_id ? { tenant_id } : {}) } },
     );
     return response.data.data;
   }
@@ -272,10 +308,12 @@ class ReportService {
     end_date: string;
     reason?: string;
     source?: 'sales_return' | 'pos_refund' | 'all';
+    tenant_id?: string;
   }): Promise<GenericReportResponse> {
+    const { tenant_id, ...rest } = params;
     const response = await apiClient.get<ApiResponse<GenericReportResponse>>(
       `${this.base}/sales/return-analysis`,
-      { params },
+      { params: { ...rest, ...(tenant_id ? { tenant_id } : {}) } },
     );
     return response.data.data;
   }
@@ -285,10 +323,12 @@ class ReportService {
     end_date: string;
     period?: 'daily' | 'weekly' | 'monthly';
     warehouse_id?: number | null;
+    tenant_id?: string;
   }): Promise<SalesTrendReport> {
+    const { tenant_id, ...rest } = params;
     const response = await apiClient.get<ApiResponse<SalesTrendReport>>(
       `${this.base}/sales/trend`,
-      { params },
+      { params: { ...rest, ...(tenant_id ? { tenant_id } : {}) } },
     );
     return response.data.data;
   }
@@ -302,9 +342,11 @@ class ReportService {
     warehouse_id?: number | null;
     status?: string;
     payment_status?: string;
+    tenant_id?: string;
   }): Promise<PoSummaryReport> {
+    const { tenant_id, ...rest } = params;
     const response = await apiClient.get<ApiResponse<PoSummaryReport>>(`${this.base}/purchase/po-summary`, {
-      params,
+      params: { ...rest, ...(tenant_id ? { tenant_id } : {}) },
     });
     return response.data.data;
   }
@@ -313,10 +355,12 @@ class ReportService {
     start_date: string;
     end_date: string;
     supplier_id?: number | null;
+    tenant_id?: string;
   }): Promise<GenericReportResponse> {
+    const { tenant_id, ...rest } = params;
     const response = await apiClient.get<ApiResponse<GenericReportResponse>>(
       `${this.base}/purchase/supplier-performance`,
-      { params },
+      { params: { ...rest, ...(tenant_id ? { tenant_id } : {}) } },
     );
     return response.data.data;
   }
@@ -325,10 +369,12 @@ class ReportService {
     start_date: string;
     end_date: string;
     category_id?: number | null;
+    tenant_id?: string;
   }): Promise<GenericReportResponse> {
+    const { tenant_id, ...rest } = params;
     const response = await apiClient.get<ApiResponse<GenericReportResponse>>(
       `${this.base}/purchase/by-supplier`,
-      { params },
+      { params: { ...rest, ...(tenant_id ? { tenant_id } : {}) } },
     );
     return response.data.data;
   }
@@ -338,10 +384,12 @@ class ReportService {
     end_date: string;
     supplier_id?: number | null;
     warehouse_id?: number | null;
+    tenant_id?: string;
   }): Promise<GenericReportResponse> {
+    const { tenant_id, ...rest } = params;
     const response = await apiClient.get<ApiResponse<GenericReportResponse>>(
       `${this.base}/purchase/grn-register`,
-      { params },
+      { params: { ...rest, ...(tenant_id ? { tenant_id } : {}) } },
     );
     return response.data.data;
   }
@@ -351,10 +399,12 @@ class ReportService {
     end_date: string;
     supplier_id?: number | null;
     status?: string;
+    tenant_id?: string;
   }): Promise<GenericReportResponse> {
+    const { tenant_id, ...rest } = params;
     const response = await apiClient.get<ApiResponse<GenericReportResponse>>(
       `${this.base}/purchase/purchase-return`,
-      { params },
+      { params: { ...rest, ...(tenant_id ? { tenant_id } : {}) } },
     );
     return response.data.data;
   }
@@ -366,9 +416,11 @@ class ReportService {
     register_id?: number | null;
     session_id?: number | null;
     cashier_id?: number | null;
+    tenant_id?: string;
   }): Promise<PosDailySalesReport> {
+    const { tenant_id, ...rest } = params;
     const response = await apiClient.get<ApiResponse<PosDailySalesReport>>(`${this.base}/pos/daily-sales`, {
-      params,
+      params: { ...rest, ...(tenant_id ? { tenant_id } : {}) },
     });
     return response.data.data;
   }
@@ -376,10 +428,12 @@ class ReportService {
   async posSessionSummary(params: {
     session_id?: number | null;
     date?: string;
+    tenant_id?: string;
   }): Promise<PosSessionSummaryReport> {
+    const { tenant_id, ...rest } = params;
     const response = await apiClient.get<ApiResponse<PosSessionSummaryReport>>(
       `${this.base}/pos/session-summary`,
-      { params },
+      { params: { ...rest, ...(tenant_id ? { tenant_id } : {}) } },
     );
     return response.data.data;
   }
@@ -388,10 +442,12 @@ class ReportService {
     start_date: string;
     end_date: string;
     cashier_id?: number | null;
+    tenant_id?: string;
   }): Promise<GenericReportResponse> {
+    const { tenant_id, ...rest } = params;
     const response = await apiClient.get<ApiResponse<GenericReportResponse>>(
       `${this.base}/pos/cashier-performance`,
-      { params },
+      { params: { ...rest, ...(tenant_id ? { tenant_id } : {}) } },
     );
     return response.data.data;
   }
@@ -401,9 +457,11 @@ class ReportService {
     start_date?: string;
     end_date?: string;
     register_id?: number | null;
+    tenant_id?: string;
   }): Promise<GenericReportResponse> {
+    const { tenant_id, ...rest } = params;
     const response = await apiClient.get<ApiResponse<GenericReportResponse>>(`${this.base}/pos/hourly-sales`, {
-      params,
+      params: { ...rest, ...(tenant_id ? { tenant_id } : {}) },
     });
     return response.data.data;
   }
@@ -412,10 +470,12 @@ class ReportService {
     start_date: string;
     end_date: string;
     register_id?: number | null;
+    tenant_id?: string;
   }): Promise<GenericReportResponse> {
+    const { tenant_id, ...rest } = params;
     const response = await apiClient.get<ApiResponse<GenericReportResponse>>(
       `${this.base}/pos/payment-breakdown`,
-      { params },
+      { params: { ...rest, ...(tenant_id ? { tenant_id } : {}) } },
     );
     return response.data.data;
   }
@@ -426,10 +486,12 @@ class ReportService {
     reason?: string;
     refund_method?: string;
     status?: string;
+    tenant_id?: string;
   }): Promise<GenericReportResponse> {
+    const { tenant_id, ...rest } = params;
     const response = await apiClient.get<ApiResponse<GenericReportResponse>>(
       `${this.base}/pos/refund-summary`,
-      { params },
+      { params: { ...rest, ...(tenant_id ? { tenant_id } : {}) } },
     );
     return response.data.data;
   }
@@ -439,9 +501,11 @@ class ReportService {
   async customerAging(params: {
     as_of_date: string;
     customer_type?: string;
+    tenant_id?: string;
   }): Promise<CustomerAgingReport> {
+    const { tenant_id, ...rest } = params;
     const response = await apiClient.get<ApiResponse<CustomerAgingReport>>(`${this.base}/customer/aging`, {
-      params,
+      params: { ...rest, ...(tenant_id ? { tenant_id } : {}) },
     });
     return response.data.data;
   }
@@ -450,10 +514,12 @@ class ReportService {
     start_date: string;
     end_date: string;
     customer_type?: string;
+    tenant_id?: string;
   }): Promise<GenericReportResponse> {
+    const { tenant_id, ...rest } = params;
     const response = await apiClient.get<ApiResponse<GenericReportResponse>>(
       `${this.base}/customer/profitability`,
-      { params },
+      { params: { ...rest, ...(tenant_id ? { tenant_id } : {}) } },
     );
     return response.data.data;
   }
@@ -462,9 +528,11 @@ class ReportService {
 
   async supplierAging(params: {
     as_of_date: string;
+    tenant_id?: string;
   }): Promise<SupplierAgingReport> {
+    const { tenant_id, ...rest } = params;
     const response = await apiClient.get<ApiResponse<SupplierAgingReport>>(`${this.base}/supplier/aging`, {
-      params,
+      params: { ...rest, ...(tenant_id ? { tenant_id } : {}) },
     });
     return response.data.data;
   }
@@ -473,10 +541,12 @@ class ReportService {
     supplier_id: number;
     start_date: string;
     end_date: string;
+    tenant_id?: string;
   }): Promise<GenericReportResponse> {
+    const { tenant_id, ...rest } = params;
     const response = await apiClient.get<ApiResponse<GenericReportResponse>>(
       `${this.base}/supplier/statement`,
-      { params },
+      { params: { ...rest, ...(tenant_id ? { tenant_id } : {}) } },
     );
     return response.data.data;
   }
@@ -485,10 +555,12 @@ class ReportService {
     start_date: string;
     end_date: string;
     supplier_id?: number | null;
+    tenant_id?: string;
   }): Promise<GenericReportResponse> {
+    const { tenant_id, ...rest } = params;
     const response = await apiClient.get<ApiResponse<GenericReportResponse>>(
       `${this.base}/supplier/scorecard`,
-      { params },
+      { params: { ...rest, ...(tenant_id ? { tenant_id } : {}) } },
     );
     return response.data.data;
   }
@@ -500,10 +572,12 @@ class ReportService {
     brand_id?: number | null;
     min_margin?: number;
     max_margin?: number;
+    tenant_id?: string;
   }): Promise<GenericReportResponse> {
+    const { tenant_id, ...rest } = params;
     const response = await apiClient.get<ApiResponse<GenericReportResponse>>(
       `${this.base}/product/profitability`,
-      { params },
+      { params: { ...rest, ...(tenant_id ? { tenant_id } : {}) } },
     );
     return response.data.data;
   }
@@ -513,9 +587,11 @@ class ReportService {
     brand_id?: number | null;
     price_level?: 'selling' | 'mrp' | 'dp';
     active_only?: boolean;
+    tenant_id?: string;
   }): Promise<GenericReportResponse> {
+    const { tenant_id, ...rest } = params;
     const response = await apiClient.get<ApiResponse<GenericReportResponse>>(`${this.base}/product/price-list`, {
-      params,
+      params: { ...rest, ...(tenant_id ? { tenant_id } : {}) },
     });
     return response.data.data;
   }
@@ -524,9 +600,11 @@ class ReportService {
     warehouse_id?: number | null;
     category_id?: number | null;
     stock_status?: 'in_stock' | 'low_stock' | 'out_of_stock' | 'all';
+    tenant_id?: string;
   }): Promise<StockStatusReport> {
+    const { tenant_id, ...rest } = params;
     const response = await apiClient.get<ApiResponse<StockStatusReport>>(`${this.base}/product/stock-status`, {
-      params,
+      params: { ...rest, ...(tenant_id ? { tenant_id } : {}) },
     });
     return response.data.data;
   }
@@ -536,10 +614,12 @@ class ReportService {
   async warehouseStockSummary(params: {
     warehouse_id?: number | null;
     category_id?: number | null;
+    tenant_id?: string;
   }): Promise<WarehouseStockReport> {
+    const { tenant_id, ...rest } = params;
     const response = await apiClient.get<ApiResponse<WarehouseStockReport>>(
       `${this.base}/warehouse/stock-summary`,
-      { params },
+      { params: { ...rest, ...(tenant_id ? { tenant_id } : {}) } },
     );
     return response.data.data;
   }
@@ -548,10 +628,12 @@ class ReportService {
     warehouse_id?: number | null;
     bin_type?: string;
     utilization_level?: string;
+    tenant_id?: string;
   }): Promise<GenericReportResponse> {
+    const { tenant_id, ...rest } = params;
     const response = await apiClient.get<ApiResponse<GenericReportResponse>>(
       `${this.base}/warehouse/bin-utilization`,
-      { params },
+      { params: { ...rest, ...(tenant_id ? { tenant_id } : {}) } },
     );
     return response.data.data;
   }
@@ -561,9 +643,11 @@ class ReportService {
     end_date: string;
     from_warehouse_id?: number | null;
     to_warehouse_id?: number | null;
+    tenant_id?: string;
   }): Promise<GenericReportResponse> {
+    const { tenant_id, ...rest } = params;
     const response = await apiClient.get<ApiResponse<GenericReportResponse>>(`${this.base}/warehouse/transfer`, {
-      params,
+      params: { ...rest, ...(tenant_id ? { tenant_id } : {}) },
     });
     return response.data.data;
   }
@@ -574,9 +658,11 @@ class ReportService {
     start_date: string;
     end_date: string;
     tax_type?: 'vat' | 'sd' | 'combined';
+    tenant_id?: string;
   }): Promise<GenericReportResponse> {
+    const { tenant_id, ...rest } = params;
     const response = await apiClient.get<ApiResponse<GenericReportResponse>>(`${this.base}/tax/tax-return`, {
-      params,
+      params: { ...rest, ...(tenant_id ? { tenant_id } : {}) },
     });
     return response.data.data;
   }
@@ -585,9 +671,11 @@ class ReportService {
     start_date: string;
     end_date: string;
     tax_type?: string;
+    tenant_id?: string;
   }): Promise<GenericReportResponse> {
+    const { tenant_id, ...rest } = params;
     const response = await apiClient.get<ApiResponse<GenericReportResponse>>(`${this.base}/tax/summary`, {
-      params,
+      params: { ...rest, ...(tenant_id ? { tenant_id } : {}) },
     });
     return response.data.data;
   }
@@ -600,9 +688,11 @@ class ReportService {
     user_id?: number | null;
     model_type?: string;
     action?: string;
+    tenant_id?: string;
   }): Promise<AuditLogReport> {
+    const { tenant_id, ...rest } = params;
     const response = await apiClient.get<ApiResponse<AuditLogReport>>(`${this.base}/system/audit-log`, {
-      params,
+      params: { ...rest, ...(tenant_id ? { tenant_id } : {}) },
     });
     return response.data.data;
   }
@@ -612,9 +702,11 @@ class ReportService {
     end_date: string;
     user_id?: number | null;
     subject_type?: string;
+    tenant_id?: string;
   }): Promise<GenericReportResponse> {
+    const { tenant_id, ...rest } = params;
     const response = await apiClient.get<ApiResponse<GenericReportResponse>>(`${this.base}/system/activity-log`, {
-      params,
+      params: { ...rest, ...(tenant_id ? { tenant_id } : {}) },
     });
     return response.data.data;
   }
@@ -625,9 +717,11 @@ class ReportService {
     alert_type?: string;
     priority?: string;
     status?: string;
+    tenant_id?: string;
   }): Promise<GenericReportResponse> {
+    const { tenant_id, ...rest } = params;
     const response = await apiClient.get<ApiResponse<GenericReportResponse>>(`${this.base}/system/alert-history`, {
-      params,
+      params: { ...rest, ...(tenant_id ? { tenant_id } : {}) },
     });
     return response.data.data;
   }
@@ -640,8 +734,9 @@ class ReportService {
     format: ExportFormat,
     params: Record<string, any>,
   ): Promise<Blob> {
+    const { tenant_id, ...rest } = params;
     const response = await apiClient.get(`${this.base}/${category}/${name}/export`, {
-      params: { format, ...params },
+      params: { format, ...rest, ...(tenant_id ? { tenant_id } : {}) },
       responseType: 'blob',
     });
     return response.data;

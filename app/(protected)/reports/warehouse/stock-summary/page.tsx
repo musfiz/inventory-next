@@ -2,6 +2,7 @@
 
 import { useState, useRef } from 'react';
 import { Warehouse } from 'lucide-react';
+import TenantSelect from '@/components/ui/tenant-select';
 import reportService from '@/services/reportService';
 import { formatCurrency, formatQty } from '@/lib/utils/format';
 import { exportToPDF, printReport, exportColumnsToExcel, exportColumnsToCSV } from '@/lib/utils/export';
@@ -10,24 +11,32 @@ import {
   ReportLayout, ReportFilters, FilterField, filterInputClass, filterSelectClass,
   ReportSummaryCards, ReportTable, ReportExportBar,
 } from '@/components/reports';
+import { usePermissions } from '@/hooks/use-permissions';
+import { useAuthStore } from '@/stores/auth-store';
 import type { WarehouseStockReport } from '@/types/report.types';
 import type { SummaryCard } from '@/components/reports/ReportSummaryCards';
 import type { ReportColumn } from '@/components/reports/ReportTable';
 
 export default function WarehouseStockSummaryPage() {
+  const { isSuperAdmin } = usePermissions();
+  const authUser = useAuthStore(s => s.user);
   const reportRef = useRef<HTMLDivElement>(null);
   const [data, setData] = useState<WarehouseStockReport | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [warehouseId, setWarehouseId] = useState('');
+  const [selectedTenantId, setSelectedTenantId] = useState<string>('');
 
   const generate = async () => {
     setLoading(true);
     setError(null);
     try {
-      const result = await reportService.warehouseStockSummary({
+      const params: any = {
         warehouse_id: warehouseId ? Number(warehouseId) : undefined,
-      });
+      };
+      const tenantId = isSuperAdmin ? selectedTenantId : authUser?.tenant_id;
+      if (tenantId) params.tenant_id = tenantId;
+      const result = await reportService.warehouseStockSummary(params);
       setData(result);
     } catch (err: any) {
       const msg = err?.response?.data?.message || 'Failed to generate report';
@@ -42,6 +51,7 @@ export default function WarehouseStockSummaryPage() {
     setData(null);
     setError(null);
     setWarehouseId('');
+    setSelectedTenantId('');
   };
 
   const cards: SummaryCard[] = data
@@ -77,6 +87,15 @@ export default function WarehouseStockSummaryPage() {
       icon={Warehouse}
       filters={
         <ReportFilters onApply={generate} onReset={reset} loading={loading}>
+          {isSuperAdmin && (
+            <FilterField label="Tenant">
+              <TenantSelect
+                value={selectedTenantId}
+                onChange={(tid) => setSelectedTenantId(tid || '')}
+                placeholder="All Tenants"
+              />
+            </FilterField>
+          )}
           <FilterField label="Warehouse ID (optional)">
             <input
               type="number"

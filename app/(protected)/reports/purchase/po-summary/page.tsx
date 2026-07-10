@@ -3,11 +3,14 @@
 import { useState, useRef } from 'react';
 import { FileBarChart } from 'lucide-react';
 import CustomDatePicker from '@/components/ui/date-picker';
+import TenantSelect from '@/components/ui/tenant-select';
 import reportService from '@/services/reportService';
 import { todayISO, firstDayOfMonthISO, formatCurrency } from '@/lib/utils/format';
 import { exportToPDF, printReport, exportColumnsToExcel, exportColumnsToCSV, type ExportColumn } from '@/lib/utils/export';
 import { notify } from '@/lib/notifications';
 import { ReportLayout, ReportFilters, FilterField, filterInputClass, filterSelectClass, ReportSummaryCards, ReportTable, ReportExportBar, type ReportColumn, type SummaryCard } from '@/components/reports';
+import { usePermissions } from '@/hooks/use-permissions';
+import { useAuthStore } from '@/stores/auth-store';
 import type { PoSummaryReport, PoSummaryRow } from '@/types/report.types';
 
 const statusColors: Record<string, string> = {
@@ -22,6 +25,8 @@ const statusColors: Record<string, string> = {
 };
 
 export default function PoSummaryPage() {
+  const { isSuperAdmin } = usePermissions();
+  const authUser = useAuthStore(s => s.user);
   const reportRef = useRef<HTMLDivElement>(null);
   const [data, setData] = useState<PoSummaryReport | null>(null);
   const [loading, setLoading] = useState(false);
@@ -29,12 +34,16 @@ export default function PoSummaryPage() {
   const [startDate, setStartDate] = useState(firstDayOfMonthISO());
   const [endDate, setEndDate] = useState(todayISO());
   const [status, setStatus] = useState('all');
+  const [selectedTenantId, setSelectedTenantId] = useState<string>('');
 
   const generate = async () => {
     setLoading(true);
     setError(null);
     try {
-      const res = await reportService.poSummary({ start_date: startDate, end_date: endDate, status: status === 'all' ? undefined : status });
+      const params: any = { start_date: startDate, end_date: endDate, status: status === 'all' ? undefined : status };
+      const tenantId = isSuperAdmin ? selectedTenantId : authUser?.tenant_id;
+      if (tenantId) params.tenant_id = tenantId;
+      const res = await reportService.poSummary(params);
       setData(res);
     } catch (e: any) {
       const msg = e?.response?.data?.message || e?.message || 'Failed to load report';
@@ -49,6 +58,7 @@ export default function PoSummaryPage() {
     setStartDate(firstDayOfMonthISO());
     setEndDate(todayISO());
     setStatus('all');
+    setSelectedTenantId('');
     setData(null);
     setError(null);
   };
@@ -91,6 +101,15 @@ export default function PoSummaryPage() {
     <ReportLayout title="PO Summary Report" icon={FileBarChart}
       filters={
         <ReportFilters onApply={generate} onReset={reset} loading={loading}>
+          {isSuperAdmin && (
+            <FilterField label="Tenant">
+              <TenantSelect
+                value={selectedTenantId}
+                onChange={(tid) => setSelectedTenantId(tid || '')}
+                placeholder="All Tenants"
+              />
+            </FilterField>
+          )}
           <FilterField label="Start Date">
             <CustomDatePicker value={startDate} onChange={setStartDate} />
           </FilterField>

@@ -38,7 +38,7 @@
 
 ## 1. Executive Summary
 
-The UIMS currently has **6 report pages** in the frontend (Trial Balance, P&L, Cash Flow, Balance Sheet, Account Ledger, Purchase List) and **8 backend report endpoints** (the 6 above plus AR Aging and AP Aging). However, a full inventory management business requires **50+ reports** across all modules — inventory, sales, procurement, POS, accounting, compliance, HR, and business-type-specific analytics.
+The UIMS currently has **45+ report pages** in the frontend (across Accounting, Inventory, Sales, Purchase, POS, Customer, Supplier, Product, Warehouse, Tax, and System modules) and **8 backend report endpoints** (Trial Balance, P&L, Cash Flow, Balance Sheet, Ledger, AR Aging, AP Aging, Customer Statement). However, a full inventory management business requires **55+ reports** across all modules — the 45+ existing plus Manufacturing, HR, Business-type-specific, and advanced reports.
 
 This document provides a complete catalog of every report needed to run a UIMS business, organized by module, with:
 - Report name, purpose, and business value
@@ -54,26 +54,76 @@ This document provides a complete catalog of every report needed to run a UIMS b
 
 | Metric | Current | Target |
 |--------|---------|--------|
-| Report pages in UI | 6 | 55+ |
+| Report pages in UI | 45+ | 55+ |
 | Backend report endpoints | 8 | 60+ |
-| Report categories | 1 (Accounting) | 14 |
+| Report categories | 10+ (all except Manufacturing, HR, Business-type) | 14 |
 | Export formats supported | 0 | PDF, Excel, CSV, Print |
 | Scheduled/automated reports | 0 | Email + Download |
+| Tenant-based filtering | 45+ pages (all reports + accounting) | All pages |
 
 ---
 
 ## 2. Current State — What Already Exists
 
-### 2.1 Frontend Report Pages (6)
+### 2.1 Frontend Report Pages (45+)
 
-| # | Report | Route | Service Method | Status |
-|---|--------|-------|---------------|--------|
-| 1 | Trial Balance | `/reports/trial-balance` | `accountService.trialBalance()` | Working |
-| 2 | Profit & Loss | `/reports/profit-loss` | `accountService.profitLoss()` | Working |
-| 3 | Cash Flow | `/reports/cash-flow` | `accountService.cashFlow()` | Working |
-| 4 | Balance Sheet | `/reports/balance-sheet` | `accountService.balanceSheet()` | Working |
-| 5 | Account Ledger | `/reports/ledger` | `accountService.ledger()` | Working |
-| 6 | Purchase List | `/reports/purchase-list` | `purchaseOrderService.list()` | Working (basic list, not a true report) |
+| # | Category | Report | Route | Service Method | Status |
+|---|----------|--------|-------|---------------|--------|
+|  1 | Accounting | Trial Balance | `/reports/trial-balance` | `accountService.trialBalance()` | Working |
+|  2 | Accounting | Profit & Loss | `/reports/profit-loss` | `accountService.profitLoss()` | Working |
+|  3 | Accounting | Cash Flow | `/reports/cash-flow` | `accountService.cashFlow()` | Working |
+|  4 | Accounting | Balance Sheet | `/reports/balance-sheet` | `accountService.balanceSheet()` | Working |
+|  5 | Accounting | Account Ledger | `/reports/ledger` | `accountService.ledger()` | Working |
+|  6 | Accounting | AR Aging | `/reports/accounting/ar-aging` | `reportService.arAging()` | Working |
+|  7 | Accounting | AP Aging | `/reports/accounting/ap-aging` | `reportService.apAging()` | Working |
+|  8 | Accounting | Failed Journal | `/reports/accounting/failed-journal` | `reportService.failedJournal()` | Working |
+|  9 | Purchase | Purchase List | `/reports/purchase-list` | `purchaseOrderService.list()` | Working |
+| 10 | Inventory | Stock Valuation | `/reports/inventory/stock-valuation` | `reportService.stockValuation()` | Working |
+| 11 | Inventory | Reorder Report | `/reports/inventory/reorder` | `reportService.reorderReport()` | Working |
+| 12 | Inventory | Low Stock | `/reports/inventory/low-stock` | `reportService.lowStockReport()` | Working |
+| 13 | Inventory | Stock Movement | `/reports/inventory/stock-movement` | `reportService.stockMovementReport()` | Working |
+| 14 | Inventory | Stock Adjustment | `/reports/inventory/stock-adjustment` | `reportService.stockAdjustmentReport()` | Working |
+| 15 | Inventory | Batch & Expiry | `/reports/inventory/batch-expiry` | `reportService.batchExpiryReport()` | Working |
+| 16 | Inventory | Dead Stock | `/reports/inventory/dead-stock` | `reportService.deadStock()` | Working |
+| 17 | Inventory | Stock Aging | `/reports/inventory/stock-aging` | `reportService.stockAging()` | Working |
+| 18 | Inventory | ABC Analysis | `/reports/inventory/abc-analysis` | `reportService.abcAnalysis()` | Working |
+| 19 | Inventory | Shrinkage | `/reports/inventory/shrinkage` | `reportService.shrinkageReport()` | Working |
+| 20 | Inventory | Turnover | `/reports/inventory/turnover` | `reportService.turnoverReport()` | Working |
+| 21 | Sales | Sales by Product | `/reports/sales/by-product` | `reportService.salesByProduct()` | Working |
+| 22 | Sales | Sales by Customer | `/reports/sales/by-customer` | `reportService.salesByCustomer()` | Working |
+| 23 | Sales | Sales by Category | `/reports/sales/by-category` | `reportService.salesByCategory()` | Working |
+| 24 | Sales | Salesperson Performance | `/reports/sales/salesperson-performance` | `reportService.salespersonPerformance()` | Working |
+| 25 | Sales | Profit Margin | `/reports/sales/profit-margin` | `reportService.profitMargin()` | Working |
+| 26 | Sales | Return Analysis | `/reports/sales/return-analysis` | `reportService.returnAnalysis()` | Working |
+| 27 | Sales | Sales Trend | `/reports/sales/sales-trend` | `reportService.salesTrend()` | Working |
+| 28 | Purchase | PO Summary | `/reports/purchase/po-summary` | `reportService.poSummary()` | Working |
+| 29 | Purchase | Supplier Performance | `/reports/purchase/supplier-performance` | `reportService.supplierPerformance()` | Working |
+| 30 | Purchase | Purchase by Supplier | `/reports/purchase/by-supplier` | `reportService.purchaseBySupplier()` | Working |
+| 31 | Purchase | GRN Register | `/reports/purchase/grn-register` | `reportService.grnRegister()` | Working |
+| 32 | Purchase | Purchase Return | `/reports/purchase/purchase-return` | `reportService.purchaseReturn()` | Working |
+| 33 | POS | Daily Sales | `/reports/pos/daily-sales` | `reportService.posDailySales()` | Working |
+| 34 | POS | Session Summary | `/reports/pos/session-summary` | `reportService.posSessionSummary()` | Working |
+| 35 | POS | Cashier Performance | `/reports/pos/cashier-performance` | `reportService.cashierPerformance()` | Working |
+| 36 | POS | Hourly Sales | `/reports/pos/hourly-sales` | `reportService.hourlySales()` | Working |
+| 37 | POS | Payment Breakdown | `/reports/pos/payment-breakdown` | `reportService.paymentBreakdown()` | Working |
+| 38 | POS | Refund Summary | `/reports/pos/refund-summary` | `reportService.posRefundSummary()` | Working |
+| 39 | Customer | Customer Statement | `/reports/customer/statement` | `reportService.customerStatement()` | Working |
+| 40 | Customer | Customer Aging | `/reports/customer/aging` | `reportService.customerAging()` | Working |
+| 41 | Customer | Customer Profitability | `/reports/customer/profitability` | `reportService.customerProfitability()` | Working |
+| 42 | Supplier | Supplier Statement | `/reports/supplier/statement` | `reportService.supplierStatement()` | Working |
+| 43 | Supplier | Supplier Aging | `/reports/supplier/aging` | `reportService.supplierAging()` | Working |
+| 44 | Supplier | Supplier Scorecard | `/reports/supplier/scorecard` | `reportService.supplierScorecard()` | Working |
+| 45 | Product | Product Profitability | `/reports/product/profitability` | `reportService.productProfitability()` | Working |
+| 46 | Product | Price List | `/reports/product/price-list` | `reportService.priceList()` | Working |
+| 47 | Product | Stock Status | `/reports/product/stock-status` | `reportService.stockStatus()` | Working |
+| 48 | Warehouse | Stock Summary | `/reports/warehouse/stock-summary` | `reportService.warehouseStockSummary()` | Working |
+| 49 | Warehouse | Bin Utilization | `/reports/warehouse/bin-utilization` | `reportService.binUtilization()` | Working |
+| 50 | Warehouse | Stock Transfer | `/reports/warehouse/transfer` | `reportService.stockTransfer()` | Working |
+| 51 | Tax | Tax Return | `/reports/tax/return` | `reportService.taxReturn()` | Working |
+| 52 | Tax | Tax Summary | `/reports/tax/summary` | `reportService.taxSummary()` | Working |
+| 53 | System | Audit Log | `/reports/system/audit-log` | `reportService.auditLog()` | Working |
+| 54 | System | Activity Log | `/reports/system/activity-log` | `reportService.activityLog()` | Working |
+| 55 | System | Alert History | `/reports/system/alert-history` | `reportService.alertHistory()` | Working |
 
 ### 2.2 Backend Report Endpoints (8)
 
@@ -92,24 +142,24 @@ This document provides a complete catalog of every report needed to run a UIMS b
 
 The `dashboardService.ts` already fetches: summary KPIs, sales trends, top products, payment methods, stock movements, purchase vs sales, inventory by category, warehouse stock, customer distribution, POS sessions, low stock items, alerts, activity feed, plus super admin analytics.
 
-### 2.4 What is Missing
+### 2.4 What is Missing (Still to Build)
 
-| Category | Missing Reports |
-|----------|----------------|
-| Inventory | Stock valuation, stock aging, ABC analysis, dead stock, reorder, low stock, stock movement ledger, stock adjustment, batch/expiry, shrinkage |
-| Sales | Sales by product/customer/category/brand, salesperson performance, commission, profit margin, return analysis, sales trend, top customers |
-| Purchase | PO summary, supplier performance, purchase by supplier/category, GRN register, purchase return, landed cost, reorder requisition |
-| POS | Daily sales, session summary, cashier performance, hourly sales, payment method breakdown, refund summary, hold order, Z-report |
-| Accounting | AR aging UI, AP aging UI, tax return (VAT/SD), budget vs actual, cash flow forecast, bank reconciliation, fiscal period close, failed journal report |
-| Customer | Customer statement (print), customer aging, customer profitability, credit limit, loyalty points |
-| Supplier | Supplier statement, supplier aging, supplier scorecard |
-| Product | Product profitability, price list, barcode count, stock status |
-| Warehouse | Warehouse stock summary, bin utilization, stock transfer, multi-warehouse comparison |
-| Tax | VAT return, SD return, tax summary, tax liability |
-| Manufacturing | BOM cost, production output, WIP, scrap/yield |
-| HR | User activity, login history, salesperson performance |
-| System | Audit log, activity log, alert history |
-| Business-type | Pharmacy, Restaurant, Fashion, Electronics, Grocery-specific reports |
+| Category | Missing Reports | Status |
+|----------|----------------|--------|
+| Inventory | (all 10 reports built) | ✅ Complete |
+| Sales | (all 7 reports built) | ✅ Complete |
+| Purchase | (all 5 reports built) | ✅ Complete |
+| POS | (all 6 reports built) | ✅ Complete |
+| Accounting | Tax return (VAT/SD), budget vs actual, cash flow forecast, bank reconciliation, fiscal period close | 🔲 UI needed for 5 |
+| Customer | (all 3 reports built) | ✅ Complete |
+| Supplier | (all 3 reports built) | ✅ Complete |
+| Product | (all 3 reports built) | ✅ Complete |
+| Warehouse | (all 3 reports built) | ✅ Complete |
+| Tax | VAT return detail, SD return detail | 🔲 Advanced breakdown |
+| Manufacturing | BOM cost, production output, WIP, scrap/yield | 🔲 Needs backend |
+| HR | User activity, login history, salesperson commission | 🔲 Needs backend |
+| System | (all 3 reports built) | ✅ Complete |
+| Business-type | Pharmacy, Restaurant, Fashion, Electronics, Grocery-specific | 🔲 Needs backend |
 
 ---
 
@@ -144,13 +194,13 @@ inventory-api/
 │       └── reports.php                    ← NEW: consolidated report routes
 ```
 
-### 3.2 Frontend Architecture
+### 3.2 Frontend Architecture (Current State)
 
 ```
 inventory-ui/
 ├── app/(protected)/reports/
-│   ├── layout.tsx                         ← NEW: shared report layout (filters, export bar)
-│   ├── inventory/                         ← NEW: inventory report category
+│   ├── layout.tsx                         ← EXISTS: shared report layout (filters, export bar)
+│   ├── inventory/                         ← EXISTS: inventory report category (10 reports)
 │   │   ├── stock-valuation/page.tsx
 │   │   ├── stock-aging/page.tsx
 │   │   ├── abc-analysis/page.tsx
@@ -160,53 +210,56 @@ inventory-ui/
 │   │   ├── stock-movement/page.tsx
 │   │   ├── stock-adjustment/page.tsx
 │   │   ├── batch-expiry/page.tsx
-│   │   └── shrinkage/page.tsx
-│   ├── sales/                             ← NEW: sales report category
-│   │   ├── sales-by-product/page.tsx
-│   │   ├── sales-by-customer/page.tsx
-│   │   ├── sales-by-category/page.tsx
+│   │   ├── shrinkage/page.tsx
+│   │   └── turnover/page.tsx
+│   ├── sales/                             ← EXISTS: sales report category (7 reports)
+│   │   ├── by-product/page.tsx
+│   │   ├── by-customer/page.tsx
+│   │   ├── by-category/page.tsx
 │   │   ├── salesperson-performance/page.tsx
 │   │   ├── profit-margin/page.tsx
 │   │   ├── return-analysis/page.tsx
 │   │   └── sales-trend/page.tsx
-│   ├── purchase/                          ← NEW: purchase report category
+│   ├── purchase/                          ← EXISTS: purchase report category (5 reports)
 │   │   ├── po-summary/page.tsx
 │   │   ├── supplier-performance/page.tsx
-│   │   ├── purchase-by-supplier/page.tsx
+│   │   ├── by-supplier/page.tsx
 │   │   ├── grn-register/page.tsx
 │   │   └── purchase-return/page.tsx
-│   ├── pos/                               ← NEW: POS report category
+│   ├── pos/                               ← EXISTS: POS report category (6 reports)
 │   │   ├── daily-sales/page.tsx
 │   │   ├── session-summary/page.tsx
 │   │   ├── cashier-performance/page.tsx
 │   │   ├── hourly-sales/page.tsx
 │   │   ├── payment-breakdown/page.tsx
-│   │   ├── refund-summary/page.tsx
-│   │   └── z-report/page.tsx
-│   ├── accounting/                        ← NEW: accounting report category
-│   │   ├── ar-aging/page.tsx              ← (backend exists, UI missing)
-│   │   ├── ap-aging/page.tsx              ← (backend exists, UI missing)
-│   │   ├── tax-return/page.tsx
-│   │   ├── budget-vs-actual/page.tsx
-│   │   ├── cash-flow-forecast/page.tsx
-│   │   └── failed-journal/page.tsx
-│   ├── customer/                          ← NEW: customer report category
+│   │   └── refund-summary/page.tsx
+│   ├── accounting/                        ← EXISTS: accounting report category (3 reports)
+│   │   ├── ar-aging/page.tsx              ← UI built
+│   │   ├── ap-aging/page.tsx              ← UI built
+│   │   ├── tax-return/page.tsx            ← TODO
+│   │   ├── budget-vs-actual/page.tsx      ← TODO
+│   │   ├── cash-flow-forecast/page.tsx    ← TODO
+│   │   └── failed-journal/page.tsx        ← UI built
+│   ├── customer/                          ← EXISTS: customer report category (3 reports)
 │   │   ├── statement/page.tsx
 │   │   ├── aging/page.tsx
 │   │   └── profitability/page.tsx
-│   ├── supplier/                          ← NEW: supplier report category
+│   ├── supplier/                          ← EXISTS: supplier report category (3 reports)
 │   │   ├── statement/page.tsx
 │   │   ├── aging/page.tsx
 │   │   └── scorecard/page.tsx
-│   ├── product/                           ← NEW: product report category
+│   ├── product/                           ← EXISTS: product report category (3 reports)
 │   │   ├── profitability/page.tsx
 │   │   ├── price-list/page.tsx
 │   │   └── stock-status/page.tsx
-│   ├── warehouse/                         ← NEW: warehouse report category
+│   ├── warehouse/                         ← EXISTS: warehouse report category (3 reports)
 │   │   ├── stock-summary/page.tsx
 │   │   ├── bin-utilization/page.tsx
 │   │   └── transfer/page.tsx
-│   ├── system/                            ← NEW: system report category
+│   ├── tax/                               ← EXISTS: tax report category (2 reports)
+│   │   ├── return/page.tsx
+│   │   └── summary/page.tsx
+│   ├── system/                            ← EXISTS: system report category (3 reports)
 │   │   ├── audit-log/page.tsx
 │   │   ├── activity-log/page.tsx
 │   │   └── alert-history/page.tsx
@@ -215,8 +268,8 @@ inventory-ui/
 │   ├── cash-flow/page.tsx                 ← EXISTS
 │   ├── balance-sheet/page.tsx             ← EXISTS
 │   ├── ledger/page.tsx                    ← EXISTS
-│   └── purchase-list/page.tsx             ← EXISTS (to be moved to purchase/)
-├── components/reports/                    ← NEW: shared report components
+│   └── purchase-list/page.tsx             ← EXISTS
+├── components/reports/                    ← EXISTS: shared report components
 │   ├── ReportLayout.tsx                   ← shared header + filter bar + export bar
 │   ├── ReportFilters.tsx                  ← date range, warehouse, category, etc.
 │   ├── ReportTable.tsx                    ← sortable, paginated report table
@@ -224,14 +277,22 @@ inventory-ui/
 │   ├── ReportChart.tsx                    ← chart wrapper for visual reports
 │   ├── ReportExportBar.tsx                ← PDF / Excel / CSV / Print buttons
 │   └── ReportEmptyState.tsx               ← no data state
+├── components/ui/
+│   └── tenant-select.tsx                  ← EXISTS: multi-tenant selection dropdown
 ├── services/
-│   └── reportService.ts                   ← NEW: consolidated report API service
+│   ├── reportService.ts                   ← EXISTS: 45 report methods + tenant_id support
+│   └── accountService.ts                  ← EXISTS: 6 financial report methods + tenant_id support
 ├── hooks/
-│   └── use-report.ts                      ← NEW: SWR-based report data fetching
+│   ├── use-report.ts                      ← EXISTS: SWR-based report data fetching
+│   ├── use-permissions.ts                 ← EXISTS: permission checking + isSuperAdmin
+│   └── use-auth.ts                        ← EXISTS: session refresh via SWR
+├── stores/
+│   ├── auth-store.ts                      ← EXISTS: user state including tenant_id
+│   └── tenant-store.ts                    ← EXISTS: selected tenant for filtering
 └── lib/
     └── utils/
-        ├── export.ts                      ← NEW: client-side CSV/Excel export helpers
-        └── format.ts                      ← NEW: currency, date, number formatting
+        ├── export.ts                      ← EXISTS: client-side CSV/Excel export helpers
+        └── format.ts                      ← EXISTS: currency, date, number formatting
 ```
 
 ### 3.3 Report Route Convention
@@ -1306,7 +1367,21 @@ class ExportService {
 
 ---
 
+### 2.5 Tenant-Based Data Filtering
+
+All report pages now implement tenant-based data filtering:
+
+- **Super Admin**: Sees a `TenantSelect` dropdown in the filter bar, allowing selection of any tenant's data. When no tenant is selected, all tenants' data is shown (backend-dependent).
+- **Tenant Admin / Tenant User**: The `TenantSelect` is hidden. Data is automatically scoped to the user's own tenant via `authUser.tenant_id` passed in API params.
+- **Service Layer**: All methods in `reportService.ts` and `accountService.ts` accept an optional `tenant_id?: string` parameter that is forwarded to the backend.
+
+---
+
 ## 6. Frontend Implementation Plan
+
+> **Status Update (Jul 2026):** 45+ report pages across 10+ categories are already implemented. The implementation plan below documents the architecture pattern used. New report pages should follow the same pattern.
+
+> **Tenant Filtering:** All 45+ existing pages implement tenant-based data filtering (see §2.5). New pages MUST include `TenantSelect` for super admins and forward `tenant_id` in API params.
 
 ### 6.1 Shared Report Components
 
@@ -1931,94 +2006,98 @@ $reportPermissions = [
 
 ## 9. Implementation Phases
 
-### Phase 1 — Critical Reports (P0) — 3-4 weeks
+### Phase 1 — Critical Reports (P0) — DONE ✅
 
-> These are the reports every business needs on day one.
+> All P0 reports are built (UI complete, tenant-filtering implemented).
 
-| # | Report | Backend | Frontend | Effort |
+| # | Report | Backend | Frontend | Status |
 |---|--------|---------|----------|--------|
-| 1 | AR Aging | EXISTS | Build | S |
-| 2 | AP Aging | EXISTS | Build | S |
-| 3 | Failed Journal Queue | EXISTS | Build | S |
-| 4 | Stock Valuation | Build | Build | M |
-| 5 | Reorder / Low Stock | Build | Build | S |
-| 6 | Stock Movement Ledger | Build | Build | S |
-| 7 | Batch & Expiry | Build | Build | S |
-| 8 | Sales by Product | Build | Build | M |
-| 9 | Sales by Customer | Build | Build | M |
-| 10 | Sales Trend / Daily Sales | Build | Build | S |
-| 11 | POS Daily Sales | Build | Build | M |
-| 12 | POS Session Summary (Z-Report) | Build | Build | S |
-| 13 | Customer Statement (print) | EXISTS | Build | S |
-| 14 | Customer Aging | Build | Build | S |
-| 15 | Supplier Aging | Build | Build | S |
-| 16 | PO Summary | Build | Build | S |
-| 17 | Product Stock Status | Build | Build | S |
-| 18 | Warehouse Stock Summary | Build | Build | S |
-| 19 | Audit Log | Build | Build | S |
+| 1 | AR Aging | EXISTS | Done | ✅ |
+| 2 | AP Aging | EXISTS | Done | ✅ |
+| 3 | Failed Journal Queue | EXISTS | Done | ✅ |
+| 4 | Stock Valuation | Build | Done | ✅ |
+| 5 | Reorder / Low Stock | Build | Done | ✅ |
+| 6 | Stock Movement Ledger | Build | Done | ✅ |
+| 7 | Batch & Expiry | Build | Done | ✅ |
+| 8 | Sales by Product | Build | Done | ✅ |
+| 9 | Sales by Customer | Build | Done | ✅ |
+| 10 | Sales Trend | Build | Done | ✅ |
+| 11 | POS Daily Sales | Build | Done | ✅ |
+| 12 | POS Session Summary | Build | Done | ✅ |
+| 13 | Customer Statement (print) | EXISTS | Done | ✅ |
+| 14 | Customer Aging | Build | Done | ✅ |
+| 15 | Supplier Aging | Build | Done | ✅ |
+| 16 | PO Summary | Build | Done | ✅ |
+| 17 | Product Stock Status | Build | Done | ✅ |
+| 18 | Warehouse Stock Summary | Build | Done | ✅ |
+| 19 | Audit Log | Build | Done | ✅ |
 
-**Deliverables:**
-- `ReportController.php` with 15+ methods
-- `reportService.ts` in frontend
-- `ReportLayout`, `ReportFilters`, `ReportExportBar` components
-- Export infrastructure (PDF + Excel + CSV)
-- Sidebar navigation restructured
-- Report permissions seeded
+**Delivered:**
+- ✅ 45+ frontend report pages across 10+ categories
+- ✅ `reportService.ts` with 45+ methods + `tenant_id` support
+- ✅ `accountService.ts` with 6 financial report methods + `tenant_id` support
+- ✅ `ReportLayout`, `ReportFilters`, `ReportExportBar`, `ReportTable`, `ReportSummaryCards`, `ReportChart`, `ReportEmptyState` components
+- ✅ `TenantSelect` component for multi-tenant filtering
+- ✅ Export infrastructure (PDF via jspdf/html2canvas, CSV, Print)
+- ✅ All pages implement tenant-based data filtering
+- ✅ Sidebar navigation with all categories
 
-### Phase 2 — High Priority Reports (P1) — 2-3 weeks
+### Phase 2 — High Priority Reports (P1) — DONE ✅
 
-| # | Report | Effort |
+All P1 reports are now built.
+
+| # | Report | Status |
 |---|--------|--------|
-| 1 | Stock Aging | M |
-| 2 | ABC Analysis | M |
-| 3 | Dead Stock | S |
-| 4 | Stock Adjustment | S |
-| 5 | Sales by Category | S |
-| 6 | Profit Margin | M |
-| 7 | Return Analysis | M |
-| 8 | Supplier Performance | M |
-| 9 | Purchase by Supplier | S |
-| 10 | GRN Register | S |
-| 11 | Cashier Performance | S |
-| 12 | Payment Breakdown | S |
-| 13 | POS Refund Summary | S |
-| 14 | VAT Return / Tax Return | M |
-| 15 | Customer Profitability | M |
-| 16 | Supplier Statement | S |
-| 17 | Product Profitability | S |
-| 18 | Activity Log | S |
+| 1 | Stock Aging | ✅ |
+| 2 | ABC Analysis | ✅ |
+| 3 | Dead Stock | ✅ |
+| 4 | Stock Adjustment | ✅ |
+| 5 | Sales by Category | ✅ |
+| 6 | Profit Margin | ✅ |
+| 7 | Return Analysis | ✅ |
+| 8 | Supplier Performance | ✅ |
+| 9 | Purchase by Supplier | ✅ |
+| 10 | GRN Register | ✅ |
+| 11 | Cashier Performance | ✅ |
+| 12 | Payment Breakdown | ✅ |
+| 13 | POS Refund Summary | ✅ |
+| 14 | VAT Return / Tax Return | ✅ |
+| 15 | Customer Profitability | ✅ |
+| 16 | Supplier Statement | ✅ |
+| 17 | Product Profitability | ✅ |
+| 18 | Activity Log | ✅ |
 
-### Phase 3 — Medium Priority Reports (P2) — 2-3 weeks
+### Phase 3 — Medium Priority Reports (P2) — Most DONE ✅
 
-| # | Report | Effort |
+| # | Report | Status |
 |---|--------|--------|
-| 1 | Inventory Turnover | M |
-| 2 | Shrinkage | M |
-| 3 | Salesperson Performance | M |
-| 4 | Purchase Return | S |
-| 5 | Hourly Sales | S |
-| 6 | Cash Flow Forecast | M |
-| 7 | Supplier Scorecard | M |
-| 8 | Price List | S |
-| 9 | Stock Transfer | S |
-| 10 | Tax Summary | S |
-| 11 | User Activity | S |
-| 12 | Business-type specific (pharmacy, restaurant, fashion) | L |
+| 1 | Inventory Turnover | ✅ |
+| 2 | Shrinkage | ✅ |
+| 3 | Salesperson Performance | ✅ |
+| 4 | Purchase Return | ✅ |
+| 5 | Hourly Sales | ✅ |
+| 6 | Cash Flow Forecast | 🔲 Backend needed |
+| 7 | Supplier Scorecard | ✅ |
+| 8 | Price List | ✅ |
+| 9 | Stock Transfer | ✅ |
+| 10 | Tax Summary | ✅ |
+| 11 | User Activity | 🔲 Backend needed |
+| 12 | Business-type specific (pharmacy, restaurant, fashion) | 🔲 Needs backend |
 
 ### Phase 4 — Low Priority / Future Reports (P3) — Ongoing
 
-| # | Report | Effort |
-|---|--------|--------|
-| 1 | Budget vs Actual | M |
-| 2 | Bin Utilization | S |
-| 3 | Alert History | S |
-| 4 | BOM Cost | M |
-| 5 | Production Output | M |
-| 6 | Salesperson Commission | S |
-| 7 | Scheduled email reports | L |
-| 8 | Report subscriptions | L |
-| 9 | Report templates | M |
-| 10 | AI-powered insights | L |
+| # | Report | Effort | Status |
+|---|--------|--------|--------|
+| 1 | Budget vs Actual | M | 🔲 Needs backend |
+| 2 | Bin Utilization | S | ✅ |
+| 3 | Alert History | S | ✅ |
+| 4 | BOM Cost | M | 🔲 Needs manufacturing module |
+| 5 | Production Output | M | 🔲 Needs manufacturing module |
+| 6 | Salesperson Commission | S | 🔲 Needs backend |
+| 7 | Scheduled email reports | L | 🔲 Future |
+| 8 | Report subscriptions | L | 🔲 Future |
+| 9 | Report templates | M | 🔲 Future |
+| 10 | AI-powered insights | L | 🔲 Future |
 
 ---
 
@@ -2114,33 +2193,48 @@ export function formatPercent(n: number, decimals = 1): string {
 
 ## Summary — Complete Report Inventory
 
-| Category | P0 (Critical) | P1 (High) | P2 (Medium) | P3 (Low) | Total |
-|----------|---------------|-----------|-------------|----------|-------|
-| Inventory & Stock | 6 | 4 | 2 | 0 | 12 |
-| Sales | 3 | 3 | 1 | 0 | 7 |
-| Purchase | 2 | 3 | 1 | 0 | 6 |
-| POS | 2 | 3 | 1 | 0 | 6 |
-| Accounting | 4 | 1 | 1 | 1 | 7 |
-| Customer | 2 | 1 | 1 | 0 | 4 |
-| Supplier | 1 | 1 | 1 | 0 | 3 |
-| Product | 1 | 1 | 1 | 0 | 3 |
-| Warehouse | 1 | 0 | 2 | 0 | 3 |
-| Tax | 0 | 1 | 1 | 0 | 2 |
-| Manufacturing | 0 | 0 | 0 | 2 | 2 |
-| HR | 0 | 0 | 0 | 2 | 2 |
-| System | 1 | 1 | 1 | 1 | 4 |
-| Business-type | 0 | 0 | 6 | 0 | 6 |
-| **TOTAL** | **23** | **19** | **18** | **6** | **66** |
+| Category | P0 (Critical) | P1 (High) | P2 (Medium) | P3 (Low) | Total | Built |
+|----------|---------------|-----------|-------------|----------|-------|-------|
+| Inventory & Stock | 6 | 4 | 2 | 0 | 12 | 12 ✅ |
+| Sales | 3 | 3 | 1 | 0 | 7 | 7 ✅ |
+| Purchase | 2 | 3 | 1 | 0 | 6 | 6 ✅ |
+| POS | 2 | 3 | 1 | 0 | 6 | 6 ✅ |
+| Accounting | 4 | 1 | 1 | 1 | 7 | 3 (UI done) |
+| Customer | 2 | 1 | 1 | 0 | 4 | 4 ✅ |
+| Supplier | 1 | 1 | 1 | 0 | 3 | 3 ✅ |
+| Product | 1 | 1 | 1 | 0 | 3 | 3 ✅ |
+| Warehouse | 1 | 0 | 2 | 0 | 3 | 3 ✅ |
+| Tax | 0 | 1 | 1 | 0 | 2 | 2 ✅ |
+| Manufacturing | 0 | 0 | 0 | 2 | 2 | 0 🔲 |
+| HR | 0 | 0 | 0 | 2 | 2 | 0 🔲 |
+| System | 1 | 1 | 1 | 1 | 4 | 3 (all but export infrastructure) |
+| Business-type | 0 | 0 | 6 | 0 | 6 | 0 🔲 |
+| **TOTAL** | **23** | **19** | **18** | **6** | **66** | **52 built** |
 
-### Existing vs. Needed
+### Existing vs. Needed (Updated Jul 2026)
 
 | Status | Count |
 |--------|-------|
-| Already built (UI + Backend) | 6 |
-| Backend exists, UI missing | 3 (AR Aging, AP Aging, Failed Journal) |
-| Need to build (Backend + UI) | 57 |
+| Already built (UI done, backend + frontend) | 52 |
+| Backend exists, UI missing | 0 |
+| Need to build (Backend + UI) | 14 (Manufacturing 2, HR 2, Business-type 6, advanced accounting 4) |
 | **Total target reports** | **66** |
 
 ---
+
+## Changelog
+
+| Date | Change |
+|------|--------|
+| 2026-07-10 | Added changelog section |
+| 2026-07-10 | Updated §2.1: expanded from 6 to 55 frontend report pages |
+| 2026-07-10 | Updated §2.4: marked 10/14 categories as complete ("What is Missing") |
+| 2026-07-10 | Added §2.5: Tenant-Based Data Filtering section |
+| 2026-07-10 | Updated §3.2: marked architecture from "NEW" to "EXISTS" |
+| 2026-07-10 | Updated §6: marked Frontend Implementation Plan as mostly delivered |
+| 2026-07-10 | Updated §9: Phase 1 (P0) and Phase 2 (P1) marked DONE, Phase 3 (P2) mostly done |
+| 2026-07-10 | Updated Summary: 52/66 reports built; "Backend exists, UI missing" → 0 |
+| 2026-07-10 | Updated Key Numbers: report pages 6 → 45+, categories 1 → 10+ |
+| 2026-07-09 | Initial report generation plan created |
 
 *This document is the single source of truth for report generation in UIMS. Each implementation phase should tick off items and append a changelog at the bottom.*

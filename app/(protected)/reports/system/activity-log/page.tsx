@@ -3,6 +3,7 @@
 import { useState, useRef } from 'react';
 import { ClipboardList } from 'lucide-react';
 import CustomDatePicker from '@/components/ui/date-picker';
+import TenantSelect from '@/components/ui/tenant-select';
 import reportService from '@/services/reportService';
 import { todayISO, firstDayOfMonthISO } from '@/lib/utils/format';
 import { exportToPDF, printReport, exportColumnsToExcel, exportColumnsToCSV } from '@/lib/utils/export';
@@ -11,11 +12,15 @@ import {
   ReportLayout, ReportFilters, FilterField, filterInputClass, filterSelectClass,
   ReportSummaryCards, ReportTable, ReportExportBar,
 } from '@/components/reports';
+import { usePermissions } from '@/hooks/use-permissions';
+import { useAuthStore } from '@/stores/auth-store';
 import type { GenericReportResponse } from '@/types/report.types';
 import type { SummaryCard } from '@/components/reports/ReportSummaryCards';
 import type { ReportColumn } from '@/components/reports/ReportTable';
 
 export default function ActivityLogPage() {
+  const { isSuperAdmin } = usePermissions();
+  const authUser = useAuthStore(s => s.user);
   const reportRef = useRef<HTMLDivElement>(null);
   const [data, setData] = useState<GenericReportResponse | null>(null);
   const [loading, setLoading] = useState(false);
@@ -23,16 +28,20 @@ export default function ActivityLogPage() {
   const [startDate, setStartDate] = useState(firstDayOfMonthISO());
   const [endDate, setEndDate] = useState(todayISO());
   const [subjectType, setSubjectType] = useState('');
+  const [selectedTenantId, setSelectedTenantId] = useState<string>('');
 
   const generate = async () => {
     setLoading(true);
     setError(null);
     try {
-      const result = await reportService.activityLog({
+      const params: any = {
         start_date: startDate,
         end_date: endDate,
         subject_type: subjectType || undefined,
-      });
+      };
+      const tenantId = isSuperAdmin ? selectedTenantId : authUser?.tenant_id;
+      if (tenantId) params.tenant_id = tenantId;
+      const result = await reportService.activityLog(params);
       setData(result);
     } catch (err: any) {
       const msg = err?.response?.data?.message || 'Failed to generate report';
@@ -49,6 +58,7 @@ export default function ActivityLogPage() {
     setStartDate(firstDayOfMonthISO());
     setEndDate(todayISO());
     setSubjectType('');
+    setSelectedTenantId('');
   };
 
   const totalEntries = typeof data?.summary?.total_entries === 'number' ? data.summary.total_entries : 0;
@@ -74,6 +84,15 @@ export default function ActivityLogPage() {
       icon={ClipboardList}
       filters={
         <ReportFilters onApply={generate} onReset={reset} loading={loading}>
+          {isSuperAdmin && (
+            <FilterField label="Tenant">
+              <TenantSelect
+                value={selectedTenantId}
+                onChange={(tid) => setSelectedTenantId(tid || '')}
+                placeholder="All Tenants"
+              />
+            </FilterField>
+          )}
           <FilterField label="Start Date">
             <CustomDatePicker value={startDate} onChange={setStartDate} />
           </FilterField>

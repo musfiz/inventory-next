@@ -16,9 +16,12 @@ import {
 } from 'lucide-react';
 import DataTable from '@/components/ui/datatable';
 import CustomDatePicker from '@/components/ui/date-picker';
+import TenantSelect from '@/components/ui/tenant-select';
 import { formatDate } from '@/lib/utils/date';
 import { notify } from '@/lib/notifications';
 import purchaseOrderService from '@/services/purchaseOrderService';
+import { usePermissions } from '@/hooks/use-permissions';
+import { useAuthStore } from '@/stores/auth-store';
 import jsPDF from 'jspdf';
 import html2canvas from 'html2canvas';
 
@@ -49,11 +52,14 @@ interface ReportSummary {
 // ─── Component ────────────────────────────────────────────────────────────────
 
 export default function PurchaseReportPage() {
+  const { isSuperAdmin } = usePermissions();
+  const authUser = useAuthStore(s => s.user);
   const reportRef = useRef<HTMLDivElement>(null);
 
   // ── State ───────────────────────────────────────────────────────────────────
   const [fromDate, setFromDate] = useState('');
   const [toDate, setToDate] = useState('');
+  const [selectedTenantId, setSelectedTenantId] = useState<string>('');
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
   const [purchases, setPurchases] = useState<PurchaseOrder[]>([]);
@@ -95,6 +101,9 @@ export default function PurchaseReportPage() {
         to_date: toDate,
         per_page: 1000,
       };
+
+      const tenantId = isSuperAdmin ? selectedTenantId : authUser?.tenant_id;
+      if (tenantId) params.tenant_id = tenantId;
 
       if (searchQuery) {
         params.search = searchQuery;
@@ -433,6 +442,18 @@ export default function PurchaseReportPage() {
         </h2>
 
         <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
+          {isSuperAdmin && (
+            <div>
+              <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1.5">
+                Tenant
+              </label>
+              <TenantSelect
+                value={selectedTenantId}
+                onChange={(tid) => setSelectedTenantId(tid || '')}
+                placeholder="All Tenants"
+              />
+            </div>
+          )}
           {/* From Date */}
           <div>
             <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1.5">

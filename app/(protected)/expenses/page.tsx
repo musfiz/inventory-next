@@ -8,7 +8,9 @@ import expenseService from '@/services/expenseService';
 import type { Expense, ExpenseFormData, PaymentMethod } from '@/types/accounting.types';
 import DataTable from '@/components/ui/datatable';
 import CustomDatePicker from '@/components/ui/date-picker';
+import TenantSelect from '@/components/ui/tenant-select';
 import { usePermissions } from '@/hooks/use-permissions';
+import { useAuthStore } from '@/stores/auth-store';
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -43,12 +45,14 @@ const emptyForm: ExpenseFormData = {
 // ─── Component ────────────────────────────────────────────────────────────────
 
 export default function ExpensesPage() {
-  const { hasPermission } = usePermissions();
+  const { hasPermission, isSuperAdmin } = usePermissions();
+  const authUser = useAuthStore(s => s.user);
   const [showForm, setShowForm] = useState(false);
   const [form, setForm] = useState<ExpenseFormData>(emptyForm);
   const [saving, setSaving] = useState(false);
   const [tableKey, setTableKey] = useState(0);
   const [selectedExpense, setSelectedExpense] = useState<Expense | null>(null);
+  const [selectedTenantId, setSelectedTenantId] = useState<string>('');
 
   const refreshTable = () => setTableKey(k => k + 1);
 
@@ -175,6 +179,13 @@ export default function ExpensesPage() {
     },
   ];
 
+  const filterParams: Record<string, string | undefined | null> = {};
+  if (isSuperAdmin) {
+    filterParams.tenant_id = selectedTenantId || undefined;
+  } else if (authUser?.tenant_id) {
+    filterParams.tenant_id = authUser.tenant_id;
+  }
+
   return (
     <div className="p-4 space-y-4">
       {/* Header */}
@@ -183,15 +194,26 @@ export default function ExpensesPage() {
           <h1 className="text-xl font-bold text-gray-900 dark:text-white">Expenses</h1>
           <p className="text-sm text-gray-500">Record and track business expenses</p>
         </div>
-        {hasPermission('create_expenses') && (
-          <button
-            onClick={() => { setForm(emptyForm); setShowForm(true); }}
-            className="flex items-center gap-1.5 px-3 py-1.5 text-sm bg-indigo-600 hover:bg-indigo-700 text-white rounded-sm"
-          >
-            <Plus size={14} />
-            New Expense
-          </button>
-        )}
+        <div className="flex items-center gap-2">
+          {isSuperAdmin && (
+            <div className="w-44">
+              <TenantSelect
+                value={selectedTenantId}
+                onChange={(tid) => setSelectedTenantId(tid || '')}
+                placeholder="All Tenants"
+              />
+            </div>
+          )}
+          {hasPermission('create_expenses') && (
+            <button
+              onClick={() => { setForm(emptyForm); setShowForm(true); }}
+              className="flex items-center gap-1.5 px-3 py-1.5 text-sm bg-indigo-600 hover:bg-indigo-700 text-white rounded-sm"
+            >
+              <Plus size={14} />
+              New Expense
+            </button>
+          )}
+        </div>
       </div>
 
       {/* Table */}
@@ -201,6 +223,7 @@ export default function ExpensesPage() {
         apiEndpoint="expenses"
         enableSearch
         searchPlaceholder="Search expenses…"
+        filterParams={filterParams}
       />
 
       {/* Create Modal */}

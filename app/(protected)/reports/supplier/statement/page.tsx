@@ -3,6 +3,7 @@
 import { useState, useRef } from 'react';
 import { FileText } from 'lucide-react';
 import CustomDatePicker from '@/components/ui/date-picker';
+import TenantSelect from '@/components/ui/tenant-select';
 import reportService from '@/services/reportService';
 import { todayISO, firstDayOfMonthISO, formatCurrency } from '@/lib/utils/format';
 import { exportToPDF, printReport, exportColumnsToExcel, exportColumnsToCSV } from '@/lib/utils/export';
@@ -11,11 +12,15 @@ import {
   ReportLayout, ReportFilters, FilterField, filterInputClass, filterSelectClass,
   ReportSummaryCards, ReportTable, ReportExportBar,
 } from '@/components/reports';
+import { usePermissions } from '@/hooks/use-permissions';
+import { useAuthStore } from '@/stores/auth-store';
 import type { SupplierStatementReport, SupplierStatementRow } from '@/types/report.types';
 import type { SummaryCard } from '@/components/reports/ReportSummaryCards';
 import type { ReportColumn } from '@/components/reports/ReportTable';
 
 export default function SupplierStatementPage() {
+  const { isSuperAdmin } = usePermissions();
+  const authUser = useAuthStore(s => s.user);
   const reportRef = useRef<HTMLDivElement>(null);
   const [data, setData] = useState<SupplierStatementReport | null>(null);
   const [loading, setLoading] = useState(false);
@@ -23,6 +28,7 @@ export default function SupplierStatementPage() {
   const [supplierId, setSupplierId] = useState('');
   const [startDate, setStartDate] = useState(firstDayOfMonthISO());
   const [endDate, setEndDate] = useState(todayISO());
+  const [selectedTenantId, setSelectedTenantId] = useState<string>('');
 
   const generate = async () => {
     if (!supplierId) {
@@ -32,11 +38,14 @@ export default function SupplierStatementPage() {
     setLoading(true);
     setError(null);
     try {
-      const res = await reportService.supplierStatement({
+      const params: any = {
         supplier_id: Number(supplierId),
         start_date: startDate,
         end_date: endDate,
-      });
+      };
+      const tenantId = isSuperAdmin ? selectedTenantId : authUser?.tenant_id;
+      if (tenantId) params.tenant_id = tenantId;
+      const res = await reportService.supplierStatement(params);
       setData(res as unknown as SupplierStatementReport);
     } catch (e: any) {
       const msg = e?.response?.data?.message || e?.message || 'Failed to load report';
@@ -53,6 +62,7 @@ export default function SupplierStatementPage() {
     setSupplierId('');
     setStartDate(firstDayOfMonthISO());
     setEndDate(todayISO());
+    setSelectedTenantId('');
   };
 
   const cards: SummaryCard[] = data
@@ -80,6 +90,15 @@ export default function SupplierStatementPage() {
       description="Printable account statement per supplier"
       filters={
         <ReportFilters onApply={generate} onReset={reset} loading={loading}>
+          {isSuperAdmin && (
+            <FilterField label="Tenant">
+              <TenantSelect
+                value={selectedTenantId}
+                onChange={(tid) => setSelectedTenantId(tid || '')}
+                placeholder="All Tenants"
+              />
+            </FilterField>
+          )}
           <FilterField label="Supplier ID">
             <input
               type="number"

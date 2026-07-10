@@ -2,11 +2,14 @@
 
 import { useState, useRef } from 'react';
 import { BarChart3 } from 'lucide-react';
+import TenantSelect from '@/components/ui/tenant-select';
 import reportService from '@/services/reportService';
 import { formatCurrency } from '@/lib/utils/format';
 import { exportToPDF, printReport, exportColumnsToExcel, exportColumnsToCSV, type ExportColumn } from '@/lib/utils/export';
 import { notify } from '@/lib/notifications';
 import { ReportLayout, ReportFilters, FilterField, filterInputClass, filterSelectClass, ReportSummaryCards, ReportTable, ReportExportBar, type ReportColumn, type SummaryCard } from '@/components/reports';
+import { usePermissions } from '@/hooks/use-permissions';
+import { useAuthStore } from '@/stores/auth-store';
 import type { StockStatusReport, StockStatusRow } from '@/types/report.types';
 
 const statusStyles: Record<string, string> = {
@@ -22,17 +25,23 @@ const statusLabels: Record<string, string> = {
 };
 
 export default function StockStatusPage() {
+  const { isSuperAdmin } = usePermissions();
+  const authUser = useAuthStore(s => s.user);
   const reportRef = useRef<HTMLDivElement>(null);
   const [data, setData] = useState<StockStatusReport | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [stockStatus, setStockStatus] = useState<'in_stock' | 'low_stock' | 'out_of_stock' | 'all'>('all');
+  const [selectedTenantId, setSelectedTenantId] = useState<string>('');
 
   const generate = async () => {
     setLoading(true);
     setError(null);
     try {
-      const res = await reportService.stockStatus({ stock_status: stockStatus === 'all' ? undefined : stockStatus });
+      const params: any = { stock_status: stockStatus === 'all' ? undefined : stockStatus };
+      const tenantId = isSuperAdmin ? selectedTenantId : authUser?.tenant_id;
+      if (tenantId) params.tenant_id = tenantId;
+      const res = await reportService.stockStatus(params);
       setData(res);
     } catch (e: any) {
       const msg = e?.response?.data?.message || e?.message || 'Failed to load report';
@@ -45,6 +54,7 @@ export default function StockStatusPage() {
 
   const reset = () => {
     setStockStatus('all');
+    setSelectedTenantId('');
     setData(null);
     setError(null);
   };
@@ -85,6 +95,15 @@ export default function StockStatusPage() {
     <ReportLayout title="Product Stock Status" icon={BarChart3}
       filters={
         <ReportFilters onApply={generate} onReset={reset} loading={loading}>
+          {isSuperAdmin && (
+            <FilterField label="Tenant">
+              <TenantSelect
+                value={selectedTenantId}
+                onChange={(tid) => setSelectedTenantId(tid || '')}
+                placeholder="All Tenants"
+              />
+            </FilterField>
+          )}
           <FilterField label="Stock Status">
             <select className={filterSelectClass} value={stockStatus} onChange={e => setStockStatus(e.target.value as 'in_stock' | 'low_stock' | 'out_of_stock' | 'all')}>
               <option value="all">All Statuses</option>

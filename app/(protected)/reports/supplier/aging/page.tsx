@@ -3,6 +3,7 @@
 import { useState, useRef } from 'react';
 import { CalendarClock } from 'lucide-react';
 import CustomDatePicker from '@/components/ui/date-picker';
+import TenantSelect from '@/components/ui/tenant-select';
 import reportService from '@/services/reportService';
 import { todayISO, formatCurrency } from '@/lib/utils/format';
 import { exportToPDF, printReport, exportColumnsToExcel, exportColumnsToCSV } from '@/lib/utils/export';
@@ -11,22 +12,30 @@ import {
   ReportLayout, ReportFilters, FilterField, filterInputClass, filterSelectClass,
   ReportSummaryCards, ReportTable, ReportExportBar,
 } from '@/components/reports';
+import { usePermissions } from '@/hooks/use-permissions';
+import { useAuthStore } from '@/stores/auth-store';
 import type { SupplierAgingReport } from '@/types/report.types';
 import type { SummaryCard } from '@/components/reports/ReportSummaryCards';
 import type { ReportColumn } from '@/components/reports/ReportTable';
 
 export default function SupplierAgingPage() {
+  const { isSuperAdmin } = usePermissions();
+  const authUser = useAuthStore(s => s.user);
   const reportRef = useRef<HTMLDivElement>(null);
   const [data, setData] = useState<SupplierAgingReport | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [asOfDate, setAsOfDate] = useState(todayISO());
+  const [selectedTenantId, setSelectedTenantId] = useState<string>('');
 
   const generate = async () => {
     setLoading(true);
     setError(null);
     try {
-      const result = await reportService.supplierAging({ as_of_date: asOfDate });
+      const params: any = { as_of_date: asOfDate };
+      const tenantId = isSuperAdmin ? selectedTenantId : authUser?.tenant_id;
+      if (tenantId) params.tenant_id = tenantId;
+      const result = await reportService.supplierAging(params);
       setData(result);
     } catch (err: any) {
       const msg = err?.response?.data?.message || 'Failed to generate report';
@@ -41,6 +50,7 @@ export default function SupplierAgingPage() {
     setData(null);
     setError(null);
     setAsOfDate(todayISO());
+    setSelectedTenantId('');
   };
 
   const cards: SummaryCard[] = data
@@ -77,6 +87,15 @@ export default function SupplierAgingPage() {
       icon={CalendarClock}
       filters={
         <ReportFilters onApply={generate} onReset={reset} loading={loading}>
+          {isSuperAdmin && (
+            <FilterField label="Tenant">
+              <TenantSelect
+                value={selectedTenantId}
+                onChange={(tid) => setSelectedTenantId(tid || '')}
+                placeholder="All Tenants"
+              />
+            </FilterField>
+          )}
           <FilterField label="As of Date">
             <CustomDatePicker value={asOfDate} onChange={setAsOfDate} />
           </FilterField>

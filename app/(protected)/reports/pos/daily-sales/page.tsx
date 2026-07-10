@@ -3,25 +3,34 @@
 import { useState, useRef } from 'react';
 import { ShoppingCart } from 'lucide-react';
 import CustomDatePicker from '@/components/ui/date-picker';
+import TenantSelect from '@/components/ui/tenant-select';
 import reportService from '@/services/reportService';
 import { todayISO, formatCurrency } from '@/lib/utils/format';
 import { exportToPDF, printReport, exportColumnsToExcel, exportColumnsToCSV, type ExportColumn } from '@/lib/utils/export';
 import { notify } from '@/lib/notifications';
 import { ReportLayout, ReportFilters, FilterField, filterInputClass, filterSelectClass, ReportSummaryCards, ReportTable, ReportExportBar, type ReportColumn, type SummaryCard } from '@/components/reports';
+import { usePermissions } from '@/hooks/use-permissions';
+import { useAuthStore } from '@/stores/auth-store';
 import type { PosDailySalesReport, PosDailySalesRow } from '@/types/report.types';
 
 export default function PosDailySalesPage() {
+  const { isSuperAdmin } = usePermissions();
+  const authUser = useAuthStore(s => s.user);
   const reportRef = useRef<HTMLDivElement>(null);
   const [data, setData] = useState<PosDailySalesReport | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [date, setDate] = useState(todayISO());
+  const [selectedTenantId, setSelectedTenantId] = useState<string>('');
 
   const generate = async () => {
     setLoading(true);
     setError(null);
     try {
-      const res = await reportService.posDailySales({ date });
+      const params: any = { date };
+      const tenantId = isSuperAdmin ? selectedTenantId : authUser?.tenant_id;
+      if (tenantId) params.tenant_id = tenantId;
+      const res = await reportService.posDailySales(params);
       setData(res);
     } catch (e: any) {
       const msg = e?.response?.data?.message || e?.message || 'Failed to load report';
@@ -34,6 +43,7 @@ export default function PosDailySalesPage() {
 
   const reset = () => {
     setDate(todayISO());
+    setSelectedTenantId('');
     setData(null);
     setError(null);
   };
@@ -68,6 +78,15 @@ export default function PosDailySalesPage() {
     <ReportLayout title="POS Daily Sales" icon={ShoppingCart}
       filters={
         <ReportFilters onApply={generate} onReset={reset} loading={loading}>
+          {isSuperAdmin && (
+            <FilterField label="Tenant">
+              <TenantSelect
+                value={selectedTenantId}
+                onChange={(tid) => setSelectedTenantId(tid || '')}
+                placeholder="All Tenants"
+              />
+            </FilterField>
+          )}
           <FilterField label="Date">
             <CustomDatePicker value={date} onChange={setDate} />
           </FilterField>

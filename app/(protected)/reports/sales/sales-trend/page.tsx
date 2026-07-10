@@ -3,14 +3,19 @@
 import { useState, useRef } from 'react';
 import { TrendingUp } from 'lucide-react';
 import CustomDatePicker from '@/components/ui/date-picker';
+import TenantSelect from '@/components/ui/tenant-select';
 import reportService from '@/services/reportService';
 import { todayISO, firstDayOfMonthISO, formatCurrency, formatPercent } from '@/lib/utils/format';
 import { exportToPDF, printReport, exportColumnsToExcel, exportColumnsToCSV, type ExportColumn } from '@/lib/utils/export';
 import { notify } from '@/lib/notifications';
 import { ReportLayout, ReportFilters, FilterField, filterInputClass, filterSelectClass, ReportSummaryCards, ReportTable, ReportExportBar, type ReportColumn, type SummaryCard } from '@/components/reports';
+import { usePermissions } from '@/hooks/use-permissions';
+import { useAuthStore } from '@/stores/auth-store';
 import type { SalesTrendReport, SalesTrendRow } from '@/types/report.types';
 
 export default function SalesTrendPage() {
+  const { isSuperAdmin } = usePermissions();
+  const authUser = useAuthStore(s => s.user);
   const reportRef = useRef<HTMLDivElement>(null);
   const [data, setData] = useState<SalesTrendReport | null>(null);
   const [loading, setLoading] = useState(false);
@@ -18,12 +23,16 @@ export default function SalesTrendPage() {
   const [startDate, setStartDate] = useState(firstDayOfMonthISO());
   const [endDate, setEndDate] = useState(todayISO());
   const [period, setPeriod] = useState<'daily' | 'weekly' | 'monthly'>('daily');
+  const [selectedTenantId, setSelectedTenantId] = useState<string>('');
 
   const generate = async () => {
     setLoading(true);
     setError(null);
     try {
-      const res = await reportService.salesTrend({ start_date: startDate, end_date: endDate, period });
+      const params: any = { start_date: startDate, end_date: endDate, period };
+      const tenantId = isSuperAdmin ? selectedTenantId : authUser?.tenant_id;
+      if (tenantId) params.tenant_id = tenantId;
+      const res = await reportService.salesTrend(params);
       setData(res);
     } catch (e: any) {
       const msg = e?.response?.data?.message || e?.message || 'Failed to load report';
@@ -38,6 +47,7 @@ export default function SalesTrendPage() {
     setStartDate(firstDayOfMonthISO());
     setEndDate(todayISO());
     setPeriod('daily');
+    setSelectedTenantId('');
     setData(null);
     setError(null);
   };
@@ -67,6 +77,15 @@ export default function SalesTrendPage() {
     <ReportLayout title="Sales Trend" icon={TrendingUp}
       filters={
         <ReportFilters onApply={generate} onReset={reset} loading={loading}>
+          {isSuperAdmin && (
+            <FilterField label="Tenant">
+              <TenantSelect
+                value={selectedTenantId}
+                onChange={(tid) => setSelectedTenantId(tid || '')}
+                placeholder="All Tenants"
+              />
+            </FilterField>
+          )}
           <FilterField label="Start Date">
             <CustomDatePicker value={startDate} onChange={setStartDate} />
           </FilterField>

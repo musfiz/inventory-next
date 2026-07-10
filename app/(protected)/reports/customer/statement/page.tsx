@@ -3,6 +3,7 @@
 import { useState, useRef } from 'react';
 import { FileText } from 'lucide-react';
 import CustomDatePicker from '@/components/ui/date-picker';
+import TenantSelect from '@/components/ui/tenant-select';
 import apiClient from '@/lib/api/axios';
 import { todayISO, firstDayOfMonthISO, formatCurrency } from '@/lib/utils/format';
 import { exportToPDF, printReport, exportColumnsToExcel, exportColumnsToCSV } from '@/lib/utils/export';
@@ -11,11 +12,15 @@ import {
   ReportLayout, ReportFilters, FilterField, filterInputClass, filterSelectClass,
   ReportSummaryCards, ReportTable, ReportExportBar,
 } from '@/components/reports';
+import { usePermissions } from '@/hooks/use-permissions';
+import { useAuthStore } from '@/stores/auth-store';
 import type { ApiResponse } from '@/types/api.types';
 import type { SummaryCard } from '@/components/reports/ReportSummaryCards';
 import type { ReportColumn } from '@/components/reports/ReportTable';
 
 export default function CustomerStatementPage() {
+  const { isSuperAdmin } = usePermissions();
+  const authUser = useAuthStore(s => s.user);
   const reportRef = useRef<HTMLDivElement>(null);
   const [data, setData] = useState<any[] | null>(null);
   const [meta, setMeta] = useState<Record<string, any> | null>(null);
@@ -24,6 +29,7 @@ export default function CustomerStatementPage() {
   const [customerId, setCustomerId] = useState('');
   const [startDate, setStartDate] = useState(firstDayOfMonthISO());
   const [endDate, setEndDate] = useState(todayISO());
+  const [selectedTenantId, setSelectedTenantId] = useState<string>('');
 
   const generate = async () => {
     if (!customerId.trim()) {
@@ -35,9 +41,12 @@ export default function CustomerStatementPage() {
     setLoading(true);
     setError(null);
     try {
+      const queryParams: any = { start_date: startDate, end_date: endDate };
+      const tenantId = isSuperAdmin ? selectedTenantId : authUser?.tenant_id;
+      if (tenantId) queryParams.tenant_id = tenantId;
       const response = await apiClient.get<ApiResponse<any>>(
         `/api/v1/customers/${customerId.trim()}/statement`,
-        { params: { start_date: startDate, end_date: endDate } },
+        { params: queryParams },
       );
       const result = response.data.data;
       if (Array.isArray(result)) {
@@ -66,6 +75,7 @@ export default function CustomerStatementPage() {
     setCustomerId('');
     setStartDate(firstDayOfMonthISO());
     setEndDate(todayISO());
+    setSelectedTenantId('');
   };
 
   const columns: ReportColumn[] = data?.length
@@ -88,6 +98,15 @@ export default function CustomerStatementPage() {
       icon={FileText}
       filters={
         <ReportFilters onApply={generate} onReset={reset} loading={loading}>
+          {isSuperAdmin && (
+            <FilterField label="Tenant">
+              <TenantSelect
+                value={selectedTenantId}
+                onChange={(tid) => setSelectedTenantId(tid || '')}
+                placeholder="All Tenants"
+              />
+            </FilterField>
+          )}
           <FilterField label="Customer ID">
             <input
               type="number"

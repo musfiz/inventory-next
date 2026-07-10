@@ -293,10 +293,72 @@ These are used in sidebar `permission:` keys and in `permission_users`:
 
 ---
 
-## 9. Key Notes
+## 9. Tenant-Based Data Filtering (Reports & Accounting)
+
+All accounting management pages (Chart of Accounts, Journal Entries, Expenses) and all report pages (45+ pages across Inventory, Sales, Purchase, POS, Customer, Supplier, Product, Warehouse, Tax, System, and Accounting modules) implement tenant-based data filtering using the following pattern:
+
+### Frontend Pattern
+
+Every page follows these steps:
+
+1. **Import dependencies:**
+   ```typescript
+   import TenantSelect from '@/components/ui/tenant-select';
+   import { usePermissions } from '@/hooks/use-permissions';
+   import { useAuthStore } from '@/stores/auth-store';
+   ```
+
+2. **Get user context:**
+   ```typescript
+   const { isSuperAdmin } = usePermissions();
+   const authUser = useAuthStore(s => s.user);
+   const [selectedTenantId, setSelectedTenantId] = useState<string>('');
+   ```
+
+3. **Build API params:**
+   ```typescript
+   const tenantId = isSuperAdmin ? selectedTenantId : authUser?.tenant_id;
+   if (tenantId) params.tenant_id = tenantId;
+   ```
+
+4. **Show TenantSelect (super admin only):**
+   ```tsx
+   {isSuperAdmin && (
+     <TenantSelect
+       value={selectedTenantId}
+       onChange={(tid) => setSelectedTenantId(tid || '')}
+       placeholder="All Tenants"
+     />
+   )}
+   ```
+
+### Service Layer
+
+All methods in `accountService.ts` and `reportService.ts` accept an optional `tenant_id?: string` parameter. If provided, it is forwarded to the backend API. If omitted, the backend uses the authenticated user's tenant context.
+
+### Behavior by User Type
+
+| User Type | Tenant Selector | Data Scope |
+|-----------|----------------|------------|
+| **Super Admin** | Visible — can select any tenant | Shows data for selected tenant, or all tenants when empty |
+| **Tenant Admin** | Hidden | Automatically scoped to own tenant via `authUser.tenant_id` |
+| **Tenant User** | Hidden | Automatically scoped to own tenant via `authUser.tenant_id` |
+
+---
+
+## 10. Key Notes
 
 - **Super admin** (`user_type = 'super_admin'`) bypasses ALL permission checks — both backend (Gate::before) and frontend (`isSuperAdmin` check).
 - **`permission_users` is the source of truth** for non-super-admin permissions. It's read on every `/api/v1/user` call and on every `switchUser` call.
 - The User model has `'permissions' => 'array'` in `$casts`, but the `permissions` column does NOT exist in the `users` table — it is a **dynamically set attribute** populated from `permission_users` before serialization.
 - Sidebar items with `superAdminOnly: true` are invisible to all non-super-admin users regardless of any permissions they hold.
 - `Settings` group (Brands, Units, Categories, Attributes) is all `superAdminOnly` — hidden for all tenant users.
+- **Report permissions** (e.g. `view-stock-valuation-report`, `view-sales-by-product-report`, etc.) are documented in `REPORT_GENERATION_PLAN.md` §8.1. They follow the same enforcement pattern.
+- **Accounting management pages** (Chart of Accounts, Journal Entries, Expenses) do NOT require report permissions — they use the same frontend permission as the sidebar item.
+
+## Changelog
+
+| Date | Change |
+|------|--------|
+| 2026-07-10 | Added §9: Tenant-Based Data Filtering (Reports & Accounting) |
+| 2026-07-10 | Added changelog section |

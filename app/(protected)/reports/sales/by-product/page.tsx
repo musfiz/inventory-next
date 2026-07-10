@@ -3,14 +3,19 @@
 import { useState, useRef } from 'react';
 import { BarChart3 } from 'lucide-react';
 import CustomDatePicker from '@/components/ui/date-picker';
+import TenantSelect from '@/components/ui/tenant-select';
 import reportService from '@/services/reportService';
 import { todayISO, firstDayOfMonthISO, formatCurrency, formatPercent } from '@/lib/utils/format';
 import { exportToPDF, printReport, exportColumnsToExcel, exportColumnsToCSV, type ExportColumn } from '@/lib/utils/export';
 import { notify } from '@/lib/notifications';
 import { ReportLayout, ReportFilters, FilterField, filterInputClass, filterSelectClass, ReportSummaryCards, ReportTable, ReportExportBar, type ReportColumn, type SummaryCard } from '@/components/reports';
+import { usePermissions } from '@/hooks/use-permissions';
+import { useAuthStore } from '@/stores/auth-store';
 import type { SalesByProductReport, SalesByProductRow } from '@/types/report.types';
 
 export default function SalesByProductPage() {
+  const { isSuperAdmin } = usePermissions();
+  const authUser = useAuthStore(s => s.user);
   const reportRef = useRef<HTMLDivElement>(null);
   const [data, setData] = useState<SalesByProductReport | null>(null);
   const [loading, setLoading] = useState(false);
@@ -19,12 +24,16 @@ export default function SalesByProductPage() {
   const [endDate, setEndDate] = useState(todayISO());
   const [source, setSource] = useState<'pos' | 'so' | 'all'>('all');
   const [sortBy, setSortBy] = useState<'revenue' | 'quantity' | 'profit'>('revenue');
+  const [selectedTenantId, setSelectedTenantId] = useState<string>('');
 
   const generate = async () => {
     setLoading(true);
     setError(null);
     try {
-      const res = await reportService.salesByProduct({ start_date: startDate, end_date: endDate, source, sort_by: sortBy });
+      const params: any = { start_date: startDate, end_date: endDate, source, sort_by: sortBy };
+      const tenantId = isSuperAdmin ? selectedTenantId : authUser?.tenant_id;
+      if (tenantId) params.tenant_id = tenantId;
+      const res = await reportService.salesByProduct(params);
       setData(res);
     } catch (e: any) {
       const msg = e?.response?.data?.message || e?.message || 'Failed to load report';
@@ -40,6 +49,7 @@ export default function SalesByProductPage() {
     setEndDate(todayISO());
     setSource('all');
     setSortBy('revenue');
+    setSelectedTenantId('');
     setData(null);
     setError(null);
   };
@@ -74,6 +84,15 @@ export default function SalesByProductPage() {
     <ReportLayout title="Sales by Product" icon={BarChart3}
       filters={
         <ReportFilters onApply={generate} onReset={reset} loading={loading}>
+          {isSuperAdmin && (
+            <FilterField label="Tenant">
+              <TenantSelect
+                value={selectedTenantId}
+                onChange={(tid) => setSelectedTenantId(tid || '')}
+                placeholder="All Tenants"
+              />
+            </FilterField>
+          )}
           <FilterField label="Start Date">
             <CustomDatePicker value={startDate} onChange={setStartDate} />
           </FilterField>

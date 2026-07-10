@@ -3,6 +3,7 @@
 import { useState, useRef } from 'react';
 import { AlertTriangle } from 'lucide-react';
 import reportService from '@/services/reportService';
+import TenantSelect from '@/components/ui/tenant-select';
 import { formatDate } from '@/lib/utils/format';
 import { exportToPDF, printReport, exportColumnsToExcel, exportColumnsToCSV } from '@/lib/utils/export';
 import { notify } from '@/lib/notifications';
@@ -10,6 +11,8 @@ import type { FailedJournalReport } from '@/types/report.types';
 import { ReportLayout, ReportFilters, FilterField, filterInputClass, filterSelectClass, ReportSummaryCards, ReportTable, ReportExportBar } from '@/components/reports';
 import type { SummaryCard } from '@/components/reports';
 import type { ExportColumn } from '@/lib/utils/export';
+import { usePermissions } from '@/hooks/use-permissions';
+import { useAuthStore } from '@/stores/auth-store';
 
 const STATUS_OPTIONS = [
   { value: '', label: 'All Statuses' },
@@ -18,22 +21,27 @@ const STATUS_OPTIONS = [
 ];
 
 export default function FailedJournalPage() {
+  const { isSuperAdmin } = usePermissions();
+  const authUser = useAuthStore(s => s.user);
   const reportRef = useRef<HTMLDivElement>(null);
   const [data, setData] = useState<FailedJournalReport | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [status, setStatus] = useState('');
   const [referenceType, setReferenceType] = useState('');
+  const [selectedTenantId, setSelectedTenantId] = useState<string>('');
 
   const generate = async () => {
     setLoading(true);
     setError(null);
     try {
+      const tenantId = isSuperAdmin ? selectedTenantId : authUser?.tenant_id;
       const result = await reportService.failedJournal({
         status: status ? (status as 'unresolved' | 'resolved') : undefined,
         reference_type: referenceType || undefined,
         page: 1,
         per_page: 100,
+        ...(tenantId ? { tenant_id: tenantId } : {}),
       });
       setData(result);
       notify.success('Report generated');
@@ -119,6 +127,15 @@ export default function FailedJournalPage() {
       description="Monitor and manage failed journal entry processing"
       filters={
         <ReportFilters onApply={generate} onReset={reset} loading={loading}>
+          {isSuperAdmin && (
+            <FilterField label="Tenant">
+              <TenantSelect
+                value={selectedTenantId}
+                onChange={(tid) => setSelectedTenantId(tid || '')}
+                placeholder="All Tenants"
+              />
+            </FilterField>
+          )}
           <FilterField label="Status">
             <select
               value={status}

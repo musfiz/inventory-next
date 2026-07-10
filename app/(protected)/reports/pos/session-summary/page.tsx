@@ -3,6 +3,7 @@
 import { useState, useRef } from 'react';
 import { Receipt } from 'lucide-react';
 import CustomDatePicker from '@/components/ui/date-picker';
+import TenantSelect from '@/components/ui/tenant-select';
 import reportService from '@/services/reportService';
 import { todayISO, formatCurrency, formatDate } from '@/lib/utils/format';
 import { exportToPDF, printReport } from '@/lib/utils/export';
@@ -11,26 +12,34 @@ import {
   ReportLayout, ReportFilters, FilterField, filterInputClass, filterSelectClass,
   ReportSummaryCards, ReportTable, ReportExportBar,
 } from '@/components/reports';
+import { usePermissions } from '@/hooks/use-permissions';
+import { useAuthStore } from '@/stores/auth-store';
 import type { PosSessionSummaryReport } from '@/types/report.types';
 import type { SummaryCard } from '@/components/reports/ReportSummaryCards';
 import type { ReportColumn } from '@/components/reports/ReportTable';
 
 export default function PosSessionSummaryPage() {
+  const { isSuperAdmin } = usePermissions();
+  const authUser = useAuthStore(s => s.user);
   const reportRef = useRef<HTMLDivElement>(null);
   const [data, setData] = useState<PosSessionSummaryReport | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [sessionId, setSessionId] = useState('');
   const [date, setDate] = useState(todayISO());
+  const [selectedTenantId, setSelectedTenantId] = useState<string>('');
 
   const generate = async () => {
     setLoading(true);
     setError(null);
     try {
-      const result = await reportService.posSessionSummary({
+      const params: any = {
         session_id: sessionId ? Number(sessionId) : undefined,
         date,
-      });
+      };
+      const tenantId = isSuperAdmin ? selectedTenantId : authUser?.tenant_id;
+      if (tenantId) params.tenant_id = tenantId;
+      const result = await reportService.posSessionSummary(params);
       setData(result);
     } catch (err: any) {
       const msg = err?.response?.data?.message || 'Failed to generate report';
@@ -46,6 +55,7 @@ export default function PosSessionSummaryPage() {
     setError(null);
     setSessionId('');
     setDate(todayISO());
+    setSelectedTenantId('');
   };
 
   const cards: SummaryCard[] = data
@@ -97,6 +107,15 @@ export default function PosSessionSummaryPage() {
       icon={Receipt}
       filters={
         <ReportFilters onApply={generate} onReset={reset} loading={loading}>
+          {isSuperAdmin && (
+            <FilterField label="Tenant">
+              <TenantSelect
+                value={selectedTenantId}
+                onChange={(tid) => setSelectedTenantId(tid || '')}
+                placeholder="All Tenants"
+              />
+            </FilterField>
+          )}
           <FilterField label="Session ID (optional)">
             <input
               type="number"

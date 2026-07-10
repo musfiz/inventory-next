@@ -3,6 +3,7 @@
 import { useState, useRef } from 'react';
 import { HandCoins } from 'lucide-react';
 import CustomDatePicker from '@/components/ui/date-picker';
+import TenantSelect from '@/components/ui/tenant-select';
 import reportService from '@/services/reportService';
 import { todayISO, formatCurrency } from '@/lib/utils/format';
 import { exportToPDF, printReport, exportColumnsToExcel, exportColumnsToCSV } from '@/lib/utils/export';
@@ -11,19 +12,27 @@ import type { ReceivablesReport } from '@/types/accounting.types';
 import { ReportLayout, ReportFilters, FilterField, ReportSummaryCards, ReportTable, ReportExportBar } from '@/components/reports';
 import type { SummaryCard } from '@/components/reports';
 import type { ExportColumn } from '@/lib/utils/export';
+import { usePermissions } from '@/hooks/use-permissions';
+import { useAuthStore } from '@/stores/auth-store';
 
 export default function ARAgingPage() {
+  const { isSuperAdmin } = usePermissions();
+  const authUser = useAuthStore(s => s.user);
   const reportRef = useRef<HTMLDivElement>(null);
   const [data, setData] = useState<ReceivablesReport | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [asOfDate, setAsOfDate] = useState(todayISO());
+  const [selectedTenantId, setSelectedTenantId] = useState<string>('');
 
   const generate = async () => {
     setLoading(true);
     setError(null);
     try {
-      const result = await reportService.receivables({ as_of_date: asOfDate });
+      const params: { as_of_date: string; tenant_id?: string } = { as_of_date: asOfDate };
+      const tenantId = isSuperAdmin ? selectedTenantId : authUser?.tenant_id;
+      if (tenantId) params.tenant_id = tenantId;
+      const result = await reportService.receivables(params);
       setData(result);
       notify.success('Report generated');
     } catch (err: any) {
@@ -106,6 +115,15 @@ export default function ARAgingPage() {
       description="Accounts Receivable Aging Summary"
       filters={
         <ReportFilters onApply={generate} onReset={reset} loading={loading}>
+          {isSuperAdmin && (
+            <FilterField label="Tenant">
+              <TenantSelect
+                value={selectedTenantId}
+                onChange={(tid) => setSelectedTenantId(tid || '')}
+                placeholder="All Tenants"
+              />
+            </FilterField>
+          )}
           <FilterField label="As of Date">
             <CustomDatePicker value={asOfDate} onChange={setAsOfDate} />
           </FilterField>

@@ -6,6 +6,8 @@ import { notify, confirm } from '@/lib/notifications';
 import accountService from '@/services/accountService';
 import type { Account, AccountFormData, AccountType, AccountSubtype } from '@/types/accounting.types';
 import { usePermissions } from '@/hooks/use-permissions';
+import TenantSelect from '@/components/ui/tenant-select';
+import { useAuthStore } from '@/stores/auth-store';
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
 const ACCOUNT_TYPES: AccountType[] = ['asset', 'liability', 'equity', 'revenue', 'expense', 'contra'];
@@ -71,7 +73,8 @@ const emptyForm: AccountFormData = {
 // ─── Component ────────────────────────────────────────────────────────────────
 
 export default function AccountsPage() {
-  const { hasPermission } = usePermissions();
+  const { hasPermission, isSuperAdmin } = usePermissions();
+  const authUser = useAuthStore(s => s.user);
   const [accounts, setAccounts] = useState<Account[]>([]);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
@@ -84,12 +87,16 @@ export default function AccountsPage() {
     asset: false, liability: false, equity: false, revenue: false, expense: false, contra: false,
   });
   const [search, setSearch] = useState('');
+  const [selectedTenantId, setSelectedTenantId] = useState<string>('');
 
   const fetchAccounts = async () => {
     setLoading(true);
     setLoadError(null);
     try {
-      const res = await accountService.list({ per_page: 200, search });
+      const params: Record<string, unknown> = { per_page: 200, search };
+      const tenantId = isSuperAdmin ? selectedTenantId : authUser?.tenant_id;
+      if (tenantId) params.tenant_id = tenantId;
+      const res = await accountService.list(params);
       setAccounts(res.data ?? []);
     } catch (error) {
       console.error('Failed to load accounts', error);
@@ -101,7 +108,7 @@ export default function AccountsPage() {
     }
   };
 
-  useEffect(() => { fetchAccounts(); }, [search]);
+  useEffect(() => { fetchAccounts(); }, [search, selectedTenantId]);
 
   const handleSeedDefaults = async () => {
     if (!await confirm({ title: 'Seed Default Accounts?', text: 'Existing accounts with same codes will be skipped.', icon: 'question', confirmButtonText: 'Yes, Seed', cancelButtonText: 'Cancel' }).then(r => r.isConfirmed)) return;
@@ -201,6 +208,15 @@ export default function AccountsPage() {
           </div>
 
           <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-end">
+            {isSuperAdmin && (
+              <div className="w-full sm:w-48">
+                <TenantSelect
+                  value={selectedTenantId}
+                  onChange={(tid) => setSelectedTenantId(tid || '')}
+                  placeholder="All Tenants"
+                />
+              </div>
+            )}
             <div className="relative w-full sm:w-72">
               <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400 dark:text-gray-500" />
               <input

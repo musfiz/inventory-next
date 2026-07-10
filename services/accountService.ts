@@ -53,11 +53,12 @@ class AccountService {
 
   async ledger(
     id: number,
-    params: { start_date: string; end_date: string; per_page?: number }
+    params: { start_date: string; end_date: string; per_page?: number; tenant_id?: string }
   ): Promise<AccountLedgerResponse> {
+    const { tenant_id, ...rest } = params;
     const response = await apiClient.get<ApiResponse<AccountLedgerResponse>>(
       `/api/v1/accounts/${id}/ledger`,
-      { params }
+      { params: { ...rest, ...(tenant_id ? { tenant_id } : {}) } }
     );
     return response.data.data;
   }
@@ -66,7 +67,7 @@ class AccountService {
     await apiClient.post('/api/v1/accounts/seed-defaults');
   }
 
-  async trialBalance(params: { start_date: string; end_date: string }): Promise<TrialBalanceReport> {
+  async trialBalance(params: { start_date: string; end_date: string; tenant_id?: string }): Promise<TrialBalanceReport> {
     const rows = await this.trialBalanceRows(params);
     const totalDebit = rows.reduce((s, r) => s + (r.total_debit ?? 0), 0);
     const totalCredit = rows.reduce((s, r) => s + (r.total_credit ?? 0), 0);
@@ -81,24 +82,27 @@ class AccountService {
   }
 
   /** Raw rows from the backend (no aggregation). Used internally; prefer trialBalance(). */
-  async trialBalanceRows(params: { start_date: string; end_date: string }): Promise<TrialBalanceRow[]> {
+  async trialBalanceRows(params: { start_date: string; end_date: string; tenant_id?: string }): Promise<TrialBalanceRow[]> {
+    const { tenant_id, ...rest } = params;
     const response = await apiClient.get<ApiResponse<{ data: TrialBalanceRow[]; start_date: string; end_date: string }>>(
       '/api/v1/reports/trial-balance',
-      { params },
+      { params: { ...rest, ...(tenant_id ? { tenant_id } : {}) } },
     );
     return response.data.data?.data ?? [];
   }
 
-  async profitLoss(params: { start_date: string; end_date: string }): Promise<ProfitLossReport> {
+  async profitLoss(params: { start_date: string; end_date: string; tenant_id?: string }): Promise<ProfitLossReport> {
+    const { tenant_id, ...rest } = params;
     const response = await apiClient.get<ApiResponse<ProfitLossReport>>('/api/v1/reports/profit-loss', {
-      params,
+      params: { ...rest, ...(tenant_id ? { tenant_id } : {}) },
     });
     return response.data.data;
   }
 
-  async cashFlow(params: { start_date: string; end_date: string }): Promise<CashFlowReport> {
+  async cashFlow(params: { start_date: string; end_date: string; tenant_id?: string }): Promise<CashFlowReport> {
+    const { tenant_id, ...rest } = params;
     const response = await apiClient.get<ApiResponse<CashFlowReport>>('/api/v1/reports/cash-flow', {
-      params,
+      params: { ...rest, ...(tenant_id ? { tenant_id } : {}) },
     });
     return response.data.data;
   }
@@ -113,9 +117,10 @@ class AccountService {
    * Returns 404 / 500 today — the endpoint is on the gap-analysis roadmap
    * (gap 5.1). The page handles that gracefully.
    */
-  async balanceSheet(params: { as_of_date: string }): Promise<BalanceSheetReport> {
+  async balanceSheet(params: { as_of_date: string; tenant_id?: string }): Promise<BalanceSheetReport> {
+    const { tenant_id, ...rest } = params;
     const response = await apiClient.get<ApiResponse<any>>('/api/v1/reports/balance-sheet', {
-      params,
+      params: { ...rest, ...(tenant_id ? { tenant_id } : {}) },
     });
     const raw = response.data.data;
     const toLine = (item: any): BalanceSheetLine => ({

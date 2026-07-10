@@ -3,16 +3,21 @@
 import { useState, useRef } from 'react';
 import { History } from 'lucide-react';
 import CustomDatePicker from '@/components/ui/date-picker';
+import TenantSelect from '@/components/ui/tenant-select';
 import reportService from '@/services/reportService';
 import { todayISO, firstDayOfMonthISO } from '@/lib/utils/format';
 import { exportToPDF, printReport, exportColumnsToExcel, exportColumnsToCSV } from '@/lib/utils/export';
 import { notify } from '@/lib/notifications';
 import { ReportLayout, ReportFilters, FilterField, filterInputClass, filterSelectClass, ReportSummaryCards, ReportTable, ReportExportBar } from '@/components/reports';
+import { usePermissions } from '@/hooks/use-permissions';
+import { useAuthStore } from '@/stores/auth-store';
 import type { StockMovementReport } from '@/types/report.types';
 import type { SummaryCard } from '@/components/reports/ReportSummaryCards';
 import type { ReportColumn } from '@/components/reports/ReportTable';
 
 export default function StockMovementPage() {
+  const { isSuperAdmin } = usePermissions();
+  const authUser = useAuthStore(s => s.user);
   const reportRef = useRef<HTMLDivElement>(null);
   const [data, setData] = useState<StockMovementReport | null>(null);
   const [loading, setLoading] = useState(false);
@@ -20,16 +25,20 @@ export default function StockMovementPage() {
   const [startDate, setStartDate] = useState(firstDayOfMonthISO());
   const [endDate, setEndDate] = useState(todayISO());
   const [movementType, setMovementType] = useState('all');
+  const [selectedTenantId, setSelectedTenantId] = useState<string>('');
 
   const generate = async () => {
     setLoading(true);
     setError(null);
     try {
-      const result = await reportService.stockMovementReport({
+      const params: any = {
         start_date: startDate,
         end_date: endDate,
         movement_type: movementType === 'all' ? undefined : movementType,
-      });
+      };
+      const tenantId = isSuperAdmin ? selectedTenantId : authUser?.tenant_id;
+      if (tenantId) params.tenant_id = tenantId;
+      const result = await reportService.stockMovementReport(params);
       setData(result);
     } catch (err: any) {
       const msg = err?.response?.data?.message || 'Failed to generate report';
@@ -46,6 +55,7 @@ export default function StockMovementPage() {
     setStartDate(firstDayOfMonthISO());
     setEndDate(todayISO());
     setMovementType('all');
+    setSelectedTenantId('');
   };
 
   const cards: SummaryCard[] = data
@@ -77,6 +87,15 @@ export default function StockMovementPage() {
       icon={History}
       filters={
         <ReportFilters onApply={generate} onReset={reset} loading={loading}>
+          {isSuperAdmin && (
+            <FilterField label="Tenant">
+              <TenantSelect
+                value={selectedTenantId}
+                onChange={(tid) => setSelectedTenantId(tid || '')}
+                placeholder="All Tenants"
+              />
+            </FilterField>
+          )}
           <FilterField label="Start Date">
             <CustomDatePicker value={startDate} onChange={setStartDate} />
           </FilterField>
