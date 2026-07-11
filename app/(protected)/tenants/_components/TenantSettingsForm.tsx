@@ -81,6 +81,7 @@ export default function TenantSettingsPage({ tenantId: propTenantId }: { tenantI
         setFormData({
           ...EMPTY_FORM,
           ...data,
+          business_short_name: data?.business_short_name ?? '',
           store_notification_email: data?.store_notification_email ?? '',
           logo_url: data?.logo_url ?? '',
         });
@@ -423,7 +424,7 @@ export default function TenantSettingsPage({ tenantId: propTenantId }: { tenantI
                 <input
                   type="text"
                   name="business_short_name"
-                  value={formData.business_short_name}
+                  value={formData.business_short_name ?? ''}
                   onChange={handleInputChange}
                   className={getInputClassName('business_short_name', inputBase)}
                   placeholder="ABC"
