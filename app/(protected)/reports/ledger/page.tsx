@@ -5,9 +5,14 @@ import { Search } from 'lucide-react';
 import { notify } from '@/lib/notifications';
 import accountService from '@/services/accountService';
 import CustomDatePicker from '@/components/ui/date-picker';
+import TenantSelect from '@/components/ui/tenant-select';
 import type { LedgerLine, Account } from '@/types/accounting.types';
+import { usePermissions } from '@/hooks/use-permissions';
+import { useAuthStore } from '@/stores/auth-store';
 
 export default function LedgerPage() {
+  const { isSuperAdmin } = usePermissions();
+  const authUser = useAuthStore(s => s.user);
   const [selectedAccount, setSelectedAccount] = useState<Account | null>(null);
   const [accountQuery, setAccountQuery] = useState('');
   const [accountOptions, setAccountOptions] = useState<Account[]>([]);
@@ -15,12 +20,16 @@ export default function LedgerPage() {
   const [endDate, setEndDate] = useState(new Date().toISOString().split('T')[0]);
   const [loading, setLoading] = useState(false);
   const [ledgerData, setLedgerData] = useState<{ account: Account; opening_balance: number; lines: { data: LedgerLine[] } } | null>(null);
+  const [selectedTenantId, setSelectedTenantId] = useState<string>('');
 
   const searchAccounts = async (q: string) => {
     setAccountQuery(q);
     if (q.length < 1) { setAccountOptions([]); return; }
     try {
-      const res = await accountService.list({ search: q, per_page: 20 });
+      const params: Record<string, unknown> = { search: q, per_page: 20 };
+      const tenantId = isSuperAdmin ? selectedTenantId : authUser?.tenant_id;
+      if (tenantId) params.tenant_id = tenantId;
+      const res = await accountService.list(params);
       setAccountOptions(res.data ?? []);
     } catch { /* ignore */ }
   };
@@ -29,7 +38,10 @@ export default function LedgerPage() {
     if (!selectedAccount) { notify.error('Select an account first'); return; }
     setLoading(true);
     try {
-      const res = await accountService.ledger(selectedAccount.id, { start_date: startDate, end_date: endDate });
+      const params: { start_date: string; end_date: string; tenant_id?: string } = { start_date: startDate, end_date: endDate };
+      const tenantId = isSuperAdmin ? selectedTenantId : authUser?.tenant_id;
+      if (tenantId) params.tenant_id = tenantId;
+      const res = await accountService.ledger(selectedAccount.id, params);
       setLedgerData(res);
     } catch {
       notify.error('Failed to load ledger');
@@ -50,6 +62,16 @@ export default function LedgerPage() {
 
       {/* Filters */}
       <div className="bg-white dark:bg-gray-900 rounded-lg border dark:border-gray-700 p-4 flex flex-wrap gap-3 items-end">
+        {isSuperAdmin && (
+          <div>
+            <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">Tenant</label>
+            <TenantSelect
+              value={selectedTenantId}
+              onChange={(tid) => setSelectedTenantId(tid || '')}
+              placeholder="All Tenants"
+            />
+          </div>
+        )}
         <div className="flex-1 min-w-[200px]">
           <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">Account</label>
           <div className="relative">

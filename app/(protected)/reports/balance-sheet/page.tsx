@@ -13,7 +13,9 @@ import { notify } from '@/lib/notifications';
 import accountService from '@/services/accountService';
 import CustomDatePicker from '@/components/ui/date-picker';
 import type { BalanceSheetLine, BalanceSheetReport } from '@/types/accounting.types';
+import TenantSelect from '@/components/ui/tenant-select';
 import { usePermissions } from '@/hooks/use-permissions';
+import { useAuthStore } from '@/stores/auth-store';
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
@@ -49,17 +51,22 @@ function SubtotalRow({ label, amount, color }: { label: string; amount: number; 
 // ─── Component ───────────────────────────────────────────────────────────────
 
 export default function BalanceSheetPage() {
-  const { hasPermission } = usePermissions();
+  const { hasPermission, isSuperAdmin } = usePermissions();
+  const authUser = useAuthStore(s => s.user);
   const canExport = hasPermission('export-reports');
 
   const [asOfDate, setAsOfDate] = useState(new Date().toISOString().split('T')[0]);
   const [loading, setLoading] = useState(false);
   const [report, setReport] = useState<BalanceSheetReport | null>(null);
+  const [selectedTenantId, setSelectedTenantId] = useState<string>('');
 
   const load = async () => {
     setLoading(true);
     try {
-      const res = await accountService.balanceSheet({ as_of_date: asOfDate });
+      const params: { as_of_date: string; tenant_id?: string } = { as_of_date: asOfDate };
+      const tenantId = isSuperAdmin ? selectedTenantId : authUser?.tenant_id;
+      if (tenantId) params.tenant_id = tenantId;
+      const res = await accountService.balanceSheet(params);
       setReport(res);
       if (res.balanced) {
         notify.success('Balance Sheet loaded. Books are balanced.');
@@ -134,6 +141,16 @@ export default function BalanceSheetPage() {
 
       {/* Filters */}
       <div className="bg-white dark:bg-gray-900 rounded-lg border dark:border-gray-700 p-4 flex flex-wrap gap-3 items-end">
+        {isSuperAdmin && (
+          <div>
+            <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">Tenant</label>
+            <TenantSelect
+              value={selectedTenantId}
+              onChange={(tid) => setSelectedTenantId(tid || '')}
+              placeholder="All Tenants"
+            />
+          </div>
+        )}
         <div>
           <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">As of Date</label>
           <CustomDatePicker

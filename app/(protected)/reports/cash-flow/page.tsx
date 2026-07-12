@@ -5,18 +5,27 @@ import { Search, ArrowDownCircle, ArrowUpCircle } from 'lucide-react';
 import { notify } from '@/lib/notifications';
 import accountService from '@/services/accountService';
 import CustomDatePicker from '@/components/ui/date-picker';
+import TenantSelect from '@/components/ui/tenant-select';
 import type { CashFlowReport } from '@/types/accounting.types';
+import { usePermissions } from '@/hooks/use-permissions';
+import { useAuthStore } from '@/stores/auth-store';
 
 export default function CashFlowPage() {
+  const { isSuperAdmin } = usePermissions();
+  const authUser = useAuthStore(s => s.user);
   const [startDate, setStartDate] = useState(new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString().split('T')[0]);
   const [endDate, setEndDate] = useState(new Date().toISOString().split('T')[0]);
   const [loading, setLoading] = useState(false);
   const [report, setReport] = useState<CashFlowReport | null>(null);
+  const [selectedTenantId, setSelectedTenantId] = useState<string>('');
 
   const load = async () => {
     setLoading(true);
     try {
-      const res = await accountService.cashFlow({ start_date: startDate, end_date: endDate });
+      const params: { start_date: string; end_date: string; tenant_id?: string } = { start_date: startDate, end_date: endDate };
+      const tenantId = isSuperAdmin ? selectedTenantId : authUser?.tenant_id;
+      if (tenantId) params.tenant_id = tenantId;
+      const res = await accountService.cashFlow(params);
       setReport(res);
     } catch {
       notify.error('Failed to load cash flow report');
@@ -34,6 +43,16 @@ export default function CashFlowPage() {
 
       {/* Filters */}
       <div className="bg-white dark:bg-gray-900 rounded-lg border dark:border-gray-700 p-4 flex flex-wrap gap-3 items-end">
+        {isSuperAdmin && (
+          <div>
+            <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">Tenant</label>
+            <TenantSelect
+              value={selectedTenantId}
+              onChange={(tid) => setSelectedTenantId(tid || '')}
+              placeholder="All Tenants"
+            />
+          </div>
+        )}
         <div>
           <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">Start Date</label>
           <CustomDatePicker

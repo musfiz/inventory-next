@@ -5,8 +5,10 @@ import { Search, Scale, CheckCircle2, AlertTriangle, FileSpreadsheet } from 'luc
 import { notify } from '@/lib/notifications';
 import accountService from '@/services/accountService';
 import CustomDatePicker from '@/components/ui/date-picker';
+import TenantSelect from '@/components/ui/tenant-select';
 import type { AccountType, TrialBalanceReport, TrialBalanceRow } from '@/types/accounting.types';
 import { usePermissions } from '@/hooks/use-permissions';
+import { useAuthStore } from '@/stores/auth-store';
 
 // ─── Constants ───────────────────────────────────────────────────────────────
 
@@ -39,7 +41,8 @@ function formatBDT(n: number): string {
 // ─── Component ───────────────────────────────────────────────────────────────
 
 export default function TrialBalancePage() {
-  const { hasPermission } = usePermissions();
+  const { hasPermission, isSuperAdmin } = usePermissions();
+  const authUser = useAuthStore(s => s.user);
   const canExport = hasPermission('export-reports');
 
   const [startDate, setStartDate] = useState(
@@ -49,6 +52,7 @@ export default function TrialBalancePage() {
   const [loading, setLoading] = useState(false);
   const [report, setReport] = useState<TrialBalanceReport | null>(null);
   const [search, setSearch] = useState('');
+  const [selectedTenantId, setSelectedTenantId] = useState<string>('');
 
   const load = async () => {
     if (startDate > endDate) {
@@ -57,7 +61,10 @@ export default function TrialBalancePage() {
     }
     setLoading(true);
     try {
-      const res = await accountService.trialBalance({ start_date: startDate, end_date: endDate });
+      const params: { start_date: string; end_date: string; tenant_id?: string } = { start_date: startDate, end_date: endDate };
+      const tenantId = isSuperAdmin ? selectedTenantId : authUser?.tenant_id;
+      if (tenantId) params.tenant_id = tenantId;
+      const res = await accountService.trialBalance(params);
       setReport(res);
       if (res.is_balanced) {
         notify.success('Trial balance loaded. Books are balanced.');
@@ -148,6 +155,16 @@ export default function TrialBalancePage() {
 
       {/* Filters */}
       <div className="bg-white dark:bg-gray-900 rounded-lg border dark:border-gray-700 p-4 flex flex-wrap gap-3 items-end">
+        {isSuperAdmin && (
+          <div>
+            <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">Tenant</label>
+            <TenantSelect
+              value={selectedTenantId}
+              onChange={(tid) => setSelectedTenantId(tid || '')}
+              placeholder="All Tenants"
+            />
+          </div>
+        )}
         <div>
           <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">Start Date</label>
           <CustomDatePicker
