@@ -1,5 +1,7 @@
 # SQL Database Backup — Implementation Plan
 
+> **Implementation note (route shape):** All endpoints in this plan live under the standard `v1` prefix only — there is no `superadmin` URL segment. The controllers are placed in `app/Http/Controllers/Api/` (not `Api/Superadmin/`). Authorization is an inline `isSuperAdmin()` check inside each controller method (no `role:super-admin` middleware alias exists in this project). The frontend pages live at `/backup` and `/restore` (not `/superadmin/...`) and are gated client-side by `usePermissions().isSuperAdmin`.
+
 ## 1. Executive Summary
 
 **Goal:** Provide a UI and Artisan commands for the superadmin to download SQL backups in **two modes**:
@@ -30,7 +32,7 @@ The superadmin picks the mode from the UI before triggering a download. Both mod
 | **File size** | Large (all tenants combined) | Small (one tenant's slice) |
 | **Use case** | Disaster recovery, server migration, full clone | Client data request, standalone instance per tenant |
 | **Artisan command** | `php artisan db:backup {--output=./exports}` | `php artisan tenant:export {tenant_id} {--output=./exports}` |
-| **API endpoint** | `POST /api/v1/superadmin/db/backup` | `POST /api/v1/superadmin/tenants/{id}/export` |
+| **API endpoint** | `POST /api/v1/db/backup` | `POST /api/v1/tenants/{id}/export` |
 | **UI trigger** | "Backup Full DB" button on backup page | "Download SQL" button per tenant row |
 | **SQL header** | `-- UIMS Full Database Backup` | `-- UIMS Tenant Export (ID: {id})` |
 | **Restore behavior** | Replaces entire database | Replaces / merges one tenant's data |
@@ -287,7 +289,7 @@ exports/
 
 ## 6. Superadmin UI for Backup
 
-### 6.1 Page: `/superadmin/backup`
+### 6.1 Page: `/backup`
 
 A unified backup page with a **mode selector** at the top. The UI changes depending on which mode is selected.
 
@@ -333,7 +335,7 @@ A unified backup page with a **mode selector** at the top. The UI changes depend
 |------------|-------------|-----------------|
 | Mode selector | Two cards/toggle buttons at the top | Same |
 | Content area | Shows DB summary + single "Download Full Backup" button | Shows tenant list with per-row download buttons |
-| API call | `POST /api/v1/superadmin/db/backup` | `POST /api/v1/superadmin/tenants/{id}/export` |
+| API call | `POST /api/v1/db/backup` | `POST /api/v1/tenants/{id}/export` |
 | Progress | Queued job → poll status → download | Queued job → poll status → download |
 | Filename | `inventory_full_{date}.sql` | `{tenant_name_slug}_{date}.sql` |
 
@@ -351,26 +353,26 @@ A unified backup page with a **mode selector** at the top. The UI changes depend
 
 **Full DB backup:**
 ```
-POST /api/v1/superadmin/db/backup
+POST /api/v1/db/backup
   Body: { "compress": false }
   → 200: { "message": "Backup started", "job_id": 123 }
 
-GET /api/v1/superadmin/db/backup/{job_id}/status
+GET /api/v1/db/backup/{job_id}/status
   → 200: { "status": "processing|completed|failed", "progress": "dumping table 45/81" }
 
-GET /api/v1/superadmin/db/backup/{job_id}/download
+GET /api/v1/db/backup/{job_id}/download
   → 200: application/sql file stream
 ```
 
 **Per-tenant backup:**
 ```
-POST /api/v1/superadmin/tenants/{tenant_id}/export
+POST /api/v1/tenants/{tenant_id}/export
   → 200: { "message": "Export started", "job_id": 123 }
 
-GET /api/v1/superadmin/exports/{job_id}/status
+GET /api/v1/exports/{job_id}/status
   → 200: { "status": "processing|completed|failed", "progress": "15/72 tables" }
 
-GET /api/v1/superadmin/exports/{job_id}/download
+GET /api/v1/exports/{job_id}/download
   → 200: application/sql file stream
 ```
 
@@ -383,7 +385,7 @@ GET /api/v1/superadmin/exports/{job_id}/download
 **File:** `app/Services/ExportService.php`
 
 Methods:
-- `exportFullDatabase($outputPath, $compress)` — runs `mysqldump` on the entire DB, prepends full-backup header
+- `exportFullDatabase($outputPath, $compress)` — dumps the entire DB via `Spatie\DbDumper\Databases\MySql` (uses `mysqldump` under the hood with `--protocol=TCP`, `--single-transaction`, `--routines`, `--triggers`, `--events`), prepends full-backup header, wraps in `.zip` via PHP `ZipArchive`
 - `getTenantScopedTables()` — returns list of 59 tables with their `tenant_id` column
 - `getSharedTables()` — returns list of shared tables with their business_type filter
 - `exportTenant($tenantId, $format, $outputPath)` — main per-tenant export logic
@@ -409,13 +411,13 @@ Methods:
 
 ### Step 4: Create Controllers
 
-**File:** `app/Http/Controllers/Api/Superadmin/DbBackupController.php`
+**File:** `app/Http/Controllers/Api/DbBackupController.php`
 
 - `backup(Request $request)` — triggers full DB backup job
 - `status($jobId)` — returns full-backup job progress
 - `download($jobId)` — streams the SQL file to the browser
 
-**File:** `app/Http/Controllers/Api/Superadmin/TenantExportController.php`
+**File:** `app/Http/Controllers/Api/TenantExportController.php`
 
 - `export($tenantId)` — triggers per-tenant export job
 - `status($jobId)` — returns export job progress
@@ -426,7 +428,7 @@ Methods:
 **File:** `routes/api.php`
 
 ```php
-Route::middleware(['auth:sanctum', 'role:super-admin'])->prefix('v1/superadmin')->group(function () {
+Route::middleware(['auth:sanctum'])->prefix('v1')->group(function () {
     // Full DB backup
     Route::post('db/backup', [DbBackupController::class, 'backup']);
     Route::get('db/backup/{jobId}/status', [DbBackupController::class, 'status']);
@@ -456,35 +458,35 @@ export interface BackupJobStatus {
 }
 
 class BackupService {
-  /** POST /api/v1/superadmin/db/backup (full DB) */
+  /** POST /api/v1/db/backup (full DB) */
   async backupFullDatabase(options?: { compress?: boolean }): Promise<{ job_id: number }> {
     const response = await apiClient.post<ApiResponse<{ job_id: number }>>(
-      '/api/v1/superadmin/db/backup',
+      '/api/v1/db/backup',
       { compress: options?.compress ?? false }
     );
     return response.data.data;
   }
 
-  /** GET /api/v1/superadmin/db/backup/{jobId}/status */
+  /** GET /api/v1/db/backup/{jobId}/status */
   async getFullBackupStatus(jobId: number): Promise<BackupJobStatus> {
     const response = await apiClient.get<ApiResponse<BackupJobStatus>>(
-      `/api/v1/superadmin/db/backup/${jobId}/status`
+      `/api/v1/db/backup/${jobId}/status`
     );
     return response.data.data;
   }
 
-  /** POST /api/v1/superadmin/tenants/{tenantId}/export (per-tenant) */
+  /** POST /api/v1/tenants/{tenantId}/export (per-tenant) */
   async exportTenant(tenantId: string): Promise<{ job_id: number }> {
     const response = await apiClient.post<ApiResponse<{ job_id: number }>>(
-      `/api/v1/superadmin/tenants/${tenantId}/export`
+      `/api/v1/tenants/${tenantId}/export`
     );
     return response.data.data;
   }
 
-  /** GET /api/v1/superadmin/exports/{jobId}/status */
+  /** GET /api/v1/exports/{jobId}/status */
   async getTenantExportStatus(jobId: number): Promise<BackupJobStatus> {
     const response = await apiClient.get<ApiResponse<BackupJobStatus>>(
-      `/api/v1/superadmin/exports/${jobId}/status`
+      `/api/v1/exports/${jobId}/status`
     );
     return response.data.data;
   }
@@ -492,8 +494,8 @@ class BackupService {
   /** GET download endpoint → returns blob URL for browser download */
   async downloadBackup(jobId: number, mode: BackupMode): Promise<string> {
     const endpoint = mode === 'full'
-      ? `/api/v1/superadmin/db/backup/${jobId}/download`
-      : `/api/v1/superadmin/exports/${jobId}/download`;
+      ? `/api/v1/db/backup/${jobId}/download`
+      : `/api/v1/exports/${jobId}/download`;
     const response = await apiClient.get(endpoint, { responseType: 'blob' });
     return URL.createObjectURL(response.data);
   }
@@ -506,11 +508,11 @@ export default backupService;
 ### Step 7: Create Frontend Page
 
 **Files:**
-- `app/(protected)/superadmin/backup/page.tsx` — unified backup page with mode selector
-- `app/(protected)/superadmin/backup/_components/BackupModeSelector.tsx` — toggle between Full DB and Per-Tenant
-- `app/(protected)/superadmin/backup/_components/FullDbBackupPanel.tsx` — full DB backup UI
-- `app/(protected)/superadmin/backup/_components/TenantBackupPanel.tsx` — tenant list with per-row download buttons
-- `app/(protected)/superadmin/backup/_components/BackupProgressModal.tsx` — progress indicator for both modes
+- `app/(protected)/backup/page.tsx` — unified backup page with mode selector
+- `app/(protected)/backup/_components/BackupModeSelector.tsx` — toggle between Full DB and Per-Tenant
+- `app/(protected)/backup/_components/FullDbBackupPanel.tsx` — full DB backup UI
+- `app/(protected)/backup/_components/TenantBackupPanel.tsx` — tenant list with per-row download buttons
+- `app/(protected)/backup/_components/BackupProgressModal.tsx` — progress indicator for both modes
 
 ### Step 8: Add Queue Support (for large backups)
 
@@ -654,8 +656,9 @@ SET FOREIGN_KEY_CHECKS = 1;
 
 ## 10. Security Considerations
 
-- **Authentication:** Both backup endpoints require `role:super-admin`
-- **Authorization:** Superadmin can backup the full DB or any tenant (intentional)
+- **Authentication:** Both backup endpoints require `auth:sanctum` middleware
+- **Authorization:** Inline super-admin check inside the controller method — there is no `role:super-admin` middleware alias in this project; only superadmins can backup
+- **Authorization scope:** Superadmin can backup the full DB or any tenant (intentional)
 - **Rate limiting:** Max 1 full DB backup per 30 minutes; max 1 per-tenant export per tenant per 5 minutes
 - **File access:** Exported files stored in `storage/app/exports/` — not publicly accessible
 - **Cleanup:** Old exports auto-deleted after 7 days (configurable)

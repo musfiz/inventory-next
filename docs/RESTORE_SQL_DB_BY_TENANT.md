@@ -1,5 +1,7 @@
 # SQL Database Restore — Implementation Plan
 
+> **Implementation note (route shape):** All endpoints in this plan live under the standard `v1` prefix only — there is no `superadmin` URL segment. The controllers are placed in `app/Http/Controllers/Api/` (not `Api/Superadmin/`). Authorization is an inline `isSuperAdmin()` check inside each controller method (no `role:super-admin` middleware alias exists in this project). The frontend page lives at `/restore` (not `/superadmin/restore`) and is gated client-side by `usePermissions().isSuperAdmin`.
+
 ## 1. Executive Summary
 
 **Goal:** Provide a UI and Artisan command for the superadmin to upload a previously-exported `.sql` file and restore it into the inventory database. This is the inverse of the [Download SQL plan](./DOWNLOAD_SQL_DB_BY_TENANT.md). The restore system **auto-detects** whether the uploaded file is a **Full Database Backup** or a **Per-Tenant Backup** by reading the SQL header comment, then executes the appropriate restore strategy.
@@ -37,7 +39,7 @@
 │  │  Dry-run: auto-detect mode     │                          │
 │  │  Confirm dialog (destructive)  │                          │
 │  └──────────────┬─────────────────┘                          │
-│                 │ POST /api/v1/superadmin/db/restore          │
+│                 │ POST /api/v1/db/restore          │
 │                 │ (multipart/form-data, onUploadProgress)     │
 └─────────────────┼────────────────────────────────────────────┘
                   │
@@ -83,19 +85,19 @@
 ```
 
 **Restore Flow:**
-1. Superadmin navigates to `/superadmin/restore`
+1. Superadmin navigates to `/restore`
 2. Selects a `.sql` file via drag-and-drop or file picker
 3. UI validates file extension and size (client-side pre-check)
 4. **Dry-run preview** — upload to `/dry-run` endpoint; backend reads the header, detects mode (full vs tenant), estimates tables/rows, and returns warnings
 5. UI shows the detected mode + impact summary + confirmation dialog
-6. User confirms — file is uploaded to `POST /api/v1/superadmin/db/restore` with `onUploadProgress`
+6. User confirms — file is uploaded to `POST /api/v1/db/restore` with `onUploadProgress`
 7. Backend validates the file (extension, magic bytes, size limit)
 8. Backend **detects backup mode** from the SQL header comment
 9. Backend creates an automatic backup snapshot of the current DB state (full snapshot for full-DB restore; affected-tables snapshot for per-tenant restore)
 10. Backend executes the SQL with the appropriate strategy:
     - **Full DB restore:** disables FK checks, executes all statements, re-enables FK checks
     - **Per-tenant restore:** optionally deletes existing rows for the target `tenant_id` first, then inserts the new data
-11. UI polls `GET /api/v1/superadmin/db/restore/{job_id}/status` for progress
+11. UI polls `GET /api/v1/db/restore/{job_id}/status` for progress
 12. On success, backend verifies row counts and returns a summary (including which mode was detected)
 13. On failure, backend rolls back from the auto-snapshot and reports the error
 
@@ -239,7 +241,7 @@ For per-tenant restores, the snapshot only covers the affected tables for that t
 ### 6.1 Upload & Start Restore
 
 ```
-POST /api/v1/superadmin/db/restore
+POST /api/v1/db/restore
   Content-Type: multipart/form-data
   Body:
     - file: <binary .sql file>
@@ -274,7 +276,7 @@ POST /api/v1/superadmin/db/restore
 ### 6.2 Poll Restore Status (queued only)
 
 ```
-GET /api/v1/superadmin/db/restore/{job_id}/status
+GET /api/v1/db/restore/{job_id}/status
 
   → 200:
     {
@@ -315,7 +317,7 @@ GET /api/v1/superadmin/db/restore/{job_id}/status
 ### 6.3 Dry-Run (Preview without executing)
 
 ```
-POST /api/v1/superadmin/db/restore/dry-run
+POST /api/v1/db/restore/dry-run
   Content-Type: multipart/form-data
   Body:
     - file: <binary .sql file>
@@ -371,7 +373,7 @@ POST /api/v1/superadmin/db/restore/dry-run
 ### 6.4 Download Last Snapshot
 
 ```
-GET /api/v1/superadmin/db/restore/snapshot/download
+GET /api/v1/db/restore/snapshot/download
   ?mode=full|tenant   (optional, defaults to most recent)
   → 200: application/sql file stream (most recent snapshot)
 ```
@@ -379,7 +381,7 @@ GET /api/v1/superadmin/db/restore/snapshot/download
 ### 6.5 Rollback (manual)
 
 ```
-POST /api/v1/superadmin/db/restore/rollback
+POST /api/v1/db/restore/rollback
   Body:
     - snapshot_file: "restore-snapshots/2026-07-11_120000_full.sql"
 
@@ -479,7 +481,7 @@ class RestoreDatabaseJob implements ShouldQueue {
 
 ### Step 4: Create `DbRestoreController`
 
-**File:** `app/Http/Controllers/Api/Superadmin/DbRestoreController.php`
+**File:** `app/Http/Controllers/Api/DbRestoreController.php`
 
 - `restore(Request $request)` — handles file upload, validates, detects mode, creates `db_restore_jobs` record, dispatches sync or queued
 - `status($jobId)` — returns `db_restore_jobs` row state (includes `detected_mode`)
@@ -492,7 +494,7 @@ class RestoreDatabaseJob implements ShouldQueue {
 **File:** `routes/api.php`
 
 ```php
-Route::middleware(['auth:sanctum', 'role:super-admin'])->prefix('v1/superadmin')->group(function () {
+Route::middleware(['auth:sanctum'])->prefix('v1')->group(function () {
     Route::post('db/restore', [DbRestoreController::class, 'restore']);
     Route::post('db/restore/dry-run', [DbRestoreController::class, 'dryRun']);
     Route::get('db/restore/{jobId}/status', [DbRestoreController::class, 'status']);
@@ -565,7 +567,7 @@ export interface DryRunResult {
 }
 
 class RestoreService {
-  /** POST /api/v1/superadmin/db/restore (multipart) */
+  /** POST /api/v1/db/restore (multipart) */
   async restoreDatabase(
     file: File,
     options?: {
@@ -584,7 +586,7 @@ class RestoreService {
     }
 
     const response = await apiClient.post<ApiResponse<any>>(
-      '/api/v1/superadmin/db/restore',
+      '/api/v1/db/restore',
       formData,
       {
         headers: { 'Content-Type': 'multipart/form-data' },
@@ -594,30 +596,30 @@ class RestoreService {
     return response.data.data;
   }
 
-  /** GET /api/v1/superadmin/db/restore/{jobId}/status */
+  /** GET /api/v1/db/restore/{jobId}/status */
   async getRestoreStatus(jobId: number): Promise<RestoreStatus> {
     const response = await apiClient.get<ApiResponse<RestoreStatus>>(
-      `/api/v1/superadmin/db/restore/${jobId}/status`
+      `/api/v1/db/restore/${jobId}/status`
     );
     return response.data.data;
   }
 
-  /** POST /api/v1/superadmin/db/restore/dry-run (multipart) */
+  /** POST /api/v1/db/restore/dry-run (multipart) */
   async dryRun(file: File, tenantId?: string): Promise<DryRunResult> {
     const formData = new FormData();
     formData.append('file', file);
     if (tenantId) formData.append('tenant_id', tenantId);
     const response = await apiClient.post<ApiResponse<DryRunResult>>(
-      '/api/v1/superadmin/db/restore/dry-run',
+      '/api/v1/db/restore/dry-run',
       formData,
       { headers: { 'Content-Type': 'multipart/form-data' } }
     );
     return response.data.data;
   }
 
-  /** POST /api/v1/superadmin/db/restore/rollback */
+  /** POST /api/v1/db/restore/rollback */
   async rollback(snapshotFile: string): Promise<void> {
-    await apiClient.post('/api/v1/superadmin/db/restore/rollback', {
+    await apiClient.post('/api/v1/db/restore/rollback', {
       snapshot_file: snapshotFile,
     });
   }
@@ -634,7 +636,7 @@ export { restoreService, type RestoreSummary, type RestoreStatus, type DryRunRes
 
 ### Step 2: Create the Restore Page
 
-**File:** `app/(protected)/superadmin/restore/page.tsx`
+**File:** `app/(protected)/restore/page.tsx`
 
 ```
 'superadmin/restore/'
@@ -650,7 +652,7 @@ export { restoreService, type RestoreSummary, type RestoreStatus, type DryRunRes
 
 ### Step 3: `RestoreUploadForm` Component
 
-**File:** `app/(protected)/superadmin/restore/_components/RestoreUploadForm.tsx`
+**File:** `app/(protected)/restore/_components/RestoreUploadForm.tsx`
 
 This is the core UI component. It mirrors the `ImageUploadForm.tsx` pattern (drag-and-drop, hidden file input, progress bar) and adds the destructive-action confirmation via SweetAlert2.
 
@@ -703,7 +705,7 @@ This is the core UI component. It mirrors the `ImageUploadForm.tsx` pattern (dra
 
 ### Step 4: `DryRunReport` Component (with mode detection display)
 
-**File:** `app/(protected)/superadmin/restore/_components/DryRunReport.tsx`
+**File:** `app/(protected)/restore/_components/DryRunReport.tsx`
 
 Shows the result of the dry-run preview, prominently displaying the **detected backup mode**:
 
@@ -782,7 +784,7 @@ Shows the result of the dry-run preview, prominently displaying the **detected b
 
 ### Step 5: `RestoreProgressDialog` Component
 
-**File:** `app/(protected)/superadmin/restore/_components/RestoreProgressDialog.tsx`
+**File:** `app/(protected)/restore/_components/RestoreProgressDialog.tsx`
 
 Shown only for large files that are processed via the queue. Polls `restoreService.getRestoreStatus(jobId)` every 2 seconds using `setInterval` inside a `useEffect` (with cleanup on unmount or when status is terminal). Displays the detected mode badge.
 
@@ -822,7 +824,7 @@ useEffect(() => {
 
 ### Step 6: `TenantRemapOption` Component
 
-**File:** `app/(protected)/superadmin/restore/_components/TenantRemapOption.tsx`
+**File:** `app/(protected)/restore/_components/TenantRemapOption.tsx`
 
 Shown only when the dry-run detects a per-tenant backup and the target tenant already exists in the database. Allows the superadmin to:
 - Toggle "Replace existing tenant data" (default ON — deletes old rows, inserts new)
@@ -830,7 +832,7 @@ Shown only when the dry-run detects a per-tenant backup and the target tenant al
 
 ### Step 7: `RestoreHistoryTable` Component
 
-**File:** `app/(protected)/superadmin/restore/_components/RestoreHistoryTable.tsx`
+**File:** `app/(protected)/restore/_components/RestoreHistoryTable.tsx`
 
 Lists recent restore jobs from `db_restore_jobs` table so the superadmin can see past operations and rollback if needed. Now includes the detected mode column:
 
@@ -846,7 +848,7 @@ Lists recent restore jobs from `db_restore_jobs` table so the superadmin can see
 
 ### Step 8: Constants & Validation
 
-**File:** `app/(protected)/superadmin/restore/constants.ts`
+**File:** `app/(protected)/restore/constants.ts`
 
 ```typescript
 export const MAX_FILE_SIZE = 500 * 1024 * 1024; // 500 MB
@@ -887,7 +889,7 @@ export default function RestorePage() {
 
 ### Step 10: Add Navigation Link
 
-Add a "Restore Database" link to the superadmin navigation menu/sidebar pointing to `/superadmin/restore`.
+Add a "Restore Database" link to the superadmin navigation menu/sidebar pointing to `/restore`.
 
 ---
 
@@ -919,7 +921,7 @@ Add a "Restore Database" link to the superadmin navigation menu/sidebar pointing
 ## 10. Security Considerations
 
 - **Authentication:** All restore endpoints require `auth:sanctum` middleware
-- **Authorization:** `role:super-admin` middleware — only superadmin can restore
+- **Authorization:** Inline super-admin check inside the controller method — there is no `role:super-admin` middleware alias in this project; only superadmins can restore
 - **File validation:** Server-side validation of extension, MIME type, magic bytes, and size — never trust client-side checks alone
 - **Header validation:** The `detectBackupMode()` method re-validates the header server-side even if the client pre-detected it — never trust client-side mode detection
 - **Dangerous statement scanning:** `RestoreService` scans the SQL for `DROP DATABASE`, `TRUNCATE` without scope, `DELETE FROM` without `WHERE`, `GRANT`, `CREATE USER`, shell escape sequences — blocks or warns
@@ -977,9 +979,9 @@ This plan does NOT cover:
 | Mode selection | Superadmin picks Full DB or Per-Tenant in UI | Auto-detected from SQL file header |
 | Full DB command | `php artisan db:backup` | `php artisan db:restore {file}` |
 | Per-tenant command | `php artisan tenant:export {id}` | `php artisan db:restore {file} --mode=tenant` |
-| Full DB API | `POST /api/v1/superadmin/db/backup` | `POST /api/v1/superadmin/db/restore` (auto-detects) |
-| Per-tenant API | `POST /api/v1/superadmin/tenants/{id}/export` | `POST /api/v1/superadmin/db/restore` (auto-detects) |
-| UI page | `/superadmin/backup` (mode selector + content) | `/superadmin/restore` (single upload, mode auto-detected) |
+| Full DB API | `POST /api/v1/db/backup` | `POST /api/v1/db/restore` (auto-detects) |
+| Per-tenant API | `POST /api/v1/tenants/{id}/export` | `POST /api/v1/db/restore` (auto-detects) |
+| UI page | `/backup` (mode selector + content) | `/restore` (single upload, mode auto-detected) |
 | File transfer | Server → browser (download stream) | Browser → server (multipart upload) |
 | Progress | Backup job polling | Upload progress + restore job polling |
 | Safety | Read-only (no risk to data) | Auto-snapshot + rollback (destructive); extra confirmation for full DB |

@@ -35,11 +35,9 @@ import {
   Boxes,
   TrendingUp,
   Truck,
-  Factory,
   ScrollText,
   AlertTriangle,
   Receipt,
-  ShoppingCart,
   BarChart3,
   Percent,
   CalendarClock,
@@ -49,9 +47,12 @@ import {
   FileBarChart,
   PieChart,
   Archive,
+  Database,
+  Upload,
+  Download,
 } from 'lucide-react';
 import { MdOutlineAssignmentReturn, MdOutlinePointOfSale, MdOutlinePostAdd, MdPayment, MdSupervisedUserCircle } from 'react-icons/md';
-import { BsFilePost, BsReceiptCutoff } from 'react-icons/bs';
+import { BsDatabaseFillDown, BsDatabaseFillGear, BsDatabaseFillUp, BsFilePost, BsReceiptCutoff } from 'react-icons/bs';
 import { LiaFileInvoiceDollarSolid } from 'react-icons/lia';
 import { PiUserListDuotone } from 'react-icons/pi';
 import { VscEditSession } from "react-icons/vsc";
@@ -335,6 +336,15 @@ const navigation: NavigationItem[] = [
         children: [
           { name: 'Attribute List', href: '/attributes', icon: List },
           { name: 'Attribute Values', href: '/attributes/values', icon: Tag },
+        ],
+      },
+      {
+        name: 'Database',
+        icon: BsDatabaseFillGear,
+        superAdminOnly: true,
+        children: [
+          { name: 'Backup', href: '/backup', icon: BsDatabaseFillDown, superAdminOnly: true },
+          { name: 'Restore', href: '/restore', icon: BsDatabaseFillUp,   superAdminOnly: true },
         ],
       },
     ],
