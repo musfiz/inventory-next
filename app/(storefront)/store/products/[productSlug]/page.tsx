@@ -6,7 +6,6 @@ import Image from 'next/image';
 import { useParams, notFound } from 'next/navigation';
 import {
   Star,
-  ShoppingBag,
   Heart,
   Minus,
   Plus,
@@ -18,6 +17,7 @@ import {
   Check,
   Zap,
 } from 'lucide-react';
+import { IoCartSharp } from 'react-icons/io5';
 import {
   PRODUCTS,
   REVIEWS,
@@ -364,7 +364,7 @@ export default function ProductDetailPage() {
                 disabled={!inStock}
                 className="inline-flex flex-1 items-center justify-center gap-2 rounded-full bg-gray-900 py-3.5 text-sm font-bold text-white transition-all hover:bg-gray-800 disabled:cursor-not-allowed disabled:opacity-50 dark:bg-white dark:text-gray-900 dark:hover:bg-gray-100"
               >
-                <ShoppingBag className="h-5 w-5" />
+                <IoCartSharp className="h-5 w-5" />
                 {inStock ? 'Add to Cart' : 'Sold Out'}
               </button>
               <button
@@ -578,7 +578,7 @@ export default function ProductDetailPage() {
           disabled={!inStock}
           className="inline-flex items-center gap-2 rounded-full bg-brand-600 px-5 py-2.5 text-sm font-bold text-white disabled:opacity-50"
         >
-          <ShoppingBag className="h-4 w-4" />
+          <IoCartSharp className="h-4 w-4" />
           Add
         </button>
         <button

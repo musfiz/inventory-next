@@ -95,9 +95,9 @@ export default function StorefrontFooter() {
   };
 
   return (
-    <footer className="mt-16 bg-gray-50 dark:bg-gray-950">
+    <footer className="mt-16 bg-gradient-to-b from-gray-50 via-white to-gray-50 dark:from-gray-950 dark:via-gray-900 dark:to-gray-950">
       {/* Value props strip */}
-      <div className="border-y border-gray-200 bg-white dark:border-gray-800 dark:bg-gray-900">
+      <div className="bg-gradient-to-r from-brand-50 via-purple-50 to-pink-50 dark:from-brand-950/30 dark:via-purple-950/30 dark:to-pink-950/30 border-y border-brand-100 dark:border-gray-800">
         <div className="mx-auto grid max-w-7xl grid-cols-2 gap-6 px-4 py-8 md:grid-cols-4">
           {VALUE_PROPS.map(({ icon: Icon, title, description }) => (
             <div key={title} className="flex items-center gap-3">
@@ -118,14 +118,14 @@ export default function StorefrontFooter() {
       </div>
 
       {/* Newsletter */}
-      <div className="border-b border-gray-200 dark:border-gray-800">
+      <div className="bg-gradient-to-r from-brand-100 via-purple-100 to-pink-100 dark:from-brand-950/40 dark:via-purple-950/40 dark:to-pink-950/40 border-y border-brand-200 dark:border-gray-800">
         <div className="mx-auto max-w-7xl px-4 py-10">
           <div className="grid items-center gap-6 lg:grid-cols-2">
             <div>
               <h3 className="text-2xl font-black text-gray-900 dark:text-white">
                 Subscribe to our newsletter
               </h3>
-              <p className="mt-1 text-sm text-gray-600 dark:text-gray-400">
+              <p className="mt-1 text-sm text-gray-600 dark:text-gray-300">
                 Be the first to get exclusive deals, new arrivals & insider
                 updates.
               </p>
@@ -185,11 +185,16 @@ export default function StorefrontFooter() {
               </li>
             </ul>
             <div className="mt-5 flex items-center gap-2">
-              {[Facebook, Instagram, Twitter, Youtube].map((Icon, i) => (
+              {[
+                { Icon: Facebook, color: 'hover:bg-blue-500 hover:border-blue-500' },
+                { Icon: Instagram, color: 'hover:bg-pink-500 hover:border-pink-500' },
+                { Icon: Twitter, color: 'hover:bg-sky-500 hover:border-sky-500' },
+                { Icon: Youtube, color: 'hover:bg-red-500 hover:border-red-500' },
+              ].map(({ Icon, color }, i) => (
                 <a
                   key={i}
                   href="#"
-                  className="flex h-9 w-9 items-center justify-center rounded-full border border-gray-300 text-gray-600 transition-all hover:border-brand-500 hover:bg-brand-500 hover:text-white dark:border-gray-700 dark:text-gray-400"
+                  className={`flex h-9 w-9 items-center justify-center rounded-full border border-gray-300 text-gray-600 transition-all hover:text-white dark:border-gray-700 dark:text-gray-400 ${color}`}
                   aria-label="social"
                 >
                   <Icon className="h-4 w-4" />
@@ -198,13 +203,19 @@ export default function StorefrontFooter() {
             </div>
           </div>
 
-          {FOOTER_LINKS.map(group => (
-            <div key={group.title}>
-              <p className="text-sm font-bold uppercase tracking-wider text-gray-900 dark:text-gray-100">
-                {group.title}
+          {[
+            { title: 'Shop', cls: 'text-brand-600 dark:text-brand-400' },
+            { title: 'Customer Service', cls: 'text-purple-600 dark:text-purple-400' },
+            { title: 'About UIMS', cls: 'text-pink-600 dark:text-pink-400' },
+            { title: 'Legal', cls: 'text-amber-600 dark:text-amber-400' },
+          ].map(({ title, cls }, i) => {
+            const links = FOOTER_LINKS[i].links;
+            return <div key={title}>
+              <p className={`text-sm font-bold uppercase tracking-wider ${cls}`}>
+                {title}
               </p>
               <ul className="mt-4 space-y-2.5 text-sm">
-                {group.links.map(l => (
+                {links.map(l => (
                   <li key={l.label}>
                     <Link
                       href={l.href}
@@ -215,27 +226,33 @@ export default function StorefrontFooter() {
                   </li>
                 ))}
               </ul>
-            </div>
-          ))}
+            </div>;
+          })}
         </div>
       </div>
 
       {/* Bottom bar */}
-      <div className="border-t border-gray-200 bg-white dark:border-gray-800 dark:bg-gray-900">
-        <div className="mx-auto flex max-w-7xl flex-col items-center justify-between gap-4 px-4 py-5 text-xs text-gray-500 sm:flex-row dark:text-gray-400">
+      <div className="border-t border-brand-200 bg-gradient-to-r from-brand-50 via-purple-50 to-pink-50 dark:border-gray-800 dark:from-gray-900 dark:via-gray-900 dark:to-gray-900">
+        <div className="mx-auto flex max-w-7xl flex-col items-center justify-between gap-4 px-4 py-5 text-xs text-gray-600 sm:flex-row dark:text-gray-400">
           <p>
             © {new Date().getFullYear()} UIMS Store. All rights reserved.
           </p>
           <div className="flex items-center gap-2">
             <span className="font-semibold">We accept:</span>
             <div className="flex items-center gap-1.5">
-              {['Visa', 'Mastercard', 'bKash', 'Nagad', 'Rocket', 'COD'].map(
-                p => (
+              {[
+                { name: 'Visa', cls: 'text-blue-700 bg-blue-50 border-blue-200 dark:bg-blue-950/40 dark:text-blue-400 dark:border-blue-800' },
+                { name: 'Mastercard', cls: 'text-orange-700 bg-orange-50 border-orange-200 dark:bg-orange-950/40 dark:text-orange-400 dark:border-orange-800' },
+                { name: 'bKash', cls: 'text-red-700 bg-red-50 border-red-200 dark:bg-red-950/40 dark:text-red-400 dark:border-red-800' },
+                { name: 'Nagad', cls: 'text-emerald-700 bg-emerald-50 border-emerald-200 dark:bg-emerald-950/40 dark:text-emerald-400 dark:border-emerald-800' },
+                { name: 'Rocket', cls: 'text-purple-700 bg-purple-50 border-purple-200 dark:bg-purple-950/40 dark:text-purple-400 dark:border-purple-800' },
+                { name: 'COD', cls: 'text-gray-700 bg-gray-50 border-gray-200 dark:bg-gray-800 dark:text-gray-300 dark:border-gray-700' },
+              ].map(({ name, cls }) => (
                   <span
-                    key={p}
-                    className="rounded border border-gray-200 bg-white px-2 py-1 text-[10px] font-bold text-gray-700 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-300"
+                    key={name}
+                    className={`rounded border px-2 py-1 text-[10px] font-bold ${cls}`}
                   >
-                    {p}
+                    {name}
                   </span>
                 )
               )}

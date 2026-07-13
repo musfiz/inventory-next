@@ -10,8 +10,6 @@ export default function FloatingCartButton() {
   const getItemCount = useCartStore(s => s.getItemCount);
   const openDrawer = useCartStore(s => s.openDrawer);
 
-  if (items.length === 0) return null;
-
   return (
     <button
       onClick={openDrawer}

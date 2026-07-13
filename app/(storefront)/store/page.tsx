@@ -79,12 +79,12 @@ const HeroCarousel = () => {
       onMouseLeave={() => setPaused(false)}
     >
       {HERO_BANNERS.map((b, i) => (
-        <div
-          key={b.id}
-          className={`absolute inset-0 transition-opacity duration-700 ${
-            i === index ? 'opacity-100' : 'opacity-0'
-          }`}
-        >
+          <div
+            key={b.id}
+            className={`absolute inset-0 transition-opacity duration-700 ${
+              i === index ? 'opacity-100' : 'opacity-0 pointer-events-none'
+            }`}
+          >
           <Image
             src={b.image}
             alt={b.title}

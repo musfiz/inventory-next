@@ -5,7 +5,6 @@ import { useState, useRef, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import {
   Search,
-  ShoppingBag,
   User,
   Heart,
   Menu,
@@ -26,6 +25,8 @@ import {
   BadgePercent,
   Gift,
 } from 'lucide-react';
+import { ImCart } from 'react-icons/im';
+import { IoCartSharp } from 'react-icons/io5';
 import { CATEGORIES, POPULAR_SEARCHES } from '@/lib/storefront/mock-data';
 import { useCartStore } from '@/stores/cart-store';
 import { useWishlistStore } from '@/stores/wishlist-store';
@@ -87,7 +88,7 @@ const MegaMenu = ({ onClose, onKeepOpen }: { onClose: () => void; onKeepOpen: ()
 
   return (
     <div
-      className="absolute left-0 right-0 top-full z-40 border-t bg-white shadow-xl dark:border-gray-800 dark:bg-gray-950 sf-fade-in"
+      className="absolute left-0 right-0 top-full z-40 bg-white shadow-xl dark:bg-gray-950 sf-fade-in"
       onMouseEnter={onKeepOpen}
       onMouseLeave={onClose}
     >
@@ -131,7 +132,7 @@ const MegaMenu = ({ onClose, onKeepOpen }: { onClose: () => void; onKeepOpen: ()
 
         <div className="mt-8 border-t border-gray-100 pt-6 dark:border-gray-800">
           <Link href="/store/products" onClick={onClose} className="inline-flex items-center gap-1.5 text-sm font-semibold text-gray-900 transition-colors hover:text-gray-600 dark:text-gray-100 dark:hover:text-gray-400">
-            Browse all products <ChevronRight className="h-4 w-4" />
+            Browse all products <IoCartSharp className="h-4 w-4" />
           </Link>
         </div>
       </div>
@@ -512,8 +513,10 @@ export default function StorefrontHeader() {
               </div>
             </Link>
 
-            <div className="hidden flex-1 lg:block">
-              <SearchBar />
+            <div className="hidden flex-1 lg:flex lg:justify-center">
+              <div className="w-full max-w-xl">
+                <SearchBar />
+              </div>
             </div>
 
             <div className="flex items-center gap-0.5">
@@ -533,9 +536,9 @@ export default function StorefrontHeader() {
                 {accountOpen && <AccountMenu onClose={() => setAccountOpen(false)} />}
               </div>
 
-              <button onClick={openCart} className="relative inline-flex items-center gap-2.5 rounded-xl bg-gradient-to-r from-gray-900 to-gray-800 py-2.5 pl-3 pr-4 text-white shadow-lg transition-all hover:from-gray-800 hover:to-gray-700 dark:from-white dark:to-gray-100 dark:text-gray-900 dark:hover:from-gray-100 dark:hover:to-white" aria-label={`Cart with ${itemCount} items, total ${formatMoney(subtotal)}`}>
+              <button onClick={openCart} className="relative inline-flex items-center gap-2.5 rounded-xl border border-gray-200 bg-white py-2.5 pl-3 pr-4 text-gray-900 shadow-sm transition-all hover:bg-gray-100 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100 dark:hover:bg-gray-700" aria-label={`Cart with ${itemCount} items, total ${formatMoney(subtotal)}`}>
                 <div className="relative">
-                  <ShoppingBag className="h-5 w-5" />
+                  <ImCart className="h-5 w-5" />
                   {itemCount > 0 && (
                     <span className="absolute -right-2 -top-2 flex h-4 min-w-[16px] items-center justify-center rounded-full bg-gradient-to-r from-accent-500 to-pink-500 px-1 text-[10px] font-bold text-white shadow-sm">
                       {itemCount}

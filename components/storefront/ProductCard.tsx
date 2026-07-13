@@ -2,7 +2,8 @@
 
 import Link from 'next/link';
 import Image from 'next/image';
-import { Heart, ShoppingBag, Star, Plus } from 'lucide-react';
+import { Heart, Star, Plus } from 'lucide-react';
+import { IoCartSharp } from 'react-icons/io5';
 import { useState } from 'react';
 import type { Product } from '@/types/storefront';
 import { formatMoney, formatMoneyDecimal } from '@/lib/storefront/mock-data';
@@ -151,7 +152,7 @@ export default function ProductCard({
               disabled={!inStock}
               className="inline-flex items-center gap-1.5 rounded-lg bg-brand-600 px-3.5 py-2 text-sm font-semibold text-white shadow-sm transition-all hover:bg-brand-700 active:scale-95 disabled:cursor-not-allowed disabled:bg-gray-300"
             >
-              <ShoppingBag className="h-4 w-4" />
+              <IoCartSharp className="h-4 w-4" />
               {inStock ? 'Add' : 'Sold out'}
             </button>
           </div>
@@ -311,7 +312,7 @@ export default function ProductCard({
             className="flex h-9 w-9 items-center justify-center rounded-lg bg-brand-600 text-white shadow-sm transition-all hover:bg-brand-700 hover:scale-105 active:scale-95 disabled:cursor-not-allowed disabled:bg-gray-300 disabled:hover:scale-100"
             aria-label="Add to cart"
           >
-            <ShoppingBag className="h-4 w-4" />
+            <IoCartSharp className="h-4 w-4" />
           </button>
         </div>
       </div>

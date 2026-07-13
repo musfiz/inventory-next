@@ -6,10 +6,10 @@ import {
   SlidersHorizontal,
   X,
   ChevronDown,
-  LayoutGrid,
-  List,
   ArrowRight,
 } from 'lucide-react';
+import { FiGrid } from 'react-icons/fi';
+import { IoListSharp } from 'react-icons/io5';
 import ProductCard from '@/components/storefront/ProductCard';
 import ProductCardSkeleton from '@/components/storefront/ProductCardSkeleton';
 import {
@@ -293,14 +293,14 @@ export default function AllProductsPage() {
                     aria-label="Grid view"
                     className={`rounded-md p-1.5 transition-colors ${view === 'grid' ? 'bg-brand-600 text-white' : 'text-gray-500 hover:text-gray-900 dark:hover:text-gray-200'}`}
                   >
-                    <LayoutGrid className="h-4 w-4" />
+                    <FiGrid className="h-4 w-4" />
                   </button>
                   <button
                     onClick={() => setView('list')}
                     aria-label="List view"
                     className={`rounded-md p-1.5 transition-colors ${view === 'list' ? 'bg-brand-600 text-white' : 'text-gray-500 hover:text-gray-900 dark:hover:text-gray-200'}`}
                   >
-                    <List className="h-4 w-4" />
+                    <IoListSharp className="h-4 w-4" />
                   </button>
                 </div>
                 <div className="relative">
@@ -370,7 +370,7 @@ export default function AllProductsPage() {
 
             {/* Grid */}
             {loading ? (
-              <div className={`grid gap-3 sm:grid-cols-3 ${view === 'list' ? 'grid-cols-1 sm:grid-cols-1' : 'lg:grid-cols-4 xl:grid-cols-5'}`}>
+              <div className={`grid gap-3 sm:grid-cols-3 ${view === 'list' ? 'grid-cols-1' : 'lg:grid-cols-4 xl:grid-cols-5'}`}>
                 {Array.from({ length: 10 }).map((_, i) => (
                   <ProductCardSkeleton key={i} compact={view === 'list'} />
                 ))}
@@ -394,7 +394,7 @@ export default function AllProductsPage() {
               </div>
             ) : (
               <>
-                <div className={`grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 ${view === 'list' ? '!grid-cols-1 sm:!grid-cols-2 lg:!grid-cols-3' : ''}`}>
+                <div className={`grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 ${view === 'list' ? '!grid-cols-1' : ''}`}>
                   {filtered.map(p => (
                     <ProductCard key={p.id} product={p} variant={view === 'list' ? 'list' : 'default'} />
                   ))}
