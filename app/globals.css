@@ -221,7 +221,7 @@
   scrollbar-width: none;
 }
 
-/* Thin scrollbar for POS sections */
+/* Thin scrollbar */
 .scrollbar-thin::-webkit-scrollbar {
   width: 6px;
   height: 6px;

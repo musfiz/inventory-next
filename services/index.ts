@@ -38,6 +38,11 @@ export { default as businessTypeService } from './businessTypeService';
 export { default as reportService } from './reportService';
 export { backupService } from './backupService';
 export { restoreService } from './restoreService';
+export { default as couponService } from './couponService';
+export { default as reviewService } from './reviewService';
+export { default as shippingMethodService } from './shippingMethodService';
+export { default as ecommerceSettingsService } from './ecommerceSettingsService';
+export { default as ecommerceOrderService } from './ecommerceOrderService';
 
 // Re-export types for convenience
 export type {

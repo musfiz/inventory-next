@@ -1,6 +1,7 @@
 // Re-export all API types
 export * from './api.types';
 export * from './permission.types';
+export * from './ecommerce';
 import type { BusinessType } from './api.types';
 
 // Legacy interface kept for backward compatibility

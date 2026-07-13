@@ -6,6 +6,7 @@ import { useState, useEffect, useMemo, useRef } from 'react';
 import { usePermissions } from '@/hooks/use-permissions';
 import {
   LayoutDashboard,
+  LayoutTemplate,
   Users,
   Settings,
   List,
@@ -27,6 +28,8 @@ import {
   Container,
   LayersPlus,
   SquarePlus,
+  Star,
+  Search,
   FileText,
   FileSpreadsheet,
   History,
@@ -50,6 +53,25 @@ import {
   Database,
   Upload,
   Download,
+  SlidersVertical,
+  Megaphone,
+  Timer,
+  Palette,
+  PanelBottom,
+  Globe,
+  ClipboardCheck,
+  MessageSquareText,
+  RotateCcw,
+  Heart,
+  Mail,
+  Code2,
+  MessageSquare,
+  Ticket,
+  GitBranch,
+  Images,
+  Eye,
+  Power,
+  Menu as MenuIcon,
 } from 'lucide-react';
 import { MdOutlineAssignmentReturn, MdOutlinePointOfSale, MdOutlinePostAdd, MdPayment, MdSupervisedUserCircle } from 'react-icons/md';
 import { BsDatabaseFillDown, BsDatabaseFillGear, BsDatabaseFillUp, BsFilePost, BsReceiptCutoff } from 'react-icons/bs';
@@ -218,6 +240,122 @@ const navigation: NavigationItem[] = [
       { name: 'Chart of Accounts', href: '/accounts', icon: LayersPlus, permission: 'view-accounts' },
       { name: 'Expenses', href: '/expenses', icon: FileText, permission: 'view-expenses' },
       { name: 'Journal Entries', href: '/journal-entries', icon: History, permission: 'view-journal-entries' },
+    ],
+  },
+  {
+    name: 'Ecommerce Management',
+    icon: GiShop,
+    superAdminOnly: true,
+    children: [
+      {
+        name: 'Storefront Settings',
+        icon: Settings,
+        children: [
+          { name: 'Status & Activation', href: '/ecommerce/settings/status', icon: Power },
+          { name: 'Store Information', href: '/ecommerce/settings/company', icon: Building2 },
+          { name: 'Locale & Currency', href: '/ecommerce/settings/localization', icon: Globe },
+          { name: 'SEO & Meta Defaults', href: '/ecommerce/settings/seo', icon: Search },
+          { name: 'Payment Methods', href: '/ecommerce/settings/payments', icon: MdPayment },
+          { name: 'Shipping & Delivery', href: '/ecommerce/settings/shipping', icon: Truck },
+        ],
+      },
+      {
+        name: 'Branding',
+        icon: LayoutTemplate,
+        children: [
+          { name: 'Theme & Colors', href: '/ecommerce/appearance/theme', icon: Palette },
+          { name: 'Logo & Favicon', href: '/ecommerce/appearance/logo', icon: Image },
+          { name: 'Header & Menu Builder', href: '/ecommerce/appearance/header-menu', icon: MenuIcon },
+          { name: 'Footer Builder', href: '/ecommerce/appearance/footer', icon: PanelBottom },
+        ],
+      },
+      {
+        name: 'Homepage',
+        icon: LayoutDashboard,
+        children: [
+          { name: 'Hero Slider', href: '/ecommerce/homepage/hero-slider', icon: SlidersVertical },
+          { name: 'Promotional Banners', href: '/ecommerce/homepage/banners', icon: Megaphone },
+          { name: 'Flash Sale / Countdown', href: '/ecommerce/homepage/flash-sale', icon: Timer },
+          { name: 'Featured Products', href: '/ecommerce/homepage/featured', icon: Star },
+          { name: 'Category Showcase', href: '/ecommerce/homepage/categories', icon: Boxes },
+          { name: 'Trust Badges & Promo Strip', href: '/ecommerce/homepage/trust-badges', icon: ClipboardCheck },
+        ],
+      },
+      {
+        name: 'Product Display',
+        icon: Package,
+        children: [
+          { name: 'Display Settings', href: '/ecommerce/products/display', icon: List },
+          { name: 'Storefront Visibility', href: '/ecommerce/products/visibility', icon: Eye },
+          { name: 'Featured / New / Bestseller Flags', href: '/ecommerce/products/flags', icon: Tag },
+          { name: 'Category & Brand Page Content', href: '/ecommerce/products/category-content', icon: FileText },
+          { name: 'Related / Cross-sell / Up-sell', href: '/ecommerce/products/relations', icon: GitBranch },
+        ],
+      },
+      {
+        name: 'Content & Pages',
+        icon: BsFilePost,
+        children: [
+          { name: 'Static Pages (CMS)', href: '/ecommerce/content/pages', icon: FileText },
+          { name: 'Announcement Bar', href: '/ecommerce/content/announcement', icon: MessageSquareText },
+          { name: 'Blog / News', href: '/ecommerce/content/blog', icon: MdOutlinePostAdd },
+          { name: 'Media Library', href: '/ecommerce/content/media', icon: Images },
+        ],
+      },
+      {
+        name: 'Promo & Coupons',
+        icon: Percent,
+        children: [
+          { name: 'Coupons', href: '/ecommerce/promotions/coupons', icon: Ticket },
+          { name: 'Flash Sale Campaigns', href: '/ecommerce/promotions/campaigns', icon: Timer },
+          { name: 'Customer Group Pricing', href: '/ecommerce/promotions/group-pricing', icon: Users },
+        ],
+      },
+      {
+        name: 'Storefront Orders',
+        icon: MdOutlinePointOfSale,
+        children: [
+          { name: 'All Orders', href: '/ecommerce/orders', icon: ClipboardList },
+          { name: 'Order Status', href: '/ecommerce/orders/status', icon: ListTodo },
+          { name: 'Returns & Refunds', href: '/ecommerce/orders/returns', icon: RotateCcw },
+          { name: 'Shipping', href: '/ecommerce/orders/shipping-zones', icon: Truck },
+        ],
+      },
+      {
+        name: 'Storefront Customers',
+        icon: Users,
+        children: [
+          { name: 'Customer List', href: '/ecommerce/customers', icon: Users },
+          { name: 'Customer Groups', href: '/ecommerce/customers/groups', icon: Users },
+          { name: 'Wishlist Insights', href: '/ecommerce/customers/wishlist-insights', icon: Heart },
+        ],
+      },
+      {
+        name: 'Reviews & Ratings',
+        icon: Star,
+        children: [
+          { name: 'Moderation Queue', href: '/ecommerce/reviews/queue', icon: ClipboardCheck },
+          { name: 'Review Settings', href: '/ecommerce/reviews/settings', icon: Settings },
+        ],
+      },
+      {
+        name: 'Storefront Analytics',
+        icon: BarChart3,
+        children: [
+          { name: 'Sales & Conversion', href: '/ecommerce/analytics/sales', icon: TrendingUp },
+          { name: 'Traffic & Search Terms', href: '/ecommerce/analytics/traffic', icon: Search },
+          { name: 'Top Products', href: '/ecommerce/analytics/top-products', icon: PieChart },
+        ],
+      },
+      {
+        name: 'Notifications',
+        icon: MessageSquare,
+        children: [
+          { name: 'Email Templates', href: '/ecommerce/integrations/email-templates', icon: Mail },
+          { name: 'Tracking Codes (GA/FB Pixel)', href: '/ecommerce/integrations/tracking', icon: Code2 },
+          { name: 'Chat / Support Widget', href: '/ecommerce/integrations/support-widget', icon: MessageSquare },
+        ],
+      },
     ],
   },
   {
@@ -474,7 +612,7 @@ function NavItem({
               : 'font-medium text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-700 hover:text-gray-900 dark:hover:text-gray-100'
             }
           `}
-          title={!sidebarOpen ? item.name : undefined}
+          title={!sidebarOpen || depth > 0 ? item.name : undefined}
         >
           <item.icon className={`w-5 h-5 ${sidebarOpen ? 'mr-3' : 'mx-auto'}`} />
           <span className={`${!sidebarOpen && 'hidden'} transition-opacity duration-300`}>
@@ -493,7 +631,7 @@ function NavItem({
                 : 'font-medium text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-700 hover:text-gray-900 dark:hover:text-gray-100'
               }
             `}
-            title={!sidebarOpen ? item.name : undefined}
+            title={!sidebarOpen || depth > 0 ? item.name : undefined}
           >
             <item.icon className={`w-5 h-5 ${sidebarOpen ? 'mr-3' : 'mx-auto'}`} />
             <span
@@ -714,7 +852,7 @@ export default function Sidebar({ sidebarOpen, mobileMenuOpen, setMobileMenuOpen
         </div>
 
         {/* Sidebar Navigation */}
-        <nav className="flex-1 px-2 py-1 overflow-y-auto scrollbar-hide">
+        <nav className="flex-1 px-2 py-1 overflow-y-auto scrollbar-thin">
           {sidebarOpen && (
             <div className="px-3 mb-3">
               <p className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">
