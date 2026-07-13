@@ -1,8 +1,8 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import apiClient from '@/lib/api/axios';
+import { useStorefrontStatus } from '@/hooks/use-storefront-status';
 import StorefrontHeader from '@/components/storefront/StorefrontHeader';
 import StorefrontFooter from '@/components/storefront/StorefrontFooter';
 import CartDrawer from '@/components/storefront/CartDrawer';
@@ -17,23 +17,13 @@ export default function StorefrontLayout({
   children: React.ReactNode;
 }) {
   const router = useRouter();
-  const [active, setActive] = useState<boolean | null>(null);
+  const { active, loading } = useStorefrontStatus();
 
   useEffect(() => {
-    const check = async () => {
-      try {
-        const res = await apiClient.get('/api/v1/storefront/status');
-        const isActive = res.data?.data?.storefront_active;
-        setActive(isActive);
-        if (!isActive) {
-          router.replace('/welcome');
-        }
-      } catch {
-        router.replace('/welcome');
-      }
-    };
-    check();
-  }, [router]);
+    if (!loading && !active) {
+      router.replace('/welcome');
+    }
+  }, [active, loading, router]);
 
   if (active === null || !active) {
     return (

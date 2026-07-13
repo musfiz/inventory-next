@@ -12,6 +12,7 @@ import {
   ChevronRight, Layers, Truck, FileText,
 } from 'lucide-react';
 import { useAuth } from '@/hooks/use-auth';
+import { useStorefrontStatus } from '@/hooks/use-storefront-status';
 
 const FEATURES = [
   {
@@ -152,6 +153,13 @@ export default function Home() {
 
   const isAuthenticated = !!user;
   const { logout } = useAuth();
+  const { active, loading } = useStorefrontStatus();
+
+  useEffect(() => {
+    if (active) {
+      router.replace('/store');
+    }
+  }, [active, router]);
 
   useEffect(() => {
     const handleScroll = () => setScrolled(window.scrollY > 20);
@@ -174,6 +182,17 @@ export default function Home() {
     router.push('/login');
     setIsDropdownOpen(false);
   };
+
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-white">
+        <div className="text-center">
+          <div className="w-16 h-16 border-4 border-indigo-600 border-t-transparent rounded-full animate-spin mx-auto mb-4" />
+          <p className="text-gray-600">Loading...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-white">
