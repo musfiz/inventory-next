@@ -34,6 +34,7 @@ interface TenantFormData {
   max_products: number | '';
   max_warehouses: number | '';
   is_active: boolean;
+  storefront_active: boolean;
 }
 
 const COUNTRY_OPTIONS = ['Bangladesh'] as const;
@@ -61,6 +62,7 @@ const EMPTY_FORM: TenantFormData = {
   max_products: 200,
   max_warehouses: 2,
   is_active: true,
+  storefront_active: false,
 };
 
 export default function TenantForm({ editRef }: { editRef?: string }) {
@@ -112,6 +114,7 @@ export default function TenantForm({ editRef }: { editRef?: string }) {
           max_products: tenant.max_products ?? 200,
           max_warehouses: tenant.max_warehouses ?? 2,
           is_active: tenant.is_active ?? true,
+          storefront_active: tenant.storefront_active ?? false,
         });
       } catch (error: any) {
         notify.error(error.response?.data?.message || 'Failed to load tenant');
@@ -216,8 +219,11 @@ export default function TenantForm({ editRef }: { editRef?: string }) {
 
   if (isFetching) {
     return (
-      <div className="flex items-center justify-center h-40 text-sm text-gray-500 dark:text-gray-400">
-        Loading tenant data…
+      <div className="flex items-center justify-center h-40">
+        <div className="text-center">
+          <div className="w-10 h-10 border-4 border-indigo-600 border-t-transparent rounded-full animate-spin mx-auto mb-3" />
+          <p className="text-sm text-gray-600 dark:text-gray-400">Loading...</p>
+        </div>
       </div>
     );
   }
@@ -668,9 +674,9 @@ export default function TenantForm({ editRef }: { editRef?: string }) {
           </div>
         </div>
 
-        {/* Active Status + Submit */}
+        {/* Active Status + Storefront + Submit */}
         <div className="bg-white dark:bg-gray-800 rounded-md shadow-sm border border-gray-200 dark:border-gray-700 p-3">
-          <div className="flex items-center justify-between">
+          <div className="flex items-center gap-6">
             <label className="flex items-center gap-2 cursor-pointer">
               <input
                 type="checkbox"
@@ -684,23 +690,62 @@ export default function TenantForm({ editRef }: { editRef?: string }) {
               </span>
             </label>
 
-            <div className="flex gap-2">
+            <label className="flex items-center gap-2 cursor-pointer">
               <button
                 type="button"
-                onClick={() => router.push('/tenants')}
-                className="px-3 py-1.5 text-sm font-medium text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-sm hover:bg-gray-50 dark:hover:bg-gray-600"
+                role="switch"
+                aria-checked={formData.storefront_active}
+                onClick={() => {
+                  setFormData(prev => ({ ...prev, storefront_active: !prev.storefront_active }));
+                  if (errors.storefront_active) {
+                    setErrors(prev => {
+                      const newErrors = { ...prev };
+                      delete newErrors.storefront_active;
+                      return newErrors;
+                    });
+                  }
+                }}
+                className={`relative inline-flex h-5 w-9 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 ${
+                  formData.storefront_active
+                    ? 'bg-indigo-600 focus:ring-indigo-500'
+                    : 'bg-gray-300 dark:bg-gray-600 focus:ring-indigo-500'
+                } ${errors.storefront_active ? 'ring-2 ring-red-500' : ''}`}
               >
-                Cancel
+                <span
+                  className={`inline-block h-3.5 w-3.5 transform rounded-full bg-white transition-transform ${
+                    formData.storefront_active ? 'translate-x-[18px]' : 'translate-x-[3px]'
+                  }`}
+                />
               </button>
-              <button
-                type="submit"
-                disabled={isLoading}
-                className="flex items-center justify-center gap-2 px-5 py-1.5 text-sm bg-indigo-600 hover:bg-indigo-700 disabled:bg-gray-400 text-white rounded-sm transition-colors cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                <GiSave className="w-4 h-4" />
-                {isLoading ? (isEditMode ? 'Saving…' : 'Creating…') : (isEditMode ? 'Save Changes' : 'Create Tenant')}
-              </button>
-            </div>
+              <div>
+                <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                  Storefront Active
+                </span>
+                {getFieldError('storefront_active') && (
+                  <p className="text-xs text-red-600 dark:text-red-400 mt-0.5">
+                    {getFieldError('storefront_active')}
+                  </p>
+                )}
+              </div>
+            </label>
+          </div>
+
+          <div className="flex items-center justify-end gap-2 mt-3 pt-3 border-t border-gray-200 dark:border-gray-700">
+            <button
+              type="button"
+              onClick={() => router.push('/tenants')}
+              className="px-3 py-1.5 text-sm font-medium text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-sm hover:bg-gray-50 dark:hover:bg-gray-600"
+            >
+              Cancel
+            </button>
+            <button
+              type="submit"
+              disabled={isLoading}
+              className="flex items-center justify-center gap-2 px-5 py-1.5 text-sm bg-indigo-600 hover:bg-indigo-700 disabled:bg-gray-400 text-white rounded-sm transition-colors cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              <GiSave className="w-4 h-4" />
+              {isLoading ? (isEditMode ? 'Saving…' : 'Creating…') : (isEditMode ? 'Save Changes' : 'Create Tenant')}
+            </button>
           </div>
         </div>
       </form>
