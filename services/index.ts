@@ -43,6 +43,7 @@ export { default as reviewService } from './reviewService';
 export { default as shippingMethodService } from './shippingMethodService';
 export { default as ecommerceSettingsService } from './ecommerceSettingsService';
 export { default as ecommerceOrderService } from './ecommerceOrderService';
+export { default as heroSliderService } from './heroSliderService';
 
 // Re-export types for convenience
 export type {

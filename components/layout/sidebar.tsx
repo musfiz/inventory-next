@@ -587,7 +587,7 @@ function NavItem({
   };
 
   return (
-    <div className="relative">
+    <div className="relative" data-active={isParentActive ? 'true' : undefined}>
       {/* Tree connection lines */}
       {depth > 0 && sidebarOpen && (
         <>
@@ -811,6 +811,25 @@ export default function Sidebar({ sidebarOpen, mobileMenuOpen, setMobileMenuOpen
     });
   }, [pathname, activeHref, filteredNavigation]);
 
+  // Scroll the active parent menu item into view at the top of the sidebar
+  const navRef = useRef<HTMLElement>(null);
+
+  useEffect(() => {
+    if (!navRef.current || openItems.size === 0) return;
+
+    const timer = setTimeout(() => {
+      const nav = navRef.current;
+      if (!nav) return;
+
+      const activeItem = nav.querySelector('[data-active="true"]');
+      if (activeItem) {
+        activeItem.scrollIntoView({ block: 'start', behavior: 'smooth' });
+      }
+    }, 100);
+
+    return () => clearTimeout(timer);
+  }, [openItems]);
+
   return (
     <>
       {/* Mobile Sidebar Overlay */}
@@ -852,7 +871,7 @@ export default function Sidebar({ sidebarOpen, mobileMenuOpen, setMobileMenuOpen
         </div>
 
         {/* Sidebar Navigation */}
-        <nav className="flex-1 px-2 py-1 overflow-y-auto scrollbar-thin">
+        <nav ref={navRef} className="flex-1 px-2 py-1 overflow-y-auto scrollbar-thin">
           {sidebarOpen && (
             <div className="px-3 mb-3">
               <p className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">

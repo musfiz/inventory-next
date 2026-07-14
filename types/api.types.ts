@@ -985,3 +985,33 @@ export interface ReceiptOrderItem {
   product?: { id: number; name?: string; code?: string; sku?: string };
   variation?: { id: number; name?: string; sku?: string };
 }
+
+export interface HeroSliderImage {
+  id: string;
+  tenant_id: string;
+  title: string | null;
+  subtitle: string | null;
+  cta_text: string | null;
+  cta_link: string | null;
+  image_path: string;
+  image_url: string;
+  alt_text: string | null;
+  sort_order: number;
+  is_active: boolean;
+  starts_at: string | null;
+  ends_at: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface CreateHeroSliderRequest {
+  title?: string;
+  subtitle?: string;
+  cta_text?: string;
+  cta_link?: string;
+  alt_text?: string;
+  sort_order?: number;
+  is_active?: boolean;
+  starts_at?: string;
+  ends_at?: string;
+}
