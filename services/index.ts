@@ -44,6 +44,7 @@ export { default as shippingMethodService } from './shippingMethodService';
 export { default as ecommerceSettingsService } from './ecommerceSettingsService';
 export { default as ecommerceOrderService } from './ecommerceOrderService';
 export { default as heroSliderService } from './heroSliderService';
+export { default as storefrontService } from './storefrontService';
 
 // Re-export types for convenience
 export type {

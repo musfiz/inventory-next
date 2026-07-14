@@ -3,7 +3,6 @@
 import { useState, useEffect, useRef } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
-import { useRouter } from 'next/navigation';
 import {
   ChevronLeft,
   ChevronRight,
@@ -11,19 +10,19 @@ import {
   ShieldCheck,
   RotateCcw,
   Headphones,
-  Zap,
   Sparkles,
   Flame,
   TrendingUp,
   Tag,
   ArrowRight,
-  Search,
   History,
 } from 'lucide-react';
 import ProductCard from '@/components/storefront/ProductCard';
+import HeroCarousel, { HeroCarouselSkeleton } from '@/components/storefront/HeroCarousel';
 import { useRecentlyViewed } from '@/hooks/use-recently-viewed';
+import storefrontService from '@/services/storefrontService';
+import type { StorefrontHeroSlider } from '@/services/storefrontService';
 import {
-  HERO_BANNERS,
   PROMO_BANNERS,
   CATEGORIES,
   PRODUCTS,
@@ -47,140 +46,6 @@ const CATEGORY_ICONS: Record<string, string> = {
   home: '🏠',
   beauty: '💄',
   sports: '⚽',
-};
-
-const HeroCarousel = () => {
-  const [index, setIndex] = useState(0);
-  const [paused, setPaused] = useState(false);
-  const [query, setQuery] = useState('');
-  const router = useRouter();
-
-  useEffect(() => {
-    if (paused) return;
-    const t = setInterval(
-      () => setIndex(i => (i + 1) % HERO_BANNERS.length),
-      5000
-    );
-    return () => clearInterval(t);
-  }, [paused]);
-
-  const submitSearch = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!query.trim()) return;
-    router.push(`/store/search?q=${encodeURIComponent(query.trim())}`);
-  };
-
-  const banner = HERO_BANNERS[index];
-
-  return (
-    <div
-      className="group relative h-[420px] overflow-hidden rounded-2xl sm:h-[480px] lg:h-[520px]"
-      onMouseEnter={() => setPaused(true)}
-      onMouseLeave={() => setPaused(false)}
-    >
-      {HERO_BANNERS.map((b, i) => (
-          <div
-            key={b.id}
-            className={`absolute inset-0 transition-opacity duration-700 ${
-              i === index ? 'opacity-100' : 'opacity-0 pointer-events-none'
-            }`}
-          >
-          <Image
-            src={b.image}
-            alt={b.title}
-            fill
-            sizes="(max-width: 1024px) 100vw, 75vw"
-            className="object-cover"
-            priority={i === 0}
-          />
-          <div
-            className={`absolute inset-0 bg-gradient-to-r ${b.accent}`}
-            aria-hidden
-          />
-          <div className="absolute inset-0 flex items-center">
-            <div className="mx-auto w-full max-w-7xl px-6 lg:px-12">
-              <div className="max-w-xl text-white sf-fade-in">
-                <span className="inline-flex items-center gap-1.5 rounded-full bg-white/15 px-3 py-1 text-xs font-bold uppercase tracking-wider backdrop-blur-sm">
-                  <Sparkles className="h-3.5 w-3.5" />
-                  Featured
-                </span>
-                <h1 className="mt-4 text-4xl font-black leading-tight sm:text-5xl lg:text-6xl">
-                  {b.title}
-                </h1>
-                <p className="mt-3 text-lg font-semibold text-white/95 sm:text-xl">
-                  {b.subtitle}
-                </p>
-                <p className="mt-2 max-w-md text-sm text-white/80 sm:text-base">
-                  {b.description}
-                </p>
-
-                {/* Embedded search bar (Pickbazar-style) */}
-                <form
-                  onSubmit={submitSearch}
-                  className="mt-6 flex w-full max-w-md items-center overflow-hidden rounded-full bg-white shadow-2xl"
-                >
-                  <Search className="ml-4 h-5 w-5 shrink-0 text-gray-400" />
-                  <input
-                    type="text"
-                    value={query}
-                    onChange={e => setQuery(e.target.value)}
-                    placeholder="Search for products, brands and more..."
-                    className="flex-1 bg-transparent px-3 py-3 text-sm text-gray-900 placeholder:text-gray-400 focus:outline-none"
-                  />
-                  <button
-                    type="submit"
-                    className="m-1 rounded-full bg-brand-600 px-5 py-2.5 text-sm font-bold text-white transition-colors hover:bg-brand-700"
-                  >
-                    Search
-                  </button>
-                </form>
-
-                <Link
-                  href={b.link}
-                  className="mt-5 inline-flex items-center gap-2 rounded-full bg-white/15 px-5 py-2.5 text-sm font-bold text-white backdrop-blur-sm transition-all hover:bg-white/25"
-                >
-                  {b.cta}
-                  <ArrowRight className="h-4 w-4" />
-                </Link>
-              </div>
-            </div>
-          </div>
-        </div>
-      ))}
-
-      <button
-        onClick={() =>
-          setIndex(i => (i - 1 + HERO_BANNERS.length) % HERO_BANNERS.length)
-        }
-        className="absolute left-4 top-1/2 hidden h-10 w-10 -translate-y-1/2 items-center justify-center rounded-full bg-white/90 text-gray-900 shadow-lg backdrop-blur-sm transition-all hover:bg-white hover:scale-110 sm:flex"
-        aria-label="Previous slide"
-      >
-        <ChevronLeft className="h-5 w-5" />
-      </button>
-      <button
-        onClick={() => setIndex(i => (i + 1) % HERO_BANNERS.length)}
-        className="absolute right-4 top-1/2 hidden h-10 w-10 -translate-y-1/2 items-center justify-center rounded-full bg-white/90 text-gray-900 shadow-lg backdrop-blur-sm transition-all hover:bg-white hover:scale-110 sm:flex"
-        aria-label="Next slide"
-      >
-        <ChevronRight className="h-5 w-5" />
-      </button>
-
-      <div className="absolute bottom-4 left-1/2 flex -translate-x-1/2 gap-2">
-        {HERO_BANNERS.map((_, i) => (
-          <button
-            key={i}
-            onClick={() => setIndex(i)}
-            className={`h-2 rounded-full transition-all ${
-              i === index
-                ? 'w-8 bg-white'
-                : 'w-2 bg-white/50 hover:bg-white/80'
-            }`}
-            aria-label={`Go to slide ${i + 1}`}
-          />
-        ))}
-      </div>
-    </div>
-  );
 };
 
 const CategoryStrip = () => {
@@ -570,10 +435,21 @@ const RecentlyViewed = () => {
 };
 
 export default function HomePage() {
+  const [heroSliders, setHeroSliders] = useState<StorefrontHeroSlider[]>([]);
+  const [heroLoading, setHeroLoading] = useState(true);
+
+  useEffect(() => {
+    storefrontService
+      .getHeroSliders()
+      .then(setHeroSliders)
+      .catch(() => {})
+      .finally(() => setHeroLoading(false));
+  }, []);
+
   return (
     <div className="bg-gray-50 dark:bg-gray-950">
       <div className="mx-auto max-w-7xl px-4 py-6">
-        <HeroCarousel />
+        {heroLoading ? <HeroCarouselSkeleton /> : <HeroCarousel slides={heroSliders} />}
 
         <TrustStrip />
 

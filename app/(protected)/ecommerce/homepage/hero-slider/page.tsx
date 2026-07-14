@@ -244,7 +244,9 @@ export default function HeroSliderPage() {
     const baseUrl = (process.env.NEXT_PUBLIC_BACKEND_URL || '').replace(/\/+$/, '');
     if (!baseUrl) return url;
 
-    return url.startsWith('/') ? `${baseUrl}${url}` : `${baseUrl}/${url}`;
+    const lastSlash = url.lastIndexOf('/');
+    const thumbnailPath = url.substring(0, lastSlash) + '/thumbnail' + url.substring(lastSlash);
+    return `${baseUrl}${thumbnailPath}`;
   };
 
   const currentPreview = editing && !form.image ? (() => {
