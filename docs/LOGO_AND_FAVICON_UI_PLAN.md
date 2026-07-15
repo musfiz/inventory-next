@@ -547,7 +547,296 @@ For logo previews, use resolved URL. For local previews (newly selected files), 
 
 ---
 
-## 12. Future Enhancements (Out of Scope)
+---
+
+## 12. Backend Implementation Plan (Laravel)
+
+### 12.1 Database Schema
+
+Create a dedicated `branding` table (following the `hero_slider_images` pattern):
+
+```php
+Schema::create('branding', function (Blueprint $table) {
+    $table->uuid('id')->primary();
+    $table->foreignId('tenant_id')->constrained('tenants')->onDelete('cascade');
+    $table->text('header_logo_path')->nullable();
+    $table->text('footer_logo_path')->nullable();
+    $table->text('favicon_path')->nullable();
+    $table->timestamps();
+    $table->unique('tenant_id');
+});
+```
+
+Each tenant has exactly one branding record (`unique('tenant_id')`). The `firstOrCreate` pattern is used in the controller to ensure the record exists on first save.
+
+### 12.2 Storage Structure
+
+```
+storage/app/public/uploads/branding/
+├── {tenant_id}/
+│   ├── header-logo.{ext}
+│   ├── footer-logo.png
+│   └── favicon.{ext}
+```
+
+Use Laravel's `Storage::disk('public')` with symlink. URLs served via `Storage::url()`.
+
+### 12.3 File Naming Convention
+
+| Asset | File name | Expected format |
+|-------|-----------|-----------------|
+| Header Logo | `header-logo-{timestamp}.{ext}` | JPG, PNG, WebP, SVG |
+| Footer Logo | `footer-logo-{timestamp}.png` | PNG only |
+| Favicon | `favicon-{timestamp}.{ext}` | PNG, ICO |
+
+### 12.4 Image Validation Rules
+
+```php
+'header_logo' => ['nullable', 'image', 'mimes:jpg,jpeg,png,webp,svg', 'max:2048'],
+'footer_logo' => ['nullable', 'image', 'mimes:png', 'max:2048'],
+'favicon'     => ['nullable', 'image', 'mimes:png,ico', 'max:500'],
+```
+
+### 12.5 Trait + Controller (thin, following hero slider pattern)
+
+**`app/Traits/BrandingTrait.php`** — all business logic:
+
+```php
+namespace App\Traits;
+
+use App\Models\Branding;
+use App\Models\Tenant;
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Str;
+
+trait BrandingTrait
+{
+    protected function showBranding(): ?Branding
+    {
+        $tenantId = $this->resolveTenantId();
+        if (!$tenantId) return null;
+        return Branding::where('tenant_id', $tenantId)->first();
+    }
+
+    protected function storeBrandingAssets(Request $request): Branding
+    {
+        $tenantId = $this->resolveTenantId();
+        if (!$tenantId) throw new \RuntimeException('No tenant associated with this user');
+
+        $branding = Branding::firstOrCreate(
+            ['tenant_id' => $tenantId],
+            ['id' => (string) Str::uuid()]
+        );
+
+        foreach (['header_logo', 'footer_logo', 'favicon'] as $field) {
+            if (!$request->hasFile($field)) continue;
+            $this->deleteBrandingFile($branding, $field);
+            $column = $field . '_path';
+            $ext = $field === 'footer_logo' ? 'png' : $request->file($field)->extension();
+            $path = $request->file($field)->storeAs(
+                "uploads/branding/{$tenantId}",
+                str_replace('_', '-', $field) . '-' . time() . '.' . $ext, 'public'
+            );
+            $branding->{$column} = $path;
+        }
+
+        $branding->save();
+        return $branding->fresh();
+    }
+
+    protected function removeBrandingAsset(string $type): Branding
+    {
+        if (!in_array($type, ['header_logo', 'footer_logo', 'favicon'])) {
+            throw new \InvalidArgumentException('Invalid asset type');
+        }
+        $tenantId = $this->resolveTenantId();
+        if (!$tenantId) throw new \RuntimeException('No tenant associated with this user');
+
+        $branding = Branding::where('tenant_id', $tenantId)->first();
+        if (!$branding) throw new \RuntimeException('No branding record found');
+
+        $this->deleteBrandingFile($branding, $type);
+        $branding->{$type . '_path'} = null;
+        $branding->save();
+        return $branding->fresh();
+    }
+
+    private function deleteBrandingFile($branding, string $type): void
+    {
+        $column = $type . '_path';
+        if ($branding->{$column}) {
+            Storage::disk('public')->delete($branding->{$column});
+        }
+    }
+
+    private function resolveTenantId(): ?string
+    {
+        $user = auth()->user();
+        if ($user && $user->tenant_id) return $user->tenant_id;
+        return Tenant::where('storefront_active', true)->value('id');
+    }
+}
+```
+
+**`app/Http/Controllers/Api/BrandingController.php`** — thin controller:
+
+```php
+namespace App\Http\Controllers\Api;
+
+use App\Http\Controllers\Controller;
+use App\Http\Resources\Ecommerce\BrandingResource;
+use App\Traits\BrandingTrait;
+use App\Http\Traits\ApiResponse;
+use Illuminate\Http\JsonResponse;
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Validator;
+
+class BrandingController extends Controller
+{
+    use ApiResponse, BrandingTrait;
+
+    public function show(): BrandingResource
+    {
+        return new BrandingResource($this->showBranding());
+    }
+
+    public function update(Request $request): BrandingResource|JsonResponse
+    {
+        $validator = Validator::make($request->all(), [
+            'header_logo' => ['nullable', 'image', 'mimes:jpg,jpeg,png,webp,svg', 'max:2048'],
+            'footer_logo' => ['nullable', 'image', 'mimes:png', 'max:2048'],
+            'favicon'     => ['nullable', 'image', 'mimes:png,ico', 'max:500'],
+        ]);
+
+        if ($validator->fails()) {
+            return $this->validationError($validator->errors());
+        }
+
+        try {
+            return new BrandingResource($this->storeBrandingAssets($request));
+        } catch (\RuntimeException $e) {
+            return $this->error($e->getMessage());
+        }
+    }
+
+    public function destroy(string $type): BrandingResource|JsonResponse
+    {
+        try {
+            return new BrandingResource($this->removeBrandingAsset($type));
+        } catch (\InvalidArgumentException $e) {
+            return $this->error($e->getMessage(), null, 400);
+        } catch (\RuntimeException $e) {
+            return $this->error($e->getMessage());
+        }
+    }
+}
+```
+
+### 12.6 Model: `Branding`
+
+```php
+namespace App\Models;
+
+use Illuminate\Database\Eloquent\Model;
+use Illuminate\Support\Str;
+
+class Branding extends Model
+{
+    protected $keyType = 'string';
+    public $incrementing = false;
+
+    protected $fillable = [
+        'id', 'tenant_id', 'header_logo_path', 'footer_logo_path', 'favicon_path',
+    ];
+
+    protected static function boot(): void
+    {
+        parent::boot();
+        static::creating(function (Branding $branding) {
+            if (empty($branding->id)) {
+                $branding->id = (string) Str::uuid();
+            }
+        });
+    }
+
+    public function tenant()
+    {
+        return $this->belongsTo(Tenant::class);
+    }
+}
+```
+
+### 12.7 Resource: `BrandingResource`
+
+```php
+namespace App\Http\Resources\Ecommerce;
+
+use Illuminate\Http\Resources\Json\JsonResource;
+use Illuminate\Support\Facades\Storage;
+
+class BrandingResource extends JsonResource
+{
+    public function toArray($request): array
+    {
+        if ($this->resource === null) {
+            return [
+                'header_logo_url' => null,
+                'footer_logo_url' => null,
+                'favicon_url' => null,
+            ];
+        }
+
+        return [
+            'header_logo_url' => $this->header_logo_path
+                ? Storage::disk('public')->url($this->header_logo_path)
+                : null,
+            'footer_logo_url' => $this->footer_logo_path
+                ? Storage::disk('public')->url($this->footer_logo_path)
+                : null,
+            'favicon_url' => $this->favicon_path
+                ? Storage::disk('public')->url($this->favicon_path)
+                : null,
+        ];
+    }
+}
+```
+
+### 12.8 API Routes (`routes/route/ecommerce.php`)
+
+```php
+use App\Http\Controllers\Api\BrandingController;
+
+// Inside the existing v1 auth:sanctum group
+Route::prefix('branding')->group(function () {
+    Route::get('/', [BrandingController::class, 'show']);
+    Route::post('/', [BrandingController::class, 'update']);
+    Route::delete('/{type}', [BrandingController::class, 'destroy']);
+});
+```
+
+Routes registered: `GET|HEAD api/v1/branding`, `POST api/v1/branding`, `DELETE api/v1/branding/{type}`
+
+### 12.9 Frontend-Backed Endpoint Contract
+
+| Method | Endpoint | Request | Response |
+|--------|----------|---------|----------|
+| `GET` | `/api/v1/branding` | — | `{ data: { header_logo_url, footer_logo_url, favicon_url } }` |
+| `POST` | `/api/v1/branding` | `multipart/form-data`: `header_logo` (file), `footer_logo` (file), `favicon` (file) | `{ data: { header_logo_url, footer_logo_url, favicon_url } }` |
+| `DELETE` | `/api/v1/branding/{type}` | `type`: `header_logo`, `footer_logo`, or `favicon` | `{ data: { header_logo_url, footer_logo_url, favicon_url } }` |
+
+### 12.10 Error Handling
+
+- **Validation errors:** Return `422` with standard Laravel validation error format:
+  ```json
+  { "message": "Validation error", "errors": { "header_logo": ["The header logo must be an image."] } }
+  ```
+- **Invalid type (DELETE):** Return `400` with `"Invalid asset type"`
+- **Unauthenticated:** Return `401` (handled by `auth:sanctum` middleware)
+
+---
+
+## 13. Future Enhancements (Out of Scope)
 
 - **Mobile-specific logo:** Separate upload for mobile-optimized logo variant
 - **Email template logo:** Logo variant sized for transactional emails

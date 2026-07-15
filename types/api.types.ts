@@ -1015,3 +1015,10 @@ export interface CreateHeroSliderRequest {
   starts_at?: string;
   ends_at?: string;
 }
+
+export interface BrandingResponse {
+  header_logo_url: string | null;
+  footer_logo_url: string | null;
+  favicon_url: string | null;
+  favicon_16_url: string | null;
+}
