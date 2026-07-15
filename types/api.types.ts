@@ -1022,3 +1022,29 @@ export interface BrandingResponse {
   favicon_url: string | null;
   favicon_16_url: string | null;
 }
+
+export interface NavLink {
+  id: string;
+  label: string;
+  url: string;
+  sort_order: number;
+  open_in_new_tab: boolean;
+  is_active: boolean;
+}
+
+export interface HeaderMenuConfig {
+  utility_bar_enabled: boolean;
+  utility_bar_text_free_shipping: string;
+  utility_bar_text_discount: string;
+  utility_bar_phone: string;
+  utility_bar_bg_color: string;
+  utility_bar_text_color: string;
+
+  nav_links: NavLink[];
+
+  show_search_bar: boolean;
+  show_wishlist_icon: boolean;
+  show_account_icon: boolean;
+  show_cart_icon: boolean;
+  sticky_header: boolean;
+}

@@ -265,7 +265,7 @@ const navigation: NavigationItem[] = [
         children: [
           { name: 'Theme & Colors', href: '/ecommerce/appearance/theme', icon: Palette },
           { name: 'Logo & Favicon', href: '/ecommerce/appearance/logo', icon: Image },
-          { name: 'Header & Menu Builder', href: '/ecommerce/appearance/header-menu', icon: MenuIcon },
+          { name: 'Header & Menu', href: '/ecommerce/appearance/header-menu', icon: MenuIcon },
           { name: 'Footer Builder', href: '/ecommerce/appearance/footer', icon: PanelBottom },
         ],
       },
@@ -482,7 +482,7 @@ const navigation: NavigationItem[] = [
         superAdminOnly: true,
         children: [
           { name: 'Backup', href: '/backup', icon: BsDatabaseFillDown, superAdminOnly: true },
-          { name: 'Restore', href: '/restore', icon: BsDatabaseFillUp,   superAdminOnly: true },
+          { name: 'Restore', href: '/restore', icon: BsDatabaseFillUp, superAdminOnly: true },
         ],
       },
     ],
