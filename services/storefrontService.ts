@@ -12,10 +12,19 @@ export interface StorefrontHeroSlider {
   sort_order: number;
 }
 
+import type { StorefrontOfferSlide } from '@/types/storefront';
+
 class StorefrontService {
   async getHeroSliders(): Promise<StorefrontHeroSlider[]> {
     const response = await apiClient.get<ApiResponse<StorefrontHeroSlider[]>>(
       '/api/v1/storefront/hero-sliders'
+    );
+    return response.data.data ?? [];
+  }
+
+  async getOfferSlides(): Promise<StorefrontOfferSlide[]> {
+    const response = await apiClient.get<ApiResponse<StorefrontOfferSlide[]>>(
+      '/api/v1/storefront/offer-slides'
     );
     return response.data.data ?? [];
   }

@@ -22,6 +22,7 @@ import HeroCarousel, { HeroCarouselSkeleton } from '@/components/storefront/Hero
 import { useRecentlyViewed } from '@/hooks/use-recently-viewed';
 import storefrontService from '@/services/storefrontService';
 import type { StorefrontHeroSlider } from '@/services/storefrontService';
+import type { StorefrontOfferSlide } from '@/types/storefront';
 import {
   PROMO_BANNERS,
   CATEGORIES,
@@ -270,63 +271,25 @@ const PromoBanners = () => (
 
 /* ================================================================ */
 /*  Section: Top Offers Carousel — horizontal scrolling deal cards   */
-/*  (Pickbazar-style)                                                */
+/*  (fetched from API)                                                */
 /* ================================================================ */
-const OFFER_SLIDES = [
-  {
-    id: 'of-1',
-    title: 'Mega Electronics Sale',
-    subtitle: 'Up to 40% off latest gadgets',
-    image:
-      'https://images.unsplash.com/photo-1593344484962-796055d4a3a4?w=800&h=400&fit=crop',
-    link: '/category/electronics',
-    accent: 'from-indigo-600/85 to-blue-700/85',
-  },
-  {
-    id: 'of-2',
-    title: 'Fresh Fashion Picks',
-    subtitle: 'New season styles starting ৳450',
-    image:
-      'https://images.unsplash.com/photo-1445205170230-053b83016050?w=800&h=400&fit=crop',
-    link: '/category/fashion',
-    accent: 'from-rose-600/85 to-pink-700/85',
-  },
-  {
-    id: 'of-3',
-    title: 'Home Makeover Deals',
-    subtitle: 'Furniture & living — up to 30% off',
-    image:
-      'https://images.unsplash.com/photo-1556909114-f6e7ad7d3136?w=800&h=400&fit=crop',
-    link: '/category/home',
-    accent: 'from-emerald-600/85 to-teal-700/85',
-  },
-  {
-    id: 'of-4',
-    title: 'Beauty Essentials',
-    subtitle: 'Top brands at member prices',
-    image:
-      'https://images.unsplash.com/photo-1596462502278-27bfdc403348?w=800&h=400&fit=crop',
-    link: '/category/beauty',
-    accent: 'from-fuchsia-600/85 to-purple-700/85',
-  },
-  {
-    id: 'of-5',
-    title: 'Sports & Active',
-    subtitle: 'Gear up for less',
-    image:
-      'https://images.unsplash.com/photo-1571019613454-1cb2f99b2d8b?w=800&h=400&fit=crop',
-    link: '/category/sports',
-    accent: 'from-amber-600/85 to-orange-700/85',
-  },
-];
+const resolveOfferImageUrl = (url: string) => {
+  if (/^https?:\/\//i.test(url) || url.startsWith('data:') || url.startsWith('blob:')) return url;
+  const baseUrl = (process.env.NEXT_PUBLIC_BACKEND_URL || '').replace(/\/+$/, '');
+  if (!baseUrl) return url;
+  return `${baseUrl}${url.startsWith('/') ? url : '/' + url}`;
+};
 
-const OffersCarousel = () => {
+const OffersCarousel = ({ slides }: { slides: StorefrontOfferSlide[] }) => {
   const scrollRef = useRef<HTMLDivElement>(null);
   const scrollByCard = (dir: 1 | -1) => {
     const el = scrollRef.current;
     if (!el) return;
     el.scrollBy({ left: dir * (el.clientWidth * 0.8), behavior: 'smooth' });
   };
+
+  if (slides.length === 0) return null;
+
   return (
     <section className="py-6 sm:py-8">
       <div className="mb-4 flex items-end justify-between">
@@ -359,21 +322,21 @@ const OffersCarousel = () => {
         ref={scrollRef}
         className="scrollbar-hide -mx-4 flex snap-x snap-mandatory gap-4 overflow-x-auto px-4 pb-2"
       >
-        {OFFER_SLIDES.map(o => (
+        {slides.map(o => (
           <Link
             key={o.id}
             href={o.link}
             className="group relative h-44 w-[85%] shrink-0 snap-center overflow-hidden rounded-2xl sm:w-[calc(50%-0.5rem)] lg:w-[calc(33.333%-0.667rem)]"
           >
             <Image
-              src={o.image}
+              src={resolveOfferImageUrl(o.image_url)}
               alt={o.title}
               fill
               sizes="(max-width: 640px) 85vw, (max-width: 1024px) 50vw, 33vw"
               className="object-cover transition-transform duration-700 group-hover:scale-110"
             />
             <div
-              className={`absolute inset-0 bg-linear-to-r ${o.accent}`}
+              className={`absolute inset-0 bg-linear-to-r ${o.accent || 'from-indigo-600/85 to-purple-700/85'}`}
               aria-hidden
             />
             <div className="absolute inset-0 flex items-center p-6">
@@ -460,13 +423,18 @@ const RecentlyViewed = () => {
 export default function HomePage() {
   const [heroSliders, setHeroSliders] = useState<StorefrontHeroSlider[]>([]);
   const [heroLoading, setHeroLoading] = useState(true);
+  const [offerSlides, setOfferSlides] = useState<StorefrontOfferSlide[]>([]);
 
   useEffect(() => {
     storefrontService
       .getHeroSliders()
       .then(setHeroSliders)
-      .catch(() => { })
+      .catch(() => {})
       .finally(() => setHeroLoading(false));
+    storefrontService
+      .getOfferSlides()
+      .then(setOfferSlides)
+      .catch(() => {});
   }, []);
 
   return (
@@ -482,7 +450,7 @@ export default function HomePage() {
         <RecentlyViewed />
 
         {/* Section 4 — Top Offers Carousel */}
-        <OffersCarousel />
+        <OffersCarousel slides={offerSlides} />
 
         {/* Section 5 — Shop by Category */}
         <CategoryStrip />

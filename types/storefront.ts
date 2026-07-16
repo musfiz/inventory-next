@@ -159,3 +159,14 @@ export interface Coupon {
   description: string;
   validUntil: string;
 }
+
+export interface StorefrontOfferSlide {
+  id: string;
+  title: string;
+  subtitle: string;
+  image_url: string;
+  link: string;
+  accent: string;
+  is_active: boolean;
+  sort_order: number;
+}
