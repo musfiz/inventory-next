@@ -1,20 +1,16 @@
-import { useEffect, useState } from 'react';
-import apiClient from '@/lib/api/axios';
+'use client';
+
+import { useEffect } from 'react';
+import { useStorefrontStatusStore } from '@/stores/storefront-status-store';
 
 export function useStorefrontStatus() {
-  const [active, setActive] = useState<boolean | null>(null);
+  const active = useStorefrontStatusStore((s) => s.active);
+  const loading = useStorefrontStatusStore((s) => s.loading);
+  const fetch = useStorefrontStatusStore((s) => s.fetch);
 
   useEffect(() => {
-    const check = async () => {
-      try {
-        const res = await apiClient.get('/api/v1/storefront/status');
-        setActive(res.data?.data?.storefront_active ?? false);
-      } catch {
-        setActive(false);
-      }
-    };
-    check();
-  }, []);
+    fetch();
+  }, [fetch]);
 
-  return { active, loading: active === null };
+  return { active, loading };
 }

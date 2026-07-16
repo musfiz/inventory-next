@@ -274,11 +274,11 @@ const navigation: NavigationItem[] = [
         icon: LayoutDashboard,
         children: [
           { name: 'Hero Slider', href: '/ecommerce/homepage/hero-slider', icon: SlidersVertical },
-          { name: 'Promotional Banners', href: '/ecommerce/homepage/banners', icon: Megaphone },
-          { name: 'Flash Sale / Countdown', href: '/ecommerce/homepage/flash-sale', icon: Timer },
+          { name: 'Top Offer', href: '/ecommerce/homepage/banners', icon: Megaphone },
+          { name: 'Flash Sale', href: '/ecommerce/homepage/flash-sale', icon: Timer },
           { name: 'Featured Products', href: '/ecommerce/homepage/featured', icon: Star },
           { name: 'Category Showcase', href: '/ecommerce/homepage/categories', icon: Boxes },
-          { name: 'Trust Badges & Promo Strip', href: '/ecommerce/homepage/trust-badges', icon: ClipboardCheck },
+          { name: 'Badges & Promo Strip', href: '/ecommerce/homepage/trust-badges', icon: ClipboardCheck },
         ],
       },
       {

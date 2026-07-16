@@ -2,6 +2,7 @@
 
 import Link from 'next/link';
 import { useState } from 'react';
+import { useBranding } from '@/hooks/use-branding';
 import {
   Mail,
   Phone,
@@ -84,6 +85,7 @@ const VALUE_PROPS = [
 
 export default function StorefrontFooter() {
   const [email, setEmail] = useState('');
+  const { footerLogo, ready } = useBranding();
   const [subscribed, setSubscribed] = useState(false);
 
   const handleSubscribe = (e: React.FormEvent) => {
@@ -162,9 +164,18 @@ export default function StorefrontFooter() {
           <div className="lg:col-span-2">
             <Link
               href="/"
-              className="text-2xl font-black text-gray-900 dark:text-white"
+              className="inline-flex items-center"
+              aria-label="UIMS Store"
             >
-              UIMS<span className="text-brand-600">.</span>
+              {footerLogo ? (
+                <img src={footerLogo} alt="UIMS Store" className="h-9 w-auto object-contain" />
+              ) : ready ? (
+                <span className="text-2xl font-black text-gray-900 dark:text-white">
+                  UIMS<span className="text-brand-600">.</span>
+                </span>
+              ) : (
+                <div className="h-9 w-24 rounded bg-gray-100 dark:bg-gray-800" />
+              )}
             </Link>
             <p className="mt-3 max-w-xs text-sm text-gray-600 dark:text-gray-400">
               Your one-stop online shop for quality products across

@@ -34,6 +34,7 @@ import { useCustomerAuthStore } from '@/stores/customer-auth-store';
 import { PRODUCTS } from '@/lib/storefront/mock-data';
 import Image from 'next/image';
 import { formatMoney } from '@/lib/storefront/mock-data';
+import { useBranding } from '@/hooks/use-branding';
 
 const TOP_LINKS = [
   { label: 'Track Order', href: '/order/track' },
@@ -357,7 +358,7 @@ const AccountMenu = ({ onClose }: { onClose?: () => void }) => {
   );
 };
 
-const MobileMenu = ({ open, onClose }: { open: boolean; onClose: () => void }) => {
+const MobileMenu = ({ open, onClose, headerLogo, ready }: { open: boolean; onClose: () => void; headerLogo: string | null; ready: boolean }) => {
   const [expanded, setExpanded] = useState<string | null>(null);
   if (!open) return null;
   const parentCats = CATEGORIES.filter(c => !c.parentId);
@@ -367,9 +368,17 @@ const MobileMenu = ({ open, onClose }: { open: boolean; onClose: () => void }) =
       <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={onClose} />
       <div className="absolute right-0 top-0 h-full w-[88%] max-w-sm overflow-y-auto bg-white shadow-2xl dark:bg-gray-950 sf-slide-in-right">
         <div className="sticky top-0 flex items-center justify-between border-b border-gray-100 bg-white/90 px-5 py-4 backdrop-blur-lg dark:border-gray-800 dark:bg-gray-950/90">
-          <Link href="/" onClick={onClose} className="flex items-center gap-2">
-            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-gradient-to-br from-brand-600 to-purple-600 text-white"><Sparkles className="h-4 w-4" /></div>
-            <span className="text-lg font-black text-gray-900 dark:text-white">UIMS<span className="text-brand-600">.</span></span>
+           <Link href="/" onClick={onClose} className="flex items-center gap-2">
+            {headerLogo ? (
+              <img src={headerLogo} alt="Logo" className="h-8 w-auto object-contain" />
+            ) : ready ? (
+              <>
+                <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-gradient-to-br from-brand-600 to-purple-600 text-white"><Sparkles className="h-4 w-4" /></div>
+                <span className="text-lg font-black text-gray-900 dark:text-white">UIMS<span className="text-brand-600">.</span></span>
+              </>
+            ) : (
+              <div className="h-8 w-8 rounded-lg bg-gray-100 dark:bg-gray-800" />
+            )}
           </Link>
           <button onClick={onClose} className="rounded-full p-2 text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-800"><X className="h-5 w-5" /></button>
         </div>
@@ -443,6 +452,7 @@ export default function StorefrontHeader() {
   const subtotal = useCartStore(s => s.getSubtotal());
   const wishlistCount = useWishlistStore(s => s.items.length);
   const openCart = useCartStore(s => s.openDrawer);
+  const { headerLogo, ready } = useBranding();
 
   useEffect(() => {
     const handleScroll = () => setScrolled(window.scrollY > 60);
@@ -502,15 +512,23 @@ export default function StorefrontHeader() {
             </button>
 
             <Link href="/" className="flex shrink-0 items-center gap-2.5">
-              <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-brand-600 to-purple-600 text-white shadow-lg shadow-brand-600/20">
-                <Sparkles className="h-5 w-5" />
-              </div>
-              <div className="hidden sm:block">
-                <p className="text-xl font-black leading-none tracking-tight text-gray-900 dark:text-white">
-                  UIMS<span className="text-brand-600">.</span>
-                </p>
-                <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-gray-500">E‑Store</p>
-              </div>
+              {headerLogo ? (
+                <img src={headerLogo} alt="Store logo" className="h-10 w-auto object-contain" />
+              ) : ready ? (
+                <>
+                  <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-brand-600 to-purple-600 text-white shadow-lg shadow-brand-600/20">
+                    <Sparkles className="h-5 w-5" />
+                  </div>
+                  <div className="hidden sm:block">
+                    <p className="text-xl font-black leading-none tracking-tight text-gray-900 dark:text-white">
+                      UIMS<span className="text-brand-600">.</span>
+                    </p>
+                    <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-gray-500">E‑Store</p>
+                  </div>
+                </>
+              ) : (
+                <div className="h-10 w-10 rounded-xl bg-gray-100 dark:bg-gray-800" />
+              )}
             </Link>
 
             <div className="hidden flex-1 lg:flex lg:justify-center">
@@ -597,7 +615,7 @@ export default function StorefrontHeader() {
         </nav>
       </header>
 
-      <MobileMenu open={mobileOpen} onClose={() => setMobileOpen(false)} />
+      <MobileMenu open={mobileOpen} onClose={() => setMobileOpen(false)} headerLogo={headerLogo} ready={ready} />
     </>
   );
 }

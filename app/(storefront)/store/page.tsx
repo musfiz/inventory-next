@@ -48,6 +48,9 @@ const CATEGORY_ICONS: Record<string, string> = {
   sports: '⚽',
 };
 
+/* ================================================================ */
+/*  Section: Category Strip — "Shop by Category" icon grid           */
+/* ================================================================ */
 const CategoryStrip = () => {
   const visible = CATEGORIES.filter(c => !c.parentId).slice(0, 10);
   return (
@@ -102,6 +105,9 @@ const CategoryStrip = () => {
   );
 };
 
+/* ================================================================ */
+/*  Section: Flash Sale — countdown timer + sale product cards       */
+/* ================================================================ */
 const FlashSale = () => {
   const saleProducts = PRODUCTS.filter(p => p.isOnSale).slice(0, 6);
   const [time, setTime] = useState({ h: 5, m: 42, s: 18 });
@@ -173,6 +179,10 @@ const FlashSale = () => {
   );
 };
 
+/* ================================================================ */
+/*  Section: Product Section — reusable product grid (Featured /     */
+/*  Best Sellers / New Arrivals)                                     */
+/* ================================================================ */
 const ProductSection = ({
   title,
   subtitle,
@@ -224,6 +234,9 @@ const ProductSection = ({
   );
 };
 
+/* ================================================================ */
+/*  Section: Promo Banners — two-column image + CTA cards            */
+/* ================================================================ */
 const PromoBanners = () => (
   <section className="my-10 grid gap-4 sm:my-12 md:grid-cols-2">
     {PROMO_BANNERS.map(b => (
@@ -239,7 +252,7 @@ const PromoBanners = () => (
           sizes="(max-width: 768px) 100vw, 50vw"
           className="object-cover transition-transform duration-700 group-hover:scale-110"
         />
-        <div className="absolute inset-0 bg-gradient-to-r from-black/60 to-transparent" />
+        <div className="absolute inset-0 bg-linear-to-r from-black/60 to-transparent" />
         <div className="absolute inset-0 flex items-center p-6 sm:p-8">
           <div className="text-white">
             <h3 className="text-2xl font-black sm:text-3xl">{b.title}</h3>
@@ -255,7 +268,10 @@ const PromoBanners = () => (
   </section>
 );
 
-// Pickbazar-style horizontal offers carousel
+/* ================================================================ */
+/*  Section: Top Offers Carousel — horizontal scrolling deal cards   */
+/*  (Pickbazar-style)                                                */
+/* ================================================================ */
 const OFFER_SLIDES = [
   {
     id: 'of-1',
@@ -357,7 +373,7 @@ const OffersCarousel = () => {
               className="object-cover transition-transform duration-700 group-hover:scale-110"
             />
             <div
-              className={`absolute inset-0 bg-gradient-to-r ${o.accent}`}
+              className={`absolute inset-0 bg-linear-to-r ${o.accent}`}
               aria-hidden
             />
             <div className="absolute inset-0 flex items-center p-6">
@@ -382,6 +398,10 @@ const OffersCarousel = () => {
   );
 };
 
+/* ================================================================ */
+/*  Section: Trust Strip — value-proposition badges (shipping,       */
+/*  returns, payment, support)                                       */
+/* ================================================================ */
 const TrustStrip = () => (
   <section className="my-10 grid grid-cols-2 gap-4 sm:my-12 md:grid-cols-4">
     {[
@@ -406,6 +426,9 @@ const TrustStrip = () => (
   </section>
 );
 
+/* ================================================================ */
+/*  Section: Recently Viewed — products the user browsed earlier     */
+/* ================================================================ */
 const RecentlyViewed = () => {
   const { products } = useRecentlyViewed();
   if (products.length === 0) return null;
@@ -442,25 +465,32 @@ export default function HomePage() {
     storefrontService
       .getHeroSliders()
       .then(setHeroSliders)
-      .catch(() => {})
+      .catch(() => { })
       .finally(() => setHeroLoading(false));
   }, []);
 
   return (
     <div className="bg-gray-50 dark:bg-gray-950">
       <div className="mx-auto max-w-7xl px-4 py-6">
+        {/* Section 1 — Hero Carousel (main banner slider) */}
         {heroLoading ? <HeroCarouselSkeleton /> : <HeroCarousel slides={heroSliders} />}
 
+        {/* Section 2 — Trust Strip (shipping / returns / payment / support) */}
         <TrustStrip />
 
+        {/* Section 3 — Recently Viewed */}
         <RecentlyViewed />
 
+        {/* Section 4 — Top Offers Carousel */}
         <OffersCarousel />
 
+        {/* Section 5 — Shop by Category */}
         <CategoryStrip />
 
+        {/* Section 6 — Flash Sale (countdown + sale grid) */}
         <FlashSale />
 
+        {/* Section 7 — Featured Products */}
         <ProductSection
           title="Featured Products"
           subtitle="Hand-picked by our team"
@@ -469,8 +499,10 @@ export default function HomePage() {
           viewAllLink="/store/products"
         />
 
+        {/* Section 8 — Promo Banners */}
         <PromoBanners />
 
+        {/* Section 9 — Best Sellers */}
         <ProductSection
           title="Best Sellers"
           subtitle="What everyone's buying right now"
@@ -479,6 +511,7 @@ export default function HomePage() {
           viewAllLink="/store/products"
         />
 
+        {/* Section 10 — New Arrivals */}
         <ProductSection
           title="New Arrivals"
           subtitle="Fresh styles just landed"
