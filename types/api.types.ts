@@ -1048,3 +1048,63 @@ export interface HeaderMenuConfig {
   show_cart_icon: boolean;
   sticky_header: boolean;
 }
+
+export interface FooterLink {
+  id: string;
+  label: string;
+  url: string;
+  sort_order: number;
+  open_in_new_tab: boolean;
+  is_active: boolean;
+}
+
+export interface FooterColumn {
+  id: string;
+  title: string;
+  sort_order: number;
+  links: FooterLink[];
+}
+
+export interface ValuePropItem {
+  id: string;
+  icon: string;
+  title: string;
+  description: string;
+  is_active: boolean;
+  sort_order: number;
+}
+
+export interface SocialLink {
+  id: string;
+  platform: string;
+  url: string;
+  is_active: boolean;
+}
+
+export interface PaymentBadge {
+  id: string;
+  name: string;
+  is_active: boolean;
+}
+
+export interface FooterConfig {
+  value_props_enabled: boolean;
+  value_props: ValuePropItem[];
+
+  newsletter_enabled: boolean;
+  newsletter_title: string;
+  newsletter_subtitle: string;
+
+  columns: FooterColumn[];
+
+  contact_address: string;
+  contact_phone: string;
+  contact_email: string;
+  about_text: string;
+
+  social_links: SocialLink[];
+
+  copyright_text: string;
+  show_payment_badges: boolean;
+  payment_badges: PaymentBadge[];
+}

@@ -34,20 +34,15 @@ export const useBrandingStore = create<BrandingStore>()(
       _fetchPromise: null,
 
       fetch: async () => {
-        const { _fetchPromise, headerLogo, ready } = get();
+        const { _fetchPromise } = get();
 
         if (_fetchPromise) return _fetchPromise;
 
-        const isCached = ready && (headerLogo !== null || (get() as BrandingStore).footerLogo !== null);
-        if (isCached) {
-          set({ loading: false });
-        } else {
-          set({ loading: true });
-        }
+        set({ loading: true });
 
         const promise = (async () => {
           try {
-            const res = await apiClient.get<{ data: BrandingResponse }>('/api/v1/branding');
+            const res = await apiClient.get<{ data: BrandingResponse }>('/api/v1/storefront/branding');
             const data = res.data?.data;
             if (!data) return;
             set({

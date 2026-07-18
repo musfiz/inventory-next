@@ -10,8 +10,6 @@ import FloatingCartButton from '@/components/storefront/FloatingCartButton';
 import { CartFlyProvider } from '@/components/storefront/CartFlyProvider';
 import ScrollToTop from '@/components/storefront/ScrollToTop';
 import MobileBottomNav from '@/components/storefront/MobileBottomNav';
-import { useBranding } from '@/hooks/use-branding';
-
 export default function StorefrontLayout({
   children,
 }: {
@@ -19,18 +17,6 @@ export default function StorefrontLayout({
 }) {
   const router = useRouter();
   const { active, loading } = useStorefrontStatus();
-  const { favicon } = useBranding();
-
-  useEffect(() => {
-    if (!favicon) return;
-    let link = document.querySelector<HTMLLinkElement>('link[rel="icon"]');
-    if (!link) {
-      link = document.createElement('link');
-      link.rel = 'icon';
-      document.head.appendChild(link);
-    }
-    link.href = favicon;
-  }, [favicon]);
 
   useEffect(() => {
     if (!loading && !active) {

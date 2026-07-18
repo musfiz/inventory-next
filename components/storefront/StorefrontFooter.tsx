@@ -1,8 +1,10 @@
 'use client';
 
 import Link from 'next/link';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useBranding } from '@/hooks/use-branding';
+import footerService from '@/services/footerService';
+import type { FooterConfig, SocialLink } from '@/types/api.types';
 import {
   Mail,
   Phone,
@@ -11,82 +13,171 @@ import {
   Instagram,
   Twitter,
   Youtube,
-  ShieldCheck,
+  Linkedin,
+  Music2,
   Truck,
   RotateCcw,
-  CreditCard,
+  ShieldCheck,
   Headphones,
+  Gift,
+  Sparkles,
+  Star,
+  Zap,
+  HeartHandshake,
+  Package,
+  Clock,
+  BadgePercent,
 } from 'lucide-react';
 
-const FOOTER_LINKS = [
-  {
-    title: 'Shop',
-    links: [
-      { label: 'New Arrivals', href: '/store/products?filter=new' },
-      { label: 'Best Sellers', href: '/store/products?filter=bestseller' },
-      { label: 'Featured Products', href: '/store/products?filter=featured' },
-      { label: 'Flash Sale', href: '/store/products?filter=sale' },
-      { label: 'All Categories', href: '/store/products' },
-    ],
-  },
-  {
-    title: 'Customer Service',
-    links: [
-      { label: 'Contact Us', href: '/help' },
-      { label: 'Track Order', href: '/order/track' },
-      { label: 'Returns & Refunds', href: '/help/returns' },
-      { label: 'Shipping Policy', href: '/help/shipping' },
-      { label: 'FAQs', href: '/help/faq' },
-    ],
-  },
-  {
-    title: 'About UIMS',
-    links: [
-      { label: 'Our Story', href: '/about' },
-      { label: 'Careers', href: '/careers' },
-      { label: 'Press', href: '/press' },
-      { label: 'Sell on UIMS', href: '/sell' },
-      { label: 'Affiliates', href: '/affiliates' },
-    ],
-  },
-  {
-    title: 'Legal',
-    links: [
-      { label: 'Terms & Conditions', href: '/terms' },
-      { label: 'Privacy Policy', href: '/privacy' },
-      { label: 'Cookie Policy', href: '/cookies' },
-      { label: 'Accessibility', href: '/accessibility' },
-    ],
-  },
-];
+const VALUE_PROP_ICONS: Record<string, any> = {
+  Truck, RotateCcw, ShieldCheck, Headphones, Gift, Sparkles,
+  Star, Zap, HeartHandshake, Package, Clock, BadgePercent,
+};
 
-const VALUE_PROPS = [
-  {
-    icon: Truck,
-    title: 'Free Shipping',
-    description: 'On orders over ৳5,000',
-  },
-  {
-    icon: RotateCcw,
-    title: 'Easy Returns',
-    description: '7-day return policy',
-  },
-  {
-    icon: ShieldCheck,
-    title: 'Secure Payment',
-    description: '100% protected checkout',
-  },
-  {
-    icon: Headphones,
-    title: '24/7 Support',
-    description: 'Dedicated customer care',
-  },
-];
+const SOCIAL_PLATFORMS: Record<string, any> = {
+  facebook: Facebook,
+  instagram: Instagram,
+  twitter: Twitter,
+  youtube: Youtube,
+  linkedin: Linkedin,
+  tiktok: Music2,
+};
+
+function getSocialColor(platform: string) {
+  const map: Record<string, string> = {
+    facebook: 'hover:bg-blue-500 hover:border-blue-500',
+    instagram: 'hover:bg-pink-500 hover:border-pink-500',
+    twitter: 'hover:bg-sky-500 hover:border-sky-500',
+    youtube: 'hover:bg-red-500 hover:border-red-500',
+    linkedin: 'hover:bg-blue-700 hover:border-blue-700',
+    tiktok: 'hover:bg-gray-900 hover:border-gray-900 dark:hover:bg-gray-100 dark:hover:border-gray-100 dark:hover:text-gray-900',
+  };
+  return map[platform] || 'hover:bg-gray-600 hover:border-gray-600';
+}
+
+function getBadgeColor(name: string) {
+  const map: Record<string, string> = {
+    Visa: 'text-blue-700 bg-blue-50 border-blue-200 dark:bg-blue-950/40 dark:text-blue-400 dark:border-blue-800',
+    Mastercard: 'text-orange-700 bg-orange-50 border-orange-200 dark:bg-orange-950/40 dark:text-orange-400 dark:border-orange-800',
+    Amex: 'text-sky-700 bg-sky-50 border-sky-200 dark:bg-sky-950/40 dark:text-sky-400 dark:border-sky-800',
+    PayPal: 'text-blue-800 bg-blue-50 border-blue-200 dark:bg-blue-950/40 dark:text-blue-400 dark:border-blue-800',
+    Stripe: 'text-indigo-700 bg-indigo-50 border-indigo-200 dark:bg-indigo-950/40 dark:text-indigo-400 dark:border-indigo-800',
+    bKash: 'text-red-700 bg-red-50 border-red-200 dark:bg-red-950/40 dark:text-red-400 dark:border-red-800',
+    Nagad: 'text-emerald-700 bg-emerald-50 border-emerald-200 dark:bg-emerald-950/40 dark:text-emerald-400 dark:border-emerald-800',
+    Rocket: 'text-purple-700 bg-purple-50 border-purple-200 dark:bg-purple-950/40 dark:text-purple-400 dark:border-purple-800',
+    COD: 'text-gray-700 bg-gray-50 border-gray-200 dark:bg-gray-800 dark:text-gray-300 dark:border-gray-700',
+  };
+  return map[name] || 'text-gray-700 bg-gray-50 border-gray-200 dark:bg-gray-800 dark:text-gray-300 dark:border-gray-700';
+}
+
+const FALLBACK_CONFIG: FooterConfig = {
+  value_props_enabled: true,
+  value_props: [
+    { id: '1', icon: 'Truck', title: 'Free Shipping', description: 'On orders over \u09F75,000', is_active: true, sort_order: 0 },
+    { id: '2', icon: 'RotateCcw', title: 'Easy Returns', description: '7-day return policy', is_active: true, sort_order: 1 },
+    { id: '3', icon: 'ShieldCheck', title: 'Secure Payment', description: '100% protected checkout', is_active: true, sort_order: 2 },
+    { id: '4', icon: 'Headphones', title: '24/7 Support', description: 'Dedicated customer care', is_active: true, sort_order: 3 },
+  ],
+  newsletter_enabled: true,
+  newsletter_title: 'Subscribe to our newsletter',
+  newsletter_subtitle: 'Be the first to get exclusive deals, new arrivals & insider updates.',
+  columns: [
+    {
+      id: 'c1', title: 'Shop', sort_order: 0,
+      links: [
+        { id: 'l1', label: 'New Arrivals', url: '/store/products?filter=new', sort_order: 0, open_in_new_tab: false, is_active: true },
+        { id: 'l2', label: 'Best Sellers', url: '/store/products?filter=bestseller', sort_order: 1, open_in_new_tab: false, is_active: true },
+        { id: 'l3', label: 'Featured Products', url: '/store/products?filter=featured', sort_order: 2, open_in_new_tab: false, is_active: true },
+        { id: 'l4', label: 'Flash Sale', url: '/store/products?filter=sale', sort_order: 3, open_in_new_tab: false, is_active: true },
+        { id: 'l5', label: 'All Categories', url: '/store/products', sort_order: 4, open_in_new_tab: false, is_active: true },
+      ],
+    },
+    {
+      id: 'c2', title: 'Customer Service', sort_order: 1,
+      links: [
+        { id: 'l6', label: 'Contact Us', url: '/help', sort_order: 0, open_in_new_tab: false, is_active: true },
+        { id: 'l7', label: 'Track Order', url: '/order/track', sort_order: 1, open_in_new_tab: false, is_active: true },
+        { id: 'l8', label: 'Returns & Refunds', url: '/help/returns', sort_order: 2, open_in_new_tab: false, is_active: true },
+        { id: 'l9', label: 'Shipping Policy', url: '/help/shipping', sort_order: 3, open_in_new_tab: false, is_active: true },
+        { id: 'l10', label: 'FAQs', url: '/help/faq', sort_order: 4, open_in_new_tab: false, is_active: true },
+      ],
+    },
+    {
+      id: 'c3', title: 'About UIMS', sort_order: 2,
+      links: [
+        { id: 'l11', label: 'Our Story', url: '/about', sort_order: 0, open_in_new_tab: false, is_active: true },
+        { id: 'l12', label: 'Careers', url: '/careers', sort_order: 1, open_in_new_tab: false, is_active: true },
+        { id: 'l13', label: 'Press', url: '/press', sort_order: 2, open_in_new_tab: false, is_active: true },
+        { id: 'l14', label: 'Sell on UIMS', url: '/sell', sort_order: 3, open_in_new_tab: false, is_active: true },
+        { id: 'l15', label: 'Affiliates', url: '/affiliates', sort_order: 4, open_in_new_tab: false, is_active: true },
+      ],
+    },
+    {
+      id: 'c4', title: 'Legal', sort_order: 3,
+      links: [
+        { id: 'l16', label: 'Terms & Conditions', url: '/terms', sort_order: 0, open_in_new_tab: false, is_active: true },
+        { id: 'l17', label: 'Privacy Policy', url: '/privacy', sort_order: 1, open_in_new_tab: false, is_active: true },
+        { id: 'l18', label: 'Cookie Policy', url: '/cookies', sort_order: 2, open_in_new_tab: false, is_active: true },
+        { id: 'l19', label: 'Accessibility', url: '/accessibility', sort_order: 3, open_in_new_tab: false, is_active: true },
+      ],
+    },
+  ],
+  contact_address: 'House 12, Road 5, Dhanmondi, Dhaka 1205, Bangladesh',
+  contact_phone: '+880 1700-000000',
+  contact_email: 'support@uims.shop',
+  about_text: 'Your one-stop online shop for quality products across electronics, fashion, home & living, and more.',
+  social_links: [
+    { id: 's1', platform: 'facebook', url: '', is_active: true },
+    { id: 's2', platform: 'instagram', url: '', is_active: true },
+    { id: 's3', platform: 'twitter', url: '', is_active: true },
+    { id: 's4', platform: 'youtube', url: '', is_active: true },
+  ],
+  copyright_text: '\u00A9 {year} UIMS Store. All rights reserved.',
+  show_payment_badges: true,
+  payment_badges: [
+    { id: 'p1', name: 'Visa', is_active: true },
+    { id: 'p2', name: 'Mastercard', is_active: true },
+    { id: 'p3', name: 'bKash', is_active: true },
+    { id: 'p4', name: 'Nagad', is_active: true },
+    { id: 'p5', name: 'Rocket', is_active: true },
+    { id: 'p6', name: 'COD', is_active: true },
+  ],
+};
 
 export default function StorefrontFooter() {
   const [email, setEmail] = useState('');
   const { footerLogo, ready } = useBranding();
   const [subscribed, setSubscribed] = useState(false);
+  const [config, setConfig] = useState<FooterConfig | null>(null);
+
+  useEffect(() => {
+    footerService.get().then(setConfig).catch(() => setConfig(FALLBACK_CONFIG));
+  }, []);
+
+  if (!config) return null;
+
+  const {
+    value_props_enabled,
+    value_props,
+    newsletter_enabled,
+    newsletter_title,
+    newsletter_subtitle,
+    columns,
+    contact_address,
+    contact_phone,
+    contact_email,
+    about_text,
+    social_links,
+    copyright_text,
+    show_payment_badges,
+    payment_badges,
+  } = config;
+
+  const activeValueProps = value_props.filter(v => v.is_active);
+  const activeSocialLinks = social_links.filter((s: SocialLink) => s.is_active && (s.url || '').trim());
+  const activeBadges = payment_badges.filter(b => b.is_active);
+  const displayColumns = columns.filter(c => c.links.some(l => l.is_active));
+  const copyrightDisplay = (copyright_text || '').replace('{year}', String(new Date().getFullYear()));
 
   const handleSubscribe = (e: React.FormEvent) => {
     e.preventDefault();
@@ -99,74 +190,65 @@ export default function StorefrontFooter() {
   return (
     <footer className="mt-16 bg-gradient-to-b from-gray-50 via-white to-gray-50 dark:from-gray-950 dark:via-gray-900 dark:to-gray-950">
       {/* Value props strip */}
-      <div className="bg-gradient-to-r from-brand-50 via-purple-50 to-pink-50 dark:from-brand-950/30 dark:via-purple-950/30 dark:to-pink-950/30 border-y border-brand-100 dark:border-gray-800">
-        <div className="mx-auto grid max-w-7xl grid-cols-2 gap-6 px-4 py-8 md:grid-cols-4">
-          {VALUE_PROPS.map(({ icon: Icon, title, description }) => (
-            <div key={title} className="flex items-center gap-3">
-              <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-brand-50 text-brand-600 dark:bg-brand-950/50 dark:text-brand-400">
-                <Icon className="h-5 w-5" />
-              </div>
-              <div>
-                <p className="font-bold text-gray-900 dark:text-gray-100">
-                  {title}
-                </p>
-                <p className="text-xs text-gray-500 dark:text-gray-400">
-                  {description}
-                </p>
-              </div>
-            </div>
-          ))}
-        </div>
-      </div>
-
-      {/* Newsletter */}
-      <div className="bg-gradient-to-r from-brand-100 via-purple-100 to-pink-100 dark:from-brand-950/40 dark:via-purple-950/40 dark:to-pink-950/40 border-y border-brand-200 dark:border-gray-800">
-        <div className="mx-auto max-w-7xl px-4 py-10">
-          <div className="grid items-center gap-6 lg:grid-cols-2">
-            <div>
-              <h3 className="text-2xl font-black text-gray-900 dark:text-white">
-                Subscribe to our newsletter
-              </h3>
-              <p className="mt-1 text-sm text-gray-600 dark:text-gray-300">
-                Be the first to get exclusive deals, new arrivals & insider
-                updates.
-              </p>
-            </div>
-            <form
-              onSubmit={handleSubscribe}
-              className="flex w-full max-w-md gap-2"
-            >
-              <div className="relative flex-1">
-                <Mail className="pointer-events-none absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
-                <input
-                  type="email"
-                  value={email}
-                  onChange={e => setEmail(e.target.value)}
-                  required
-                  placeholder="Your email address"
-                  className="w-full rounded-full border border-gray-300 bg-white py-3 pl-11 pr-4 text-sm text-gray-900 placeholder:text-gray-400 focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-500/20 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100"
-                />
-              </div>
-              <button
-                type="submit"
-                className="rounded-full bg-brand-600 px-6 py-3 text-sm font-bold text-white transition-colors hover:bg-brand-700"
-              >
-                {subscribed ? '✓ Subscribed' : 'Subscribe'}
-              </button>
-            </form>
+      {value_props_enabled && activeValueProps.length > 0 && (
+        <div className="bg-gradient-to-r from-brand-50 via-purple-50 to-pink-50 dark:from-brand-950/30 dark:via-purple-950/30 dark:to-pink-950/30 border-y border-brand-100 dark:border-gray-800">
+          <div className="mx-auto grid max-w-7xl grid-cols-2 gap-6 px-4 py-8 md:grid-cols-4">
+            {activeValueProps.map(({ icon, title, description }) => {
+              const Icon = VALUE_PROP_ICONS[icon] || Truck;
+              return (
+                <div key={title} className="flex items-center gap-3">
+                  <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-brand-50 text-brand-600 dark:bg-brand-950/50 dark:text-brand-400">
+                    <Icon className="h-5 w-5" />
+                  </div>
+                  <div>
+                    <p className="font-bold text-gray-900 dark:text-gray-100">{title}</p>
+                    <p className="text-xs text-gray-500 dark:text-gray-400">{description}</p>
+                  </div>
+                </div>
+              );
+            })}
           </div>
         </div>
-      </div>
+      )}
+
+      {/* Newsletter */}
+      {newsletter_enabled && (
+        <div className="bg-gradient-to-r from-brand-100 via-purple-100 to-pink-100 dark:from-brand-950/40 dark:via-purple-950/40 dark:to-pink-950/40 border-y border-brand-200 dark:border-gray-800">
+          <div className="mx-auto max-w-7xl px-4 py-10">
+            <div className="grid items-center gap-6 lg:grid-cols-2">
+              <div>
+                <h3 className="text-2xl font-black text-gray-900 dark:text-white">{newsletter_title}</h3>
+                <p className="mt-1 text-sm text-gray-600 dark:text-gray-300">{newsletter_subtitle}</p>
+              </div>
+              <form onSubmit={handleSubscribe} className="flex w-full max-w-md gap-2">
+                <div className="relative flex-1">
+                  <Mail className="pointer-events-none absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
+                  <input
+                    type="email"
+                    value={email}
+                    onChange={e => setEmail(e.target.value)}
+                    required
+                    placeholder="Your email address"
+                    className="w-full rounded-full border border-gray-300 bg-white py-3 pl-11 pr-4 text-sm text-gray-900 placeholder:text-gray-400 focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-500/20 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100"
+                  />
+                </div>
+                <button
+                  type="submit"
+                  className="rounded-full bg-brand-600 px-6 py-3 text-sm font-bold text-white transition-colors hover:bg-brand-700"
+                >
+                  {subscribed ? '\u2713 Subscribed' : 'Subscribe'}
+                </button>
+              </form>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Main links */}
       <div className="mx-auto max-w-7xl px-4 py-12">
         <div className="grid gap-10 md:grid-cols-2 lg:grid-cols-6">
           <div className="lg:col-span-2">
-            <Link
-              href="/"
-              className="inline-flex items-center"
-              aria-label="UIMS Store"
-            >
+            <Link href="/" className="inline-flex items-center" aria-label="UIMS Store">
               {footerLogo ? (
                 <img src={footerLogo} alt="UIMS Store" className="h-9 w-auto object-contain" />
               ) : ready ? (
@@ -177,98 +259,91 @@ export default function StorefrontFooter() {
                 <div className="h-9 w-24 rounded bg-gray-100 dark:bg-gray-800" />
               )}
             </Link>
-            <p className="mt-3 max-w-xs text-sm text-gray-600 dark:text-gray-400">
-              Your one-stop online shop for quality products across
-              electronics, fashion, home & living, and more.
-            </p>
+            <p className="mt-3 max-w-xs text-sm text-gray-600 dark:text-gray-400">{about_text}</p>
             <ul className="mt-5 space-y-2 text-sm text-gray-600 dark:text-gray-400">
-              <li className="flex items-start gap-2">
-                <MapPin className="mt-0.5 h-4 w-4 shrink-0 text-brand-600" />
-                House 12, Road 5, Dhanmondi, Dhaka 1205, Bangladesh
-              </li>
-              <li className="flex items-center gap-2">
-                <Phone className="h-4 w-4 text-brand-600" />
-                +880 1700-000000
-              </li>
-              <li className="flex items-center gap-2">
-                <Mail className="h-4 w-4 text-brand-600" />
-                support@uims.shop
-              </li>
+              {contact_address && (
+                <li className="flex items-start gap-2">
+                  <MapPin className="mt-0.5 h-4 w-4 shrink-0 text-brand-600" />
+                  {contact_address}
+                </li>
+              )}
+              {contact_phone && (
+                <li className="flex items-center gap-2">
+                  <Phone className="h-4 w-4 text-brand-600" />
+                  {contact_phone}
+                </li>
+              )}
+              {contact_email && (
+                <li className="flex items-center gap-2">
+                  <Mail className="h-4 w-4 text-brand-600" />
+                  {contact_email}
+                </li>
+              )}
             </ul>
-            <div className="mt-5 flex items-center gap-2">
-              {[
-                { Icon: Facebook, color: 'hover:bg-blue-500 hover:border-blue-500' },
-                { Icon: Instagram, color: 'hover:bg-pink-500 hover:border-pink-500' },
-                { Icon: Twitter, color: 'hover:bg-sky-500 hover:border-sky-500' },
-                { Icon: Youtube, color: 'hover:bg-red-500 hover:border-red-500' },
-              ].map(({ Icon, color }, i) => (
-                <a
-                  key={i}
-                  href="#"
-                  className={`flex h-9 w-9 items-center justify-center rounded-full border border-gray-300 text-gray-600 transition-all hover:text-white dark:border-gray-700 dark:text-gray-400 ${color}`}
-                  aria-label="social"
-                >
-                  <Icon className="h-4 w-4" />
-                </a>
-              ))}
-            </div>
+            {activeSocialLinks.length > 0 && (
+              <div className="mt-5 flex items-center gap-2">
+                {activeSocialLinks.map(sl => {
+                  const Icon = SOCIAL_PLATFORMS[sl.platform] || Facebook;
+                  return (
+                    <a
+                      key={sl.id}
+                      href={sl.url || '#'}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className={`flex h-9 w-9 items-center justify-center rounded-full border border-gray-300 text-gray-600 transition-all hover:text-white dark:border-gray-700 dark:text-gray-400 ${getSocialColor(sl.platform)}`}
+                      aria-label={sl.platform}
+                    >
+                      <Icon className="h-4 w-4" />
+                    </a>
+                  );
+                })}
+              </div>
+            )}
           </div>
 
-          {[
-            { title: 'Shop', cls: 'text-brand-600 dark:text-brand-400' },
-            { title: 'Customer Service', cls: 'text-purple-600 dark:text-purple-400' },
-            { title: 'About UIMS', cls: 'text-pink-600 dark:text-pink-400' },
-            { title: 'Legal', cls: 'text-amber-600 dark:text-amber-400' },
-          ].map(({ title, cls }, i) => {
-            const links = FOOTER_LINKS[i].links;
-            return <div key={title}>
-              <p className={`text-sm font-bold uppercase tracking-wider ${cls}`}>
-                {title}
+          {displayColumns.map(col => (
+            <div key={col.id}>
+              <p className="text-sm font-bold uppercase tracking-wider text-brand-600 dark:text-brand-400">
+                {col.title}
               </p>
               <ul className="mt-4 space-y-2.5 text-sm">
-                {links.map(l => (
-                  <li key={l.label}>
+                {col.links.filter(l => l.is_active).map(link => (
+                  <li key={link.id}>
                     <Link
-                      href={l.href}
+                      href={link.url}
+                      target={link.open_in_new_tab ? '_blank' : undefined}
+                      rel={link.open_in_new_tab ? 'noopener noreferrer' : undefined}
                       className="text-gray-600 transition-colors hover:text-brand-600 dark:text-gray-400"
                     >
-                      {l.label}
+                      {link.label}
                     </Link>
                   </li>
                 ))}
               </ul>
-            </div>;
-          })}
+            </div>
+          ))}
         </div>
       </div>
 
       {/* Bottom bar */}
       <div className="border-t border-brand-200 bg-gradient-to-r from-brand-50 via-purple-50 to-pink-50 dark:border-gray-800 dark:from-gray-900 dark:via-gray-900 dark:to-gray-900">
         <div className="mx-auto flex max-w-7xl flex-col items-center justify-between gap-4 px-4 py-5 text-xs text-gray-600 sm:flex-row dark:text-gray-400">
-          <p>
-            © {new Date().getFullYear()} UIMS Store. All rights reserved.
-          </p>
-          <div className="flex items-center gap-2">
-            <span className="font-semibold">We accept:</span>
-            <div className="flex items-center gap-1.5">
-              {[
-                { name: 'Visa', cls: 'text-blue-700 bg-blue-50 border-blue-200 dark:bg-blue-950/40 dark:text-blue-400 dark:border-blue-800' },
-                { name: 'Mastercard', cls: 'text-orange-700 bg-orange-50 border-orange-200 dark:bg-orange-950/40 dark:text-orange-400 dark:border-orange-800' },
-                { name: 'bKash', cls: 'text-red-700 bg-red-50 border-red-200 dark:bg-red-950/40 dark:text-red-400 dark:border-red-800' },
-                { name: 'Nagad', cls: 'text-emerald-700 bg-emerald-50 border-emerald-200 dark:bg-emerald-950/40 dark:text-emerald-400 dark:border-emerald-800' },
-                { name: 'Rocket', cls: 'text-purple-700 bg-purple-50 border-purple-200 dark:bg-purple-950/40 dark:text-purple-400 dark:border-purple-800' },
-                { name: 'COD', cls: 'text-gray-700 bg-gray-50 border-gray-200 dark:bg-gray-800 dark:text-gray-300 dark:border-gray-700' },
-              ].map(({ name, cls }) => (
+          <p>{copyrightDisplay}</p>
+          {show_payment_badges && activeBadges.length > 0 && (
+            <div className="flex items-center gap-2">
+              <span className="font-semibold">We accept:</span>
+              <div className="flex items-center gap-1.5">
+                {activeBadges.map(b => (
                   <span
-                    key={name}
-                    className={`rounded border px-2 py-1 text-[10px] font-bold ${cls}`}
+                    key={b.id}
+                    className={`rounded border px-2 py-1 text-[10px] font-bold ${getBadgeColor(b.name)}`}
                   >
-                    {name}
+                    {b.name}
                   </span>
-                )
-              )}
+                ))}
+              </div>
             </div>
-          </div>
+          )}
         </div>
       </div>
     </footer>
