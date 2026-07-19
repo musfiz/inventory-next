@@ -32,6 +32,7 @@ import { useCartFly } from '@/components/storefront/CartFlyProvider';
 import { useRouter } from 'next/navigation';
 import { useEffect } from 'react';
 import { notify } from '@/lib/notifications';
+import ecommerceSettingsService from '@/services/ecommerceSettingsService';
 import Rating from '@/components/storefront/Rating';
 import Badge from '@/components/storefront/Badge';
 import ProductCard from '@/components/storefront/ProductCard';
@@ -52,6 +53,11 @@ export default function ProductDetailPage() {
   const [zoom, setZoom] = useState(false);
   const [zoomPos, setZoomPos] = useState({ x: 50, y: 50 });
   const [tab, setTab] = useState<'description' | 'specs' | 'reviews' | 'shipping'>('description');
+  const [showSimilar, setShowSimilar] = useState(true);
+
+  useEffect(() => {
+    ecommerceSettingsService.get().then(s => setShowSimilar(s.show_similar_products)).catch(() => {});
+  }, []);
 
   const addItem = useCartStore(s => s.addItem);
   const openCart = useCartStore(s => s.openDrawer);
@@ -553,7 +559,7 @@ export default function ProductDetailPage() {
         </div>
 
         {/* Related products */}
-        {related.length > 0 && (
+        {showSimilar && related.length > 0 && (
           <section className="mt-14">
             <h2 className="mb-5 text-xl font-black text-gray-900 dark:text-white sm:text-2xl">
               You may also like

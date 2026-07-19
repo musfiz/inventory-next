@@ -56,6 +56,7 @@ export interface EcommerceSettings {
   tax_rate: number;
   meta_title: string;
   meta_description: string;
+  show_similar_products: boolean;
   created_at: string;
   updated_at: string;
 }

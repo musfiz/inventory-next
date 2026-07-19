@@ -14,6 +14,7 @@ const defaultSettings: EcommerceSettings = {
   tax_rate: 5,
   meta_title: 'UIMS Store - Best Online Shopping in Bangladesh',
   meta_description: 'Shop the latest products at UIMS Store. From electronics to fashion, find everything you need at great prices.',
+  show_similar_products: true,
   created_at: '2025-01-01T00:00:00Z',
   updated_at: '2025-12-15T10:30:00Z',
 };

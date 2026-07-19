@@ -1058,6 +1058,22 @@ export interface FooterLink {
   is_active: boolean;
 }
 
+export interface ProductFlagsItem {
+  id: number | null;
+  product_id: string;
+  product_name: string;
+  product_slug: string;
+  product_status: string;
+  category: { id: string; name: string } | null;
+  brand: { id: string; name: string } | null;
+  image: { url: string; thumb_url: string } | null;
+  is_visible_on_storefront: boolean;
+  is_featured: boolean;
+  is_new: boolean;
+  is_bestseller: boolean;
+  is_on_sale: boolean;
+}
+
 export interface FooterColumn {
   id: string;
   title: string;

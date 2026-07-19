@@ -285,10 +285,9 @@ const navigation: NavigationItem[] = [
         name: 'Product Display',
         icon: Package,
         children: [
-          { name: 'Display Settings', href: '/ecommerce/products/display', icon: List },
-          { name: 'Storefront Visibility', href: '/ecommerce/products/visibility', icon: Eye },
-          { name: 'Featured / New / Bestseller Flags', href: '/ecommerce/products/flags', icon: Tag },
-          { name: 'Category & Brand Page Content', href: '/ecommerce/products/category-content', icon: FileText },
+          { name: 'Display Rules', href: '/ecommerce/products/display', icon: List },
+          { name: 'Product Rules', href: '/ecommerce/products/flags', icon: Tag },
+          { name: 'Category & Brand Page', href: '/ecommerce/products/category-content', icon: FileText },
           { name: 'Related / Cross-sell / Up-sell', href: '/ecommerce/products/relations', icon: GitBranch },
         ],
       },
