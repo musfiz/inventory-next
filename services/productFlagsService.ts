@@ -6,6 +6,7 @@ class ProductFlagsService {
     page?: number;
     per_page?: number;
     search?: string;
+    category_id?: number;
   }): Promise<{
     data: ProductFlagsItem[];
     meta: { current_page: number; last_page: number; per_page: number; total: number };
@@ -24,7 +25,7 @@ class ProductFlagsService {
 
   async update(
     productId: string,
-    flags: { is_featured?: boolean; is_new?: boolean; is_bestseller?: boolean; is_on_sale?: boolean }
+    flags: { is_featured?: boolean; is_new?: boolean; is_bestseller?: boolean; is_on_sale?: boolean; is_visible_on_storefront?: boolean; hide_when_out_of_stock?: boolean; available_from?: string | null; available_until?: string | null }
   ): Promise<void> {
     await apiClient.post('/api/v1/ecommerce/products/flags/update', {
       product_id: productId,
@@ -34,7 +35,7 @@ class ProductFlagsService {
 
   async bulkUpdate(
     productIds: string[],
-    flags: { is_featured?: boolean; is_new?: boolean; is_bestseller?: boolean; is_on_sale?: boolean }
+    flags: { is_featured?: boolean; is_new?: boolean; is_bestseller?: boolean; is_on_sale?: boolean; is_visible_on_storefront?: boolean; hide_when_out_of_stock?: boolean }
   ): Promise<number> {
     const response = await apiClient.post('/api/v1/ecommerce/products/flags/bulk-update', {
       product_ids: productIds,

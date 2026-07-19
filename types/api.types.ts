@@ -1072,6 +1072,9 @@ export interface ProductFlagsItem {
   is_new: boolean;
   is_bestseller: boolean;
   is_on_sale: boolean;
+  hide_when_out_of_stock: boolean;
+  available_from: string | null;
+  available_until: string | null;
 }
 
 export interface FooterColumn {
