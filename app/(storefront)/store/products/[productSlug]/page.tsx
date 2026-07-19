@@ -127,7 +127,7 @@ export default function ProductDetailPage() {
         <nav className="mx-auto flex max-w-7xl flex-wrap items-center gap-1.5 px-4 py-3 text-xs text-gray-500 dark:text-gray-400">
           <Link href="/" className="hover:text-brand-600">Home</Link>
           <ChevronRight className="h-3 w-3" />
-          <Link href={`/category/${product.category.slug}`} className="hover:text-brand-600">
+          <Link href={`/store/category/${product.category.slug}`} className="hover:text-brand-600">
             {product.category.name}
           </Link>
           <ChevronRight className="h-3 w-3" />

@@ -1077,6 +1077,15 @@ export interface ProductFlagsItem {
   available_until: string | null;
 }
 
+export interface CategoryContent {
+  id: number;
+  name: string;
+  slug: string;
+  image_url: string | null;
+  banner_image: string | null;
+  updated_at: string;
+}
+
 export interface FooterColumn {
   id: string;
   title: string;

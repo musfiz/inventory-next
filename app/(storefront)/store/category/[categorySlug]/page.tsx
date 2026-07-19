@@ -114,7 +114,7 @@ export default function CategoryPage() {
             {childCats.map(c => (
               <Link
                 key={c.id}
-                href={`/category/${c.slug}`}
+                href={`/store/category/${c.slug}`}
                 className="inline-flex items-center gap-1 rounded-full border border-gray-200 bg-white px-4 py-2 text-sm font-semibold text-gray-700 transition-all hover:border-brand-400 hover:text-brand-600 dark:border-gray-800 dark:bg-gray-900 dark:text-gray-300"
               >
                 {c.name}

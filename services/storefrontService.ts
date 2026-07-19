@@ -1,5 +1,6 @@
 import apiClient from '@/lib/api/axios';
 import type { ApiResponse } from '@/types/api.types';
+import type { Product, Category } from '@/types/storefront';
 
 export interface StorefrontHeroSlider {
   id: string;
@@ -14,6 +15,27 @@ export interface StorefrontHeroSlider {
 
 import type { StorefrontOfferSlide } from '@/types/storefront';
 
+export interface CategoryPageData {
+  id: string;
+  name: string;
+  slug: string;
+  image: string | null;
+  banner_image: string | null;
+  description: string | null;
+  parentId: string | null;
+  children: Category[];
+}
+
+export interface ProductsResponse {
+  data: Product[];
+  meta: {
+    current_page: number;
+    last_page: number;
+    per_page: number;
+    total: number;
+  };
+}
+
 class StorefrontService {
   async getHeroSliders(): Promise<StorefrontHeroSlider[]> {
     const response = await apiClient.get<ApiResponse<StorefrontHeroSlider[]>>(
@@ -27,6 +49,26 @@ class StorefrontService {
       '/api/v1/storefront/offer-slides'
     );
     return response.data.data ?? [];
+  }
+
+  async getCategoryBySlug(slug: string): Promise<CategoryPageData> {
+    const response = await apiClient.get<ApiResponse<CategoryPageData>>(
+      `/api/v1/storefront/category/${slug}`
+    );
+    return response.data.data;
+  }
+
+  async getProducts(params: {
+    category_id?: number;
+    sort?: string;
+    page?: number;
+    per_page?: number;
+  }): Promise<ProductsResponse> {
+    const response = await apiClient.get<{ success: boolean; data: Product[]; meta: ProductsResponse['meta'] }>(
+      '/api/v1/storefront/products',
+      { params }
+    );
+    return { data: response.data.data, meta: response.data.meta };
   }
 }
 

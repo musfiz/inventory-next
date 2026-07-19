@@ -78,7 +78,7 @@ const CategoryStrip = () => {
         {visible.map(cat => (
           <Link
             key={cat.id}
-            href={`/category/${cat.slug}`}
+            href={`/store/category/${cat.slug}`}
             className="group flex flex-col items-center gap-2 rounded-2xl border border-gray-200 bg-white p-3 text-center transition-all hover:-translate-y-1 hover:border-brand-300 hover:shadow-lg dark:border-gray-800 dark:bg-gray-900 dark:hover:border-brand-700"
           >
             <div className="relative aspect-square w-full overflow-hidden rounded-xl bg-gradient-to-br from-brand-50 to-purple-50 dark:from-brand-950/30 dark:to-purple-950/30">
