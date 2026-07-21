@@ -1179,3 +1179,32 @@ export interface CreateStaticPageRequest {
   is_published?: boolean;
   sort_order?: number;
 }
+
+// --- Blog / News ---
+
+export interface BlogPost {
+  id: string;
+  title: string;
+  slug: string;
+  excerpt: string | null;
+  body: string | null;
+  featured_image: string | null;
+  meta_title: string | null;
+  meta_description: string | null;
+  is_published: boolean;
+  published_at: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface CreateBlogPostRequest {
+  id?: string;
+  title: string;
+  slug: string;
+  excerpt?: string;
+  body?: string;
+  featured_image?: string;
+  meta_title?: string;
+  meta_description?: string;
+  is_published?: boolean;
+}
