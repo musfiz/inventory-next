@@ -1,1 +1,8 @@
-'use client';import{useEffect}from'react';import{useRouter}from'next/navigation';export default function StorefrontRoot(){const r=useRouter();useEffect(()=>{r.replace('/store')},[]);return null}
+'use client';
+import { useEffect } from 'react';
+import { useRouter } from 'next/navigation';
+
+export default function StorefrontRoot() {
+  const r = useRouter();
+  useEffect(() => { r.replace('/store') }, []); return null
+}

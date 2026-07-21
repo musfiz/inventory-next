@@ -1086,6 +1086,23 @@ export interface CategoryContent {
   updated_at: string;
 }
 
+export interface ProductMediaItem {
+  id: number;
+  product_id: number;
+  variation_id: number | null;
+  file_path_thumb: string;
+  file_url_thumb: string;
+  file_path_medium: string;
+  file_url_medium: string;
+  file_path_magnify: string;
+  file_url_magnify: string;
+  alt_text: string | null;
+  is_primary: boolean;
+  sort_order: number;
+  created_at: string;
+  updated_at: string;
+}
+
 export interface FooterColumn {
   id: string;
   title: string;
@@ -1135,4 +1152,30 @@ export interface FooterConfig {
   copyright_text: string;
   show_payment_badges: boolean;
   payment_badges: PaymentBadge[];
+}
+
+// --- Static Page CMS ---
+
+export interface StaticPage {
+  id: string;
+  slug: string;
+  title: string;
+  body: string | null;
+  meta_title: string | null;
+  meta_description: string | null;
+  is_published: boolean;
+  sort_order: number;
+  published_at: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface CreateStaticPageRequest {
+  slug: string;
+  title: string;
+  body?: string;
+  meta_title?: string;
+  meta_description?: string;
+  is_published?: boolean;
+  sort_order?: number;
 }

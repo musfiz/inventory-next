@@ -288,6 +288,7 @@ const navigation: NavigationItem[] = [
           { name: 'Display Rules', href: '/ecommerce/products/display', icon: List },
           { name: 'Product Rules', href: '/ecommerce/products/flags', icon: Tag },
           { name: 'Category Page', href: '/ecommerce/products/category-content', icon: FileText },
+          { name: 'Product Media', href: '/ecommerce/products/product-media', icon: Image },
           // { name: 'Related / Cross-sell / Up-sell', href: '/ecommerce/products/relations', icon: GitBranch },
         ],
       },
@@ -296,9 +297,9 @@ const navigation: NavigationItem[] = [
         icon: BsFilePost,
         children: [
           { name: 'Static Pages (CMS)', href: '/ecommerce/content/pages', icon: FileText },
-          { name: 'Announcement Bar', href: '/ecommerce/content/announcement', icon: MessageSquareText },
+          // { name: 'Announcement Bar', href: '/ecommerce/content/announcement', icon: MessageSquareText },
           { name: 'Blog / News', href: '/ecommerce/content/blog', icon: MdOutlinePostAdd },
-          { name: 'Media Library', href: '/ecommerce/content/media', icon: Images },
+          // { name: 'Media Library', href: '/ecommerce/content/media', icon: Images },
         ],
       },
       {
