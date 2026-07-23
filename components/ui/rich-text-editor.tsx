@@ -1,6 +1,6 @@
 'use client';
 
-import { useMemo, useRef, useCallback, useState, useEffect } from 'react';
+import React, { useMemo, useRef, useCallback, useState, useEffect } from 'react';
 import {
   createEditorSystem,
   boldExtension,
@@ -85,25 +85,26 @@ const icons = {
   clean: <path d="M 3 3 L 17 17 M 17 3 L 3 17" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />,
   paragraph: <path d="M 5 5 L 5 15 M 5 5 L 12 5 C 14 5 15 6 15 8 C 15 10 14 11 12 11 L 5 11" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />,
   quote: <path d="M 3 3 L 7 3 M 3 7 L 7 7 M 3 11 L 7 11 M 3 15 L 7 15" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />,
+  indent: <path d="M 3 10 L 8 10 L 8 6 L 13 10 L 8 14 L 8 10 M 11 6 L 17 6 M 11 10 L 17 10 M 11 14 L 17 14" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />,
+  outdent: <path d="M 13 10 L 8 10 L 8 6 L 3 10 L 8 14 L 8 10 M 11 6 L 17 6 M 11 10 L 17 10 M 11 14 L 17 14" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />,
+  alignLeft: <path d="M 3 4 L 17 4 M 3 8 L 13 8 M 3 12 L 17 12 M 3 16 L 13 16" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />,
+  alignCenter: <path d="M 5 4 L 15 4 M 3 8 L 17 8 M 3 12 L 17 12 M 5 16 L 15 16" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />,
+  alignRight: <path d="M 3 4 L 17 4 M 7 8 L 17 8 M 3 12 L 17 12 M 7 16 L 17 16" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />,
+  alignNone: <path d="M 3 4 L 17 4 M 6 8 L 14 8 M 3 12 L 17 12 M 6 16 L 14 16" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />,
 };
 
 // ── Utility component: Toolbar button ──────────────────────────────────────────
 
-function Tb({
-  active,
-  disabled,
-  title,
-  onClick,
-  children,
-}: {
+const Tb = React.forwardRef<HTMLButtonElement, {
   active?: boolean;
   disabled?: boolean;
   title?: string;
   onClick: () => void;
   children: React.ReactNode;
-}) {
+}>(({ active, disabled, title, onClick, children }, ref) => {
   return (
     <button
+      ref={ref}
       type="button"
       title={title}
       disabled={disabled}
@@ -113,7 +114,8 @@ function Tb({
       {children}
     </button>
   );
-}
+});
+Tb.displayName = 'Tb';
 
 // ── Toolbar ────────────────────────────────────────────────────────────────────
 
@@ -125,6 +127,27 @@ function Toolbar({
   onTriggerImageUpload?: () => void;
 }) {
   const { commands, activeStates, editor } = useEditor();
+  const [showTablePicker, setShowTablePicker] = useState(false);
+  const [tablePickerRows, setTablePickerRows] = useState(1);
+  const [tablePickerCols, setTablePickerCols] = useState(1);
+  const tableBtnRef = useRef<HTMLButtonElement>(null);
+  const tablePickerRef = useRef<HTMLDivElement>(null);
+
+  // Close table picker on outside click
+  useEffect(() => {
+    if (!showTablePicker) return;
+    const handleOutsideClick = (e: MouseEvent) => {
+      if (
+        tableBtnRef.current?.contains(e.target as Node) ||
+        tablePickerRef.current?.contains(e.target as Node)
+      ) {
+        return;
+      }
+      setShowTablePicker(false);
+    };
+    document.addEventListener('mousedown', handleOutsideClick);
+    return () => document.removeEventListener('mousedown', handleOutsideClick);
+  }, [showTablePicker]);
 
   // Determine current block type
   const currentBlock = useMemo(() => {
@@ -142,8 +165,12 @@ function Toolbar({
   // ── Link handler ─────────────────────────────────────────────────────────────
 
   const handleLink = useCallback(() => {
-    commands.insertLink(undefined);
-  }, [commands]);
+    if (activeStates.isLink) {
+      commands.insertLink(undefined);
+    } else {
+      commands.insertLink(undefined);
+    }
+  }, [commands, activeStates.isLink]);
 
   // ── Image upload trigger ────────────────────────────────────────────────────
 
@@ -151,11 +178,19 @@ function Toolbar({
     onTriggerImageUpload?.();
   }, [onTriggerImageUpload]);
 
-  // ── Table handler ───────────────────────────────────────────────────────────
+  // ── Table handler with size picker ──────────────────────────────────────────
 
   const handleTable = useCallback(() => {
-    commands.insertTable({ rows: 3, columns: 3, includeHeaders: false });
-  }, [commands]);
+    setShowTablePicker(prev => !prev);
+  }, []);
+
+  const handleInsertTable = useCallback(() => {
+    commands.insertTable({ rows: tablePickerRows, columns: tablePickerCols, includeHeaders: false });
+    setShowTablePicker(false);
+  }, [commands, tablePickerRows, tablePickerCols]);
+
+  const TABLE_PICKER_MAX_ROWS = 8;
+  const TABLE_PICKER_MAX_COLS = 8;
 
   // ── Clear formatting ────────────────────────────────────────────────────────
 
@@ -164,7 +199,6 @@ function Toolbar({
     editor.update(() => {
       const selection = $getSelection();
       if ($isRangeSelection(selection)) {
-        // Reset format bitmask to clear all text formatting
         (selection as unknown as { format: number }).format = 0;
       }
     });
@@ -241,18 +275,60 @@ function Toolbar({
         <Tb active={activeStates.orderedList} onClick={() => commands.toggleOrderedList()} title="Ordered list">
           <svg viewBox="0 0 20 20" width="16" height="16">{icons.listOl}</svg>
         </Tb>
+        <span className="lexkit-toolbar-sep" />
+        <Tb onClick={() => commands.indentList()} title="Indent list item">
+          <svg viewBox="0 0 20 20" width="16" height="16">{icons.indent}</svg>
+        </Tb>
+        <Tb onClick={() => commands.outdentList()} title="Outdent list item">
+          <svg viewBox="0 0 20 20" width="16" height="16">{icons.outdent}</svg>
+        </Tb>
       </span>
 
       {/* ── Inserts ── */}
       <span className="lexkit-toolbar-group">
-        <Tb onClick={handleLink} title="Insert link">
+        <Tb active={!!activeStates.isLink} onClick={handleLink} title="Insert / edit link">
           <svg viewBox="0 0 20 20" width="16" height="16">{icons.link}</svg>
         </Tb>
         <Tb disabled={!onTriggerImageUpload} onClick={handleImageUpload} title="Insert image">
           <svg viewBox="0 0 20 20" width="16" height="16">{icons.image}</svg>
         </Tb>
-        <Tb onClick={handleTable} title="Insert table">
+        <Tb ref={tableBtnRef} onClick={handleTable} title="Insert table">
           <svg viewBox="0 0 20 20" width="16" height="16">{icons.table}</svg>
+        </Tb>
+        {showTablePicker && (
+          <div className="lexkit-table-picker" ref={tablePickerRef}>
+            <div className="lexkit-table-picker-grid">
+              {Array.from({ length: TABLE_PICKER_MAX_ROWS }, (_, ri) =>
+                Array.from({ length: TABLE_PICKER_MAX_COLS }, (_, ci) => (
+                  <div
+                    key={`${ri}-${ci}`}
+                    className={`lexkit-table-picker-cell${ri < tablePickerRows && ci < tablePickerCols ? ' selected' : ''}`}
+                    onMouseEnter={() => { setTablePickerRows(ri + 1); setTablePickerCols(ci + 1); }}
+                    onClick={handleInsertTable}
+                  />
+                )),
+              )}
+            </div>
+            <div className="lexkit-table-picker-label">
+              {tablePickerRows} × {tablePickerCols}
+            </div>
+          </div>
+        )}
+      </span>
+
+      {/* ── Image Alignment ── */}
+      <span className="lexkit-toolbar-group">
+        <Tb active={!!activeStates.isImageAlignedLeft} onClick={() => commands.setImageAlignment('left')} title="Align image left">
+          <svg viewBox="0 0 20 20" width="16" height="16">{icons.alignLeft}</svg>
+        </Tb>
+        <Tb active={!!activeStates.isImageAlignedCenter} onClick={() => commands.setImageAlignment('center')} title="Align image center">
+          <svg viewBox="0 0 20 20" width="16" height="16">{icons.alignCenter}</svg>
+        </Tb>
+        <Tb active={!!activeStates.isImageAlignedRight} onClick={() => commands.setImageAlignment('right')} title="Align image right">
+          <svg viewBox="0 0 20 20" width="16" height="16">{icons.alignRight}</svg>
+        </Tb>
+        <Tb active={!!activeStates.isImageAlignedNone} onClick={() => commands.setImageAlignment('none')} title="No alignment / default">
+          <svg viewBox="0 0 20 20" width="16" height="16">{icons.alignNone}</svg>
         </Tb>
       </span>
 
@@ -261,7 +337,7 @@ function Toolbar({
         <Tb active={currentBlock === 'quote'} onClick={() => commands.toggleQuote()} title="Blockquote">
           <svg viewBox="0 0 20 20" width="16" height="16">{icons.blockquote}</svg>
         </Tb>
-        <Tb active={currentBlock === 'code'} onClick={handleCodeBlock} title="Code block">
+        <Tb active={activeStates.isInCodeBlock} onClick={handleCodeBlock} title="Code block">
           <svg viewBox="0 0 20 20" width="16" height="16">{icons.codeBlock}</svg>
         </Tb>
         <Tb onClick={() => commands.insertHorizontalRule()} title="Horizontal rule">
@@ -271,10 +347,10 @@ function Toolbar({
 
       {/* ── History ── */}
       <span className="lexkit-toolbar-group">
-        <Tb onClick={() => commands.undo()} title="Undo (Ctrl+Z)">
+        <Tb disabled={!activeStates.canUndo} onClick={() => commands.undo()} title="Undo (Ctrl+Z)">
           <svg viewBox="0 0 20 20" width="16" height="16">{icons.undo}</svg>
         </Tb>
-        <Tb onClick={() => commands.redo()} title="Redo (Ctrl+Shift+Z)">
+        <Tb disabled={!activeStates.canRedo} onClick={() => commands.redo()} title="Redo (Ctrl+Shift+Z)">
           <svg viewBox="0 0 20 20" width="16" height="16">{icons.redo}</svg>
         </Tb>
       </span>
@@ -652,6 +728,12 @@ function EditorInner({
               minHeight: minHeight || '300px',
               maxHeight: maxHeight || '800px',
             },
+            placeholder: {
+              position: 'absolute',
+              top: '1.25rem',
+              left: '1.5rem',
+              pointerEvents: 'none',
+            },
           }}
         />
       </div>
@@ -716,6 +798,62 @@ function EditorInner({
           background: #dc2626;
         }
 
+        /* ============ Table Size Picker ============ */
+        .lexkit-table-picker {
+          position: absolute;
+          top: 100%;
+          left: 0;
+          z-index: 50;
+          background: #fff;
+          border: 1px solid #d1d5db;
+          border-radius: 0.5rem;
+          padding: 0.75rem;
+          box-shadow: 0 4px 16px rgba(0, 0, 0, 0.12);
+          margin-top: 4px;
+        }
+        .lexkit-table-picker-grid {
+          display: grid;
+          grid-template-columns: repeat(8, 1fr);
+          gap: 2px;
+        }
+        .lexkit-table-picker-cell {
+          width: 18px;
+          height: 18px;
+          border: 1px solid #d1d5db;
+          border-radius: 2px;
+          background: #fff;
+          cursor: pointer;
+          transition: background 0.1s, border-color 0.1s;
+        }
+        .lexkit-table-picker-cell:hover,
+        .lexkit-table-picker-cell.selected {
+          background: #818cf8;
+          border-color: #6366f1;
+        }
+        .lexkit-table-picker-label {
+          text-align: center;
+          font-size: 0.75rem;
+          color: #6b7280;
+          margin-top: 0.5rem;
+          font-weight: 500;
+        }
+        .dark .lexkit-table-picker {
+          background: #1f2937;
+          border-color: #4b5563;
+        }
+        .dark .lexkit-table-picker-cell {
+          border-color: #4b5563;
+          background: #374151;
+        }
+        .dark .lexkit-table-picker-cell:hover,
+        .dark .lexkit-table-picker-cell.selected {
+          background: #6366f1;
+          border-color: #818cf8;
+        }
+        .dark .lexkit-table-picker-label {
+          color: #9ca3af;
+        }
+
         /* ============ Toolbar ============ */
         .lexkit-toolbar {
           display: flex;
@@ -727,6 +865,8 @@ function EditorInner({
           background: #f9fafb;
           padding: 0.375rem 0.5rem;
           align-items: center;
+          position: relative;
+          z-index: 5;
         }
         .lexkit-toolbar-group {
           display: inline-flex;
@@ -740,6 +880,13 @@ function EditorInner({
           margin-right: 0;
           padding-right: 0;
           border-right: none;
+        }
+        .lexkit-toolbar-sep {
+          display: inline-block;
+          width: 1px;
+          height: 18px;
+          background: #d1d5db;
+          margin: 0 0.25rem;
         }
         .lexkit-toolbar-btn {
           display: inline-flex;
@@ -973,6 +1120,9 @@ function EditorInner({
         }
         .dark .lexkit-toolbar-group {
           border-right-color: #4b5563;
+        }
+        .dark .lexkit-toolbar-sep {
+          background: #4b5563;
         }
         .dark .lexkit-editor-container {
           background: #111827;
