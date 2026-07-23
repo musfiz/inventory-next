@@ -57,7 +57,10 @@ export default function BlogPostsPage() {
   const [togglingId, setTogglingId] = useState<string | null>(null);
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [showSeo, setShowSeo] = useState(false);
-  const [slugError, setSlugError] = useState('');
+  const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
+
+  const SEO_META_TITLE_MAX = 70;
+  const SEO_META_DESC_MAX = 160;
 
   const fetchPosts = useCallback(async () => {
     setLoading(true);
@@ -80,7 +83,7 @@ export default function BlogPostsPage() {
     setEditing(false);
     setShowForm(false);
     setSaving(false);
-    setSlugError('');
+    setFieldErrors({});
     setShowSeo(false);
   };
 
@@ -88,7 +91,7 @@ export default function BlogPostsPage() {
     setEditing(false);
     const newId = crypto.randomUUID();
     setForm({ ...emptyForm, id: newId });
-    setSlugError('');
+    setFieldErrors({});
     setShowSeo(false);
     setShowForm(true);
   };
@@ -111,30 +114,53 @@ export default function BlogPostsPage() {
       });
       setEditing(true);
       setShowForm(true);
-      setSlugError('');
+      setFieldErrors({});
       setShowSeo(!!(fullPost.meta_title || fullPost.meta_description));
     } catch {
       notify.error('Failed to load blog post data');
     }
   };
 
-  const validateSlug = (slug: string): string => {
-    if (!slug.trim()) return 'Slug is required';
-    if (!/^[a-z0-9-]+$/.test(slug)) return 'Slug must only contain lowercase letters, numbers, and hyphens';
-    return '';
+  const validateForm = (): boolean => {
+    const errors: Record<string, string> = {};
+
+    if (!form.title.trim()) {
+      errors.title = 'Title is required';
+    }
+
+    if (!form.slug.trim()) {
+      errors.slug = 'Slug is required';
+    } else if (!/^[a-z0-9-]+$/.test(form.slug)) {
+      errors.slug = 'Slug must only contain lowercase letters, numbers, and hyphens';
+    } else if (form.slug.length < 3) {
+      errors.slug = 'Slug must be at least 3 characters';
+    }
+
+    if (form.meta_title && form.meta_title.length > SEO_META_TITLE_MAX) {
+      errors.meta_title = `Meta title must not exceed ${SEO_META_TITLE_MAX} characters`;
+    }
+
+    if (form.meta_description && form.meta_description.length > SEO_META_DESC_MAX) {
+      errors.meta_description = `Meta description must not exceed ${SEO_META_DESC_MAX} characters`;
+    }
+
+    setFieldErrors(errors);
+    return Object.keys(errors).length === 0;
+  };
+
+  const clearFieldError = (field: string) => {
+    setFieldErrors(prev => {
+      if (!prev[field]) return prev;
+      const next = { ...prev };
+      delete next[field];
+      return next;
+    });
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    const slugErr = validateSlug(form.slug);
-    if (slugErr) { setSlugError(slugErr); return; }
-    setSlugError('');
-
-    if (!form.title.trim()) {
-      notify.error('Title is required');
-      return;
-    }
+    if (!validateForm()) return;
 
     setSaving(true);
     try {
@@ -170,9 +196,12 @@ export default function BlogPostsPage() {
     } catch (err: any) {
       const apiErrors = err?.response?.data?.errors as Record<string, string[]> | undefined;
       if (apiErrors && Object.keys(apiErrors).length > 0) {
-        const firstError = Object.values(apiErrors).flat().join(' ');
-        if (apiErrors.slug) setSlugError(apiErrors.slug.join(' '));
-        notify.error('Validation error', firstError);
+        const flat: Record<string, string> = {};
+        for (const [key, msgs] of Object.entries(apiErrors)) {
+          flat[key] = msgs.join(' ');
+        }
+        setFieldErrors(flat);
+        notify.error('Validation error', Object.values(flat).join('. '));
       } else {
         notify.error(err?.response?.data?.message || 'Failed to save blog post');
       }
@@ -308,15 +337,15 @@ export default function BlogPostsPage() {
                   onChange={e => {
                     const val = e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, '');
                     setForm(f => ({ ...f, slug: val }));
-                    setSlugError(validateSlug(val));
+                    clearFieldError('slug');
                   }}
                   placeholder="blog-post-slug"
                   className={`w-full pl-7 pr-3 py-1.5 text-sm border rounded bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-1 focus:ring-indigo-500 ${
-                    slugError ? 'border-red-500' : 'border-gray-300 dark:border-gray-600'
+                    fieldErrors.slug ? 'border-red-500' : 'border-gray-300 dark:border-gray-600'
                   }`}
                 />
               </div>
-              {slugError && <p className="mt-1 text-xs text-red-500">{slugError}</p>}
+              {fieldErrors.slug && <p className="mt-1 text-xs text-red-500">{fieldErrors.slug}</p>}
             </div>
 
             <div>
@@ -326,10 +355,16 @@ export default function BlogPostsPage() {
               <input
                 type="text"
                 value={form.title}
-                onChange={e => setForm(f => ({ ...f, title: e.target.value }))}
+                onChange={e => {
+                  setForm(f => ({ ...f, title: e.target.value }));
+                  clearFieldError('title');
+                }}
                 placeholder="Post title"
-                className="w-full px-3 py-1.5 text-sm border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-1 focus:ring-indigo-500"
+                className={`w-full px-3 py-1.5 text-sm border rounded bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-1 focus:ring-indigo-500 ${
+                  fieldErrors.title ? 'border-red-500' : 'border-gray-300 dark:border-gray-600'
+                }`}
               />
+              {fieldErrors.title && <p className="mt-1 text-xs text-red-500">{fieldErrors.title}</p>}
             </div>
 
             <div>
@@ -371,11 +406,17 @@ export default function BlogPostsPage() {
             <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Excerpt</label>
             <textarea
               value={form.excerpt}
-              onChange={e => setForm(f => ({ ...f, excerpt: e.target.value }))}
+              onChange={e => {
+                setForm(f => ({ ...f, excerpt: e.target.value }));
+                clearFieldError('excerpt');
+              }}
               placeholder="Short description or summary of the post..."
               rows={3}
-              className="w-full px-3 py-1.5 text-sm border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-1 focus:ring-indigo-500 resize-none"
+              className={`w-full px-3 py-1.5 text-sm border rounded bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-1 focus:ring-indigo-500 resize-none ${
+                fieldErrors.excerpt ? 'border-red-500' : 'border-gray-300 dark:border-gray-600'
+              }`}
             />
+            {fieldErrors.excerpt && <p className="mt-1 text-xs text-red-500">{fieldErrors.excerpt}</p>}
           </div>
 
           {/* Body (Rich-Text Editor with Image Upload) */}
@@ -383,7 +424,10 @@ export default function BlogPostsPage() {
             <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Body</label>
             <RichTextEditor
               value={form.body}
-              onChange={html => setForm(f => ({ ...f, body: html }))}
+              onChange={html => {
+                setForm(f => ({ ...f, body: html }));
+                clearFieldError('body');
+              }}
               placeholder="Write your blog post content here..."
               minHeight="400px"
               onImageUpload={async (file) => {
@@ -394,6 +438,7 @@ export default function BlogPostsPage() {
                 await blogPostService.deleteImage(src);
               }}
             />
+            {fieldErrors.body && <p className="mt-1 text-xs text-red-500">{fieldErrors.body}</p>}
           </div>
 
           {/* Publish Toggle */}
@@ -428,20 +473,48 @@ export default function BlogPostsPage() {
                   <input
                     type="text"
                     value={form.meta_title}
-                    onChange={e => setForm(f => ({ ...f, meta_title: e.target.value }))}
+                    onChange={e => {
+                      const val = e.target.value;
+                      if (val.length <= SEO_META_TITLE_MAX) {
+                        setForm(f => ({ ...f, meta_title: val }));
+                      }
+                      clearFieldError('meta_title');
+                    }}
                     placeholder="SEO title (optional)"
-                    className="w-full px-3 py-1.5 text-sm border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-1 focus:ring-indigo-500"
+                    className={`w-full px-3 py-1.5 text-sm border rounded bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-1 focus:ring-indigo-500 ${
+                      fieldErrors.meta_title ? 'border-red-500' : 'border-gray-300 dark:border-gray-600'
+                    }`}
                   />
+                  <div className="flex items-center justify-between mt-1">
+                    {fieldErrors.meta_title && <p className="text-xs text-red-500">{fieldErrors.meta_title}</p>}
+                    <p className={`text-xs ml-auto ${form.meta_title.length > SEO_META_TITLE_MAX ? 'text-red-500' : 'text-gray-400 dark:text-gray-500'}`}>
+                      {form.meta_title.length}/{SEO_META_TITLE_MAX}
+                    </p>
+                  </div>
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Meta Description</label>
                   <textarea
                     value={form.meta_description}
-                    onChange={e => setForm(f => ({ ...f, meta_description: e.target.value }))}
+                    onChange={e => {
+                      const val = e.target.value;
+                      if (val.length <= SEO_META_DESC_MAX) {
+                        setForm(f => ({ ...f, meta_description: val }));
+                      }
+                      clearFieldError('meta_description');
+                    }}
                     placeholder="SEO description (optional)"
                     rows={3}
-                    className="w-full px-3 py-1.5 text-sm border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-1 focus:ring-indigo-500 resize-none"
+                    className={`w-full px-3 py-1.5 text-sm border rounded bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-1 focus:ring-indigo-500 resize-none ${
+                      fieldErrors.meta_description ? 'border-red-500' : 'border-gray-300 dark:border-gray-600'
+                    }`}
                   />
+                  <div className="flex items-center justify-between mt-1">
+                    {fieldErrors.meta_description && <p className="text-xs text-red-500">{fieldErrors.meta_description}</p>}
+                    <p className={`text-xs ml-auto ${form.meta_description.length > SEO_META_DESC_MAX ? 'text-red-500' : 'text-gray-400 dark:text-gray-500'}`}>
+                      {form.meta_description.length}/{SEO_META_DESC_MAX}
+                    </p>
+                  </div>
                 </div>
               </div>
             )}
