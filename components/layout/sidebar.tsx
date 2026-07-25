@@ -322,7 +322,7 @@ const navigation: NavigationItem[] = [
         ],
       },
       {
-        name: 'Storefront Customers',
+        name: 'Store Customers',
         icon: Users,
         children: [
           { name: 'Customer List', href: '/ecommerce/customers', icon: Users },

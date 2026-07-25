@@ -339,3 +339,29 @@ export interface StatusConfig {
   requires_tracking?: boolean;
   auto_notify?: boolean;
 }
+
+// ── Ecommerce Customer Types ────────────────────────────────────────────
+
+export interface EcommerceCustomer {
+  id: string;
+  name: string;
+  email: string | null;
+  phone: string | null;
+  status: 'active' | 'inactive' | 'blacklisted';
+  source?: 'inventory' | 'storefront';
+  orders_count: number;
+  total_spent: number;
+  last_order_date: string | null;
+  created_at: string;
+  updated_at?: string;
+}
+
+export interface EcommerceCustomerKPIs {
+  total_customers: number;
+  active_customers: number;
+  inactive_customers: number;
+  blacklisted_customers: number;
+  new_this_month: number;
+  total_orders: number;
+  total_revenue: number;
+}

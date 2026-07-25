@@ -49,6 +49,7 @@ export { default as storefrontService } from './storefrontService';
 export { default as flashSaleCampaignService } from './flashSaleCampaignService';
 export { default as ecommerceReturnService } from './ecommerceReturnService';
 export { default as shippingZoneService } from './shippingZoneService';
+export { default as ecommerceCustomerService } from './ecommerceCustomerService';
 
 // Re-export types for convenience
 export type {
