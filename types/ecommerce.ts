@@ -78,9 +78,11 @@ export interface EcommerceOrder {
   payment_method: string;
   shipping_method: string;
   shipping_address: string;
+  billing_address?: string;
   tracking_number: string | null;
   courier: string | null;
   created_at: string;
+  updated_at?: string;
 }
 
 export interface EcommerceDashboardStats {
@@ -144,4 +146,102 @@ export interface ProductSearchResult {
 export interface CampaignCategory {
   id: string;
   name: string;
+}
+
+// ── Storefront Order Types ────────────────────────────────────────────────
+
+export interface OrderStatusHistory {
+  status: EcommerceOrder['status'];
+  timestamp: string;
+  note?: string;
+  updated_by?: string;
+}
+
+export interface OrderItem {
+  id: string;
+  product_id: string;
+  product_name: string;
+  product_sku: string;
+  product_image?: string;
+  quantity: number;
+  unit_price: number;
+  subtotal: number;
+  discount?: number;
+  total: number;
+}
+
+export interface OrderPayment {
+  id: string;
+  method: string;
+  transaction_id?: string;
+  amount: number;
+  status: 'pending' | 'successful' | 'failed' | 'refunded';
+  paid_at?: string;
+}
+
+export interface OrderTimeline {
+  status: EcommerceOrder['status'];
+  label: string;
+  timestamp: string | null;
+  is_completed: boolean;
+  is_current: boolean;
+  note?: string;
+}
+
+export interface OrderDetail extends EcommerceOrder {
+  items: OrderItem[];
+  payments: OrderPayment[];
+  status_history: OrderStatusHistory[];
+  timeline: OrderTimeline[];
+  notes?: string;
+  gift_message?: string;
+  is_gift?: boolean;
+  billing_address?: string;
+  delivery_instructions?: string;
+  estimated_delivery?: string;
+}
+
+export interface OrderKPIs {
+  total_orders: number;
+  total_revenue: number;
+  pending_orders: number;
+  processing_orders: number;
+  shipped_today: number;
+  delivered_today: number;
+  cancelled_orders: number;
+  returned_orders: number;
+  average_order_value: number;
+  orders_by_status: { status: string; count: number; percentage: number }[];
+  revenue_today: number;
+  revenue_this_month: number;
+  revenue_last_month: number;
+}
+
+export type BulkActionType = 'update_status' | 'print' | 'export_csv' | 'export_pdf';
+
+export interface BulkActionResult {
+  success: number;
+  failed: number;
+  errors?: { id: string; error: string }[];
+}
+
+export interface StatusTransition {
+  from: EcommerceOrder['status'];
+  to: EcommerceOrder['status'];
+  label: string;
+  requires_tracking?: boolean;
+  requires_note?: boolean;
+  requires_payment?: boolean;
+}
+
+export interface StatusConfig {
+  status: EcommerceOrder['status'];
+  label: string;
+  icon: string;
+  color: string;
+  order: number;
+  description: string;
+  allowed_transitions: StatusTransition[];
+  requires_tracking?: boolean;
+  auto_notify?: boolean;
 }
