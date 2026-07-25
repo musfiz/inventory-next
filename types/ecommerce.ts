@@ -96,3 +96,52 @@ export interface EcommerceDashboardStats {
   revenue_overview: { label: string; value: number }[];
   order_status_counts: { status: string; count: number }[];
 }
+
+// ── Flash Sale Campaign Types ──────────────────────────────────────────────
+
+export type CampaignStatus = 'scheduled' | 'active' | 'ended' | 'paused';
+
+export interface FlashSaleCampaign {
+  id: string;
+  name: string;
+  description: string;
+  start_date: string;
+  end_date: string;
+  discount_type: 'percentage' | 'fixed';
+  discount_value: number;
+  is_paused: boolean;
+  banner_image_url?: string | null;
+  banner_image_path?: string | null;
+  is_active: boolean;
+  created_at: string;
+  updated_at: string;
+  /** Computed client-side from start_date/end_date/is_paused */
+  computed_status?: CampaignStatus;
+  /** Associated products (populated on detail fetch) */
+  products?: FlashSaleCampaignProduct[];
+}
+
+export interface FlashSaleCampaignProduct {
+  id: string;
+  campaign_id: string;
+  product_id: string;
+  product_name?: string;
+  product_sku?: string;
+  product_image?: string;
+  discount_value?: number | null;
+  created_at: string;
+}
+
+/** Lightweight product shape for the async search picker */
+export interface ProductSearchResult {
+  id: string;
+  name: string;
+  sku?: string;
+  image_url?: string;
+}
+
+/** Category shape for the campaign category filter dropdown */
+export interface CampaignCategory {
+  id: string;
+  name: string;
+}

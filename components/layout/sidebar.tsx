@@ -308,7 +308,7 @@ const navigation: NavigationItem[] = [
         children: [
           { name: 'Coupons', href: '/ecommerce/promotions/coupons', icon: Ticket },
           { name: 'Flash Sale Campaigns', href: '/ecommerce/promotions/campaigns', icon: Timer },
-          { name: 'Customer Group Pricing', href: '/ecommerce/promotions/group-pricing', icon: Users },
+          // { name: 'Customer Group Pricing', href: '/ecommerce/promotions/group-pricing', icon: Users },
         ],
       },
       {

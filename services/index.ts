@@ -46,6 +46,7 @@ export { default as ecommerceOrderService } from './ecommerceOrderService';
 export { default as heroSliderService } from './heroSliderService';
 export { default as offerSlideService } from './offerSlideService';
 export { default as storefrontService } from './storefrontService';
+export { default as flashSaleCampaignService } from './flashSaleCampaignService';
 
 // Re-export types for convenience
 export type {
