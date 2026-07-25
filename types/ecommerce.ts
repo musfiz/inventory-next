@@ -201,6 +201,100 @@ export interface OrderDetail extends EcommerceOrder {
   estimated_delivery?: string;
 }
 
+// ── Returns & Refunds Types ─────────────────────────────────────────────
+
+export type ReturnRequestStatus = 'pending' | 'approved' | 'rejected' | 'refunded' | 'cancelled';
+
+export type ReturnRequestReason =
+  | 'defective'
+  | 'wrong_item'
+  | 'not_as_described'
+  | 'damaged_in_transit'
+  | 'customer_changed_mind'
+  | 'overcharged'
+  | 'other';
+
+export interface ReturnRequestItem {
+  id: string;
+  return_request_id: string;
+  order_item_id: string;
+  product_name: string;
+  product_sku: string;
+  quantity: number;
+  unit_price: number;
+  total: number;
+  condition: 'good' | 'damaged' | 'defective';
+  reason?: string;
+}
+
+export interface ReturnRequest {
+  id: string;
+  return_number: string;
+  order_id: string;
+  order_number: string;
+  customer_name: string;
+  customer_email: string;
+  customer_phone: string;
+  reason: ReturnRequestReason;
+  reason_note?: string;
+  status: ReturnRequestStatus;
+  items_count: number;
+  subtotal: number;
+  refund_amount: number;
+  refund_method: 'original' | 'store_credit' | 'bank_transfer' | 'cash';
+  notes?: string;
+  admin_note?: string;
+  approved_by?: string;
+  approved_at?: string;
+  rejected_reason?: string;
+  created_at: string;
+  updated_at?: string;
+  items?: ReturnRequestItem[];
+}
+
+export interface ReturnKPIs {
+  total_returns: number;
+  pending_returns: number;
+  approved_returns: number;
+  rejected_returns: number;
+  refunded_amount: number;
+  total_refunded: number;
+  returns_by_reason: { reason: string; count: number; percentage: number }[];
+  returns_over_time: { label: string; count: number; amount: number }[];
+}
+
+// ── Shipping Zone Types ────────────────────────────────────────────────
+
+export interface ShippingZoneRate {
+  id: string;
+  zone_id: string;
+  min_weight?: number | null;
+  max_weight?: number | null;
+  min_amount?: number | null;
+  max_amount?: number | null;
+  rate: number;
+  estimated_days: string;
+  is_free: boolean;
+  created_at: string;
+}
+
+export interface ShippingZone {
+  id: string;
+  name: string;
+  description: string;
+  cities: string[];
+  countries: string[];
+  base_rate: number;
+  free_shipping_threshold: number | null;
+  estimated_days_min: number;
+  estimated_days_max: number;
+  is_active: boolean;
+  sort_order: number;
+  created_at: string;
+  updated_at?: string;
+  rates?: ShippingZoneRate[];
+}
+
 export interface OrderKPIs {
   total_orders: number;
   total_revenue: number;
