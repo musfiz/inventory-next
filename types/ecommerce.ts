@@ -340,6 +340,22 @@ export interface StatusConfig {
   auto_notify?: boolean;
 }
 
+// ── Customer Group Types ───────────────────────────────────────────────
+
+export interface CustomerGroup {
+  id: number;
+  name: string;
+  description: string | null;
+  discount_type: 'percentage' | 'fixed';
+  discount_value: number;
+  min_order_amount: number | null;
+  is_active: boolean;
+  sort_order: number;
+  customers_count: number;
+  created_at: string;
+  updated_at?: string;
+}
+
 // ── Ecommerce Customer Types ────────────────────────────────────────────
 
 export interface EcommerceCustomer {

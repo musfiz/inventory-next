@@ -50,6 +50,7 @@ export { default as flashSaleCampaignService } from './flashSaleCampaignService'
 export { default as ecommerceReturnService } from './ecommerceReturnService';
 export { default as shippingZoneService } from './shippingZoneService';
 export { default as ecommerceCustomerService } from './ecommerceCustomerService';
+export { default as customerGroupService } from './customerGroupService';
 
 // Re-export types for convenience
 export type {
