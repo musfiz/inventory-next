@@ -20,10 +20,12 @@ import {
 } from 'lucide-react';
 import { ColumnDef } from '@tanstack/react-table';
 import DataTable from '@/components/ui/datatable';
+import TenantSelect from '@/components/ui/tenant-select';
 import type { CustomerGroup, EcommerceCustomer } from '@/types/ecommerce';
 import { notify, confirm } from '@/lib/notifications';
 import { formatDate } from '@/lib/utils/date';
 import customerGroupService from '@/services/customerGroupService';
+import { usePermissions } from '@/hooks/use-permissions';
 
 // ── Constants ─────────────────────────────────────────────────────────
 
@@ -71,6 +73,7 @@ interface GroupFormState {
   min_order_amount: number | '';
   is_active: boolean;
   sort_order: number | '';
+  tenant_id: string | null;
 }
 
 const emptyForm: GroupFormState = {
@@ -80,7 +83,8 @@ const emptyForm: GroupFormState = {
   discount_value: '',
   min_order_amount: '',
   is_active: true,
-  sort_order: '',
+  sort_order: 1,
+  tenant_id: null,
 };
 
 // ── Stat Cards ─────────────────────────────────────────────────────────
@@ -184,8 +188,8 @@ function CustomerAssignmentModal({
     const q = searchTerm.toLowerCase();
     return availableCustomers.filter(
       c => c.name.toLowerCase().includes(q) ||
-           (c.email && c.email.toLowerCase().includes(q)) ||
-           (c.phone && c.phone.includes(q))
+        (c.email && c.email.toLowerCase().includes(q)) ||
+        (c.phone && c.phone.includes(q))
     );
   }, [availableCustomers, searchTerm]);
 
@@ -381,6 +385,7 @@ function CustomerAssignmentModal({
 // ── Main Page Component ───────────────────────────────────────────────
 
 export default function CustomerGroupsPage() {
+  const { isSuperAdmin } = usePermissions();
   const [groups, setGroups] = useState<CustomerGroup[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshKey, setRefreshKey] = useState(0);
@@ -431,6 +436,7 @@ export default function CustomerGroupsPage() {
       min_order_amount: group.min_order_amount ?? '',
       is_active: group.is_active,
       sort_order: group.sort_order,
+      tenant_id: (group as any).tenant_id ? String((group as any).tenant_id) : null,
     });
     setFormErrors({});
     setIsEditing(true);
@@ -450,6 +456,9 @@ export default function CustomerGroupsPage() {
     if (!form.name.trim()) errors.name = 'Group name is required';
     if (form.discount_value === '' || Number(form.discount_value) < 0) {
       errors.discount_value = 'Discount value must be 0 or greater';
+    }
+    if (isSuperAdmin && !isEditing && !form.tenant_id) {
+      errors.tenant_id = 'Tenant selection is required';
     }
     setFormErrors(errors);
     return Object.keys(errors).length === 0;
@@ -473,6 +482,7 @@ export default function CustomerGroupsPage() {
         min_order_amount: form.min_order_amount === '' ? null : Number(form.min_order_amount),
         is_active: form.is_active,
         sort_order: form.sort_order === '' ? 0 : Number(form.sort_order),
+        tenant_id: isSuperAdmin && form.tenant_id ? form.tenant_id : undefined,
       });
 
       notify.success(isEditing ? 'Group updated successfully' : 'Group created successfully');
@@ -622,11 +632,10 @@ export default function CustomerGroupsPage() {
             <UserPlus className="w-3.5 h-3.5" />
           </button>
           <button
-            className={`p-1 rounded cursor-pointer ${
-              row.original.is_active
-                ? 'text-green-600 hover:text-green-900 dark:text-green-400 dark:hover:text-green-300 hover:bg-green-50 dark:hover:bg-green-900/20'
-                : 'text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'
-            }`}
+            className={`p-1 rounded cursor-pointer ${row.original.is_active
+              ? 'text-green-600 hover:text-green-900 dark:text-green-400 dark:hover:text-green-300 hover:bg-green-50 dark:hover:bg-green-900/20'
+              : 'text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'
+              }`}
             title={row.original.is_active ? 'Deactivate' : 'Activate'}
             onClick={() => handleToggleActive(row.original)}
           >
@@ -685,6 +694,30 @@ export default function CustomerGroupsPage() {
           </div>
 
           <form onSubmit={handleSubmit} className="space-y-2.5">
+            {/* Tenant Selection - Only for Super Admin, on create */}
+            {isSuperAdmin && !isEditing && (
+              <div className="grid grid-cols-1 md:grid-cols-4 gap-2">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-0.5">
+                    Tenant <span className="text-red-500">*</span>
+                  </label>
+                  <TenantSelect
+                    value={form.tenant_id}
+                    onChange={tenantId => {
+                      setForm(f => ({ ...f, tenant_id: tenantId ?? null }));
+                      if (tenantId && formErrors.tenant_id) {
+                        const { tenant_id, ...rest } = formErrors;
+                        setFormErrors(rest);
+                      }
+                    }}
+                    placeholder="Select tenant"
+                    isInvalid={!!formErrors.tenant_id}
+                  />
+                  {formErrors.tenant_id && <p className="text-red-600 text-xs mt-0.5">{formErrors.tenant_id}</p>}
+                </div>
+              </div>
+            )}
+
             {/* Row 1: Name, Discount Type, Discount Value */}
             <div className="grid grid-cols-1 md:grid-cols-4 gap-2">
               <div className="md:col-span-2">
@@ -696,9 +729,8 @@ export default function CustomerGroupsPage() {
                   placeholder="e.g., VIP Customers"
                   value={form.name}
                   onChange={e => setForm(f => ({ ...f, name: e.target.value }))}
-                  className={`w-full px-2 py-1.5 text-sm border rounded-sm focus:outline-none focus:ring-1 focus:ring-indigo-500 dark:focus:ring-indigo-400 focus:border-transparent dark:bg-gray-700 dark:text-gray-100 ${
-                    formErrors.name ? 'border-red-500' : 'border-gray-300 dark:border-gray-600'
-                  }`}
+                  className={`w-full px-2 py-1.5 text-sm border rounded-sm focus:outline-none focus:ring-1 focus:ring-indigo-500 dark:focus:ring-indigo-400 focus:border-transparent dark:bg-gray-700 dark:text-gray-100 ${formErrors.name ? 'border-red-500' : 'border-gray-300 dark:border-gray-600'
+                    }`}
                 />
                 {formErrors.name && <p className="text-red-600 text-xs mt-0.5">{formErrors.name}</p>}
               </div>
@@ -733,9 +765,8 @@ export default function CustomerGroupsPage() {
                     placeholder={form.discount_type === 'percentage' ? 'e.g. 15' : 'e.g. 500'}
                     value={form.discount_value}
                     onChange={e => setForm(f => ({ ...f, discount_value: e.target.value === '' ? '' : Number(e.target.value) }))}
-                    className={`w-full pl-7 pr-2 py-1.5 text-sm border rounded-sm focus:outline-none focus:ring-1 focus:ring-indigo-500 dark:focus:ring-indigo-400 dark:bg-gray-700 dark:text-gray-100 ${
-                      formErrors.discount_value ? 'border-red-500' : 'border-gray-300 dark:border-gray-600'
-                    }`}
+                    className={`w-full pl-7 pr-2 py-1.5 text-sm border rounded-sm focus:outline-none focus:ring-1 focus:ring-indigo-500 dark:focus:ring-indigo-400 dark:bg-gray-700 dark:text-gray-100 ${formErrors.discount_value ? 'border-red-500' : 'border-gray-300 dark:border-gray-600'
+                      }`}
                   />
                 </div>
                 {formErrors.discount_value && <p className="text-red-600 text-xs mt-0.5">{formErrors.discount_value}</p>}
