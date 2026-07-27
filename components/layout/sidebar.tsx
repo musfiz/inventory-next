@@ -330,14 +330,14 @@ const navigation: NavigationItem[] = [
           { name: 'Wishlist Insights', href: '/ecommerce/customers/wishlist-insights', icon: Heart },
         ],
       },
-      {
-        name: 'Reviews & Ratings',
-        icon: Star,
-        children: [
-          { name: 'Moderation Queue', href: '/ecommerce/reviews/queue', icon: ClipboardCheck },
-          { name: 'Review Settings', href: '/ecommerce/reviews/settings', icon: Settings },
-        ],
-      },
+      // {
+      //   name: 'Reviews & Ratings',
+      //   icon: Star,
+      //   children: [
+      //     { name: 'Moderation Queue', href: '/ecommerce/reviews/queue', icon: ClipboardCheck },
+      //     { name: 'Review Settings', href: '/ecommerce/reviews/settings', icon: Settings },
+      //   ],
+      // },
       {
         name: 'Storefront Analytics',
         icon: BarChart3,

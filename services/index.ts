@@ -51,6 +51,7 @@ export { default as ecommerceReturnService } from './ecommerceReturnService';
 export { default as shippingZoneService } from './shippingZoneService';
 export { default as ecommerceCustomerService } from './ecommerceCustomerService';
 export { default as customerGroupService } from './customerGroupService';
+export { default as wishlistInsightsService } from './wishlistInsightsService';
 
 // Re-export types for convenience
 export type {

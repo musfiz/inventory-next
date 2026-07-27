@@ -340,6 +340,51 @@ export interface StatusConfig {
   auto_notify?: boolean;
 }
 
+// ── Wishlist Insight Types ─────────────────────────────────────────────
+
+export interface WishlistInsightStats {
+  total_wishlisted_products: number;
+  total_wishlist_items: number;
+  total_customers_with_wishlists: number;
+  avg_items_per_customer: number;
+  conversion_rate: number;
+}
+
+export interface WishlistTopProduct {
+  product_id: string;
+  product_name: string;
+  product_image: string | null;
+  sku: string;
+  price: number;
+  wishlist_count: number;
+  added_to_cart_count: number;
+  purchased_count: number;
+}
+
+export interface WishlistTrendPoint {
+  date: string;
+  count: number;
+}
+
+export interface WishlistCustomerActivity {
+  customer_id: string;
+  customer_name: string;
+  customer_email: string;
+  items_count: number;
+  last_added_at: string;
+}
+
+export interface WishlistItem {
+  id: string;
+  product_id: string;
+  product_name: string;
+  product_image: string | null;
+  sku: string;
+  price: number;
+  stock_status: 'in_stock' | 'out_of_stock' | 'backorder';
+  added_at: string;
+}
+
 // ── Customer Group Types ───────────────────────────────────────────────
 
 export interface CustomerGroup {
