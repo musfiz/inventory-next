@@ -168,6 +168,27 @@
   animation: sf-fade-in-zoom 0.25s ease-out both;
 }
 
+/* Scroll-triggered zoom-in animation */
+@keyframes sf-zoom-in {
+  from {
+    opacity: 0;
+    transform: scale(0.85) translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
+}
+
+.sf-zoom-in {
+  animation: sf-zoom-in 1s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+.sf-zoom-in-d1 { animation-delay: 0.1s; }
+.sf-zoom-in-d2 { animation-delay: 0.2s; }
+.sf-zoom-in-d3 { animation-delay: 0.3s; }
+.sf-zoom-in-d4 { animation-delay: 0.4s; }
+
 @keyframes sf-shimmer {
   0% {
     background-position: -1000px 0;

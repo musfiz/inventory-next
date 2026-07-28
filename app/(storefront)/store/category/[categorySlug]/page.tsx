@@ -6,6 +6,7 @@ import Image from 'next/image';
 import { useParams, notFound } from 'next/navigation';
 import { ChevronDown, SlidersHorizontal, X, ArrowRight } from 'lucide-react';
 import ProductCard from '@/components/storefront/ProductCard';
+import ScrollReveal from '@/components/storefront/ScrollReveal';
 import { CATEGORIES, PRODUCTS } from '@/lib/storefront/mock-data';
 import type { Product } from '@/types/storefront';
 
@@ -167,8 +168,10 @@ export default function CategoryPage() {
         ) : (
           <>
             <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
-              {filtered.map(p => (
-                <ProductCard key={p.id} product={p} />
+              {filtered.map((p, i) => (
+                <ScrollReveal key={p.id} delayMs={i * 200}>
+                  <ProductCard product={p} />
+                </ScrollReveal>
               ))}
             </div>
             {hasMore && (

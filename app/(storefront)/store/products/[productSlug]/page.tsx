@@ -36,6 +36,7 @@ import ecommerceSettingsService from '@/services/ecommerceSettingsService';
 import Rating from '@/components/storefront/Rating';
 import Badge from '@/components/storefront/Badge';
 import ProductCard from '@/components/storefront/ProductCard';
+import ScrollReveal from '@/components/storefront/ScrollReveal';
 
 export default function ProductDetailPage() {
   const { productSlug } = useParams<{ productSlug: string }>();
@@ -565,8 +566,10 @@ export default function ProductDetailPage() {
               You may also like
             </h2>
             <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
-              {related.map(p => (
-                <ProductCard key={p.id} product={p} />
+              {related.map((p, i) => (
+                <ScrollReveal key={p.id} delayMs={i * 200}>
+                  <ProductCard product={p} />
+                </ScrollReveal>
               ))}
             </div>
           </section>

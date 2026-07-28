@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { useParams, notFound } from 'next/navigation';
 import { ChevronDown, ArrowRight } from 'lucide-react';
 import ProductCard from '@/components/storefront/ProductCard';
+import ScrollReveal from '@/components/storefront/ScrollReveal';
 import { BRANDS, PRODUCTS, formatMoney } from '@/lib/storefront/mock-data';
 import type { Product } from '@/types/storefront';
 
@@ -94,8 +95,10 @@ export default function BrandPage() {
           </div>
         ) : (
           <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
-            {filtered.map(p => (
-              <ProductCard key={p.id} product={p} />
+            {filtered.map((p, i) => (
+              <ScrollReveal key={p.id} delayMs={i * 200}>
+                <ProductCard product={p} />
+              </ScrollReveal>
             ))}
           </div>
         )}

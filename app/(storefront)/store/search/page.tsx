@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
 import { Search, X, ArrowRight } from 'lucide-react';
 import ProductCard from '@/components/storefront/ProductCard';
+import ScrollReveal from '@/components/storefront/ScrollReveal';
 import ProductCardSkeleton from '@/components/storefront/ProductCardSkeleton';
 import {
   PRODUCTS,
@@ -222,8 +223,10 @@ export default function SearchPage() {
               </div>
             ) : (
               <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
-                {filtered.map(p => (
-                  <ProductCard key={p.id} product={p} />
+                {filtered.map((p, i) => (
+                  <ScrollReveal key={p.id} delayMs={i * 200}>
+                    <ProductCard product={p} />
+                  </ScrollReveal>
                 ))}
               </div>
             )}

@@ -11,6 +11,7 @@ import {
 import { FiGrid } from 'react-icons/fi';
 import { IoListSharp } from 'react-icons/io5';
 import ProductCard from '@/components/storefront/ProductCard';
+import ScrollReveal from '@/components/storefront/ScrollReveal';
 import ProductCardSkeleton from '@/components/storefront/ProductCardSkeleton';
 import {
   PRODUCTS,
@@ -395,8 +396,10 @@ export default function AllProductsPage() {
             ) : (
               <>
                 <div className={`grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 ${view === 'list' ? '!grid-cols-1' : ''}`}>
-                  {filtered.map(p => (
-                    <ProductCard key={p.id} product={p} variant={view === 'list' ? 'list' : 'default'} />
+                  {filtered.map((p, i) => (
+                    <ScrollReveal key={p.id} delayMs={i * 200}>
+                      <ProductCard product={p} variant={view === 'list' ? 'list' : 'default'} />
+                    </ScrollReveal>
                   ))}
                 </div>
                 {hasMore && (

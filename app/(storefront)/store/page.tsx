@@ -18,6 +18,7 @@ import {
   History,
 } from 'lucide-react';
 import ProductCard from '@/components/storefront/ProductCard';
+import ScrollReveal from '@/components/storefront/ScrollReveal';
 import HeroCarousel, { HeroCarouselSkeleton } from '@/components/storefront/HeroCarousel';
 import { useRecentlyViewed } from '@/hooks/use-recently-viewed';
 import storefrontService from '@/services/storefrontService';
@@ -75,31 +76,32 @@ const CategoryStrip = () => {
       </div>
 
       <div className="grid grid-cols-3 gap-3 sm:grid-cols-5 lg:grid-cols-10">
-        {visible.map(cat => (
-          <Link
-            key={cat.id}
-            href={`/store/category/${cat.slug}`}
-            className="group flex flex-col items-center gap-2 rounded-2xl border border-gray-200 bg-white p-3 text-center transition-all hover:-translate-y-1 hover:border-brand-300 hover:shadow-lg dark:border-gray-800 dark:bg-gray-900 dark:hover:border-brand-700"
-          >
-            <div className="relative aspect-square w-full overflow-hidden rounded-xl bg-gradient-to-br from-brand-50 to-purple-50 dark:from-brand-950/30 dark:to-purple-950/30">
-              {cat.image ? (
-                <Image
-                  src={cat.image}
-                  alt={cat.name}
-                  fill
-                  sizes="120px"
-                  className="object-cover transition-transform duration-500 group-hover:scale-110"
-                />
-              ) : (
-                <div className="flex h-full items-center justify-center text-3xl">
-                  {CATEGORY_ICONS[cat.slug] ?? '🛍️'}
-                </div>
-              )}
-            </div>
-            <p className="line-clamp-1 text-xs font-semibold text-gray-700 group-hover:text-brand-600 dark:text-gray-300">
-              {cat.name}
-            </p>
-          </Link>
+        {visible.map((cat, i) => (
+          <ScrollReveal key={cat.id} delayMs={i * 200}>
+            <Link
+              href={`/store/category/${cat.slug}`}
+              className="group flex flex-col items-center gap-2 rounded-2xl border border-gray-200 bg-white p-3 text-center transition-all hover:-translate-y-1 hover:border-brand-300 hover:shadow-lg dark:border-gray-800 dark:bg-gray-900 dark:hover:border-brand-700"
+            >
+              <div className="relative aspect-square w-full overflow-hidden rounded-xl bg-gradient-to-br from-brand-50 to-purple-50 dark:from-brand-950/30 dark:to-purple-950/30">
+                {cat.image ? (
+                  <Image
+                    src={cat.image}
+                    alt={cat.name}
+                    fill
+                    sizes="120px"
+                    className="object-cover transition-transform duration-500 group-hover:scale-110"
+                  />
+                ) : (
+                  <div className="flex h-full items-center justify-center text-3xl">
+                    {CATEGORY_ICONS[cat.slug] ?? '🛍️'}
+                  </div>
+                )}
+              </div>
+              <p className="line-clamp-1 text-xs font-semibold text-gray-700 group-hover:text-brand-600 dark:text-gray-300">
+                {cat.name}
+              </p>
+            </Link>
+          </ScrollReveal>
         ))}
       </div>
     </section>
@@ -172,8 +174,10 @@ const FlashSale = () => {
       </div>
 
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
-        {saleProducts.map(p => (
-          <ProductCard key={p.id} product={p} showWishlist={false} />
+        {saleProducts.map((p, i) => (
+          <ScrollReveal key={p.id} delayMs={i * 200}>
+            <ProductCard product={p} showWishlist={false} />
+          </ScrollReveal>
         ))}
       </div>
     </section>
@@ -227,8 +231,10 @@ const ProductSection = ({
       </div>
 
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-4 xl:grid-cols-5">
-        {products.map(p => (
-          <ProductCard key={p.id} product={p} />
+        {products.map((p, i) => (
+          <ScrollReveal key={p.id} delayMs={i * 200}>
+            <ProductCard product={p} />
+          </ScrollReveal>
         ))}
       </div>
     </section>
@@ -240,31 +246,32 @@ const ProductSection = ({
 /* ================================================================ */
 const PromoBanners = () => (
   <section className="my-10 grid gap-4 sm:my-12 md:grid-cols-2">
-    {PROMO_BANNERS.map(b => (
-      <Link
-        key={b.id}
-        href={b.link}
-        className="group relative h-44 overflow-hidden rounded-2xl sm:h-56"
-      >
-        <Image
-          src={b.image}
-          alt={b.title}
-          fill
-          sizes="(max-width: 768px) 100vw, 50vw"
-          className="object-cover transition-transform duration-700 group-hover:scale-110"
-        />
-        <div className="absolute inset-0 bg-linear-to-r from-black/60 to-transparent" />
-        <div className="absolute inset-0 flex items-center p-6 sm:p-8">
-          <div className="text-white">
-            <h3 className="text-2xl font-black sm:text-3xl">{b.title}</h3>
-            <p className="mt-1 text-sm text-white/90">{b.subtitle}</p>
-            <span className="mt-4 inline-flex items-center gap-1.5 text-sm font-bold underline-offset-4 group-hover:underline">
-              Shop now
-              <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-1" />
-            </span>
+    {PROMO_BANNERS.map((b, i) => (
+      <ScrollReveal key={b.id} delayMs={i * 200}>
+        <Link
+          href={b.link}
+          className="group relative h-44 overflow-hidden rounded-2xl sm:h-56"
+        >
+          <Image
+            src={b.image}
+            alt={b.title}
+            fill
+            sizes="(max-width: 768px) 100vw, 50vw"
+            className="object-cover transition-transform duration-700 group-hover:scale-110"
+          />
+          <div className="absolute inset-0 bg-linear-to-r from-black/60 to-transparent" />
+          <div className="absolute inset-0 flex items-center p-6 sm:p-8">
+            <div className="text-white">
+              <h3 className="text-2xl font-black sm:text-3xl">{b.title}</h3>
+              <p className="mt-1 text-sm text-white/90">{b.subtitle}</p>
+              <span className="mt-4 inline-flex items-center gap-1.5 text-sm font-bold underline-offset-4 group-hover:underline">
+                Shop now
+                <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-1" />
+              </span>
+            </div>
           </div>
-        </div>
-      </Link>
+        </Link>
+      </ScrollReveal>
     ))}
   </section>
 );
@@ -372,19 +379,18 @@ const TrustStrip = () => (
       { icon: RotateCcw, title: '7-Day Returns', desc: 'Hassle-free returns' },
       { icon: ShieldCheck, title: 'Secure Payment', desc: '100% protected' },
       { icon: Headphones, title: '24/7 Support', desc: 'Dedicated help' },
-    ].map(({ icon: Icon, title, desc }) => (
-      <div
-        key={title}
-        className="flex items-center gap-3 rounded-2xl border border-gray-200 bg-white p-4 dark:border-gray-800 dark:bg-gray-900"
-      >
-        <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-emerald-50 text-emerald-600 dark:bg-emerald-950/30 dark:text-emerald-400">
-          <Icon className="h-5 w-5" />
+    ].map(({ icon: Icon, title, desc }, i) => (
+      <ScrollReveal key={title} delayMs={i * 200}>
+        <div className="flex items-center gap-3 rounded-2xl border border-gray-200 bg-white p-4 dark:border-gray-800 dark:bg-gray-900">
+          <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-emerald-50 text-emerald-600 dark:bg-emerald-950/30 dark:text-emerald-400">
+            <Icon className="h-5 w-5" />
+          </div>
+          <div>
+            <p className="font-bold text-gray-900 dark:text-gray-100">{title}</p>
+            <p className="text-xs text-gray-500">{desc}</p>
+          </div>
         </div>
-        <div>
-          <p className="font-bold text-gray-900 dark:text-gray-100">{title}</p>
-          <p className="text-xs text-gray-500">{desc}</p>
-        </div>
-      </div>
+      </ScrollReveal>
     ))}
   </section>
 );
@@ -412,8 +418,10 @@ const RecentlyViewed = () => {
         </div>
       </div>
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5">
-        {products.map(p => (
-          <ProductCard key={p.id} product={p} />
+        {products.map((p, i) => (
+          <ScrollReveal key={p.id} delayMs={i * 200}>
+            <ProductCard product={p} />
+          </ScrollReveal>
         ))}
       </div>
     </section>
@@ -443,7 +451,7 @@ export default function HomePage() {
         {/* Section 1 — Hero Carousel (main banner slider) */}
         {heroLoading ? <HeroCarouselSkeleton /> : <HeroCarousel slides={heroSliders} />}
 
-        {/* Section 2 — Trust Strip (shipping / returns / payment / support) */}
+        {/* Section 2 — Trust Strip */}
         <TrustStrip />
 
         {/* Section 3 — Recently Viewed */}
@@ -455,7 +463,7 @@ export default function HomePage() {
         {/* Section 5 — Shop by Category */}
         <CategoryStrip />
 
-        {/* Section 6 — Flash Sale (countdown + sale grid) */}
+        {/* Section 6 — Flash Sale */}
         <FlashSale />
 
         {/* Section 7 — Featured Products */}

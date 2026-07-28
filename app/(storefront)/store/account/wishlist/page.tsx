@@ -5,6 +5,7 @@ import { Heart, ShoppingBag, ArrowRight, Trash2 } from 'lucide-react';
 import { useWishlistStore } from '@/stores/wishlist-store';
 import { PRODUCTS, formatMoney } from '@/lib/storefront/mock-data';
 import ProductCard from '@/components/storefront/ProductCard';
+import ScrollReveal from '@/components/storefront/ScrollReveal';
 import { notify } from '@/lib/notifications';
 
 export default function WishlistPage() {
@@ -58,8 +59,10 @@ export default function WishlistPage() {
         </div>
       ) : (
         <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 xl:grid-cols-4">
-          {products.map(p => (
-            <ProductCard key={p.id} product={p} />
+          {products.map((p, i) => (
+            <ScrollReveal key={p.id} delayMs={i * 200}>
+              <ProductCard product={p} />
+            </ScrollReveal>
           ))}
         </div>
       )}
