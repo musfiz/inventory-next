@@ -165,7 +165,7 @@ export default function ProductCard({
     <Link
       href={`/store/products/${product.slug}`}
       onClick={() => trackView(product.id)}
-      className="group relative flex flex-col overflow-hidden rounded-2xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 transition-all duration-300 hover:-translate-y-1 hover:border-brand-300 hover:shadow-xl dark:hover:border-brand-700"
+      className="group relative flex flex-col overflow-hidden rounded-2xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 transition-[transform,box-shadow] duration-200 hover:-translate-y-1 hover:border-brand-300 hover:shadow-[0_8px_25px_rgba(0,0,0,0.08)] dark:hover:border-brand-700"
     >
       <div
         className="relative aspect-square overflow-hidden bg-gray-100 dark:bg-gray-800"

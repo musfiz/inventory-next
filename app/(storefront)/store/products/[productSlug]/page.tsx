@@ -141,7 +141,7 @@ export default function ProductDetailPage() {
       <div className="mx-auto max-w-7xl px-4 py-6 lg:py-8">
         <div className="grid gap-8 lg:grid-cols-2 lg:gap-12">
           {/* Gallery */}
-          <div className="lg:flex lg:gap-3">
+          <ScrollReveal animation="fade-up" duration="normal" as="div" className="lg:flex lg:gap-3">
             {/* Thumbnails on desktop */}
             {product.images.length > 1 && (
               <div className="order-2 mt-3 flex gap-2 lg:order-1 lg:mt-0 lg:flex-col">
@@ -211,8 +211,10 @@ export default function ProductDetailPage() {
             </div>
           </div>
 
+          </ScrollReveal>
+
           {/* Buy Box */}
-          <div className="lg:py-2">
+          <ScrollReveal animation="slide-right" duration="normal" as="div" className="lg:py-2">
             {product.brand && (
               <Link
                 href={`/brand/${product.brand.slug}`}
@@ -397,12 +399,14 @@ export default function ProductDetailPage() {
                 { icon: Truck, title: 'Fast delivery', desc: `${product.estimatedDeliveryDays ?? 2}-${(product.estimatedDeliveryDays ?? 2) + 1} days` },
                 { icon: RotateCcw, title: '7-day returns', desc: 'Hassle-free' },
                 { icon: ShieldCheck, title: 'Secure', desc: 'Protected payment' },
-              ].map(({ icon: Icon, title, desc }) => (
-                <div key={title} className="flex flex-col items-center gap-1 text-center">
-                  <Icon className="h-5 w-5 text-brand-600" />
-                  <p className="text-xs font-bold text-gray-900 dark:text-gray-100">{title}</p>
-                  <p className="text-[10px] text-gray-500">{desc}</p>
-                </div>
+              ].map(({ icon: Icon, title, desc }, i) => (
+                <ScrollReveal key={title} animation="pop" staggerIndex={i} staggerGap={100}>
+                  <div className="flex flex-col items-center gap-1 text-center">
+                    <Icon className="h-5 w-5 text-brand-600" />
+                    <p className="text-xs font-bold text-gray-900 dark:text-gray-100">{title}</p>
+                    <p className="text-[10px] text-gray-500">{desc}</p>
+                  </div>
+                </ScrollReveal>
               ))}
             </div>
 
@@ -413,7 +417,7 @@ export default function ProductDetailPage() {
                 <Share2 className="h-4 w-4" /> Share
               </button>
             </div>
-          </div>
+          </ScrollReveal>
         </div>
 
         {/* Tabs */}
@@ -562,12 +566,14 @@ export default function ProductDetailPage() {
         {/* Related products */}
         {showSimilar && related.length > 0 && (
           <section className="mt-14">
-            <h2 className="mb-5 text-xl font-black text-gray-900 dark:text-white sm:text-2xl">
-              You may also like
-            </h2>
+            <ScrollReveal animation="fade-up"  as="div" className="mb-5">
+              <h2 className="text-xl font-black text-gray-900 dark:text-white sm:text-2xl">
+                You may also like
+              </h2>
+            </ScrollReveal>
             <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
               {related.map((p, i) => (
-                <ScrollReveal key={p.id} delayMs={i * 200}>
+                <ScrollReveal key={p.id} animation="zoom-in" staggerIndex={i}>
                   <ProductCard product={p} />
                 </ScrollReveal>
               ))}

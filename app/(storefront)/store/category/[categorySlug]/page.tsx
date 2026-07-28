@@ -77,7 +77,7 @@ export default function CategoryPage() {
   return (
     <div className="bg-gray-50 dark:bg-gray-950">
       {/* Hero */}
-      <div className="relative h-44 overflow-hidden sm:h-60">
+      <ScrollReveal animation="fade-up" duration="normal" as="div" className="relative h-44 overflow-hidden sm:h-60">
         {category.image ? (
           <Image
             src={category.image}
@@ -106,21 +106,22 @@ export default function CategoryPage() {
             </p>
           </div>
         </div>
-      </div>
+      </ScrollReveal>
 
       <div className="mx-auto max-w-7xl px-4 py-6">
         {/* Subcategory chips */}
         {childCats.length > 0 && (
           <div className="mb-6 flex flex-wrap gap-2">
-            {childCats.map(c => (
-              <Link
-                key={c.id}
-                href={`/store/category/${c.slug}`}
-                className="inline-flex items-center gap-1 rounded-full border border-gray-200 bg-white px-4 py-2 text-sm font-semibold text-gray-700 transition-all hover:border-brand-400 hover:text-brand-600 dark:border-gray-800 dark:bg-gray-900 dark:text-gray-300"
-              >
-                {c.name}
-                <ChevronDown className="h-3 w-3 -rotate-90" />
-              </Link>
+            {childCats.map((c, i) => (
+              <ScrollReveal key={c.id} animation="pop" staggerIndex={i} staggerGap={60}>
+                <Link
+                  href={`/store/category/${c.slug}`}
+                  className="inline-flex items-center gap-1 rounded-full border border-gray-200 bg-white px-4 py-2 text-sm font-semibold text-gray-700 transition-all hover:border-brand-400 hover:text-brand-600 dark:border-gray-800 dark:bg-gray-900 dark:text-gray-300"
+                >
+                  {c.name}
+                  <ChevronDown className="h-3 w-3 -rotate-90" />
+                </Link>
+              </ScrollReveal>
             ))}
           </div>
         )}
@@ -169,7 +170,7 @@ export default function CategoryPage() {
           <>
             <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
               {filtered.map((p, i) => (
-                <ScrollReveal key={p.id} delayMs={i * 200}>
+                <ScrollReveal key={p.id} animation="zoom-in" staggerIndex={i}>
                   <ProductCard product={p} />
                 </ScrollReveal>
               ))}

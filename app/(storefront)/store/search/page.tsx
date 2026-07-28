@@ -71,7 +71,7 @@ export default function SearchPage() {
 
   return (
     <div className="bg-gray-50 dark:bg-gray-950">
-      <div className="border-b border-gray-200 bg-white dark:border-gray-800 dark:bg-gray-900">
+      <ScrollReveal animation="fade-up"  as="div" className="border-b border-gray-200 bg-white dark:border-gray-800 dark:bg-gray-900">
         <div className="mx-auto max-w-7xl px-4 py-8">
           <h1 className="text-2xl font-black text-gray-900 dark:text-white sm:text-3xl">
             {q ? (
@@ -132,7 +132,7 @@ export default function SearchPage() {
             </div>
           )}
         </div>
-      </div>
+      </ScrollReveal>
 
       <div className="mx-auto max-w-7xl px-4 py-6">
         <div className="lg:grid lg:grid-cols-[260px_1fr] lg:gap-8">
@@ -224,7 +224,7 @@ export default function SearchPage() {
             ) : (
               <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
                 {filtered.map((p, i) => (
-                  <ScrollReveal key={p.id} delayMs={i * 200}>
+                  <ScrollReveal key={p.id} animation="zoom-in" staggerIndex={i}>
                     <ProductCard product={p} />
                   </ScrollReveal>
                 ))}

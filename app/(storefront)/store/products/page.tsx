@@ -236,7 +236,7 @@ export default function AllProductsPage() {
   return (
     <div className="bg-gray-50 dark:bg-gray-950">
       {/* Breadcrumb + heading */}
-      <div className="border-b border-gray-200 bg-white dark:border-gray-800 dark:bg-gray-900">
+      <ScrollReveal animation="fade-up"  as="div" className="border-b border-gray-200 bg-white dark:border-gray-800 dark:bg-gray-900">
         <div className="mx-auto max-w-7xl px-4 py-6">
           <nav className="text-xs text-gray-500 dark:text-gray-400">
             <Link href="/" className="hover:text-brand-600">Home</Link>
@@ -250,19 +250,19 @@ export default function AllProductsPage() {
             Browse our complete catalog of {PRODUCTS.length} products
           </p>
         </div>
-      </div>
+      </ScrollReveal>
 
       <div className="mx-auto max-w-7xl px-4 py-6">
         <div className="lg:grid lg:grid-cols-[260px_1fr] lg:gap-8">
           {/* Sidebar (desktop) */}
           <aside className="hidden lg:block">
-            <div className="sticky top-32 rounded-2xl border border-gray-200 bg-white p-5 dark:border-gray-800 dark:bg-gray-900">
+            <ScrollReveal animation="slide-right" duration="normal" as="div" className="sticky top-32 rounded-2xl border border-gray-200 bg-white p-5 dark:border-gray-800 dark:bg-gray-900">
               <h2 className="mb-4 flex items-center gap-2 text-sm font-bold uppercase tracking-wider text-gray-900 dark:text-gray-100">
                 <SlidersHorizontal className="h-4 w-4" />
                 Filters
               </h2>
               <FilterContent />
-            </div>
+            </ScrollReveal>
           </aside>
 
           {/* Main */}
@@ -397,7 +397,7 @@ export default function AllProductsPage() {
               <>
                 <div className={`grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 ${view === 'list' ? '!grid-cols-1' : ''}`}>
                   {filtered.map((p, i) => (
-                    <ScrollReveal key={p.id} delayMs={i * 200}>
+                    <ScrollReveal key={p.id} animation="zoom-in" staggerIndex={i}>
                       <ProductCard product={p} variant={view === 'list' ? 'list' : 'default'} />
                     </ScrollReveal>
                   ))}

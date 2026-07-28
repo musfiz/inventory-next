@@ -3,6 +3,7 @@
 import Link from 'next/link';
 import { useState, useEffect } from 'react';
 import { useBranding } from '@/hooks/use-branding';
+import ScrollReveal from '@/components/storefront/ScrollReveal';
 import footerService from '@/services/footerService';
 import type { FooterConfig, SocialLink } from '@/types/api.types';
 import {
@@ -188,7 +189,7 @@ export default function StorefrontFooter() {
   };
 
   return (
-    <footer className="mt-16 bg-gradient-to-b from-gray-50 via-white to-gray-50 dark:from-gray-950 dark:via-gray-900 dark:to-gray-950">
+    <ScrollReveal animation="fade-up" duration="normal" as="footer" className="mt-16 bg-gradient-to-b from-gray-50 via-white to-gray-50 dark:from-gray-950 dark:via-gray-900 dark:to-gray-950">
       {/* Value props strip */}
       {value_props_enabled && activeValueProps.length > 0 && (
         <div className="bg-gradient-to-r from-brand-50 via-purple-50 to-pink-50 dark:from-brand-950/30 dark:via-purple-950/30 dark:to-pink-950/30 border-y border-brand-100 dark:border-gray-800">
@@ -346,6 +347,6 @@ export default function StorefrontFooter() {
           )}
         </div>
       </div>
-    </footer>
+    </ScrollReveal>
   );
 }

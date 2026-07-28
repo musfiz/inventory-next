@@ -57,27 +57,29 @@ const CategoryStrip = () => {
   const visible = CATEGORIES.filter(c => !c.parentId).slice(0, 10);
   return (
     <section className="py-10 sm:py-12">
-      <div className="mb-6 flex items-end justify-between">
-        <div>
-          <h2 className="text-2xl font-black text-gray-900 dark:text-white sm:text-3xl">
-            Shop by Category
-          </h2>
-          <p className="mt-1 text-sm text-gray-500">
-            Browse our most popular categories
-          </p>
+      <ScrollReveal animation="fade-up"  as="div" className="mb-6">
+        <div className="flex items-end justify-between">
+          <div>
+            <h2 className="text-2xl font-black text-gray-900 dark:text-white sm:text-3xl">
+              Shop by Category
+            </h2>
+            <p className="mt-1 text-sm text-gray-500">
+              Browse our most popular categories
+            </p>
+          </div>
+          <Link
+            href="/store/products"
+            className="hidden text-sm font-semibold text-brand-600 hover:text-brand-700 sm:inline-flex sm:items-center sm:gap-1"
+          >
+            View all
+            <ArrowRight className="h-4 w-4" />
+          </Link>
         </div>
-        <Link
-          href="/store/products"
-          className="hidden text-sm font-semibold text-brand-600 hover:text-brand-700 sm:inline-flex sm:items-center sm:gap-1"
-        >
-          View all
-          <ArrowRight className="h-4 w-4" />
-        </Link>
-      </div>
+      </ScrollReveal>
 
       <div className="grid grid-cols-3 gap-3 sm:grid-cols-5 lg:grid-cols-10">
         {visible.map((cat, i) => (
-          <ScrollReveal key={cat.id} delayMs={i * 200}>
+          <ScrollReveal key={cat.id} animation="zoom-in" staggerIndex={i}>
             <Link
               href={`/store/category/${cat.slug}`}
               className="group flex flex-col items-center gap-2 rounded-2xl border border-gray-200 bg-white p-3 text-center transition-all hover:-translate-y-1 hover:border-brand-300 hover:shadow-lg dark:border-gray-800 dark:bg-gray-900 dark:hover:border-brand-700"
@@ -138,44 +140,46 @@ const FlashSale = () => {
 
   return (
     <section className="my-10 overflow-hidden rounded-2xl bg-gradient-to-br from-rose-600 via-pink-600 to-purple-700 p-6 sm:p-8 text-white sm:my-12">
-      <div className="mb-6 flex flex-wrap items-end justify-between gap-3">
-        <div>
+      <ScrollReveal animation="fade-up"  as="div" className="mb-6">
+        <div className="flex flex-wrap items-end justify-between gap-3">
+          <div>
+            <div className="flex items-center gap-2">
+              <Flame className="h-6 w-6" />
+              <h2 className="text-2xl font-black sm:text-3xl">Flash Sale</h2>
+            </div>
+            <p className="mt-1 text-sm text-white/85">
+              Limited time offers — don&apos;t miss out!
+            </p>
+          </div>
           <div className="flex items-center gap-2">
-            <Flame className="h-6 w-6" />
-            <h2 className="text-2xl font-black sm:text-3xl">Flash Sale</h2>
+            <span className="text-sm font-semibold text-white/85">Ends in</span>
+            <div className="flex items-center gap-1 font-mono text-lg font-black">
+              <span className="rounded-lg bg-white/15 px-2.5 py-1 backdrop-blur-sm">
+                {String(time.h).padStart(2, '0')}
+              </span>
+              <span>:</span>
+              <span className="rounded-lg bg-white/15 px-2.5 py-1 backdrop-blur-sm">
+                {String(time.m).padStart(2, '0')}
+              </span>
+              <span>:</span>
+              <span className="rounded-lg bg-white/15 px-2.5 py-1 backdrop-blur-sm">
+                {String(time.s).padStart(2, '0')}
+              </span>
+            </div>
+            <Link
+              href="/store/products?filter=sale"
+              className="ml-2 inline-flex items-center gap-1 rounded-full bg-white px-4 py-2 text-sm font-bold text-rose-600 transition-transform hover:scale-105"
+            >
+              View all
+              <ArrowRight className="h-4 w-4" />
+            </Link>
           </div>
-          <p className="mt-1 text-sm text-white/85">
-            Limited time offers — don&apos;t miss out!
-          </p>
         </div>
-        <div className="flex items-center gap-2">
-          <span className="text-sm font-semibold text-white/85">Ends in</span>
-          <div className="flex items-center gap-1 font-mono text-lg font-black">
-            <span className="rounded-lg bg-white/15 px-2.5 py-1 backdrop-blur-sm">
-              {String(time.h).padStart(2, '0')}
-            </span>
-            <span>:</span>
-            <span className="rounded-lg bg-white/15 px-2.5 py-1 backdrop-blur-sm">
-              {String(time.m).padStart(2, '0')}
-            </span>
-            <span>:</span>
-            <span className="rounded-lg bg-white/15 px-2.5 py-1 backdrop-blur-sm">
-              {String(time.s).padStart(2, '0')}
-            </span>
-          </div>
-          <Link
-            href="/store/products?filter=sale"
-            className="ml-2 inline-flex items-center gap-1 rounded-full bg-white px-4 py-2 text-sm font-bold text-rose-600 transition-transform hover:scale-105"
-          >
-            View all
-            <ArrowRight className="h-4 w-4" />
-          </Link>
-        </div>
-      </div>
+      </ScrollReveal>
 
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
         {saleProducts.map((p, i) => (
-          <ScrollReveal key={p.id} delayMs={i * 200}>
+          <ScrollReveal key={p.id} animation="zoom-in" staggerIndex={i}>
             <ProductCard product={p} showWishlist={false} />
           </ScrollReveal>
         ))}
@@ -209,30 +213,32 @@ const ProductSection = ({
 
   return (
     <section className={`py-8 sm:py-10 ${bgClass}`}>
-      <div className="mb-6 flex items-end justify-between">
-        <div className="flex items-center gap-3">
-          <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-brand-50 text-brand-600 dark:bg-brand-950/50">
-            <Icon className="h-5 w-5" />
+      <ScrollReveal animation="fade-up"  as="div" className="mb-6">
+        <div className="flex items-end justify-between">
+          <div className="flex items-center gap-3">
+            <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-brand-50 text-brand-600 dark:bg-brand-950/50">
+              <Icon className="h-5 w-5" />
+            </div>
+            <div>
+              <h2 className="text-2xl font-black text-gray-900 dark:text-white sm:text-3xl">
+                {title}
+              </h2>
+              <p className="text-sm text-gray-500">{subtitle}</p>
+            </div>
           </div>
-          <div>
-            <h2 className="text-2xl font-black text-gray-900 dark:text-white sm:text-3xl">
-              {title}
-            </h2>
-            <p className="text-sm text-gray-500">{subtitle}</p>
-          </div>
+          <Link
+            href={viewAllLink}
+            className="inline-flex items-center gap-1.5 rounded-full border border-brand-200 bg-brand-50 px-4 py-2 text-sm font-bold text-brand-700 transition-all hover:bg-brand-100 hover:text-brand-800 dark:border-brand-800 dark:bg-brand-950/30 dark:text-brand-400"
+          >
+            View all
+            <ArrowRight className="h-4 w-4" />
+          </Link>
         </div>
-        <Link
-          href={viewAllLink}
-          className="inline-flex items-center gap-1.5 rounded-full border border-brand-200 bg-brand-50 px-4 py-2 text-sm font-bold text-brand-700 transition-all hover:bg-brand-100 hover:text-brand-800 dark:border-brand-800 dark:bg-brand-950/30 dark:text-brand-400"
-        >
-          View all
-          <ArrowRight className="h-4 w-4" />
-        </Link>
-      </div>
+      </ScrollReveal>
 
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-4 xl:grid-cols-5">
         {products.map((p, i) => (
-          <ScrollReveal key={p.id} delayMs={i * 200}>
+          <ScrollReveal key={p.id} animation="zoom-in" staggerIndex={i}>
             <ProductCard product={p} />
           </ScrollReveal>
         ))}
@@ -247,7 +253,7 @@ const ProductSection = ({
 const PromoBanners = () => (
   <section className="my-10 grid gap-4 sm:my-12 md:grid-cols-2">
     {PROMO_BANNERS.map((b, i) => (
-      <ScrollReveal key={b.id} delayMs={i * 200}>
+      <ScrollReveal key={b.id} animation="fade-up" staggerIndex={i} staggerGap={150}>
         <Link
           href={b.link}
           className="group relative h-44 overflow-hidden rounded-2xl sm:h-56"
@@ -298,7 +304,7 @@ const OffersCarousel = ({ slides }: { slides: StorefrontOfferSlide[] }) => {
   if (slides.length === 0) return null;
 
   return (
-    <section className="py-6 sm:py-8">
+    <ScrollReveal animation="fade-up" as="section" className="py-6 sm:py-8">
       <div className="mb-4 flex items-end justify-between">
         <div>
           <h2 className="text-2xl font-black text-gray-900 dark:text-white sm:text-3xl">
@@ -364,7 +370,7 @@ const OffersCarousel = ({ slides }: { slides: StorefrontOfferSlide[] }) => {
           </Link>
         ))}
       </div>
-    </section>
+    </ScrollReveal>
   );
 };
 
@@ -380,7 +386,7 @@ const TrustStrip = () => (
       { icon: ShieldCheck, title: 'Secure Payment', desc: '100% protected' },
       { icon: Headphones, title: '24/7 Support', desc: 'Dedicated help' },
     ].map(({ icon: Icon, title, desc }, i) => (
-      <ScrollReveal key={title} delayMs={i * 200}>
+      <ScrollReveal key={title} animation="pop" staggerIndex={i} staggerGap={100}>
         <div className="flex items-center gap-3 rounded-2xl border border-gray-200 bg-white p-4 dark:border-gray-800 dark:bg-gray-900">
           <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-emerald-50 text-emerald-600 dark:bg-emerald-950/30 dark:text-emerald-400">
             <Icon className="h-5 w-5" />
@@ -404,22 +410,24 @@ const RecentlyViewed = () => {
 
   return (
     <section className="py-8 sm:py-10">
-      <div className="mb-6 flex items-end justify-between">
-        <div className="flex items-center gap-3">
-          <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-brand-50 text-brand-600 dark:bg-brand-950/50">
-            <History className="h-5 w-5" />
-          </div>
-          <div>
-            <h2 className="text-2xl font-black text-gray-900 dark:text-white sm:text-3xl">
-              Recently Viewed
-            </h2>
-            <p className="text-sm text-gray-500">Pick up where you left off</p>
+      <ScrollReveal animation="fade-up"  as="div" className="mb-6">
+        <div className="flex items-end justify-between">
+          <div className="flex items-center gap-3">
+            <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-brand-50 text-brand-600 dark:bg-brand-950/50">
+              <History className="h-5 w-5" />
+            </div>
+            <div>
+              <h2 className="text-2xl font-black text-gray-900 dark:text-white sm:text-3xl">
+                Recently Viewed
+              </h2>
+              <p className="text-sm text-gray-500">Pick up where you left off</p>
+            </div>
           </div>
         </div>
-      </div>
+      </ScrollReveal>
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5">
         {products.map((p, i) => (
-          <ScrollReveal key={p.id} delayMs={i * 200}>
+          <ScrollReveal key={p.id} animation="zoom-in" staggerIndex={i}>
             <ProductCard product={p} />
           </ScrollReveal>
         ))}
@@ -437,12 +445,12 @@ export default function HomePage() {
     storefrontService
       .getHeroSliders()
       .then(setHeroSliders)
-      .catch(() => {})
+      .catch(() => { })
       .finally(() => setHeroLoading(false));
     storefrontService
       .getOfferSlides()
       .then(setOfferSlides)
-      .catch(() => {});
+      .catch(() => { });
   }, []);
 
   return (

@@ -168,26 +168,66 @@
   animation: sf-fade-in-zoom 0.25s ease-out both;
 }
 
-/* Scroll-triggered zoom-in animation */
+/* ================================================================ */
+/*  Scroll-triggered reveal animations                               */
+/*  Used by the ScrollReveal component                               */
+/* ================================================================ */
+
+@keyframes sf-fade-up {
+  from { opacity: 0; transform: translateY(24px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
 @keyframes sf-zoom-in {
-  from {
-    opacity: 0;
-    transform: scale(0.85) translateY(20px);
-  }
-  to {
-    opacity: 1;
-    transform: scale(1) translateY(0);
-  }
+  from { opacity: 0; transform: scale(0.92) translateY(12px); }
+  to   { opacity: 1; transform: scale(1) translateY(0); }
 }
 
-.sf-zoom-in {
-  animation: sf-zoom-in 1s cubic-bezier(0.16, 1, 0.3, 1) both;
+@keyframes sf-pop {
+  from { opacity: 0; transform: scale(0.85); }
+  to   { opacity: 1; transform: scale(1); }
 }
 
-.sf-zoom-in-d1 { animation-delay: 0.1s; }
-.sf-zoom-in-d2 { animation-delay: 0.2s; }
-.sf-zoom-in-d3 { animation-delay: 0.3s; }
-.sf-zoom-in-d4 { animation-delay: 0.4s; }
+@keyframes sf-slide-left {
+  from { opacity: 0; transform: translateX(-30px); }
+  to   { opacity: 1; transform: translateX(0); }
+}
+
+@keyframes sf-slide-right {
+  from { opacity: 0; transform: translateX(30px); }
+  to   { opacity: 1; transform: translateX(0); }
+}
+
+/* Each animation class only sets the name; shared timing via custom properties */
+.sf-fade-up,
+.sf-zoom-in,
+.sf-pop,
+.sf-slide-left,
+.sf-slide-right {
+  animation-duration: var(--sf-duration, 500ms);
+  animation-timing-function: cubic-bezier(0.16, 1, 0.3, 1);
+  animation-fill-mode: both;
+  animation-delay: var(--sf-delay, 0ms);
+}
+
+.sf-fade-up     { animation-name: sf-fade-up; }
+.sf-zoom-in     { animation-name: sf-zoom-in; }
+.sf-pop         { animation-name: sf-pop; }
+.sf-slide-left  { animation-name: sf-slide-left; }
+.sf-slide-right { animation-name: sf-slide-right; }
+
+/* Reduced motion — respect user preference */
+@media (prefers-reduced-motion: reduce) {
+  .sf-fade-up,
+  .sf-zoom-in,
+  .sf-pop,
+  .sf-slide-left,
+  .sf-slide-right {
+    animation: none !important;
+    opacity: 1 !important;
+    transform: none !important;
+  }
+}
 
 @keyframes sf-shimmer {
   0% {
