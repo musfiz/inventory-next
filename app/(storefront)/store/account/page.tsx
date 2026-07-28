@@ -30,7 +30,7 @@ const STATUS_CONFIG: Record<string, { color: string; bg: string; icon: any; labe
 export default function AccountDashboardPage() {
   const user = useCustomerAuthStore(s => s.user);
   const wishlist = useWishlistStore(s => s.items.length);
-  const addresses = useCustomerAuthStore(s => s.addresses.length);
+  const addresses = 0; // TODO: wire up address API endpoint
 
   const orders = SAMPLE_ORDERS;
   const totalSpent = orders.reduce((s, o) => s + o.total, 0);

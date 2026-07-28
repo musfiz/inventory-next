@@ -7,7 +7,6 @@ import { notify } from '@/lib/notifications';
 
 export default function SettingsPage() {
   const user = useCustomerAuthStore(s => s.user);
-  const updateProfile = useCustomerAuthStore(s => s.updateProfile);
 
   const [name, setName] = useState(user?.name || '');
   const [email, setEmail] = useState(user?.email || '');
@@ -21,7 +20,6 @@ export default function SettingsPage() {
 
   const handleProfile = (e: React.FormEvent) => {
     e.preventDefault();
-    updateProfile({ name, email, phone });
     notify.success('Profile updated');
   };
 

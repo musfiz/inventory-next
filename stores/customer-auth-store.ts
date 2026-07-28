@@ -1,103 +1,110 @@
 'use client';
 
 import { create } from 'zustand';
-import { persist } from 'zustand/middleware';
-import type { CustomerUser, Address } from '@/types/storefront';
-import { SAMPLE_ADDRESSES } from '@/lib/storefront/mock-data';
+import axios from '@/lib/api/axios';
+import type { CustomerUser } from '@/types/storefront';
 
 interface CustomerAuthState {
   user: CustomerUser | null;
   isAuthenticated: boolean;
-  addresses: Address[];
-  login: (email: string, password: string) => Promise<{ ok: boolean; message?: string }>;
+  setUser: (user: CustomerUser | null) => void;
+  login: (email: string, password: string) => Promise<{ ok: boolean; message?: string; errors?: Record<string, string[]> }>;
   register: (
     name: string,
     email: string,
     phone: string,
-    password: string
-  ) => Promise<{ ok: boolean; message?: string }>;
-  logout: () => void;
-  updateProfile: (data: Partial<CustomerUser>) => void;
-  addAddress: (address: Omit<Address, 'id'>) => void;
-  updateAddress: (id: string, data: Partial<Address>) => void;
-  removeAddress: (id: string) => void;
-  setDefaultAddress: (id: string) => void;
+    password: string,
+    passwordConfirmation: string
+  ) => Promise<{ ok: boolean; message?: string; errors?: Record<string, string[]> }>;
+  logout: () => Promise<void>;
+  clearAuth: () => void;
 }
 
-const SAMPLE_USER: CustomerUser = {
-  id: 'cu-1',
-  name: 'John Doe',
-  email: 'john.doe@example.com',
-  phone: '+880 1712-345678',
-};
+export const useCustomerAuthStore = create<CustomerAuthState>()((set) => ({
+  user: null,
+  isAuthenticated: false,
 
-export const useCustomerAuthStore = create<CustomerAuthState>()(
-  persist(
-    (set, get) => ({
-      user: null,
-      isAuthenticated: false,
-      addresses: [],
+  setUser: (user) => set({ user, isAuthenticated: !!user }),
 
-      login: async (email, _password) => {
-        await new Promise(r => setTimeout(r, 600));
-        if (email === 'demo@uims.shop' || email.includes('@')) {
-          set({
-            user: { ...SAMPLE_USER, email },
-            isAuthenticated: true,
-            addresses: SAMPLE_ADDRESSES,
-          });
-          return { ok: true };
-        }
-        return { ok: false, message: 'Invalid email or password' };
-      },
+  login: async (email, password) => {
+    try {
+      // Fetch CSRF cookie (handled by axios interceptor) then login
+      await axios.get('/sanctum/csrf-cookie');
 
-      register: async (name, email, phone, _password) => {
-        await new Promise(r => setTimeout(r, 700));
-        set({
-          user: { id: `cu-${Date.now()}`, name, email, phone },
-          isAuthenticated: true,
-          addresses: [],
-        });
-        return { ok: true };
-      },
+      const res = await axios.post('/api/v1/storefront/auth/login', {
+        email,
+        password,
+      });
 
-      logout: () => set({ user: null, isAuthenticated: false }),
+      set({
+        user: res.data,
+        isAuthenticated: true,
+      });
 
-      updateProfile: data =>
-        set(state => ({
-          user: state.user ? { ...state.user, ...data } : null,
-        })),
-
-      addAddress: address =>
-        set(state => ({
-          addresses: [
-            ...state.addresses,
-            { ...address, id: `a-${Date.now()}` },
-          ],
-        })),
-
-      updateAddress: (id, data) =>
-        set(state => ({
-          addresses: state.addresses.map(a =>
-            a.id === id ? { ...a, ...data } : a
-          ),
-        })),
-
-      removeAddress: id =>
-        set(state => ({
-          addresses: state.addresses.filter(a => a.id !== id),
-        })),
-
-      setDefaultAddress: id =>
-        set(state => ({
-          addresses: state.addresses.map(a => ({
-            ...a,
-            isDefault: a.id === id,
-          })),
-        })),
-    }),
-    {
-      name: 'uims-customer-auth',
+      return { ok: true };
+    } catch (error: any) {
+      if (error.response?.status === 422) {
+        return {
+          ok: false,
+          message: error.response.data.message || 'Validation failed',
+          errors: error.response.data.errors,
+        };
+      }
+      if (error.response?.status === 403) {
+        return {
+          ok: false,
+          message: error.response.data.message || 'Your account has been deactivated.',
+        };
+      }
+      return {
+        ok: false,
+        message: 'Unable to connect. Please try again.',
+      };
     }
-  )
-);
+  },
+
+  register: async (name, email, phone, password, passwordConfirmation) => {
+    try {
+      // Fetch CSRF cookie (handled by axios interceptor) then register
+      await axios.get('/sanctum/csrf-cookie');
+
+      const res = await axios.post('/api/v1/storefront/auth/register', {
+        name,
+        email,
+        phone,
+        password,
+        password_confirmation: passwordConfirmation,
+      });
+
+      set({
+        user: res.data,
+        isAuthenticated: true,
+      });
+
+      return { ok: true };
+    } catch (error: any) {
+      if (error.response?.status === 422) {
+        return {
+          ok: false,
+          message: error.response.data.message || 'Validation failed',
+          errors: error.response.data.errors,
+        };
+      }
+      return {
+        ok: false,
+        message: 'Unable to connect. Please try again.',
+      };
+    }
+  },
+
+  logout: async () => {
+    try {
+      await axios.post('/api/v1/storefront/auth/logout');
+    } catch {
+      // Proceed with clearing state even if API call fails
+    }
+    set({ user: null, isAuthenticated: false });
+  },
+
+  clearAuth: () => set({ user: null, isAuthenticated: false }),
+}));

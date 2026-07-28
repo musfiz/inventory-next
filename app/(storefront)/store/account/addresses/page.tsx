@@ -11,7 +11,6 @@ import {
   Briefcase,
   X,
 } from 'lucide-react';
-import { useCustomerAuthStore } from '@/stores/customer-auth-store';
 import type { Address } from '@/types/storefront';
 import { notify } from '@/lib/notifications';
 
@@ -29,10 +28,21 @@ const EMPTY: Omit<Address, 'id'> = {
 };
 
 export default function AddressesPage() {
-  const addresses = useCustomerAuthStore(s => s.addresses);
-  const addAddress = useCustomerAuthStore(s => s.addAddress);
-  const removeAddress = useCustomerAuthStore(s => s.removeAddress);
-  const setDefault = useCustomerAuthStore(s => s.setDefaultAddress);
+  const [addresses, setAddresses] = useState<Address[]>([]);
+
+  const addAddress = (addr: Omit<Address, 'id'>) => {
+    setAddresses(prev => [...prev, { ...addr, id: `a-${Date.now()}` }]);
+  };
+
+  const removeAddress = (id: string) => {
+    setAddresses(prev => prev.filter(a => a.id !== id));
+  };
+
+  const setDefault = (id: string) => {
+    setAddresses(prev =>
+      prev.map(a => ({ ...a, isDefault: a.id === id }))
+    );
+  };
 
   const [modal, setModal] = useState<Omit<Address, 'id'> | null>(null);
 

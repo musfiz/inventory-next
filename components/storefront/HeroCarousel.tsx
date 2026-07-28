@@ -55,7 +55,7 @@ export default function HeroCarousel({ slides }: { slides: StorefrontHeroSlider[
       {slides.map((b, i) => (
         <div
           key={b.id}
-          className={`absolute inset-0 transition-opacity duration-700 ${
+          className={`absolute inset-0 h-full w-full transition-opacity duration-700 ${
             i === index ? 'opacity-100' : 'opacity-0 pointer-events-none'
           }`}
         >
@@ -66,6 +66,7 @@ export default function HeroCarousel({ slides }: { slides: StorefrontHeroSlider[
             sizes="(max-width: 1024px) 100vw, 75vw"
             className="object-cover"
             priority={i === 0}
+            loading={i === 0 ? 'eager' : 'lazy'}
             unoptimized
           />
           <div className="absolute inset-0 bg-gradient-to-r from-gray-900/80 to-gray-800/60" aria-hidden />

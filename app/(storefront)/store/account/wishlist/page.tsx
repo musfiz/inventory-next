@@ -15,7 +15,7 @@ export default function WishlistPage() {
 
   return (
     <div className="space-y-5">
-      <ScrollReveal animation="fade-up"  as="div" className="flex flex-wrap items-end justify-between gap-3">
+      <div className="flex flex-wrap items-end justify-between gap-3">
         <div>
           <h1 className="text-2xl font-black text-gray-900 dark:text-white sm:text-3xl">
             My Wishlist
@@ -24,7 +24,6 @@ export default function WishlistPage() {
             {products.length} {products.length === 1 ? 'item' : 'items'} saved
           </p>
         </div>
-      </ScrollReveal>
         {products.length > 0 && (
           <button
             onClick={() => {

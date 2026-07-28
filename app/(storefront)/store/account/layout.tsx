@@ -1,6 +1,7 @@
 'use client';
 
 import Link from 'next/link';
+import { useEffect } from 'react';
 import { usePathname, useRouter } from 'next/navigation';
 import {
   LayoutDashboard,
@@ -10,9 +11,9 @@ import {
   Settings,
   LogOut,
   ChevronRight,
-  User,
 } from 'lucide-react';
 import { useCustomerAuthStore } from '@/stores/customer-auth-store';
+import { useCustomerAuth } from '@/hooks/use-customer-auth';
 import { notify } from '@/lib/notifications';
 
 const NAV_ITEMS = [
@@ -23,26 +24,73 @@ const NAV_ITEMS = [
   { href: '/store/account/settings', label: 'Settings', icon: Settings },
 ];
 
-export default function AccountLayout({
-  children,
-}: {
-  children: React.ReactNode;
-}) {
+function AccountLayoutSkeleton() {
+  return (
+    <div className="bg-gray-50 dark:bg-gray-950">
+      <div className="mx-auto max-w-7xl px-4 py-6">
+        <div className="grid gap-6 lg:grid-cols-[280px_1fr]">
+          <aside className="lg:sticky lg:top-32 lg:self-start">
+            <div className="animate-pulse overflow-hidden rounded-2xl border border-gray-200 bg-white dark:border-gray-800 dark:bg-gray-900">
+              <div className="h-24 bg-gray-100 dark:bg-gray-800" />
+              <div className="space-y-3 p-4">
+                {Array.from({ length: 4 }).map((_, i) => (
+                  <div key={i} className="h-10 rounded-lg bg-gray-100 dark:bg-gray-800" />
+                ))}
+              </div>
+            </div>
+          </aside>
+          <main>
+            <div className="animate-pulse space-y-4">
+              <div className="h-32 rounded-2xl bg-gray-100 dark:bg-gray-800" />
+              <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+                {Array.from({ length: 4 }).map((_, i) => (
+                  <div key={i} className="h-24 rounded-2xl bg-gray-100 dark:bg-gray-800" />
+                ))}
+              </div>
+            </div>
+          </main>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/** Layout for auth pages (login/register) — no auth guard, no sidebar, no hooks */
+function AuthLayout({ children }: { children: React.ReactNode }) {
+  return (
+    <div className="bg-gray-50 dark:bg-gray-950">
+      <div className="mx-auto max-w-7xl px-4 py-6">
+        {children}
+      </div>
+    </div>
+  );
+}
+
+/** Layout for protected account pages — auth guard, sidebar, loading skeleton */
+function ProtectedLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const router = useRouter();
   const user = useCustomerAuthStore(s => s.user);
   const logout = useCustomerAuthStore(s => s.logout);
+  const normalizedPath = pathname.replace(/\/$/, '');
+
+  const { isLoading, isRedirecting } = useCustomerAuth({ middleware: 'auth' });
 
   const isActive = (href: string, exact?: boolean) => {
-    if (exact) return pathname === href;
-    return pathname.startsWith(href);
+    const p = normalizedPath; // Reuse the trailing-slash-free pathname
+    if (exact) return p === href;
+    return p.startsWith(href);
   };
 
-  const handleLogout = () => {
-    logout();
+  const handleLogout = async () => {
+    await logout();
     notify.success('Signed out');
     router.push('/');
   };
+
+  if (isLoading || isRedirecting) {
+    return <AccountLayoutSkeleton />;
+  }
 
   return (
     <div className="bg-gray-50 dark:bg-gray-950">
@@ -54,7 +102,7 @@ export default function AccountLayout({
               <div className="border-b border-gray-200 bg-gradient-to-br from-brand-50 to-purple-50 p-5 dark:border-gray-800 dark:from-brand-950/30 dark:to-purple-950/30">
                 <div className="flex items-center gap-3">
                   <div className="flex h-12 w-12 items-center justify-center rounded-full bg-gradient-to-br from-brand-600 to-purple-600 text-lg font-bold text-white">
-                    {user?.name.charAt(0).toUpperCase()}
+                    {user?.name?.charAt(0)?.toUpperCase() || '?'}
                   </div>
                   <div className="min-w-0">
                     <p className="truncate font-bold text-gray-900 dark:text-gray-100">
@@ -104,4 +152,20 @@ export default function AccountLayout({
       </div>
     </div>
   );
+}
+
+export default function AccountLayout({
+  children,
+}: {
+  children: React.ReactNode;
+}) {
+  const pathname = usePathname();
+  const normalizedPath = pathname.replace(/\/$/, '');
+  const isAuthPage = normalizedPath === '/store/account/login' || normalizedPath === '/store/account/register';
+
+  if (isAuthPage) {
+    return <AuthLayout>{children}</AuthLayout>;
+  }
+
+  return <ProtectedLayout>{children}</ProtectedLayout>;
 }

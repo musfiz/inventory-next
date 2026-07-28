@@ -281,46 +281,11 @@ const SearchBar = ({ onClose }: { onClose?: () => void }) => {
 };
 
 const AccountMenu = ({ onClose }: { onClose?: () => void }) => {
-  const user = useCustomerAuthStore(s => s.user);
-  const isAuthed = useCustomerAuthStore(s => s.isAuthenticated);
+  const user = useCustomerAuthStore(s => s.user)!;
   const logout = useCustomerAuthStore(s => s.logout);
   const router = useRouter();
 
   const handleLogout = () => { logout(); onClose?.(); router.push('/'); };
-
-  if (!isAuthed || !user) {
-    return (
-      <div className="absolute right-0 top-full z-50 mt-2 w-72 overflow-hidden rounded-2xl border border-gray-100 bg-white shadow-2xl shadow-black/5 backdrop-blur-xl dark:border-gray-800 dark:bg-gray-950 sf-fade-in">
-        <div className="bg-gradient-to-br from-brand-600 to-purple-700 p-6 text-white">
-          <p className="text-sm font-medium text-white/80">Welcome</p>
-          <p className="mt-1 text-lg font-bold">Sign in to your account</p>
-          <div className="mt-4 flex gap-2">
-            <Link href="/store/account/login" onClick={onClose} className="flex flex-1 items-center justify-center gap-1.5 rounded-xl bg-white px-4 py-2.5 text-sm font-bold text-brand-700 shadow-lg transition-all hover:bg-gray-50">
-              <LogIn className="h-4 w-4" /> Sign in
-            </Link>
-            <Link href="/store/account/register" onClick={onClose} className="flex flex-1 items-center justify-center gap-1.5 rounded-xl border border-white/30 px-4 py-2.5 text-sm font-bold text-white transition-all hover:bg-white/10">
-              <UserPlus className="h-4 w-4" /> Register
-            </Link>
-          </div>
-        </div>
-        <ul className="p-2">
-          {[
-            { icon: Package, label: 'My Orders', href: '/store/account/orders' },
-            { icon: Heart, label: 'My Wishlist', href: '/store/account/wishlist' },
-            { icon: MapPin, label: 'Saved Addresses', href: '/store/account/addresses' },
-            { icon: Settings, label: 'Account Settings', href: '/store/account/settings' },
-          ].map(({ icon: Icon, label, href }) => (
-            <li key={href}>
-              <Link href={href} onClick={onClose} className="flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-semibold text-gray-700 transition-all hover:bg-brand-50 hover:text-brand-700 dark:text-gray-300 dark:hover:bg-brand-950/30">
-                <Icon className="h-4 w-4 text-gray-500" />
-                {label}
-              </Link>
-            </li>
-          ))}
-        </ul>
-      </div>
-    );
-  }
 
   return (
     <div className="absolute right-0 top-full z-50 mt-2 w-72 overflow-hidden rounded-2xl border border-gray-100 bg-white shadow-2xl shadow-black/5 backdrop-blur-xl dark:border-gray-800 dark:bg-gray-950 sf-fade-in">
@@ -337,7 +302,7 @@ const AccountMenu = ({ onClose }: { onClose?: () => void }) => {
         {[
           { icon: LayoutDashboard, label: 'Dashboard', href: '/store/account' },
           { icon: Package, label: 'My Orders', href: '/store/account/orders' },
-          { icon: Heart, label: 'My Wishlist', href: '/store/account/wishlist' },
+          { icon: Heart, label: 'Wishlist', href: '/store/account/wishlist' },
           { icon: MapPin, label: 'Saved Addresses', href: '/store/account/addresses' },
           { icon: Settings, label: 'Account Settings', href: '/store/account/settings' },
         ].map(({ icon: Icon, label, href }) => (
@@ -453,6 +418,8 @@ export default function StorefrontHeader() {
   const wishlistCount = useWishlistStore(s => s.items.length);
   const openCart = useCartStore(s => s.openDrawer);
   const { headerLogo, ready } = useBranding();
+  const user = useCustomerAuthStore(s => s.user);
+  const router = useRouter();
 
   useEffect(() => {
     const handleScroll = () => setScrolled(window.scrollY > 60);
@@ -548,10 +515,23 @@ export default function StorefrontHeader() {
               </Link>
 
               <div ref={accountRef} className="relative">
-                <button onClick={() => setAccountOpen(o => !o)} className="rounded-xl p-2.5 text-gray-600 transition-all hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-gray-800" aria-label="Account">
-                  <User className="h-5 w-5" />
+                <button
+                  onClick={() => {
+                    if (user) { setAccountOpen(o => !o); }
+                    else { router.push('/store/account/login'); }
+                  }}
+                  className="rounded-xl p-2.5 text-gray-600 transition-all hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-gray-800"
+                  aria-label="Account"
+                >
+                  {user ? (
+                    <span className="flex h-5 w-5 items-center justify-center rounded-full bg-gradient-to-br from-brand-600 to-purple-600 text-[11px] font-bold text-white">
+                      {user.name?.charAt(0)?.toUpperCase() || '?'}
+                    </span>
+                  ) : (
+                    <User className="h-5 w-5" />
+                  )}
                 </button>
-                {accountOpen && <AccountMenu onClose={() => setAccountOpen(false)} />}
+                {user && accountOpen && <AccountMenu onClose={() => setAccountOpen(false)} />}
               </div>
 
               <button onClick={openCart} className="relative inline-flex items-center gap-2.5 rounded-xl border border-gray-200 bg-white py-2.5 pl-3 pr-4 text-gray-900 shadow-sm transition-all hover:bg-gray-100 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100 dark:hover:bg-gray-700" aria-label={`Cart with ${itemCount} items, total ${formatMoney(subtotal)}`}>

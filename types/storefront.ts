@@ -121,11 +121,19 @@ export interface Address {
 }
 
 export interface CustomerUser {
-  id: string;
+  id: number;
+  uuid: string;
+  tenant_id: string | null;
   name: string;
   email: string;
   phone: string;
-  addresses?: Address[];
+  source: string;
+  type: string;
+  status: string;
+  email_verified_at: string | null;
+  last_login_at: string | null;
+  created_at: string;
+  updated_at: string;
 }
 
 export interface Order {
