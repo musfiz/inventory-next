@@ -209,7 +209,6 @@ export default function ProductDetailPage() {
                 </button>
               </div>
             </div>
-          </div>
 
           </ScrollReveal>
 
