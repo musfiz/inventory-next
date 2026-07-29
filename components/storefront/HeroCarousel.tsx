@@ -7,7 +7,8 @@ import { useRouter } from 'next/navigation';
 import { ChevronLeft, ChevronRight, ArrowRight, Search, Sparkles } from 'lucide-react';
 import type { StorefrontHeroSlider } from '@/services/storefrontService';
 
-const resolveImageUrl = (url: string) => {
+const resolveImageUrl = (url?: string | null) => {
+  if (!url) return '';
   if (/^https?:\/\//i.test(url)) return url;
   const baseUrl = (process.env.NEXT_PUBLIC_BACKEND_URL || '').replace(/\/+$/, '');
   if (!baseUrl) return url;
@@ -58,16 +59,22 @@ export default function HeroCarousel({ slides }: { slides: StorefrontHeroSlider[
           className={`absolute inset-0 h-full w-full transition-opacity duration-700 ${i === index ? 'opacity-100' : 'opacity-0 pointer-events-none'
             }`}
         >
-          <Image
-            src={resolveImageUrl(b.image_url)}
-            alt={b.alt_text || b.title || 'Hero slide'}
-            fill
-            sizes="(max-width: 1024px) 100vw, 75vw"
-            className="object-cover"
-            priority={i === 0}
-            loading={i === 0 ? 'eager' : 'lazy'}
-            unoptimized
-          />
+          {b.image_url ? (
+            <Image
+              src={resolveImageUrl(b.image_url)}
+              alt={b.alt_text || b.title || 'Hero slide'}
+              fill
+              sizes="(max-width: 1024px) 100vw, 75vw"
+              className="object-cover"
+              priority={i === 0}
+              loading={i === 0 ? 'eager' : 'lazy'}
+              unoptimized
+            />
+          ) : (
+            <div className="flex h-full w-full items-center justify-center bg-linear-to-br from-brand-600 to-purple-700">
+              <span className="text-4xl font-black text-white/20">{b.title?.[0] || 'S'}</span>
+            </div>
+          )}
           <div className="absolute inset-0 bg-linear-to-r from-gray-900/80 to-gray-800/60" aria-hidden />
           <div className="absolute inset-0 flex items-center">
             <div className="mx-auto w-full max-w-7xl px-6 lg:px-12">

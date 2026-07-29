@@ -1,108 +1,213 @@
 'use client';
 
-import { useState, useMemo, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
 import { useParams, notFound } from 'next/navigation';
-import { ChevronDown, SlidersHorizontal, X, ArrowRight } from 'lucide-react';
+import { ChevronDown, ArrowRight } from 'lucide-react';
 import ProductCard from '@/components/storefront/ProductCard';
+import ProductCardSkeleton from '@/components/storefront/ProductCardSkeleton';
 import ScrollReveal from '@/components/storefront/ScrollReveal';
-import { CATEGORIES, PRODUCTS } from '@/lib/storefront/mock-data';
 import type { Product } from '@/types/storefront';
+import storefrontService from '@/services/storefrontService';
+import type { CategoryPageData } from '@/services/storefrontService';
 
 const SORTS = [
   { id: 'featured', label: 'Featured' },
   { id: 'newest', label: 'Newest' },
   { id: 'price_asc', label: 'Price: Low to High' },
   { id: 'price_desc', label: 'Price: High to Low' },
-  { id: 'rating', label: 'Top Rated' },
 ] as const;
 
 const ITEMS_PER_PAGE = 8;
 
 export default function CategoryPage() {
   const { categorySlug } = useParams<{ categorySlug: string }>();
-  const category = CATEGORIES.find(c => c.slug === categorySlug);
   const [sort, setSort] = useState<(typeof SORTS)[number]['id']>('featured');
-  const [filterOpen, setFilterOpen] = useState(false);
-  const [inStockOnly, setInStockOnly] = useState(false);
-  const [visibleCount, setVisibleCount] = useState(ITEMS_PER_PAGE);
 
-  const childCats = category ? CATEGORIES.filter(c => c.parentId === category.id) : [];
+  // Category state
+  const [category, setCategory] = useState<CategoryPageData | null>(null);
+  const [categoryLoading, setCategoryLoading] = useState(true);
+  const [is404, setIs404] = useState(false);
 
-  const allFiltered = useMemo(() => {
-    if (!category) return [];
-    const descendantIds = new Set<string>([category.id]);
-    childCats.forEach(c => descendantIds.add(c.id));
-    childCats.forEach(c =>
-      CATEGORIES.filter(cc => cc.parentId === c.id).forEach(cc => descendantIds.add(cc.id))
-    );
-    let list = PRODUCTS.filter(p => descendantIds.has(p.category.id));
-    if (inStockOnly) list = list.filter(p => p.variations.some(v => v.stock > 0));
-    const sortFns: Record<string, (a: Product, b: Product) => number> = {
-      featured: (a, b) => Number(b.isFeatured) - Number(a.isFeatured),
-      newest: (a, b) => Number(b.isNew) - Number(a.isNew),
-      price_asc: (a, b) => a.variations[0].sellingPrice - b.variations[0].sellingPrice,
-      price_desc: (a, b) => b.variations[0].sellingPrice - a.variations[0].sellingPrice,
-      rating: (a, b) => b.rating - a.rating,
-    };
-    return [...list].sort(sortFns[sort]);
-  }, [category, childCats, sort, inStockOnly]);
-
-  const filtered = allFiltered.slice(0, visibleCount);
-  const hasMore = visibleCount < allFiltered.length;
+  // Products state
+  const [products, setProducts] = useState<Product[]>([]);
+  const [productsLoading, setProductsLoading] = useState(true);
+  const [meta, setMeta] = useState({ current_page: 1, last_page: 1, total: 0 });
+  const [hasMore, setHasMore] = useState(false);
+  const [bannerError, setBannerError] = useState(false);
 
   const sentinelRef = useRef<HTMLDivElement>(null);
 
-  const loadMore = () => {
-    if (hasMore) setVisibleCount(prev => Math.min(prev + ITEMS_PER_PAGE, allFiltered.length));
+  // Helpers — image URL resolver
+  const resolveImageUrl = (url?: string | null) => {
+    if (!url) return '';
+    if (/^https?:\/\//i.test(url) || url.startsWith('data:') || url.startsWith('blob:')) return url;
+    const baseUrl = (process.env.NEXT_PUBLIC_BACKEND_URL || '').replace(/\/+$/, '');
+    if (!baseUrl) return url;
+    return `${baseUrl}${url.startsWith('/') ? url : '/' + url}`;
   };
 
-  useEffect(() => {
-    setVisibleCount(ITEMS_PER_PAGE);
-  }, [sort, inStockOnly]);
+  const apiSortParam = (s: string) => (['featured', 'newest'].includes(s) ? s : 'featured');
+  const sortClientSide = (data: Product[], s: string) => {
+    if (s === 'price_asc') {
+      return [...data].sort((a, b) => (a.variations[0]?.sellingPrice ?? 0) - (b.variations[0]?.sellingPrice ?? 0));
+    }
+    if (s === 'price_desc') {
+      return [...data].sort((a, b) => (b.variations[0]?.sellingPrice ?? 0) - (a.variations[0]?.sellingPrice ?? 0));
+    }
+    return data;
+  };
 
+  // Fetch category by slug
+  useEffect(() => {
+    if (!categorySlug) return;
+    setCategoryLoading(true);
+    setIs404(false);
+    storefrontService
+      .getCategoryBySlug(categorySlug)
+      .then(data => {
+        setCategory(data);
+        setCategoryLoading(false);
+      })
+      .catch(err => {
+        if (err?.response?.status === 404) setIs404(true);
+        setCategoryLoading(false);
+      });
+  }, [categorySlug]);
+
+  // Fetch products when category loads or sort changes
+  useEffect(() => {
+    if (!category?.id) return;
+    setProductsLoading(true);
+    storefrontService
+      .getProducts({
+        category_id: Number(category.id),
+        sort: apiSortParam(sort),
+        page: 1,
+        per_page: ITEMS_PER_PAGE,
+      })
+      .then(res => {
+        setProducts(sortClientSide(res.data, sort));
+        setMeta(res.meta);
+        setHasMore(res.meta.current_page < res.meta.last_page);
+        setProductsLoading(false);
+      })
+      .catch(() => {
+        setProducts([]);
+        setProductsLoading(false);
+      });
+  }, [category?.id, sort]);
+
+  // Load more pagination
+  const loadMore = () => {
+    if (!hasMore || !category?.id || productsLoading) return;
+    const nextPage = meta.current_page + 1;
+    storefrontService
+      .getProducts({
+        category_id: Number(category.id),
+        sort: apiSortParam(sort),
+        page: nextPage,
+        per_page: ITEMS_PER_PAGE,
+      })
+      .then(res => {
+        setProducts(prev => [...prev, ...sortClientSide(res.data, sort)]);
+        setMeta(res.meta);
+        setHasMore(res.meta.current_page < res.meta.last_page);
+      })
+      .catch(() => {});
+  };
+
+  // IntersectionObserver for infinite scroll
   useEffect(() => {
     const el = sentinelRef.current;
-    if (!el || !hasMore) return;
-    const obs = new IntersectionObserver(entries => {
-      if (entries[0].isIntersecting) loadMore();
-    }, { rootMargin: '200px' });
+    if (!el || !hasMore || productsLoading) return;
+    const obs = new IntersectionObserver(
+      entries => {
+        if (entries[0].isIntersecting) loadMore();
+      },
+      { rootMargin: '200px' },
+    );
     obs.observe(el);
     return () => obs.disconnect();
-  }, [hasMore]);
+  }, [hasMore, productsLoading]);
 
-  if (!category) notFound();
+  // 404 handling
+  if (is404) notFound();
+  if (!categoryLoading && !category && !is404) notFound();
+
+  // Loading skeleton
+  if (categoryLoading) {
+    return (
+      <div className="bg-gray-50 dark:bg-gray-950">
+        <div className="relative h-44 animate-pulse overflow-hidden bg-gray-200 sm:h-60 dark:bg-gray-800" />
+        <div className="mx-auto max-w-7xl px-4 py-6">
+          <div className="mb-6 flex flex-wrap gap-2">
+            {[...Array(4)].map((_, i) => (
+              <div key={i} className="h-9 w-24 animate-pulse rounded-full bg-gray-200 dark:bg-gray-800" />
+            ))}
+          </div>
+          <div className="mb-5 h-14 animate-pulse rounded-2xl bg-gray-200 dark:bg-gray-800" />
+          <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
+            {[...Array(8)].map((_, i) => (
+              <ProductCardSkeleton key={i} />
+            ))}
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="bg-gray-50 dark:bg-gray-950">
       {/* Hero */}
       <ScrollReveal animation="fade-up" duration="normal" as="div" className="relative h-44 overflow-hidden sm:h-60">
-        {category.image ? (
+        {/* Default gradient design — always rendered as base layer */}
+        <div className="absolute inset-0 overflow-hidden">
+          <div className="absolute inset-0 bg-linear-to-br from-brand-600 via-brand-700 to-purple-800" />
+          <div
+            className="absolute inset-0 opacity-[0.08]"
+            style={{
+              backgroundImage: 'radial-gradient(circle, white 1px, transparent 1px)',
+              backgroundSize: '24px 24px',
+            }}
+          />
+          <div className="absolute -right-24 -top-24 h-96 w-96 rounded-full border-[40px] border-white/5" />
+          <div className="absolute -bottom-32 -left-32 h-80 w-80 rounded-full border-[40px] border-white/5" />
+          <div
+            className="pointer-events-none absolute inset-0 flex select-none items-center justify-center"
+            aria-hidden="true"
+          >
+            <span className="whitespace-nowrap text-[10rem] font-black leading-none tracking-widest text-white/5 sm:text-[16rem]">
+              {category!.name}
+            </span>
+          </div>
+        </div>
+        {/* Banner image — layered on top; hidden if missing or broken */}
+        {category?.banner_image && !bannerError ? (
           <Image
-            src={category.image}
-            alt={category.name}
+            src={resolveImageUrl(category.banner_image)}
+            alt={category!.name}
             fill
             sizes="100vw"
             className="object-cover"
             priority
+            onError={() => setBannerError(true)}
           />
-        ) : (
-          <div className="absolute inset-0 bg-linear-to-br from-brand-600 to-purple-700" />
-        )}
+        ) : null}
         <div className="absolute inset-0 bg-linear-to-t from-black/70 via-black/30 to-transparent" />
         <div className="absolute inset-0 flex flex-col justify-end">
           <div className="mx-auto w-full max-w-7xl px-4 pb-6">
             <nav className="text-xs text-white/80">
               <Link href="/" className="hover:text-white">Home</Link>
               <span className="mx-2">/</span>
-              <span className="font-semibold text-white">{category.name}</span>
+              <span className="font-semibold text-white">{category!.name}</span>
             </nav>
             <h1 className="mt-2 text-3xl font-black text-white sm:text-4xl">
-              {category.name}
+              {category!.name}
             </h1>
             <p className="mt-1 text-sm text-white/80">
-              {filtered.length} products available
+              {meta.total} product{meta.total !== 1 ? 's' : ''} available
             </p>
           </div>
         </div>
@@ -110,9 +215,9 @@ export default function CategoryPage() {
 
       <div className="mx-auto max-w-7xl px-4 py-6">
         {/* Subcategory chips */}
-        {childCats.length > 0 && (
+        {category!.children.length > 0 && (
           <div className="mb-6 flex flex-wrap gap-2">
-            {childCats.map((c, i) => (
+            {category!.children.map((c, i) => (
               <ScrollReveal key={c.id} animation="pop" staggerIndex={i} staggerGap={60}>
                 <Link
                   href={`/store/category/${c.slug}`}
@@ -128,17 +233,10 @@ export default function CategoryPage() {
 
         {/* Toolbar */}
         <div className="mb-5 flex items-center justify-between gap-3 rounded-2xl border border-gray-200 bg-white p-3 dark:border-gray-800 dark:bg-gray-900">
-          <div className="flex items-center gap-3">
-            <button
-              onClick={() => setFilterOpen(true)}
-              className="inline-flex items-center gap-2 rounded-full border border-gray-300 px-4 py-2 text-sm font-semibold text-gray-700 lg:hidden dark:border-gray-700 dark:text-gray-300"
-            >
-              <SlidersHorizontal className="h-4 w-4" /> Filter
-            </button>
-            <p className="text-sm text-gray-500">
-              <span className="font-bold text-gray-900 dark:text-gray-100">{filtered.length}</span> products
-            </p>
-          </div>
+          <p className="text-sm text-gray-500">
+            <span className="font-bold text-gray-900 dark:text-gray-100">{products.length}</span> product{products.length !== 1 ? 's' : ''}
+            {meta.total > products.length && <span className="text-gray-400"> · {meta.total} total</span>}
+          </p>
           <div className="relative">
             <select
               value={sort}
@@ -153,8 +251,15 @@ export default function CategoryPage() {
           </div>
         </div>
 
-        {/* Grid */}
-        {filtered.length === 0 ? (
+        {/* Grid — loading state */}
+        {productsLoading && products.length === 0 ? (
+          <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
+            {[...Array(8)].map((_, i) => (
+              <ProductCardSkeleton key={i} />
+            ))}
+          </div>
+        ) : /* Empty state */
+        products.length === 0 ? (
           <div className="rounded-2xl border border-dashed border-gray-300 bg-white py-16 text-center dark:border-gray-700 dark:bg-gray-900">
             <p className="text-base font-bold text-gray-900 dark:text-gray-100">
               No products in this category yet
@@ -169,7 +274,7 @@ export default function CategoryPage() {
         ) : (
           <>
             <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
-              {filtered.map((p, i) => (
+              {products.map((p, i) => (
                 <ScrollReveal key={p.id} animation="zoom-in" staggerIndex={i}>
                   <ProductCard product={p} />
                 </ScrollReveal>
@@ -181,7 +286,7 @@ export default function CategoryPage() {
                   onClick={loadMore}
                   className="inline-flex items-center gap-2 rounded-full border border-gray-300 bg-white px-8 py-3 text-sm font-bold text-gray-700 transition-all hover:border-brand-400 hover:text-brand-600 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-300"
                 >
-                  Load more ({allFiltered.length - visibleCount} remaining)
+                  Load more ({meta.total - products.length} remaining)
                   <ChevronDown className="h-4 w-4" />
                 </button>
               </div>
@@ -189,31 +294,6 @@ export default function CategoryPage() {
           </>
         )}
       </div>
-
-      {/* Mobile filter drawer */}
-      {filterOpen && (
-        <div className="fixed inset-0 z-50 lg:hidden">
-          <div className="absolute inset-0 bg-black/50" onClick={() => setFilterOpen(false)} />
-          <div className="absolute left-0 top-0 h-full w-[88%] max-w-sm overflow-y-auto bg-white p-5 sf-slide-in-left dark:bg-gray-950">
-            <div className="mb-4 flex items-center justify-between">
-              <h2 className="text-base font-bold text-gray-900 dark:text-white">Filters</h2>
-              <button onClick={() => setFilterOpen(false)} className="rounded-full p-2 text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-800">
-                <X className="h-5 w-5" />
-              </button>
-            </div>
-            <label className="flex items-center gap-2 text-sm text-gray-700 dark:text-gray-300">
-              <input type="checkbox" className="sf-check" checked={inStockOnly} onChange={() => setInStockOnly(v => !v)} />
-              In stock only
-            </label>
-            <button
-              onClick={() => setFilterOpen(false)}
-              className="mt-6 w-full rounded-lg bg-brand-600 py-3 text-sm font-bold text-white"
-            >
-              Show {filtered.length} results
-            </button>
-          </div>
-        </div>
-      )}
     </div>
   );
 }

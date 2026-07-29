@@ -300,7 +300,13 @@ const SearchBar = ({ onClose }: { onClose?: () => void }) => {
                     className="flex w-full items-center gap-4 px-4 py-3 text-left transition-all hover:bg-linear-to-r hover:from-brand-50 hover:to-transparent dark:hover:from-brand-950/20"
                   >
                     <div className="relative h-14 w-14 shrink-0 overflow-hidden rounded-xl bg-gray-100 shadow-sm dark:bg-gray-800">
-                      <Image src={p.images[0]} alt={p.name} fill sizes="56px" className="object-cover" />
+                      {p.images[0] ? (
+                        <Image src={p.images[0]} alt={p.name} fill sizes="56px" className="object-cover" />
+                      ) : (
+                        <div className="flex h-full w-full items-center justify-center">
+                          <span className="text-lg font-bold text-gray-300 dark:text-gray-600">{p.name[0]}</span>
+                        </div>
+                      )}
                     </div>
                     <div className="min-w-0 flex-1">
                       <p className="truncate text-sm font-semibold text-gray-900 dark:text-gray-100">{p.name}</p>
@@ -365,7 +371,7 @@ const AccountMenu = ({ onClose }: { onClose?: () => void }) => {
 
 const MobileMenu = ({ open, onClose, headerLogo, ready }: { open: boolean; onClose: () => void; headerLogo: string | null; ready: boolean }) => {
   const [expanded, setExpanded] = useState<string | null>(null);
-  const { config: menu } = useHeaderMenu();
+  const { config: menu, ready: menuReady } = useHeaderMenu();
   if (!open) return null;
   const parentCats = CATEGORIES.filter(c => !c.parentId);
 
@@ -396,7 +402,14 @@ const MobileMenu = ({ open, onClose, headerLogo, ready }: { open: boolean; onClo
         <div className="px-3 py-4">
           <p className="mb-3 px-2 text-xs font-bold uppercase tracking-wider text-gray-500">Shop by Category</p>
           <ul className="space-y-0.5">
-            {hasCustomNav ? (
+            {!menuReady ? (
+              // Loading skeleton while header menu data is being fetched
+              [...Array(5)].map((_, i) => (
+                <li key={i}>
+                  <div className="h-11 animate-pulse rounded-xl bg-gray-100 dark:bg-gray-800" />
+                </li>
+              ))
+            ) : hasCustomNav ? (
               // Render custom nav items in mobile menu
               activeMenuItems.map((item: StorefrontNavigationItem) => {
                 const dropdownItems = item.dropdown_items || [];
@@ -509,7 +522,7 @@ export default function StorefrontHeader() {
   const wishlistCount = useWishlistStore(s => s.items.length);
   const openCart = useCartStore(s => s.openDrawer);
   const { headerLogo, ready } = useBranding();
-  const { config: menu } = useHeaderMenu();
+  const { config: menu, ready: menuReady } = useHeaderMenu();
   const user = useCustomerAuthStore(s => s.user);
   const router = useRouter();
 
@@ -613,7 +626,7 @@ export default function StorefrontHeader() {
   return (
     <>
       {/* Top announcement bar — dynamic from header-menu API */}
-      {menu.utility_bar_enabled && (
+      {menuReady && menu.utility_bar_enabled && (
         <div
           className="hidden text-xs lg:block"
           style={{ backgroundColor: menu.utility_bar_bg_color, color: menu.utility_bar_text_color }}
@@ -749,46 +762,55 @@ export default function StorefrontHeader() {
         {/* Category nav */}
         <nav className={`relative hidden border-t border-gray-100 bg-white/50 backdrop-blur-sm lg:block dark:border-gray-800 dark:bg-gray-950/50 ${scrolled ? 'hidden' : ''}`} onMouseLeave={() => setMenuWithDelay(null)}>
           <div className="mx-auto flex max-w-7xl items-center gap-1 px-4">
-            {/* All Categories button */}
-            {menu.navigation_show_all_categories && (
-              <div onMouseEnter={() => setMenuWithDelay('all')}>
-                <button className="flex items-center gap-2.5 rounded-xl bg-linear-to-r from-brand-600 to-purple-600 px-5 py-3 text-sm font-bold text-white shadow-md shadow-brand-600/20 transition-all hover:shadow-lg hover:shadow-brand-600/30">
-                  <Menu className="h-4 w-4" />
-                  All Categories
-                  <ChevronDown className={`h-4 w-4 transition-transform ${activeMenu === 'all' ? 'rotate-180' : ''}`} />
-                </button>
-              </div>
+            {menuReady ? (
+              <>
+                {/* All Categories button */}
+                {menu.navigation_show_all_categories && (
+                  <div onMouseEnter={() => setMenuWithDelay('all')}>
+                    <button className="flex items-center gap-2.5 rounded-xl bg-linear-to-r from-brand-600 to-purple-600 px-5 py-3 text-sm font-bold text-white shadow-md shadow-brand-600/20 transition-all hover:shadow-lg hover:shadow-brand-600/30">
+                      <Menu className="h-4 w-4" />
+                      All Categories
+                      <ChevronDown className={`h-4 w-4 transition-transform ${activeMenu === 'all' ? 'rotate-180' : ''}`} />
+                    </button>
+                  </div>
+                )}
+
+                {/* Menu items from admin config, or fallback to full category tree */}
+                {hasCustomNav
+                  ? activeMenuItems.map(renderNavItem)
+                  : parentCats.slice(0, 6).map(cat => {
+                      const hasSubs = CATEGORIES.some(c => c.parentId === cat.id);
+                      return (
+                        <div key={cat.id} className="relative" onMouseEnter={() => setMenuWithDelay(cat.id)}>
+                          <Link href={`/store/category/${cat.slug}`} className={`group flex items-center gap-1.5 rounded-xl px-3.5 py-3 text-sm font-semibold transition-all ${activeMenu === cat.id ? 'bg-brand-50 text-brand-600 dark:bg-brand-950/30 dark:text-brand-400' : 'text-gray-700 hover:bg-gray-100 hover:text-brand-600 dark:text-gray-200 dark:hover:bg-gray-800'}`}>
+                            {cat.name}
+                            {hasSubs && <ChevronDown className={`h-3.5 w-3.5 transition-transform ${activeMenu === cat.id ? 'rotate-180' : ''}`} />}
+                          </Link>
+                          {activeMenu === cat.id && hasSubs && <CategoryDropdown cat={cat} onClose={() => setMenuWithDelay(null)} onKeepOpen={() => { if (menuTimer.current) clearTimeout(menuTimer.current); }} />}
+                        </div>
+                      );
+                    })}
+
+                {/* Flash Sale & New Arrivals */}
+                <div className="ml-auto flex items-center gap-3">
+                  {menu.navigation_show_flash_sale && (
+                    <Link href="/store/products?filter=sale" className="flex items-center gap-1.5 rounded-full bg-linear-to-r from-rose-500 to-pink-500 px-4 py-1.5 text-xs font-bold text-white shadow-sm transition-all hover:shadow-md">
+                      <Gift className="h-3.5 w-3.5" /> Flash Sale
+                    </Link>
+                  )}
+                  {menu.navigation_show_new_arrivals && (
+                    <Link href="/store/products?filter=new" className="flex items-center gap-1.5 rounded-full bg-linear-to-r from-emerald-500 to-teal-500 px-4 py-1.5 text-xs font-bold text-white shadow-sm transition-all hover:shadow-md">
+                      <Sparkles className="h-3.5 w-3.5" /> New Arrivals
+                    </Link>
+                  )}
+                </div>
+              </>
+            ) : (
+              /* Loading skeleton while header menu data is being fetched */
+              [...Array(6)].map((_, i) => (
+                <div key={i} className="h-10 w-24 animate-pulse rounded-xl bg-gray-100 dark:bg-gray-800" />
+              ))
             )}
-
-            {/* Menu items from admin config, or fallback to full category tree */}
-            {hasCustomNav
-              ? activeMenuItems.map(renderNavItem)
-              : parentCats.slice(0, 6).map(cat => {
-                  const hasSubs = CATEGORIES.some(c => c.parentId === cat.id);
-                  return (
-                    <div key={cat.id} className="relative" onMouseEnter={() => setMenuWithDelay(cat.id)}>
-                      <Link href={`/store/category/${cat.slug}`} className={`group flex items-center gap-1.5 rounded-xl px-3.5 py-3 text-sm font-semibold transition-all ${activeMenu === cat.id ? 'bg-brand-50 text-brand-600 dark:bg-brand-950/30 dark:text-brand-400' : 'text-gray-700 hover:bg-gray-100 hover:text-brand-600 dark:text-gray-200 dark:hover:bg-gray-800'}`}>
-                        {cat.name}
-                        {hasSubs && <ChevronDown className={`h-3.5 w-3.5 transition-transform ${activeMenu === cat.id ? 'rotate-180' : ''}`} />}
-                      </Link>
-                      {activeMenu === cat.id && hasSubs && <CategoryDropdown cat={cat} onClose={() => setMenuWithDelay(null)} onKeepOpen={() => { if (menuTimer.current) clearTimeout(menuTimer.current); }} />}
-                    </div>
-                  );
-                })}
-
-            {/* Flash Sale & New Arrivals */}
-            <div className="ml-auto flex items-center gap-3">
-              {menu.navigation_show_flash_sale && (
-                <Link href="/store/products?filter=sale" className="flex items-center gap-1.5 rounded-full bg-linear-to-r from-rose-500 to-pink-500 px-4 py-1.5 text-xs font-bold text-white shadow-sm transition-all hover:shadow-md">
-                  <Gift className="h-3.5 w-3.5" /> Flash Sale
-                </Link>
-              )}
-              {menu.navigation_show_new_arrivals && (
-                <Link href="/store/products?filter=new" className="flex items-center gap-1.5 rounded-full bg-linear-to-r from-emerald-500 to-teal-500 px-4 py-1.5 text-xs font-bold text-white shadow-sm transition-all hover:shadow-md">
-                  <Sparkles className="h-3.5 w-3.5" /> New Arrivals
-                </Link>
-              )}
-            </div>
           </div>
           {activeMenu === 'all' && <MegaMenu onClose={() => setMenuWithDelay(null)} onKeepOpen={() => { if (menuTimer.current) clearTimeout(menuTimer.current); }} />}
         </nav>

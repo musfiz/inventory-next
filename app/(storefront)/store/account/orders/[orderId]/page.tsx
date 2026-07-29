@@ -167,13 +167,19 @@ export default function OrderDetailPage({
                   href={`/products/${item.slug}`}
                   className="relative h-20 w-20 shrink-0 overflow-hidden rounded-xl bg-gray-100 dark:bg-gray-800"
                 >
-                  <Image
-                    src={item.image}
-                    alt={item.name}
-                    fill
-                    sizes="80px"
-                    className="object-cover"
-                  />
+                  {item.image ? (
+                    <Image
+                      src={item.image}
+                      alt={item.name}
+                      fill
+                      sizes="80px"
+                      className="object-cover"
+                    />
+                  ) : (
+                    <div className="flex h-full w-full items-center justify-center">
+                      <span className="text-2xl font-bold text-gray-300 dark:text-gray-600">{item.name[0]}</span>
+                    </div>
+                  )}
                 </Link>
                 <div className="min-w-0 flex-1">
                   <Link

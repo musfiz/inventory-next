@@ -62,13 +62,19 @@ export function CartFlyProvider({ children }: { children: React.ReactNode }) {
             }}
           >
             <div className="h-16 w-16 overflow-hidden rounded-2xl border-2 border-brand-500 bg-white shadow-2xl">
-              <Image
-                src={item.image}
-                alt=""
-                width={64}
-                height={64}
-                className="h-full w-full object-cover"
-              />
+              {item.image ? (
+                <Image
+                  src={item.image}
+                  alt=""
+                  width={64}
+                  height={64}
+                  className="h-full w-full object-cover"
+                />
+              ) : (
+                <div className="flex h-full w-full items-center justify-center bg-gray-100">
+                  <span className="text-lg font-bold text-gray-300">{item.name[0]}</span>
+                </div>
+              )}
             </div>
           </div>
         );

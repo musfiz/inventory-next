@@ -378,7 +378,13 @@ export default function CheckoutPage() {
                 {items.map(item => (
                   <li key={item.variationId} className="flex gap-3">
                     <div className="relative h-14 w-14 shrink-0 overflow-hidden rounded-lg bg-gray-100 dark:bg-gray-800">
-                      <Image src={item.image} alt={item.name} fill sizes="56px" className="object-cover" />
+                      {item.image ? (
+                        <Image src={item.image} alt={item.name} fill sizes="56px" className="object-cover" />
+                      ) : (
+                        <div className="flex h-full w-full items-center justify-center">
+                          <span className="text-lg font-bold text-gray-300 dark:text-gray-600">{item.name[0]}</span>
+                        </div>
+                      )}
                       <span className="absolute -right-1.5 -top-1.5 flex h-5 min-w-[20px] items-center justify-center rounded-full bg-gray-900 px-1 text-[10px] font-bold text-white">
                         {item.quantity}
                       </span>

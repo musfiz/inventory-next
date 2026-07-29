@@ -157,13 +157,19 @@ export default function OrdersPage() {
                           key={i}
                           className="relative h-14 w-14 overflow-hidden rounded-lg border-2 border-white bg-gray-100 dark:border-gray-900"
                         >
-                          <Image
-                            src={it.image}
-                            alt={it.name}
-                            fill
-                            sizes="56px"
-                            className="object-cover"
-                          />
+                          {it.image ? (
+                            <Image
+                              src={it.image}
+                              alt={it.name}
+                              fill
+                              sizes="56px"
+                              className="object-cover"
+                            />
+                          ) : (
+                            <div className="flex h-full w-full items-center justify-center">
+                              <span className="text-lg font-bold text-gray-300 dark:text-gray-600">{it.name[0]}</span>
+                            </div>
+                          )}
                         </div>
                       ))}
                       {o.items.length > 3 && (

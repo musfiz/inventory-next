@@ -342,13 +342,15 @@ const OffersCarousel = ({ slides }: { slides: StorefrontOfferSlide[] }) => {
             className="group relative h-44 w-[85%] shrink-0 snap-center overflow-hidden rounded-2xl sm:w-[calc(50%-0.5rem)] lg:w-[calc(33.333%-0.667rem)]"
           >
             <div className="relative h-full w-full">
-              <Image
-                src={resolveOfferImageUrl(o.image_url)}
-                alt={o.title}
-                fill
-                sizes="(max-width: 640px) 85vw, (max-width: 1024px) 50vw, 33vw"
-                className="object-cover transition-transform duration-700 group-hover:scale-110"
-              />
+              {o.image_url ? (
+                <Image
+                  src={resolveOfferImageUrl(o.image_url)}
+                  alt={o.title}
+                  fill
+                  sizes="(max-width: 640px) 85vw, (max-width: 1024px) 50vw, 33vw"
+                  className="object-cover transition-transform duration-700 group-hover:scale-110"
+                />
+              ) : null}
             </div>
             <div
               className={`absolute inset-0 bg-linear-to-r ${o.accent || 'from-indigo-600/85 to-purple-700/85'}`}

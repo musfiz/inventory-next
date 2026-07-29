@@ -106,18 +106,21 @@ export default function CartPage() {
               <ul className="divide-y divide-gray-100 dark:divide-gray-800">
                 {items.map(item => (
                   <li key={item.variationId} className="flex gap-4 p-4 sm:p-5">
-                    <Link
-                      href={`/products/${item.slug}`}
-                      className="relative h-24 w-24 shrink-0 overflow-hidden rounded-xl bg-gray-100 dark:bg-gray-800"
-                    >
-                      <Image
-                        src={item.image}
-                        alt={item.name}
-                        fill
-                        sizes="96px"
-                        className="object-cover"
-                      />
-                    </Link>
+                      <div className="relative h-24 w-24 shrink-0 overflow-hidden rounded-xl bg-gray-100 dark:bg-gray-800">
+                        {item.image ? (
+                          <Image
+                            src={item.image}
+                            alt={item.name}
+                            fill
+                            sizes="96px"
+                            className="object-cover"
+                          />
+                        ) : (
+                          <div className="flex h-full w-full items-center justify-center">
+                            <span className="text-2xl font-bold text-gray-300 dark:text-gray-600">{item.name[0]}</span>
+                          </div>
+                        )}
+                      </div>
                     <div className="flex min-w-0 flex-1 flex-col">
                       <div className="flex items-start justify-between gap-3">
                         <Link href={`/products/${item.slug}`}>

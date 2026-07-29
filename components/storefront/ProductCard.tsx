@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import Image from 'next/image';
-import { Heart, Star, Plus } from 'lucide-react';
+import { Heart, Star, Plus, ImageIcon } from 'lucide-react';
 import { IoCartSharp } from 'react-icons/io5';
 import { useState } from 'react';
 import type { Product } from '@/types/storefront';
@@ -81,23 +81,31 @@ export default function ProductCard({
           onMouseEnter={() => setHovered(true)}
           onMouseLeave={() => setHovered(false)}
         >
-          <Image
-            src={product.images[0]}
-            alt={product.name}
-            fill
-            sizes="128px"
-            className="object-cover transition-opacity duration-500"
-            style={{ opacity: hovered && product.images[1] ? 0 : 1 }}
-          />
-          {product.images[1] && (
-            <Image
-              src={product.images[1]}
-              alt={product.name}
-              fill
-              sizes="128px"
-              className="object-cover transition-opacity duration-500"
-              style={{ opacity: hovered ? 1 : 0 }}
-            />
+          {product.images[0] ? (
+            <>
+              <Image
+                src={product.images[0]}
+                alt={product.name}
+                fill
+                sizes="128px"
+                className="object-cover transition-opacity duration-500"
+                style={{ opacity: hovered && product.images[1] ? 0 : 1 }}
+              />
+              {product.images[1] && (
+                <Image
+                  src={product.images[1]}
+                  alt={product.name}
+                  fill
+                  sizes="128px"
+                  className="object-cover transition-opacity duration-500"
+                  style={{ opacity: hovered ? 1 : 0 }}
+                />
+              )}
+            </>
+          ) : (
+            <div className="flex h-full w-full items-center justify-center">
+              <ImageIcon className="h-10 w-10 text-gray-300 dark:text-gray-600" />
+            </div>
           )}
         </div>
         <div className="flex flex-1 flex-col">
@@ -172,23 +180,31 @@ export default function ProductCard({
         onMouseEnter={() => { setHovered(true); if (product.images[1]) setShowQuickAdd(true); }}
         onMouseLeave={() => { setHovered(false); setShowQuickAdd(false); }}
       >
-        <Image
-          src={product.images[0]}
-          alt={product.name}
-          fill
-          sizes="(max-width: 640px) 50vw, (max-width: 1024px) 25vw, 20vw"
-          className="object-cover transition-opacity duration-500"
-          style={{ opacity: hovered && product.images[1] ? 0 : 1 }}
-        />
-        {product.images[1] && (
-          <Image
-            src={product.images[1]}
-            alt={product.name}
-            fill
-            sizes="(max-width: 640px) 50vw, (max-width: 1024px) 25vw, 20vw"
-            className="object-cover transition-opacity duration-500"
-            style={{ opacity: hovered ? 1 : 0 }}
-          />
+        {product.images[0] ? (
+          <>
+            <Image
+              src={product.images[0]}
+              alt={product.name}
+              fill
+              sizes="(max-width: 640px) 50vw, (max-width: 1024px) 25vw, 20vw"
+              className="object-cover transition-opacity duration-500"
+              style={{ opacity: hovered && product.images[1] ? 0 : 1 }}
+            />
+            {product.images[1] && (
+              <Image
+                src={product.images[1]}
+                alt={product.name}
+                fill
+                sizes="(max-width: 640px) 50vw, (max-width: 1024px) 25vw, 20vw"
+                className="object-cover transition-opacity duration-500"
+                style={{ opacity: hovered ? 1 : 0 }}
+              />
+            )}
+          </>
+        ) : (
+          <div className="flex h-full w-full items-center justify-center">
+            <ImageIcon className="h-14 w-14 text-gray-300 dark:text-gray-600" />
+          </div>
         )}
 
         {/* Badges */}
