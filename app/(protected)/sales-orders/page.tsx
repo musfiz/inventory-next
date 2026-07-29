@@ -434,7 +434,7 @@ export default function SalesOrdersPage() {
           <div className="bg-white rounded-2xl shadow-2xl w-full max-w-3xl flex flex-col max-h-[90vh] overflow-hidden">
 
             {/* Gradient header */}
-            <div className="bg-gradient-to-r from-blue-600 via-indigo-600 to-purple-600 px-6 py-4 text-white rounded-t-2xl flex items-start justify-between">
+            <div className="bg-linear-to-r from-blue-600 via-indigo-600 to-purple-600 px-6 py-4 text-white rounded-t-2xl flex items-start justify-between">
               <div>
                 <p className="text-xs font-semibold uppercase tracking-widest opacity-75 mb-0.5">Sales Order</p>
                 <h2 className="text-xl font-bold leading-tight">{currentSO?.invoice_number || '—'}</h2>
@@ -532,19 +532,19 @@ export default function SalesOrdersPage() {
 
                   {/* Financial summary */}
                   <div className="grid grid-cols-5 gap-2">
-                    <div className="bg-gradient-to-br from-blue-500 to-blue-600 rounded-xl p-2.5 text-white text-center shadow-sm">
+                    <div className="bg-linear-to-br from-blue-500 to-blue-600 rounded-xl p-2.5 text-white text-center shadow-sm">
                       <p className="text-xs opacity-80 mb-0.5">Grand Total</p>
                       <p className="text-base font-bold leading-tight">{Number(currentSO?.grand_total ?? 0).toFixed(2)}</p>
                     </div>
-                    <div className="bg-gradient-to-br from-emerald-500 to-emerald-600 rounded-xl p-2.5 text-white text-center shadow-sm">
+                    <div className="bg-linear-to-br from-emerald-500 to-emerald-600 rounded-xl p-2.5 text-white text-center shadow-sm">
                       <p className="text-xs opacity-80 mb-0.5">Paid</p>
                       <p className="text-base font-bold leading-tight">{Number(currentSO?.paid_amount ?? 0).toFixed(2)}</p>
                     </div>
-                    <div className={`bg-gradient-to-br ${Number(currentSO?.returned_amount ?? 0) > 0 ? 'from-orange-500 to-red-500' : 'from-gray-400 to-gray-500'} rounded-xl p-2.5 text-white text-center shadow-sm`}>
+                    <div className={`bg-linear-to-br ${Number(currentSO?.returned_amount ?? 0) > 0 ? 'from-orange-500 to-red-500' : 'from-gray-400 to-gray-500'} rounded-xl p-2.5 text-white text-center shadow-sm`}>
                       <p className="text-xs opacity-80 mb-0.5">Returned</p>
                       <p className="text-base font-bold leading-tight">{Number(currentSO?.returned_amount ?? 0).toFixed(2)}</p>
                     </div>
-                    <div className="bg-gradient-to-br from-amber-500 to-orange-500 rounded-xl p-2.5 text-white text-center shadow-sm">
+                    <div className="bg-linear-to-br from-amber-500 to-orange-500 rounded-xl p-2.5 text-white text-center shadow-sm">
                       <p className="text-xs opacity-80 mb-0.5">Discount</p>
                       <p className="text-base font-bold leading-tight">
                         {currentSO?.discount_type === 'percentage'
@@ -552,7 +552,7 @@ export default function SalesOrdersPage() {
                           : Number(currentSO?.discount_amount ?? 0).toFixed(2)}
                       </p>
                     </div>
-                    <div className="bg-gradient-to-br from-violet-500 to-purple-600 rounded-xl p-2.5 text-white text-center shadow-sm">
+                    <div className="bg-linear-to-br from-violet-500 to-purple-600 rounded-xl p-2.5 text-white text-center shadow-sm">
                       <p className="text-xs opacity-80 mb-0.5">Tax + Ship</p>
                       <p className="text-base font-bold leading-tight">
                         {(Number(currentSO?.tax_amount ?? 0) + Number(currentSO?.shipping_charge ?? 0)).toFixed(2)}
@@ -614,7 +614,7 @@ export default function SalesOrdersPage() {
                               ? 'No outstanding balance'
                               : `Record a payment of up to ৳${outstandingBalance.toFixed(2)}`
                           }
-                          className="flex items-center gap-1.5 px-4 py-1.5 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 disabled:opacity-50 disabled:cursor-not-allowed text-white rounded-lg text-sm font-medium shadow-sm transition-all"
+                          className="flex items-center gap-1.5 px-4 py-1.5 bg-linear-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 disabled:opacity-50 disabled:cursor-not-allowed text-white rounded-lg text-sm font-medium shadow-sm transition-all"
                         >
                           <DollarSign className="w-4 h-4" />
                           Record Payment
@@ -624,7 +624,7 @@ export default function SalesOrdersPage() {
                         <button
                           onClick={handleUpdate}
                           disabled={updating}
-                          className="px-5 py-1.5 bg-gradient-to-r from-violet-600 to-purple-600 hover:from-violet-700 hover:to-purple-700 disabled:opacity-60 text-white rounded-lg text-sm font-medium shadow-sm transition-all"
+                          className="px-5 py-1.5 bg-linear-to-r from-violet-600 to-purple-600 hover:from-violet-700 hover:to-purple-700 disabled:opacity-60 text-white rounded-lg text-sm font-medium shadow-sm transition-all"
                         >
                           {updating ? 'Saving…' : 'Save Changes'}
                         </button>
@@ -653,7 +653,7 @@ export default function SalesOrdersPage() {
                         <div className="rounded-xl overflow-hidden border border-blue-100 shadow-sm">
                           <table className="min-w-full text-sm">
                             <thead>
-                              <tr className="bg-gradient-to-r from-blue-600 to-indigo-600 text-white">
+                              <tr className="bg-linear-to-r from-blue-600 to-indigo-600 text-white">
                                 <th className="px-3 py-2 text-left text-xs font-semibold">#</th>
                                 <th className="px-3 py-2 text-left text-xs font-semibold">Product</th>
                                 <th className="px-3 py-2 text-left text-xs font-semibold">Variation</th>
@@ -927,13 +927,12 @@ export default function SalesOrdersPage() {
                                       </td>
                                       <td className="px-3 py-1.5">
                                         <span
-                                          className={`px-2 py-0.5 rounded-full text-xs font-medium ${
-                                            p.status === 'completed'
+                                          className={`px-2 py-0.5 rounded-full text-xs font-medium ${p.status === 'completed'
                                               ? 'bg-emerald-100 text-emerald-700'
                                               : p.status === 'pending'
-                                              ? 'bg-yellow-100 text-yellow-700'
-                                              : 'bg-gray-100 text-gray-600'
-                                          }`}
+                                                ? 'bg-yellow-100 text-yellow-700'
+                                                : 'bg-gray-100 text-gray-600'
+                                            }`}
                                         >
                                           {p.status ?? '-'}
                                         </span>
@@ -970,7 +969,7 @@ export default function SalesOrdersPage() {
       {showPaymentDialog && currentSO && (
         <div className="fixed inset-0 bg-black/70 backdrop-blur-sm z-[60] flex items-center justify-center p-4">
           <div className="bg-white rounded-2xl shadow-2xl w-full max-w-2xl flex flex-col max-h-[90vh] overflow-hidden">
-            <div className="bg-gradient-to-r from-emerald-600 via-teal-600 to-cyan-600 px-6 py-4 text-white rounded-t-2xl flex items-start justify-between">
+            <div className="bg-linear-to-r from-emerald-600 via-teal-600 to-cyan-600 px-6 py-4 text-white rounded-t-2xl flex items-start justify-between">
               <div>
                 <p className="text-xs font-semibold uppercase tracking-widest opacity-75 mb-0.5">Record Payment</p>
                 <h2 className="text-xl font-bold leading-tight">{currentSO.invoice_number}</h2>
@@ -1046,11 +1045,10 @@ export default function SalesOrdersPage() {
                         setPaymentErrors(rest);
                       }
                     }}
-                    className={`w-full px-3 py-1.5 border rounded-lg text-sm bg-white text-gray-800 focus:outline-none focus:ring-2 ${
-                      paymentErrors.payment_date
+                    className={`w-full px-3 py-1.5 border rounded-lg text-sm bg-white text-gray-800 focus:outline-none focus:ring-2 ${paymentErrors.payment_date
                         ? 'border-red-500 focus:ring-red-400'
                         : 'border-emerald-200 focus:ring-emerald-400'
-                    }`}
+                      }`}
                   />
                   {paymentErrors.payment_date && (
                     <p className="text-xs text-red-600 mt-1">
@@ -1228,7 +1226,7 @@ export default function SalesOrdersPage() {
               <button
                 onClick={submitPayment}
                 disabled={paymentSubmitting}
-                className="flex items-center gap-1.5 px-5 py-1.5 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 disabled:opacity-60 text-white rounded-lg text-sm font-medium shadow-sm transition-all"
+                className="flex items-center gap-1.5 px-5 py-1.5 bg-linear-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 disabled:opacity-60 text-white rounded-lg text-sm font-medium shadow-sm transition-all"
               >
                 {paymentSubmitting ? 'Saving…' : 'Record Payment'}
               </button>

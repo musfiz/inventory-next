@@ -95,31 +95,29 @@ export default function CountdownBannerPreview({
 
   return (
     <div
-      className={`relative w-full overflow-hidden rounded-md border ${
-        phase === 'after'
+      className={`relative w-full overflow-hidden rounded-md border ${phase === 'after'
           ? 'border-gray-300 dark:border-gray-600 opacity-60'
           : phase === 'invalid'
             ? 'border-red-300 dark:border-red-700'
             : 'border-gray-200 dark:border-gray-700'
-      } ${hasBanner ? '' : 'bg-gradient-to-br from-indigo-500 via-purple-500 to-pink-500'}`}
+        } ${hasBanner ? '' : 'bg-linear-to-br from-indigo-500 via-purple-500 to-pink-500'}`}
       style={{
         aspectRatio: '3 / 1',
         ...(hasBanner
           ? {
-              backgroundImage: `url(${banner_preview || banner_image_url})`,
-              backgroundSize: 'cover',
-              backgroundPosition: 'center',
-            }
+            backgroundImage: `url(${banner_preview || banner_image_url})`,
+            backgroundSize: 'cover',
+            backgroundPosition: 'center',
+          }
           : {}),
       }}
     >
       {/* Dark overlay for text readability */}
       <div
-        className={`absolute inset-0 ${
-          hasBanner
-            ? 'bg-gradient-to-r from-black/60 via-black/30 to-transparent'
+        className={`absolute inset-0 ${hasBanner
+            ? 'bg-linear-to-r from-black/60 via-black/30 to-transparent'
             : 'bg-black/10'
-        }`}
+          }`}
       />
 
       {/* Content */}
@@ -184,9 +182,8 @@ export default function CountdownBannerPreview({
             <div className="flex items-center gap-1.5">
               {!hasBanner && <ImageIcon className="w-4 h-4 text-white/50" />}
               <span
-                className={`text-xs italic drop-shadow-sm ${
-                  phase === 'invalid' ? 'text-red-300' : 'text-white/60'
-                }`}
+                className={`text-xs italic drop-shadow-sm ${phase === 'invalid' ? 'text-red-300' : 'text-white/60'
+                  }`}
               >
                 {label}
               </span>

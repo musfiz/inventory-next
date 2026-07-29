@@ -700,7 +700,7 @@ export default function SalesReturnsPage() {
                   <div className="overflow-x-auto rounded-lg border border-gray-200 dark:border-gray-600">
                     <table className="w-full text-xs border-collapse">
                       <thead>
-                        <tr className="bg-gradient-to-r from-blue-600 to-indigo-600 text-white">
+                        <tr className="bg-linear-to-r from-blue-600 to-indigo-600 text-white">
                           <th className="text-left px-3 py-2 font-semibold">Item</th>
                           <th className="text-center px-3 py-2 font-semibold w-32">Max Returnable</th>
                           <th className="text-center px-3 py-2 font-semibold w-28">Return Qty <span className="text-red-200">*</span></th>
@@ -851,7 +851,7 @@ export default function SalesReturnsPage() {
           <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
             <div className="bg-white dark:bg-gray-800 rounded-xl shadow-2xl w-full max-w-lg flex flex-col max-h-[90vh]">
               {/* Header */}
-              <div className="bg-gradient-to-r from-blue-600 to-indigo-600 px-5 py-4 rounded-t-xl flex items-center justify-between text-white shrink-0">
+              <div className="bg-linear-to-r from-blue-600 to-indigo-600 px-5 py-4 rounded-t-xl flex items-center justify-between text-white shrink-0">
                 <div>
                   <h2 className="font-bold text-lg">Return Details</h2>
                   <p className="text-sm opacity-80">{d.return_number} · {so.invoice_number ?? '-'}</p>
@@ -953,7 +953,7 @@ export default function SalesReturnsPage() {
                     </p>
                     <div className="overflow-x-auto rounded-lg border border-gray-200 dark:border-gray-600">
                       <table className="w-full text-xs border-collapse">
-                        <thead className="bg-gradient-to-r from-blue-600 to-indigo-600 text-white">
+                        <thead className="bg-linear-to-r from-blue-600 to-indigo-600 text-white">
                           <tr>
                             <th className="px-3 py-2 text-left font-semibold">Item</th>
                             <th className="px-3 py-2 text-center font-semibold">Qty</th>
@@ -1046,7 +1046,7 @@ export default function SalesReturnsPage() {
           <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
             <div className="bg-white dark:bg-gray-800 rounded-xl shadow-2xl w-full max-w-md flex flex-col">
               {/* Header */}
-              <div className="bg-gradient-to-r from-emerald-600 to-teal-600 px-5 py-4 rounded-t-xl flex items-center justify-between text-white">
+              <div className="bg-linear-to-r from-emerald-600 to-teal-600 px-5 py-4 rounded-t-xl flex items-center justify-between text-white">
                 <div>
                   <h2 className="font-bold text-lg">Settle Payment</h2>
                   <p className="text-sm opacity-80">{settleTarget.return_number} · {so?.invoice_number ?? '-'}</p>

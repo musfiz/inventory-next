@@ -415,7 +415,7 @@ export default function PosOrdersPage() {
           <div className="bg-white rounded-2xl shadow-2xl w-full max-w-3xl flex flex-col max-h-[90vh] overflow-hidden">
 
             {/* Header */}
-            <div className="bg-gradient-to-r from-blue-600 via-indigo-600 to-purple-600 px-6 py-4 text-white rounded-t-2xl flex items-start justify-between">
+            <div className="bg-linear-to-r from-blue-600 via-indigo-600 to-purple-600 px-6 py-4 text-white rounded-t-2xl flex items-start justify-between">
               <div>
                 <p className="text-xs font-semibold uppercase tracking-widest opacity-75 mb-0.5">POS Order</p>
                 <h2 className="text-xl font-bold leading-tight">{detailOrder?.invoice_number || '—'}</h2>
@@ -503,25 +503,25 @@ export default function PosOrdersPage() {
 
                   {/* Financial summary */}
                   <div className={`grid gap-2 ${Number(detailOrder.returned_amount ?? 0) > 0 ? 'grid-cols-5' : 'grid-cols-4'}`}>
-                    <div className="bg-gradient-to-br from-blue-500 to-blue-600 rounded-xl p-2.5 text-white text-center shadow-sm">
+                    <div className="bg-linear-to-br from-blue-500 to-blue-600 rounded-xl p-2.5 text-white text-center shadow-sm">
                       <p className="text-xs opacity-80 mb-0.5">Grand Total</p>
                       <p className={`text-base font-bold leading-tight ${detailOrder.status === 'refunded' ? 'line-through opacity-70' : ''}`}>৳{Number(detailOrder.grand_total ?? 0).toFixed(2)}</p>
                     </div>
                     {Number(detailOrder.returned_amount ?? 0) > 0 && (
-                      <div className="bg-gradient-to-br from-purple-500 to-purple-600 rounded-xl p-2.5 text-white text-center shadow-sm">
+                      <div className="bg-linear-to-br from-purple-500 to-purple-600 rounded-xl p-2.5 text-white text-center shadow-sm">
                         <p className="text-xs opacity-80 mb-0.5">Returned</p>
                         <p className="text-base font-bold leading-tight">৳{Number(detailOrder.returned_amount ?? 0).toFixed(2)}</p>
                       </div>
                     )}
-                    <div className="bg-gradient-to-br from-emerald-500 to-emerald-600 rounded-xl p-2.5 text-white text-center shadow-sm">
+                    <div className="bg-linear-to-br from-emerald-500 to-emerald-600 rounded-xl p-2.5 text-white text-center shadow-sm">
                       <p className="text-xs opacity-80 mb-0.5">Paid</p>
                       <p className="text-base font-bold leading-tight">৳{Number(detailOrder.paid_amount ?? 0).toFixed(2)}</p>
                     </div>
-                    <div className="bg-gradient-to-br from-amber-500 to-orange-500 rounded-xl p-2.5 text-white text-center shadow-sm">
+                    <div className="bg-linear-to-br from-amber-500 to-orange-500 rounded-xl p-2.5 text-white text-center shadow-sm">
                       <p className="text-xs opacity-80 mb-0.5">Due</p>
                       <p className="text-base font-bold leading-tight">৳{Number(detailOrder.due_amount ?? 0).toFixed(2)}</p>
                     </div>
-                    <div className="bg-gradient-to-br from-violet-500 to-purple-600 rounded-xl p-2.5 text-white text-center shadow-sm">
+                    <div className="bg-linear-to-br from-violet-500 to-purple-600 rounded-xl p-2.5 text-white text-center shadow-sm">
                       <p className="text-xs opacity-80 mb-0.5">Change</p>
                       <p className="text-base font-bold leading-tight">৳{Number(detailOrder.change_amount ?? 0).toFixed(2)}</p>
                     </div>
@@ -531,7 +531,7 @@ export default function PosOrdersPage() {
                   <div className="rounded-xl overflow-hidden border border-blue-100 shadow-sm">
                     <table className="min-w-full text-sm">
                       <thead>
-                        <tr className="bg-gradient-to-r from-blue-600 to-indigo-600 text-white">
+                        <tr className="bg-linear-to-r from-blue-600 to-indigo-600 text-white">
                           <th className="px-3 py-2 text-left text-xs font-semibold">#</th>
                           <th className="px-3 py-2 text-left text-xs font-semibold">Product</th>
                           <th className="px-3 py-2 text-left text-xs font-semibold">Variation</th>
@@ -650,7 +650,7 @@ export default function PosOrdersPage() {
           <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md overflow-hidden">
 
             {/* Header */}
-            <div className="bg-gradient-to-r from-emerald-500 to-teal-600 px-6 py-4 text-white flex items-start justify-between">
+            <div className="bg-linear-to-r from-emerald-500 to-teal-600 px-6 py-4 text-white flex items-start justify-between">
               <div>
                 <p className="text-xs font-semibold uppercase tracking-widest opacity-75 mb-0.5">Record Due Payment</p>
                 <h2 className="text-lg font-bold leading-tight">{paymentOrder.invoice_number}</h2>
@@ -738,7 +738,7 @@ export default function PosOrdersPage() {
               <button
                 onClick={handlePaymentSubmit}
                 disabled={paymentSubmitting}
-                className="px-5 py-1.5 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 disabled:opacity-60 text-white rounded-lg text-sm font-medium shadow-sm transition-all"
+                className="px-5 py-1.5 bg-linear-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 disabled:opacity-60 text-white rounded-lg text-sm font-medium shadow-sm transition-all"
               >
                 {paymentSubmitting ? 'Recording…' : 'Record Payment'}
               </button>

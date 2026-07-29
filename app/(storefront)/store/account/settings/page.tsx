@@ -57,7 +57,7 @@ export default function SettingsPage() {
           <User className="mr-1 inline h-4 w-4 text-brand-600" /> Profile
         </h2>
         <div className="mt-4 flex items-center gap-4">
-          <div className="flex h-16 w-16 items-center justify-center rounded-full bg-gradient-to-br from-brand-600 to-purple-600 text-2xl font-bold text-white">
+          <div className="flex h-16 w-16 items-center justify-center rounded-full bg-linear-to-br from-brand-600 to-purple-600 text-2xl font-bold text-white">
             {name.charAt(0).toUpperCase() || 'U'}
           </div>
           <div>
@@ -178,16 +178,14 @@ export default function SettingsPage() {
                 onClick={() =>
                   setPrefs({ ...prefs, [item.key]: !prefs[item.key as keyof typeof prefs] })
                 }
-                className={`relative h-6 w-11 rounded-full transition-colors ${
-                  prefs[item.key as keyof typeof prefs]
+                className={`relative h-6 w-11 rounded-full transition-colors ${prefs[item.key as keyof typeof prefs]
                     ? 'bg-brand-600'
                     : 'bg-gray-200 dark:bg-gray-700'
-                }`}
+                  }`}
               >
                 <span
-                  className={`absolute top-0.5 h-5 w-5 rounded-full bg-white shadow transition-transform ${
-                    prefs[item.key as keyof typeof prefs] ? 'translate-x-5' : 'translate-x-0.5'
-                  }`}
+                  className={`absolute top-0.5 h-5 w-5 rounded-full bg-white shadow transition-transform ${prefs[item.key as keyof typeof prefs] ? 'translate-x-5' : 'translate-x-0.5'
+                    }`}
                 />
               </button>
             </label>

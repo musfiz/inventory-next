@@ -26,11 +26,10 @@ function Input({ className = '', error, ...props }: React.InputHTMLAttributes<HT
   return (
     <input
       {...props}
-      className={`w-full rounded-lg border bg-white px-3 py-2.5 text-sm outline-none transition-all focus:ring-2 dark:bg-gray-900 dark:text-gray-100 ${
-        error
+      className={`w-full rounded-lg border bg-white px-3 py-2.5 text-sm outline-none transition-all focus:ring-2 dark:bg-gray-900 dark:text-gray-100 ${error
           ? 'border-red-400 focus:border-red-500 focus:ring-red-500/20'
           : 'border-gray-300 focus:border-brand-500 focus:ring-brand-500/20 dark:border-gray-700'
-      } ${className}`}
+        } ${className}`}
     />
   );
 }
@@ -245,11 +244,11 @@ export default function AuthPage() {
   const toggle = useCallback(() => setTab(t => (t === 'login' ? 'register' : 'login')), []);
 
   return (
-    <div className="flex min-h-[calc(100vh-200px)] items-center justify-center bg-gradient-to-br from-gray-50 via-white to-gray-50 px-4 py-10 dark:from-gray-950 dark:via-gray-950 dark:to-gray-900">
+    <div className="flex min-h-[calc(100vh-200px)] items-center justify-center bg-linear-to-br from-gray-50 via-white to-gray-50 px-4 py-10 dark:from-gray-950 dark:via-gray-950 dark:to-gray-900">
       <div className="grid w-full max-w-5xl gap-0 overflow-hidden rounded-3xl bg-white shadow-2xl shadow-gray-200/60 dark:bg-gray-950 dark:shadow-gray-950 lg:grid-cols-5">
 
         {/* ──── brand / value panel ──── */}
-        <div className="relative flex flex-col justify-between bg-gradient-to-br from-brand-700 via-brand-600 to-purple-700 p-8 text-white lg:col-span-2">
+        <div className="relative flex flex-col justify-between bg-linear-to-br from-brand-700 via-brand-600 to-purple-700 p-8 text-white lg:col-span-2">
           {/* subtle pattern overlay */}
           <div className="pointer-events-none absolute inset-0 opacity-[0.04]" style={{ backgroundImage: 'radial-gradient(circle at 25px 25px, white 2px, transparent 0)', backgroundSize: '40px 40px' }} />
 
@@ -258,7 +257,7 @@ export default function AuthPage() {
               <Sparkles className="h-6 w-6" />
             </div>
             <h2 className="relative mt-6 text-3xl font-black leading-tight tracking-tight">
-              {tab === 'login' ? 'Welcome back' : 'Join UIMS today'}
+              {tab === 'login' ? 'Welcome back' : 'Create your account'}
             </h2>
             <p className="relative mt-2 text-sm leading-relaxed text-white/80">
               {tab === 'login'
@@ -302,21 +301,19 @@ export default function AuthPage() {
           <div className="mb-8 flex gap-1 rounded-2xl bg-gray-100 p-1 dark:bg-gray-800">
             <button
               onClick={() => setTab('login')}
-              className={`flex-1 rounded-xl py-2.5 text-sm font-bold transition-all ${
-                tab === 'login'
+              className={`flex-1 rounded-xl py-2.5 text-sm font-bold transition-all ${tab === 'login'
                   ? 'bg-white text-gray-900 shadow-sm dark:bg-gray-950 dark:text-white'
                   : 'text-gray-500 hover:text-gray-700 dark:text-gray-400'
-              }`}
+                }`}
             >
               Sign in
             </button>
             <button
               onClick={() => setTab('register')}
-              className={`flex-1 rounded-xl py-2.5 text-sm font-bold transition-all ${
-                tab === 'register'
+              className={`flex-1 rounded-xl py-2.5 text-sm font-bold transition-all ${tab === 'register'
                   ? 'bg-white text-gray-900 shadow-sm dark:bg-gray-950 dark:text-white'
                   : 'text-gray-500 hover:text-gray-700 dark:text-gray-400'
-              }`}
+                }`}
             >
               Create account
             </button>

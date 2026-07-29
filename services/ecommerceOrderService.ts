@@ -328,6 +328,42 @@ class EcommerceOrderService {
     }
   }
 
+  // ── Track by Order Number ────────────────────────────────────────────
+
+  async trackByOrderNumber(orderNumber: string): Promise<OrderDetail | null> {
+    try {
+      const response = await apiClient.get(`${API_BASE}/track/${encodeURIComponent(orderNumber)}`);
+      const order = response.data?.data?.order || response.data?.data;
+      if (order) {
+        return {
+          ...order,
+          id: String(order.id),
+          items: (order.items || []).map((i: any) => ({ ...i, id: String(i.id) })),
+          payments: order.payments || [],
+          status_history: order.status_history || [],
+          timeline: order.status_history
+            ? order.status_history.map((h: any, idx: number, arr: any[]) => {
+                const allStatuses = ['placed', 'confirmed', 'packed', 'shipped', 'delivered'];
+                const currentIdx = allStatuses.indexOf(order.status);
+                const i = allStatuses.indexOf(h.status);
+                return {
+                  status: h.status,
+                  label: h.status.charAt(0).toUpperCase() + h.status.slice(1),
+                  timestamp: h.timestamp,
+                  is_completed: i < currentIdx,
+                  is_current: i === currentIdx,
+                  note: h.note,
+                };
+              })
+            : [],
+        };
+      }
+      return null;
+    } catch {
+      return null; // Real API only, no mock fallback
+    }
+  }
+
   // ── Get KPIs ──────────────────────────────────────────────────────────
 
   async getKPIs(): Promise<OrderKPIs> {

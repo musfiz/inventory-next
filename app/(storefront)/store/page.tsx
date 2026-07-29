@@ -57,7 +57,7 @@ const CategoryStrip = () => {
   const visible = CATEGORIES.filter(c => !c.parentId).slice(0, 10);
   return (
     <section className="py-10 sm:py-12">
-      <ScrollReveal animation="fade-up"  as="div" className="mb-6">
+      <ScrollReveal animation="fade-up" as="div" className="mb-6">
         <div className="flex items-end justify-between">
           <div>
             <h2 className="text-2xl font-black text-gray-900 dark:text-white sm:text-3xl">
@@ -84,7 +84,7 @@ const CategoryStrip = () => {
               href={`/store/category/${cat.slug}`}
               className="group flex flex-col items-center gap-2 rounded-2xl border border-gray-200 bg-white p-3 text-center transition-all hover:-translate-y-1 hover:border-brand-300 hover:shadow-lg dark:border-gray-800 dark:bg-gray-900 dark:hover:border-brand-700"
             >
-              <div className="relative aspect-square w-full overflow-hidden rounded-xl bg-gradient-to-br from-brand-50 to-purple-50 dark:from-brand-950/30 dark:to-purple-950/30">
+              <div className="relative aspect-square w-full overflow-hidden rounded-xl bg-linear-to-br from-brand-50 to-purple-50 dark:from-brand-950/30 dark:to-purple-950/30">
                 {cat.image ? (
                   <Image
                     src={cat.image}
@@ -139,8 +139,8 @@ const FlashSale = () => {
   if (saleProducts.length === 0) return null;
 
   return (
-    <section className="my-10 overflow-hidden rounded-2xl bg-gradient-to-br from-rose-600 via-pink-600 to-purple-700 p-6 sm:p-8 text-white sm:my-12">
-      <ScrollReveal animation="fade-up"  as="div" className="mb-6">
+    <section className="my-10 overflow-hidden rounded-2xl bg-linear-to-br from-rose-600 via-pink-600 to-purple-700 p-6 sm:p-8 text-white sm:my-12">
+      <ScrollReveal animation="fade-up" as="div" className="mb-6">
         <div className="flex flex-wrap items-end justify-between gap-3">
           <div>
             <div className="flex items-center gap-2">
@@ -213,7 +213,7 @@ const ProductSection = ({
 
   return (
     <section className={`py-8 sm:py-10 ${bgClass}`}>
-      <ScrollReveal animation="fade-up"  as="div" className="mb-6">
+      <ScrollReveal animation="fade-up" as="div" className="mb-6">
         <div className="flex items-end justify-between">
           <div className="flex items-center gap-3">
             <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-brand-50 text-brand-600 dark:bg-brand-950/50">
@@ -342,13 +342,13 @@ const OffersCarousel = ({ slides }: { slides: StorefrontOfferSlide[] }) => {
             className="group relative h-44 w-[85%] shrink-0 snap-center overflow-hidden rounded-2xl sm:w-[calc(50%-0.5rem)] lg:w-[calc(33.333%-0.667rem)]"
           >
             <div className="relative h-full w-full">
-            <Image
-              src={resolveOfferImageUrl(o.image_url)}
-              alt={o.title}
-              fill
-              sizes="(max-width: 640px) 85vw, (max-width: 1024px) 50vw, 33vw"
-              className="object-cover transition-transform duration-700 group-hover:scale-110"
-            />
+              <Image
+                src={resolveOfferImageUrl(o.image_url)}
+                alt={o.title}
+                fill
+                sizes="(max-width: 640px) 85vw, (max-width: 1024px) 50vw, 33vw"
+                className="object-cover transition-transform duration-700 group-hover:scale-110"
+              />
             </div>
             <div
               className={`absolute inset-0 bg-linear-to-r ${o.accent || 'from-indigo-600/85 to-purple-700/85'}`}
@@ -412,7 +412,7 @@ const RecentlyViewed = () => {
 
   return (
     <section className="py-8 sm:py-10">
-      <ScrollReveal animation="fade-up"  as="div" className="mb-6">
+      <ScrollReveal animation="fade-up" as="div" className="mb-6">
         <div className="flex items-end justify-between">
           <div className="flex items-center gap-3">
             <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-brand-50 text-brand-600 dark:bg-brand-950/50">

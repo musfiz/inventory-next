@@ -198,19 +198,18 @@ export default function Home() {
     <div className="min-h-screen bg-white">
       {/* ─── Navigation ───────────────────────────────────────────── */}
       <nav
-        className={`fixed top-0 left-0 right-0 z-50 transition-all duration-300 ${
-          scrolled
+        className={`fixed top-0 left-0 right-0 z-50 transition-all duration-300 ${scrolled
             ? 'bg-white/90 backdrop-blur-xl shadow-sm'
             : 'bg-transparent'
-        }`}
+          }`}
       >
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex items-center justify-between h-16 lg:h-20">
             <Link href="/" className="flex items-center gap-2.5 group">
-              <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-indigo-600 to-purple-600 flex items-center justify-center shadow-sm group-hover:shadow-md transition-shadow">
+              <div className="w-9 h-9 rounded-xl bg-linear-to-br from-indigo-600 to-purple-600 flex items-center justify-center shadow-sm group-hover:shadow-md transition-shadow">
                 <Package className="w-5 h-5 text-white" />
               </div>
-              <span className="text-xl font-bold bg-gradient-to-r from-indigo-600 to-purple-600 bg-clip-text text-transparent">
+              <span className="text-xl font-bold bg-linear-to-r from-indigo-600 to-purple-600 bg-clip-text text-transparent">
                 Universal IMS
               </span>
             </Link>
@@ -246,7 +245,7 @@ export default function Home() {
                 </div>
               ) : (
                 <div className="flex items-center gap-3">
-                  <Link href="/login" className="px-5 py-2.5 text-sm font-semibold text-white bg-gradient-to-r from-indigo-600 to-purple-600 rounded-xl hover:from-indigo-700 hover:to-purple-700 transition-all shadow-sm hover:shadow-md">
+                  <Link href="/login" className="px-5 py-2.5 text-sm font-semibold text-white bg-linear-to-r from-indigo-600 to-purple-600 rounded-xl hover:from-indigo-700 hover:to-purple-700 transition-all shadow-sm hover:shadow-md">
                     Sign In
                   </Link>
                 </div>
@@ -281,7 +280,7 @@ export default function Home() {
                   </button>
                 </>
               ) : (
-                <Link href="/login" onClick={() => setMobileMenuOpen(false)} className="block w-full text-center px-4 py-3 text-sm font-semibold text-white bg-gradient-to-r from-indigo-600 to-purple-600 rounded-xl">
+                <Link href="/login" onClick={() => setMobileMenuOpen(false)} className="block w-full text-center px-4 py-3 text-sm font-semibold text-white bg-linear-to-r from-indigo-600 to-purple-600 rounded-xl">
                   Get Started
                 </Link>
               )}
@@ -292,9 +291,9 @@ export default function Home() {
 
       {/* ─── Hero ─────────────────────────────────────────────────── */}
       <section className="relative min-h-[90vh] flex items-center pt-20 lg:pt-0 overflow-hidden">
-        <div className="absolute inset-0 bg-gradient-to-br from-indigo-50 via-white to-purple-50" />
-        <div className="absolute top-0 right-0 w-1/2 h-full bg-gradient-to-bl from-indigo-100/40 to-transparent hidden lg:block" />
-        <div className="absolute bottom-0 left-0 right-0 h-32 bg-gradient-to-t from-white to-transparent" />
+        <div className="absolute inset-0 bg-linear-to-br from-indigo-50 via-white to-purple-50" />
+        <div className="absolute top-0 right-0 w-1/2 h-full bg-linear-to-bl from-indigo-100/40 to-transparent hidden lg:block" />
+        <div className="absolute bottom-0 left-0 right-0 h-32 bg-linear-to-t from-white to-transparent" />
 
         <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16 lg:py-24">
           <div className="grid lg:grid-cols-2 gap-12 lg:gap-16 items-center">
@@ -306,7 +305,7 @@ export default function Home() {
 
               <h1 className="text-4xl sm:text-5xl lg:text-6xl font-extrabold text-gray-900 leading-tight">
                 Universal{' '}
-                <span className="bg-gradient-to-r from-indigo-600 via-purple-600 to-pink-500 bg-clip-text text-transparent">
+                <span className="bg-linear-to-r from-indigo-600 via-purple-600 to-pink-500 bg-clip-text text-transparent">
                   Inventory
                 </span>
                 <br />
@@ -321,7 +320,7 @@ export default function Home() {
               <div className="flex flex-col sm:flex-row gap-4">
                 <Link
                   href={isAuthenticated ? '/dashboard' : '/login'}
-                  className="inline-flex items-center justify-center gap-2 px-8 py-3.5 text-base font-semibold text-white bg-gradient-to-r from-indigo-600 to-purple-600 rounded-xl hover:from-indigo-700 hover:to-purple-700 transition-all shadow-lg hover:shadow-xl"
+                  className="inline-flex items-center justify-center gap-2 px-8 py-3.5 text-base font-semibold text-white bg-linear-to-r from-indigo-600 to-purple-600 rounded-xl hover:from-indigo-700 hover:to-purple-700 transition-all shadow-lg hover:shadow-xl"
                 >
                   {isAuthenticated ? 'Go to Dashboard' : 'Get Started Free'}
                   <ArrowRight className="w-4 h-4" />
@@ -338,9 +337,8 @@ export default function Home() {
               <div className="flex items-center gap-6 pt-2">
                 <div className="flex -space-x-2">
                   {[1, 2, 3, 4].map(i => (
-                    <div key={i} className={`w-8 h-8 rounded-full border-2 border-white bg-gradient-to-br ${
-                      ['from-blue-400 to-blue-600', 'from-purple-400 to-purple-600', 'from-emerald-400 to-emerald-600', 'from-amber-400 to-amber-600'][i-1]
-                    }`} />
+                    <div key={i} className={`w-8 h-8 rounded-full border-2 border-white bg-linear-to-br ${['from-blue-400 to-blue-600', 'from-purple-400 to-purple-600', 'from-emerald-400 to-emerald-600', 'from-amber-400 to-amber-600'][i - 1]
+                      }`} />
                   ))}
                 </div>
                 <p className="text-sm text-gray-500">
@@ -372,13 +370,13 @@ export default function Home() {
                       ].map((stat, i) => (
                         <div key={i} className="p-3 rounded-xl bg-gray-50 border border-gray-100">
                           <p className="text-xs text-gray-500 mb-1">{stat.label}</p>
-                          <p className={`text-lg font-bold bg-gradient-to-r ${stat.color} bg-clip-text text-transparent`}>
+                          <p className={`text-lg font-bold bg-linear-to-r ${stat.color} bg-clip-text text-transparent`}>
                             {stat.value}
                           </p>
                         </div>
                       ))}
                     </div>
-                    <div className="h-24 rounded-xl bg-gradient-to-r from-indigo-50 to-purple-50 border border-indigo-100/50 flex items-center justify-center">
+                    <div className="h-24 rounded-xl bg-linear-to-r from-indigo-50 to-purple-50 border border-indigo-100/50 flex items-center justify-center">
                       <BarChart3 className="w-8 h-8 text-indigo-300" />
                     </div>
                   </div>
@@ -400,7 +398,7 @@ export default function Home() {
               { value: '24/7', label: 'Support' },
             ].map((stat, i) => (
               <div key={i} className="text-center">
-                <p className="text-3xl font-bold bg-gradient-to-r from-indigo-600 to-purple-600 bg-clip-text text-transparent">
+                <p className="text-3xl font-bold bg-linear-to-r from-indigo-600 to-purple-600 bg-clip-text text-transparent">
                   {stat.value}
                 </p>
                 <p className="text-sm text-gray-500 mt-1">{stat.label}</p>
@@ -428,7 +426,7 @@ export default function Home() {
                 key={idx}
                 className="group relative p-6 rounded-2xl bg-white border border-gray-200 hover:border-indigo-200 hover:shadow-lg hover:shadow-indigo-50 transition-all duration-300"
               >
-                <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-indigo-50 to-purple-50 flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
+                <div className="w-12 h-12 rounded-xl bg-linear-to-br from-indigo-50 to-purple-50 flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
                   <item.icon className="w-6 h-6 text-indigo-600" />
                 </div>
                 <h3 className="text-lg font-bold text-gray-900 mb-2">{item.title}</h3>
@@ -440,7 +438,7 @@ export default function Home() {
       </section>
 
       {/* ─── Solutions / Business Types ───────────────────────────── */}
-      <section id="solutions" className="py-24 bg-gradient-to-b from-gray-50 to-white">
+      <section id="solutions" className="py-24 bg-linear-to-b from-gray-50 to-white">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center max-w-2xl mx-auto mb-16">
             <h2 className="text-3xl sm:text-4xl font-bold text-gray-900 mb-4">
@@ -485,7 +483,7 @@ export default function Home() {
                 className="p-6 rounded-2xl bg-white border border-gray-200 hover:border-indigo-200 hover:shadow-lg hover:shadow-indigo-50/50 transition-all duration-300"
               >
                 <div className="flex items-center gap-3 mb-5">
-                  <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-indigo-50 to-purple-50 flex items-center justify-center">
+                  <div className="w-10 h-10 rounded-xl bg-linear-to-br from-indigo-50 to-purple-50 flex items-center justify-center">
                     <section.icon className="w-5 h-5 text-indigo-600" />
                   </div>
                   <h3 className="text-lg font-bold text-gray-900">{section.title}</h3>
@@ -505,9 +503,9 @@ export default function Home() {
       </section>
 
       {/* ─── Regional Support ─────────────────────────────────────── */}
-      <section className="py-24 bg-gradient-to-b from-gray-50 to-white">
+      <section className="py-24 bg-linear-to-b from-gray-50 to-white">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="bg-gradient-to-br from-emerald-50 to-teal-50 rounded-3xl border border-emerald-100 p-8 sm:p-12">
+          <div className="bg-linear-to-br from-emerald-50 to-teal-50 rounded-3xl border border-emerald-100 p-8 sm:p-12">
             <div className="grid lg:grid-cols-2 gap-8 items-center">
               <div>
                 <div className="inline-flex items-center gap-2 px-3 py-1 bg-emerald-100 rounded-full text-sm font-medium text-emerald-700 mb-4">
@@ -536,7 +534,7 @@ export default function Home() {
                 </div>
               </div>
               <div className="hidden lg:flex items-center justify-center">
-                <div className="w-48 h-48 rounded-full bg-gradient-to-br from-emerald-200 to-teal-200 flex items-center justify-center">
+                <div className="w-48 h-48 rounded-full bg-linear-to-br from-emerald-200 to-teal-200 flex items-center justify-center">
                   <Building2 className="w-16 h-16 text-emerald-600" />
                 </div>
               </div>
@@ -548,7 +546,7 @@ export default function Home() {
       {/* ─── CTA ──────────────────────────────────────────────────── */}
       <section className="py-24 bg-white">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-indigo-600 via-purple-600 to-pink-500 p-8 sm:p-16 text-center">
+          <div className="relative overflow-hidden rounded-3xl bg-linear-to-br from-indigo-600 via-purple-600 to-pink-500 p-8 sm:p-16 text-center">
             <div className="absolute top-0 right-0 w-64 h-64 bg-white/5 rounded-full -translate-y-1/2 translate-x-1/2" />
             <div className="absolute bottom-0 left-0 w-48 h-48 bg-white/5 rounded-full translate-y-1/2 -translate-x-1/2" />
 
@@ -578,7 +576,7 @@ export default function Home() {
           <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-10 mb-12">
             <div className="lg:col-span-1">
               <Link href="/" className="flex items-center gap-2.5 mb-4">
-                <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center">
+                <div className="w-8 h-8 rounded-lg bg-linear-to-br from-indigo-500 to-purple-600 flex items-center justify-center">
                   <Package className="w-4 h-4 text-white" />
                 </div>
                 <span className="text-lg font-bold text-white">UIMS</span>

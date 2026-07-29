@@ -554,7 +554,7 @@ export default function CustomersPage() {
       {showStatement && (
         <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
           <div className="w-full max-w-4xl bg-white dark:bg-gray-800 rounded-xl shadow-2xl overflow-hidden">
-            <div className="bg-gradient-to-r from-blue-600 to-indigo-600 px-5 py-4 text-white flex items-center justify-between">
+            <div className="bg-linear-to-r from-blue-600 to-indigo-600 px-5 py-4 text-white flex items-center justify-between">
               <div>
                 <h3 className="text-lg font-bold">Customer Statement</h3>
                 <p className="text-sm opacity-80">{statementData?.customer?.name || statementTarget?.name || '-'}</p>

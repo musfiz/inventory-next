@@ -55,9 +55,8 @@ export default function HeroCarousel({ slides }: { slides: StorefrontHeroSlider[
       {slides.map((b, i) => (
         <div
           key={b.id}
-          className={`absolute inset-0 h-full w-full transition-opacity duration-700 ${
-            i === index ? 'opacity-100' : 'opacity-0 pointer-events-none'
-          }`}
+          className={`absolute inset-0 h-full w-full transition-opacity duration-700 ${i === index ? 'opacity-100' : 'opacity-0 pointer-events-none'
+            }`}
         >
           <Image
             src={resolveImageUrl(b.image_url)}
@@ -69,7 +68,7 @@ export default function HeroCarousel({ slides }: { slides: StorefrontHeroSlider[
             loading={i === 0 ? 'eager' : 'lazy'}
             unoptimized
           />
-          <div className="absolute inset-0 bg-gradient-to-r from-gray-900/80 to-gray-800/60" aria-hidden />
+          <div className="absolute inset-0 bg-linear-to-r from-gray-900/80 to-gray-800/60" aria-hidden />
           <div className="absolute inset-0 flex items-center">
             <div className="mx-auto w-full max-w-7xl px-6 lg:px-12">
               <div className="max-w-xl text-white sf-fade-in">
@@ -145,9 +144,8 @@ export default function HeroCarousel({ slides }: { slides: StorefrontHeroSlider[
           <button
             key={i}
             onClick={() => goTo(i)}
-            className={`h-2 rounded-full transition-all ${
-              i === index ? 'w-8 bg-white' : 'w-2 bg-white/50 hover:bg-white/80'
-            }`}
+            className={`h-2 rounded-full transition-all ${i === index ? 'w-8 bg-white' : 'w-2 bg-white/50 hover:bg-white/80'
+              }`}
             aria-label={`Go to slide ${i + 1}`}
           />
         ))}

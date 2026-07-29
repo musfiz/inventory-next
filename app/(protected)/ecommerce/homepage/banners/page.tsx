@@ -315,7 +315,7 @@ export default function BannersPage() {
                       onClick={() => setForm(f => ({ ...f, accent: p.value }))}
                       className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded border text-xs font-medium transition-colors cursor-pointer ${form.accent === p.value ? 'border-indigo-500 bg-indigo-50 text-indigo-700 dark:bg-indigo-950/30 dark:text-indigo-300 dark:border-indigo-400' : 'border-gray-200 dark:border-gray-600 text-gray-600 dark:text-gray-300 hover:border-gray-400'}`}
                     >
-                      <span className={`w-4 h-4 rounded bg-gradient-to-r ${p.value.replace('85', '100')}`} />
+                      <span className={`w-4 h-4 rounded bg-linear-to-r ${p.value.replace('85', '100')}`} />
                       {p.label}
                     </button>
                   ))}
@@ -349,7 +349,7 @@ export default function BannersPage() {
                     </div>
                   </div>
                 )}
-                <div className={`absolute inset-0 bg-gradient-to-r ${form.accent}`} aria-hidden />
+                <div className={`absolute inset-0 bg-linear-to-r ${form.accent}`} aria-hidden />
                 <div className="absolute inset-0 flex items-center p-5">
                   <div className="text-white">
                     <p className="text-[10px] font-bold uppercase tracking-wider text-white/85">Limited time</p>
@@ -371,7 +371,7 @@ export default function BannersPage() {
                     <p className="text-xs text-gray-400">No image</p>
                   </div>
                 )}
-                <div className={`absolute inset-0 bg-gradient-to-r ${form.accent}`} aria-hidden />
+                <div className={`absolute inset-0 bg-linear-to-r ${form.accent}`} aria-hidden />
                 <div className="absolute inset-0 flex items-center p-4">
                   <div className="text-white">
                     <p className="text-[9px] font-bold uppercase tracking-wider text-white/85">Limited time</p>
@@ -424,7 +424,7 @@ export default function BannersPage() {
               {/* Card image with overlay */}
               <div className="relative h-36 bg-gray-100 dark:bg-gray-700">
                 <img src={resolveImageUrl(offer.image_url)} alt={offer.title} className="w-full h-full object-cover" />
-                <div className={`absolute inset-0 bg-gradient-to-r ${offer.accent || ACCENT_PRESETS[0].value}`} aria-hidden />
+                <div className={`absolute inset-0 bg-linear-to-r ${offer.accent || ACCENT_PRESETS[0].value}`} aria-hidden />
                 <div className="absolute inset-0 flex items-center p-4">
                   <div className="text-white min-w-0">
                     <p className="text-[10px] font-bold uppercase tracking-wider text-white/85">Offer</p>
@@ -457,7 +457,7 @@ export default function BannersPage() {
                     <p><span className="font-medium">Subtitle:</span> {offer.subtitle || '-'}</p>
                     <div className="flex items-center gap-1.5">
                       <span className="font-medium">Accent:</span>
-                      <span className={`w-4 h-3 rounded bg-gradient-to-r ${(offer.accent || '').replace('85', '100')}`} />
+                      <span className={`w-4 h-3 rounded bg-linear-to-r ${(offer.accent || '').replace('85', '100')}`} />
                     </div>
                   </div>
                 )}

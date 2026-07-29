@@ -372,7 +372,7 @@ export default function CampaignsPage() {
       meta: { width: '18%' },
       cell: ({ row }) => (
         <div className="flex items-center gap-2">
-          <div className="w-7 h-7 rounded bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center text-white text-xs font-bold shrink-0">
+          <div className="w-7 h-7 rounded bg-linear-to-br from-indigo-500 to-purple-600 flex items-center justify-center text-white text-xs font-bold shrink-0">
             {row.original.name.charAt(0).toUpperCase()}
           </div>
           <span className="text-xs font-semibold text-gray-900 dark:text-gray-100 truncate max-w-[160px]" title={row.original.name}>
@@ -393,11 +393,10 @@ export default function CampaignsPage() {
             : formatCurrency(discount_value);
         return (
           <span
-            className={`px-1.5 py-0.5 text-xs font-medium rounded ${
-              discount_type === 'percentage'
+            className={`px-1.5 py-0.5 text-xs font-medium rounded ${discount_type === 'percentage'
                 ? 'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-300'
                 : 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300'
-            }`}
+              }`}
           >
             {label} {discount_type === 'percentage' ? 'OFF' : 'OFF'}
           </span>
@@ -459,11 +458,10 @@ export default function CampaignsPage() {
             <Edit2 className="w-3.5 h-3.5" />
           </button>
           <button
-            className={`p-1 rounded cursor-pointer ${
-              row.original.is_paused
+            className={`p-1 rounded cursor-pointer ${row.original.is_paused
                 ? 'text-green-600 hover:text-green-900 dark:text-green-400 dark:hover:text-green-300 hover:bg-green-50 dark:hover:bg-green-900/20'
                 : 'text-amber-600 hover:text-amber-900 dark:text-amber-400 dark:hover:text-amber-300 hover:bg-amber-50 dark:hover:bg-amber-900/20'
-            }`}
+              }`}
             title={row.original.is_paused ? 'Resume' : 'Pause'}
             onClick={() => handleTogglePause(row.original)}
           >
@@ -540,11 +538,10 @@ export default function CampaignsPage() {
                   onChange={e =>
                     setForm(f => ({ ...f, name: e.target.value }))
                   }
-                  className={`w-full px-2 py-1.5 text-sm border rounded-sm focus:outline-none focus:ring-1 focus:ring-indigo-500 dark:focus:ring-indigo-400 focus:border-transparent dark:bg-gray-700 dark:text-gray-100 ${
-                    formErrors.name
+                  className={`w-full px-2 py-1.5 text-sm border rounded-sm focus:outline-none focus:ring-1 focus:ring-indigo-500 dark:focus:ring-indigo-400 focus:border-transparent dark:bg-gray-700 dark:text-gray-100 ${formErrors.name
                       ? 'border-red-500'
                       : 'border-gray-300 dark:border-gray-600'
-                  }`}
+                    }`}
                 />
                 {formErrors.name && (
                   <p className="text-red-600 text-xs mt-0.5">{formErrors.name}</p>
@@ -580,11 +577,10 @@ export default function CampaignsPage() {
                   onChange={e =>
                     setForm(f => ({ ...f, discount_value: e.target.value === '' ? '' : Number(e.target.value) }))
                   }
-                  className={`w-full px-2 py-1.5 text-sm border rounded-sm focus:outline-none focus:ring-1 focus:ring-indigo-500 dark:focus:ring-indigo-400 dark:bg-gray-700 dark:text-gray-100 ${
-                    formErrors.discount_value
+                  className={`w-full px-2 py-1.5 text-sm border rounded-sm focus:outline-none focus:ring-1 focus:ring-indigo-500 dark:focus:ring-indigo-400 dark:bg-gray-700 dark:text-gray-100 ${formErrors.discount_value
                       ? 'border-red-500'
                       : 'border-gray-300 dark:border-gray-600'
-                  }`}
+                    }`}
                 />
                 {formErrors.discount_value && (
                   <p className="text-red-600 text-xs mt-0.5">
@@ -690,11 +686,10 @@ export default function CampaignsPage() {
                   onDragLeave={() => setDragActive(false)}
                   onDrop={handleDrop}
                   onClick={() => fileInputRef.current?.click()}
-                  className={`relative flex items-center justify-center h-28 rounded border-2 border-dashed transition-colors cursor-pointer ${
-                    dragActive
+                  className={`relative flex items-center justify-center h-28 rounded border-2 border-dashed transition-colors cursor-pointer ${dragActive
                       ? 'border-indigo-400 bg-indigo-50 dark:bg-indigo-900/20'
                       : 'border-gray-300 dark:border-gray-600 hover:border-gray-400'
-                  }`}
+                    }`}
                 >
                   <input
                     ref={fileInputRef}

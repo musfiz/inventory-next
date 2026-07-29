@@ -44,9 +44,8 @@ function Toggle({ checked, onChange, id }: { checked: boolean; onChange: (v: boo
       role="switch"
       aria-checked={checked}
       onClick={() => onChange(!checked)}
-      className={`relative inline-flex h-5 w-9 shrink-0 cursor-pointer items-center rounded-full border-2 border-transparent transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 ${
-        checked ? 'bg-indigo-600' : 'bg-gray-300 dark:bg-gray-600'
-      }`}
+      className={`relative inline-flex h-5 w-9 shrink-0 cursor-pointer items-center rounded-full border-2 border-transparent transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 ${checked ? 'bg-indigo-600' : 'bg-gray-300 dark:bg-gray-600'
+        }`}
     >
       <span className={`inline-block h-4 w-4 transform rounded-full bg-white shadow-sm transition-transform duration-200 ${checked ? 'translate-x-4' : 'translate-x-0'}`} />
     </button>
@@ -483,7 +482,7 @@ export default function HeaderMenuPage() {
           <div className="px-4 py-2 bg-white dark:bg-gray-900 border-b border-gray-200 dark:border-gray-700">
             <div className="flex items-center gap-4">
               <div className="flex items-center gap-2">
-                <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-indigo-600 to-purple-600" />
+                <div className="w-8 h-8 rounded-lg bg-linear-to-br from-indigo-600 to-purple-600" />
                 <div className="text-sm font-black text-gray-900 dark:text-white leading-none">
                   UIMS<span className="text-indigo-600">.</span>
                 </div>

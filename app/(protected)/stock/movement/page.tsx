@@ -323,10 +323,10 @@ export default function StockMovementsPage() {
 
             {/* Gradient header */}
             <div className={`px-6 py-4 text-white rounded-t-2xl flex items-start justify-between ${INBOUND_TYPES.includes(selectedMovement.movement_type)
-              ? 'bg-gradient-to-r from-green-600 to-emerald-600'
+              ? 'bg-linear-to-r from-green-600 to-emerald-600'
               : OUTBOUND_TYPES.includes(selectedMovement.movement_type)
-                ? 'bg-gradient-to-r from-red-600 to-rose-600'
-                : 'bg-gradient-to-r from-yellow-500 to-amber-500'
+                ? 'bg-linear-to-r from-red-600 to-rose-600'
+                : 'bg-linear-to-r from-yellow-500 to-amber-500'
               }`}>
               <div>
                 <p className="text-xs font-semibold uppercase tracking-widest opacity-75 mb-0.5">Stock Movement</p>

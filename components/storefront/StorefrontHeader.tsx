@@ -35,12 +35,7 @@ import { PRODUCTS } from '@/lib/storefront/mock-data';
 import Image from 'next/image';
 import { formatMoney } from '@/lib/storefront/mock-data';
 import { useBranding } from '@/hooks/use-branding';
-
-const TOP_LINKS = [
-  { label: 'Track Order', href: '/order/track' },
-  { label: 'Help Center', href: '/help' },
-  { label: 'Become a Seller', href: '/sell' },
-];
+import { useHeaderMenu } from '@/hooks/use-header-menu';
 
 const CategoryDropdown = ({ cat, onClose, onKeepOpen }: { cat: typeof CATEGORIES[0]; onClose: () => void; onKeepOpen: () => void }) => {
   const subs = CATEGORIES.filter(c => c.parentId === cat.id);
@@ -163,8 +158,8 @@ const SearchBar = ({ onClose }: { onClose?: () => void }) => {
 
   const suggestions = query.trim()
     ? PRODUCTS.filter(p =>
-        p.name.toLowerCase().includes(query.toLowerCase())
-      ).slice(0, 5)
+      p.name.toLowerCase().includes(query.toLowerCase())
+    ).slice(0, 5)
     : [];
 
   const submit = (term: string) => {
@@ -201,7 +196,7 @@ const SearchBar = ({ onClose }: { onClose?: () => void }) => {
           )}
           <button
             type="submit"
-            className="absolute right-1.5 rounded-full bg-gradient-to-r from-brand-600 to-purple-600 px-5 py-2 text-sm font-bold text-white shadow-lg shadow-brand-600/25 transition-all hover:shadow-xl hover:shadow-brand-600/30"
+            className="absolute right-1.5 rounded-full bg-linear-to-r from-brand-600 to-purple-600 px-5 py-2 text-sm font-bold text-white shadow-lg shadow-brand-600/25 transition-all hover:shadow-xl hover:shadow-brand-600/30"
           >
             Search
           </button>
@@ -257,7 +252,7 @@ const SearchBar = ({ onClose }: { onClose?: () => void }) => {
                 <li key={p.id}>
                   <button
                     onClick={() => { setOpen(false); router.push(`/store/products/${p.slug}`); onClose?.(); }}
-                    className="flex w-full items-center gap-4 px-4 py-3 text-left transition-all hover:bg-gradient-to-r hover:from-brand-50 hover:to-transparent dark:hover:from-brand-950/20"
+                    className="flex w-full items-center gap-4 px-4 py-3 text-left transition-all hover:bg-linear-to-r hover:from-brand-50 hover:to-transparent dark:hover:from-brand-950/20"
                   >
                     <div className="relative h-14 w-14 shrink-0 overflow-hidden rounded-xl bg-gray-100 shadow-sm dark:bg-gray-800">
                       <Image src={p.images[0]} alt={p.name} fill sizes="56px" className="object-cover" />
@@ -289,7 +284,7 @@ const AccountMenu = ({ onClose }: { onClose?: () => void }) => {
 
   return (
     <div className="absolute right-0 top-full z-50 mt-2 w-72 overflow-hidden rounded-2xl border border-gray-100 bg-white shadow-2xl shadow-black/5 backdrop-blur-xl dark:border-gray-800 dark:bg-gray-950 sf-fade-in">
-      <div className="bg-gradient-to-br from-brand-600 to-purple-700 p-6 text-white">
+      <div className="bg-linear-to-br from-brand-600 to-purple-700 p-6 text-white">
         <div className="flex items-center gap-3">
           <div className="flex h-12 w-12 items-center justify-center rounded-full bg-white/20 text-lg font-bold backdrop-blur-sm">{user.name.charAt(0).toUpperCase()}</div>
           <div className="min-w-0">
@@ -333,12 +328,12 @@ const MobileMenu = ({ open, onClose, headerLogo, ready }: { open: boolean; onClo
       <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={onClose} />
       <div className="absolute right-0 top-0 h-full w-[88%] max-w-sm overflow-y-auto bg-white shadow-2xl dark:bg-gray-950 sf-slide-in-right">
         <div className="sticky top-0 flex items-center justify-between border-b border-gray-100 bg-white/90 px-5 py-4 backdrop-blur-lg dark:border-gray-800 dark:bg-gray-950/90">
-           <Link href="/" onClick={onClose} className="flex items-center gap-2">
+          <Link href="/" onClick={onClose} className="flex items-center gap-2">
             {headerLogo ? (
               <img src={headerLogo} alt="Logo" className="h-8 w-auto object-contain" />
             ) : ready ? (
               <>
-                <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-gradient-to-br from-brand-600 to-purple-600 text-white"><Sparkles className="h-4 w-4" /></div>
+                <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-linear-to-br from-brand-600 to-purple-600 text-white"><Sparkles className="h-4 w-4" /></div>
                 <span className="text-lg font-black text-gray-900 dark:text-white">UIMS<span className="text-brand-600">.</span></span>
               </>
             ) : (
@@ -418,6 +413,7 @@ export default function StorefrontHeader() {
   const wishlistCount = useWishlistStore(s => s.items.length);
   const openCart = useCartStore(s => s.openDrawer);
   const { headerLogo, ready } = useBranding();
+  const { config: menu } = useHeaderMenu();
   const user = useCustomerAuthStore(s => s.user);
   const router = useRouter();
 
@@ -445,33 +441,54 @@ export default function StorefrontHeader() {
 
   return (
     <>
-      {/* Top announcement bar */}
-      <div className="hidden bg-gradient-to-r from-brand-700 via-purple-700 to-brand-800 text-xs text-white lg:block">
-        <div className="mx-auto flex max-w-7xl items-center justify-between px-4 py-2">
-          <div className="flex items-center gap-6">
-            <span className="flex items-center gap-1.5 font-medium">
-              <Phone className="h-3 w-3" /> {STORE_PHONE}
-            </span>
-            <span className="flex items-center gap-1.5 font-medium">
-              <Truck className="h-3 w-3" /> Free shipping over ৳5,000
-            </span>
-            <span className="flex items-center gap-1.5 font-medium">
-              <BadgePercent className="h-3 w-3" /> 10% off your first order
-            </span>
-          </div>
-          <div className="flex items-center gap-5">
-            {TOP_LINKS.map(l => (
-              <Link key={l.label} href={l.href} className="font-medium text-white/80 transition-colors hover:text-white">{l.label}</Link>
-            ))}
+      {/* Top announcement bar — dynamic from header-menu API */}
+      {menu.utility_bar_enabled && (
+        <div
+          className="hidden text-xs lg:block"
+          style={{ backgroundColor: menu.utility_bar_bg_color, color: menu.utility_bar_text_color }}
+        >
+          <div className="mx-auto flex max-w-7xl items-center justify-between px-4 py-2">
+            <div className="flex items-center gap-6">
+              {menu.utility_bar_phone && (
+                <span className="flex items-center gap-1.5 font-medium">
+                  <Phone className="h-3 w-3" /> {menu.utility_bar_phone}
+                </span>
+              )}
+              {menu.utility_bar_text_free_shipping && (
+                <span className="flex items-center gap-1.5 font-medium">
+                  <Truck className="h-3 w-3" /> {menu.utility_bar_text_free_shipping}
+                </span>
+              )}
+              {menu.utility_bar_text_discount && (
+                <span className="flex items-center gap-1.5 font-medium">
+                  <BadgePercent className="h-3 w-3" /> {menu.utility_bar_text_discount}
+                </span>
+              )}
+            </div>
+            <div className="flex items-center gap-5">
+              <Link
+                href="/order/track"
+                className="flex items-center gap-1 font-medium text-white/80 transition-colors hover:text-white"
+              >
+                <Truck className="h-3 w-3" />
+                Track Order
+              </Link>
+              <Link
+                href="/help"
+                className="flex items-center gap-1 font-medium text-white/80 transition-colors hover:text-white"
+              >
+                <span className="flex h-3.5 w-3.5 items-center justify-center rounded-full border border-current text-[9px] font-bold leading-none">?</span>
+                Help Center
+              </Link>
+            </div>
           </div>
         </div>
-      </div>
+      )}
 
-      <header className={`sticky top-0 z-40 transition-all duration-300 ${
-        scrolled
-          ? 'bg-white/90 shadow-lg shadow-black/5 backdrop-blur-xl dark:bg-gray-950/90'
-          : 'bg-white shadow-sm dark:bg-gray-950'
-      }`}>
+      <header className={`sticky top-0 z-40 transition-all duration-300 ${scrolled
+        ? 'bg-white/90 shadow-lg shadow-black/5 backdrop-blur-xl dark:bg-gray-950/90'
+        : 'bg-white shadow-sm dark:bg-gray-950'
+        }`}>
         <div className={`mx-auto max-w-7xl px-4 transition-all duration-300 ${scrolled ? 'py-2' : 'py-3 lg:py-4'}`}>
           <div className="flex items-center gap-4 lg:gap-8">
             <button onClick={() => setMobileOpen(true)} className="rounded-xl p-2.5 text-gray-700 hover:bg-gray-100 lg:hidden dark:text-gray-200 dark:hover:bg-gray-800">
@@ -483,7 +500,7 @@ export default function StorefrontHeader() {
                 <img src={headerLogo} alt="Store logo" className="h-10 w-auto object-contain" />
               ) : ready ? (
                 <>
-                  <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-brand-600 to-purple-600 text-white shadow-lg shadow-brand-600/20">
+                  <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-linear-to-br from-brand-600 to-purple-600 text-white shadow-lg shadow-brand-600/20">
                     <Sparkles className="h-5 w-5" />
                   </div>
                   <div className="hidden sm:block">
@@ -508,7 +525,7 @@ export default function StorefrontHeader() {
               <Link href="/store/account/wishlist" className="relative hidden rounded-xl p-2.5 text-gray-600 transition-all hover:bg-gray-100 sm:inline-flex dark:text-gray-300 dark:hover:bg-gray-800" aria-label="Wishlist">
                 <Heart className="h-5 w-5" />
                 {wishlistCount > 0 && (
-                  <span className="absolute -right-0.5 -top-0.5 flex h-4 min-w-[16px] items-center justify-center rounded-full bg-gradient-to-r from-accent-500 to-pink-500 px-1 text-[10px] font-bold text-white shadow-sm">
+                  <span className="absolute -right-0.5 -top-0.5 flex h-4 min-w-[16px] items-center justify-center rounded-full bg-linear-to-r from-accent-500 to-pink-500 px-1 text-[10px] font-bold text-white shadow-sm">
                     {wishlistCount}
                   </span>
                 )}
@@ -524,7 +541,7 @@ export default function StorefrontHeader() {
                   aria-label="Account"
                 >
                   {user ? (
-                    <span className="flex h-5 w-5 items-center justify-center rounded-full bg-gradient-to-br from-brand-600 to-purple-600 text-[11px] font-bold text-white">
+                    <span className="flex h-5 w-5 items-center justify-center rounded-full bg-linear-to-br from-brand-600 to-purple-600 text-[11px] font-bold text-white">
                       {user.name?.charAt(0)?.toUpperCase() || '?'}
                     </span>
                   ) : (
@@ -538,7 +555,7 @@ export default function StorefrontHeader() {
                 <div className="relative">
                   <ImCart className="h-5 w-5" />
                   {itemCount > 0 && (
-                    <span className="absolute -right-2 -top-2 flex h-4 min-w-[16px] items-center justify-center rounded-full bg-gradient-to-r from-accent-500 to-pink-500 px-1 text-[10px] font-bold text-white shadow-sm">
+                    <span className="absolute -right-2 -top-2 flex h-4 min-w-4 items-center justify-center rounded-full bg-linear-to-r from-accent-500 to-pink-500 px-1 text-[10px] font-bold text-white shadow-sm">
                       {itemCount}
                     </span>
                   )}
@@ -562,7 +579,7 @@ export default function StorefrontHeader() {
         <nav className={`relative hidden border-t border-gray-100 bg-white/50 backdrop-blur-sm lg:block dark:border-gray-800 dark:bg-gray-950/50 ${scrolled ? 'hidden' : ''}`} onMouseLeave={() => setMenuWithDelay(null)}>
           <div className="mx-auto flex max-w-7xl items-center gap-1 px-4">
             <div onMouseEnter={() => setMenuWithDelay('all')}>
-              <button className="flex items-center gap-2.5 rounded-xl bg-gradient-to-r from-brand-600 to-purple-600 px-5 py-3 text-sm font-bold text-white shadow-md shadow-brand-600/20 transition-all hover:shadow-lg hover:shadow-brand-600/30">
+              <button className="flex items-center gap-2.5 rounded-xl bg-linear-to-r from-brand-600 to-purple-600 px-5 py-3 text-sm font-bold text-white shadow-md shadow-brand-600/20 transition-all hover:shadow-lg hover:shadow-brand-600/30">
                 <Menu className="h-4 w-4" />
                 All Categories
                 <ChevronDown className={`h-4 w-4 transition-transform ${activeMenu === 'all' ? 'rotate-180' : ''}`} />
@@ -583,10 +600,10 @@ export default function StorefrontHeader() {
             })}
 
             <div className="ml-auto flex items-center gap-3">
-              <Link href="/store/products?filter=sale" className="flex items-center gap-1.5 rounded-full bg-gradient-to-r from-rose-500 to-pink-500 px-4 py-1.5 text-xs font-bold text-white shadow-sm transition-all hover:shadow-md">
+              <Link href="/store/products?filter=sale" className="flex items-center gap-1.5 rounded-full bg-linear-to-r from-rose-500 to-pink-500 px-4 py-1.5 text-xs font-bold text-white shadow-sm transition-all hover:shadow-md">
                 <Gift className="h-3.5 w-3.5" /> Flash Sale
               </Link>
-              <Link href="/store/products?filter=new" className="flex items-center gap-1.5 rounded-full bg-gradient-to-r from-emerald-500 to-teal-500 px-4 py-1.5 text-xs font-bold text-white shadow-sm transition-all hover:shadow-md">
+              <Link href="/store/products?filter=new" className="flex items-center gap-1.5 rounded-full bg-linear-to-r from-emerald-500 to-teal-500 px-4 py-1.5 text-xs font-bold text-white shadow-sm transition-all hover:shadow-md">
                 <Sparkles className="h-3.5 w-3.5" /> New Arrivals
               </Link>
             </div>
@@ -600,4 +617,3 @@ export default function StorefrontHeader() {
   );
 }
 
-const STORE_PHONE = '+880 1700-000000';

@@ -38,7 +38,7 @@ export default function AccountDashboardPage() {
 
   return (
     <div className="space-y-6">
-      <div className="rounded-2xl border border-gray-200 bg-gradient-to-br from-brand-50 to-purple-50 p-6 dark:border-gray-800 dark:from-brand-950/30 dark:to-purple-950/30">
+      <div className="rounded-2xl border border-gray-200 bg-linear-to-br from-brand-50 to-purple-50 p-6 dark:border-gray-800 dark:from-brand-950/30 dark:to-purple-950/30">
         <h1 className="text-2xl font-black text-gray-900 dark:text-white sm:text-3xl">
           Hi, {user?.name.split(' ')[0]} 👋
         </h1>

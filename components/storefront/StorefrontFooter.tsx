@@ -189,10 +189,10 @@ export default function StorefrontFooter() {
   };
 
   return (
-    <ScrollReveal animation="fade-up" duration="normal" as="footer" className="mt-16 bg-gradient-to-b from-gray-50 via-white to-gray-50 dark:from-gray-950 dark:via-gray-900 dark:to-gray-950">
+    <ScrollReveal animation="fade-up" duration="normal" as="footer" className="mt-16 bg-linear-to-b from-gray-50 via-white to-gray-50 dark:from-gray-950 dark:via-gray-900 dark:to-gray-950">
       {/* Value props strip */}
       {value_props_enabled && activeValueProps.length > 0 && (
-        <div className="bg-gradient-to-r from-brand-50 via-purple-50 to-pink-50 dark:from-brand-950/30 dark:via-purple-950/30 dark:to-pink-950/30 border-y border-brand-100 dark:border-gray-800">
+        <div className="bg-linear-to-r from-brand-50 via-purple-50 to-pink-50 dark:from-brand-950/30 dark:via-purple-950/30 dark:to-pink-950/30 border-y border-brand-100 dark:border-gray-800">
           <div className="mx-auto grid max-w-7xl grid-cols-2 gap-6 px-4 py-8 md:grid-cols-4">
             {activeValueProps.map(({ icon, title, description }) => {
               const Icon = VALUE_PROP_ICONS[icon] || Truck;
@@ -214,7 +214,7 @@ export default function StorefrontFooter() {
 
       {/* Newsletter */}
       {newsletter_enabled && (
-        <div className="bg-gradient-to-r from-brand-100 via-purple-100 to-pink-100 dark:from-brand-950/40 dark:via-purple-950/40 dark:to-pink-950/40 border-y border-brand-200 dark:border-gray-800">
+        <div className="bg-linear-to-r from-brand-100 via-purple-100 to-pink-100 dark:from-brand-950/40 dark:via-purple-950/40 dark:to-pink-950/40 border-y border-brand-200 dark:border-gray-800">
           <div className="mx-auto max-w-7xl px-4 py-10">
             <div className="grid items-center gap-6 lg:grid-cols-2">
               <div>
@@ -327,7 +327,7 @@ export default function StorefrontFooter() {
       </div>
 
       {/* Bottom bar */}
-      <div className="border-t border-brand-200 bg-gradient-to-r from-brand-50 via-purple-50 to-pink-50 dark:border-gray-800 dark:from-gray-900 dark:via-gray-900 dark:to-gray-900">
+      <div className="border-t border-brand-200 bg-linear-to-r from-brand-50 via-purple-50 to-pink-50 dark:border-gray-800 dark:from-gray-900 dark:via-gray-900 dark:to-gray-900">
         <div className="mx-auto flex max-w-7xl flex-col items-center justify-between gap-4 px-4 py-5 text-xs text-gray-600 sm:flex-row dark:text-gray-400">
           <p>{copyrightDisplay}</p>
           {show_payment_badges && activeBadges.length > 0 && (

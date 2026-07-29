@@ -796,8 +796,8 @@ export default function PosSessionPage() {
 
             {/* Header */}
             <div className={`px-6 py-4 rounded-t-2xl flex items-start justify-between text-white ${detailSession.status === 'open'
-              ? 'bg-gradient-to-r from-green-600 to-emerald-600'
-              : 'bg-gradient-to-r from-gray-600 to-slate-700'
+              ? 'bg-linear-to-r from-green-600 to-emerald-600'
+              : 'bg-linear-to-r from-gray-600 to-slate-700'
               }`}>
               <div>
                 <p className="text-xs font-semibold uppercase tracking-widest opacity-75 mb-0.5">POS Session</p>

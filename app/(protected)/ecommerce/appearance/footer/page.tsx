@@ -90,14 +90,12 @@ function Toggle({ checked, onChange, id }: { checked: boolean; onChange: (v: boo
       role="switch"
       aria-checked={checked}
       onClick={() => onChange(!checked)}
-      className={`relative inline-flex h-5 w-9 shrink-0 cursor-pointer items-center rounded-full border-2 border-transparent transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 ${
-        checked ? 'bg-indigo-600' : 'bg-gray-300 dark:bg-gray-600'
-      }`}
+      className={`relative inline-flex h-5 w-9 shrink-0 cursor-pointer items-center rounded-full border-2 border-transparent transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 ${checked ? 'bg-indigo-600' : 'bg-gray-300 dark:bg-gray-600'
+        }`}
     >
       <span
-        className={`inline-block h-4 w-4 transform rounded-full bg-white shadow-sm transition-transform duration-200 ${
-          checked ? 'translate-x-4' : 'translate-x-0'
-        }`}
+        className={`inline-block h-4 w-4 transform rounded-full bg-white shadow-sm transition-transform duration-200 ${checked ? 'translate-x-4' : 'translate-x-0'
+          }`}
       />
     </button>
   );
@@ -1037,11 +1035,10 @@ export default function FooterBuilderPage() {
                   <span
                     key={badge.id}
                     onClick={() => togglePaymentBadge(badge.id)}
-                    className={`inline-flex items-center gap-1 px-2.5 py-1 rounded border text-xs font-bold cursor-pointer transition-all ${
-                      badge.is_active
+                    className={`inline-flex items-center gap-1 px-2.5 py-1 rounded border text-xs font-bold cursor-pointer transition-all ${badge.is_active
                         ? getBadgeColor(badge.name) + ' ring-1 ring-indigo-400'
                         : 'text-gray-400 bg-gray-100 border-gray-200 dark:bg-gray-800 dark:text-gray-500 dark:border-gray-700 line-through'
-                    }`}
+                      }`}
                   >
                     {badge.name}
                     <X className="w-3 h-3 ml-0.5 hover:text-red-500" onClick={(e) => { e.stopPropagation(); removePaymentBadge(badge.id); }} />
@@ -1079,7 +1076,7 @@ export default function FooterBuilderPage() {
         <div className="border border-gray-200 dark:border-gray-600 rounded overflow-hidden">
           {/* Value props preview */}
           {config.value_props_enabled && config.value_props.filter(v => v.is_active).length > 0 && (
-            <div className="bg-gradient-to-r from-indigo-50 via-purple-50 to-pink-50 dark:from-gray-800 dark:via-gray-800 dark:to-gray-800 border-b border-gray-200 dark:border-gray-700 px-4 py-3">
+            <div className="bg-linear-to-r from-indigo-50 via-purple-50 to-pink-50 dark:from-gray-800 dark:via-gray-800 dark:to-gray-800 border-b border-gray-200 dark:border-gray-700 px-4 py-3">
               <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
                 {config.value_props.filter(v => v.is_active).map(vp => {
                   const Icon = VALUE_PROP_ICONS[vp.icon] || Truck;
@@ -1101,7 +1098,7 @@ export default function FooterBuilderPage() {
 
           {/* Newsletter preview */}
           {config.newsletter_enabled && (
-            <div className="bg-gradient-to-r from-indigo-100 via-purple-100 to-pink-100 dark:from-gray-800 dark:via-gray-800 dark:to-gray-800 border-b border-gray-200 dark:border-gray-700 px-4 py-4">
+            <div className="bg-linear-to-r from-indigo-100 via-purple-100 to-pink-100 dark:from-gray-800 dark:via-gray-800 dark:to-gray-800 border-b border-gray-200 dark:border-gray-700 px-4 py-4">
               <div className="flex items-center gap-4">
                 <div className="flex-1">
                   <p className="text-sm font-bold text-gray-900 dark:text-gray-100">{config.newsletter_title}</p>
@@ -1123,7 +1120,7 @@ export default function FooterBuilderPage() {
               {/* Brand column */}
               <div className="lg:col-span-2">
                 <div className="flex items-center gap-2 mb-2">
-                  <div className="h-7 w-7 rounded-lg bg-gradient-to-br from-indigo-600 to-purple-600" />
+                  <div className="h-7 w-7 rounded-lg bg-linear-to-br from-indigo-600 to-purple-600" />
                   <span className="text-sm font-black text-gray-900 dark:text-white">UIMS<span className="text-indigo-600">.</span></span>
                 </div>
                 <p className="text-[10px] text-gray-500 dark:text-gray-400 leading-relaxed max-w-xs">{config.about_text}</p>
@@ -1167,7 +1164,7 @@ export default function FooterBuilderPage() {
           </div>
 
           {/* Bottom bar preview */}
-          <div className="border-t border-gray-200 dark:border-gray-700 bg-gradient-to-r from-indigo-50 via-purple-50 to-pink-50 dark:from-gray-800 dark:via-gray-800 dark:to-gray-800 px-4 py-2">
+          <div className="border-t border-gray-200 dark:border-gray-700 bg-linear-to-r from-indigo-50 via-purple-50 to-pink-50 dark:from-gray-800 dark:via-gray-800 dark:to-gray-800 px-4 py-2">
             <div className="flex items-center justify-between gap-2">
               <span className="text-[10px] text-gray-500 dark:text-gray-400">{copyrightDisplay}</span>
               {config.show_payment_badges && activeBadges.length > 0 && (

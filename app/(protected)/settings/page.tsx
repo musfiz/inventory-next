@@ -206,7 +206,7 @@ export default function SettingsPage() {
                     }}
                   />
                 ) : (
-                  <div className="flex h-full items-center justify-center bg-gradient-to-br from-gray-100 to-gray-200 text-2xl font-semibold text-gray-500 dark:from-gray-800 dark:to-gray-900 dark:text-gray-400">
+                  <div className="flex h-full items-center justify-center bg-linear-to-br from-gray-100 to-gray-200 text-2xl font-semibold text-gray-500 dark:from-gray-800 dark:to-gray-900 dark:text-gray-400">
                     {initials || <User className="h-10 w-10" />}
                   </div>
                 )}

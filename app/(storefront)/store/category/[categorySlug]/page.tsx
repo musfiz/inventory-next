@@ -88,9 +88,9 @@ export default function CategoryPage() {
             priority
           />
         ) : (
-          <div className="absolute inset-0 bg-gradient-to-br from-brand-600 to-purple-700" />
+          <div className="absolute inset-0 bg-linear-to-br from-brand-600 to-purple-700" />
         )}
-        <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/30 to-transparent" />
+        <div className="absolute inset-0 bg-linear-to-t from-black/70 via-black/30 to-transparent" />
         <div className="absolute inset-0 flex flex-col justify-end">
           <div className="mx-auto w-full max-w-7xl px-4 pb-6">
             <nav className="text-xs text-white/80">
