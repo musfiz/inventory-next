@@ -1032,6 +1032,19 @@ export interface NavLink {
   is_active: boolean;
 }
 
+export interface StorefrontNavigationItem {
+  id: string;
+  label: string;
+  type: 'category' | 'custom_link';
+  category_id?: string | null;
+  category_slug?: string | null;
+  url?: string | null;
+  display_mode: 'single' | 'dropdown';
+  sort_order: number;
+  is_active: boolean;
+  open_in_new_tab: boolean;
+}
+
 export interface HeaderMenuConfig {
   utility_bar_enabled: boolean;
   utility_bar_text_free_shipping: string;
@@ -1041,6 +1054,12 @@ export interface HeaderMenuConfig {
   utility_bar_text_color: string;
 
   nav_links: NavLink[];
+
+  /** Storefront navigation menu settings */
+  navigation_show_all_categories: boolean;
+  navigation_show_flash_sale: boolean;
+  navigation_show_new_arrivals: boolean;
+  menu_items: StorefrontNavigationItem[];
 
   show_search_bar: boolean;
   show_wishlist_icon: boolean;

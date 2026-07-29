@@ -24,6 +24,7 @@ import {
   ChevronRight,
   BadgePercent,
   Gift,
+  Link as LinkIcon,
 } from 'lucide-react';
 import { ImCart } from 'react-icons/im';
 import { IoCartSharp } from 'react-icons/io5';
@@ -36,6 +37,7 @@ import Image from 'next/image';
 import { formatMoney } from '@/lib/storefront/mock-data';
 import { useBranding } from '@/hooks/use-branding';
 import { useHeaderMenu } from '@/hooks/use-header-menu';
+import type { StorefrontNavigationItem } from '@/types/api.types';
 
 const CategoryDropdown = ({ cat, onClose, onKeepOpen }: { cat: typeof CATEGORIES[0]; onClose: () => void; onKeepOpen: () => void }) => {
   const subs = CATEGORIES.filter(c => c.parentId === cat.id);
@@ -417,6 +419,54 @@ export default function StorefrontHeader() {
   const user = useCustomerAuthStore(s => s.user);
   const router = useRouter();
 
+  const parentCats = CATEGORIES.filter(c => !c.parentId);
+
+  // Navigation from admin config
+  const navConfig = menu.menu_items ?? [];
+  const activeMenuItems = navConfig.filter((i: StorefrontNavigationItem) => i.is_active);
+  const hasCustomNav = activeMenuItems.length > 0;
+
+  // Find a mock category by slug (for subcategory dropdowns)
+  const findCategoryBySlug = (slug: string) => CATEGORIES.find(c => c.slug === slug || c.name.toLowerCase().replace(/\s+/g, '-') === slug);
+
+  // Render a category-based menu item with dropdown if display_mode is 'dropdown'
+  const renderNavItem = (item: StorefrontNavigationItem) => {
+    if (item.type === 'custom_link') {
+      return (
+        <Link
+          key={item.id}
+          href={item.url || '#'}
+          target={item.open_in_new_tab ? '_blank' : undefined}
+          rel={item.open_in_new_tab ? 'noopener noreferrer' : undefined}
+          className="flex items-center gap-1.5 rounded-xl px-3.5 py-3 text-sm font-semibold text-gray-700 hover:bg-gray-100 hover:text-brand-600 dark:text-gray-200 dark:hover:bg-gray-800"
+        >
+          <LinkIcon className="h-3.5 w-3.5" />
+          {item.label}
+        </Link>
+      );
+    }
+
+    // Category item
+    const cat = item.category_slug ? findCategoryBySlug(item.category_slug) : null;
+    const hasSubs = cat ? CATEGORIES.some(c => c.parentId === cat.id) : false;
+    const showDropdown = item.display_mode === 'dropdown' && hasSubs;
+
+    return (
+      <div key={item.id} className="relative" onMouseEnter={() => setMenuWithDelay(item.id)}>
+        <Link
+          href={item.url || '#'}
+          className={`group flex items-center gap-1.5 rounded-xl px-3.5 py-3 text-sm font-semibold transition-all ${activeMenu === item.id ? 'bg-brand-50 text-brand-600 dark:bg-brand-950/30 dark:text-brand-400' : 'text-gray-700 hover:bg-gray-100 hover:text-brand-600 dark:text-gray-200 dark:hover:bg-gray-800'}`}
+        >
+          {item.label}
+          {showDropdown && <ChevronDown className={`h-3.5 w-3.5 transition-transform ${activeMenu === item.id ? 'rotate-180' : ''}`} />}
+        </Link>
+        {activeMenu === item.id && showDropdown && cat && (
+          <CategoryDropdown cat={cat} onClose={() => setMenuWithDelay(null)} onKeepOpen={() => { if (menuTimer.current) clearTimeout(menuTimer.current); }} />
+        )}
+      </div>
+    );
+  };
+
   useEffect(() => {
     const handleScroll = () => setScrolled(window.scrollY > 60);
     window.addEventListener('scroll', handleScroll);
@@ -436,8 +486,6 @@ export default function StorefrontHeader() {
     if (id) setActiveMenu(id);
     else menuTimer.current = setTimeout(() => setActiveMenu(null), 200);
   };
-
-  const parentCats = CATEGORIES.filter(c => !c.parentId);
 
   return (
     <>
@@ -578,34 +626,45 @@ export default function StorefrontHeader() {
         {/* Category nav */}
         <nav className={`relative hidden border-t border-gray-100 bg-white/50 backdrop-blur-sm lg:block dark:border-gray-800 dark:bg-gray-950/50 ${scrolled ? 'hidden' : ''}`} onMouseLeave={() => setMenuWithDelay(null)}>
           <div className="mx-auto flex max-w-7xl items-center gap-1 px-4">
-            <div onMouseEnter={() => setMenuWithDelay('all')}>
-              <button className="flex items-center gap-2.5 rounded-xl bg-linear-to-r from-brand-600 to-purple-600 px-5 py-3 text-sm font-bold text-white shadow-md shadow-brand-600/20 transition-all hover:shadow-lg hover:shadow-brand-600/30">
-                <Menu className="h-4 w-4" />
-                All Categories
-                <ChevronDown className={`h-4 w-4 transition-transform ${activeMenu === 'all' ? 'rotate-180' : ''}`} />
-              </button>
-            </div>
+            {/* All Categories button */}
+            {menu.navigation_show_all_categories && (
+              <div onMouseEnter={() => setMenuWithDelay('all')}>
+                <button className="flex items-center gap-2.5 rounded-xl bg-linear-to-r from-brand-600 to-purple-600 px-5 py-3 text-sm font-bold text-white shadow-md shadow-brand-600/20 transition-all hover:shadow-lg hover:shadow-brand-600/30">
+                  <Menu className="h-4 w-4" />
+                  All Categories
+                  <ChevronDown className={`h-4 w-4 transition-transform ${activeMenu === 'all' ? 'rotate-180' : ''}`} />
+                </button>
+              </div>
+            )}
 
-            {parentCats.slice(0, 6).map(cat => {
-              const hasSubs = CATEGORIES.some(c => c.parentId === cat.id);
-              return (
-                <div key={cat.id} className="relative" onMouseEnter={() => setMenuWithDelay(cat.id)}>
-                  <Link href={`/store/category/${cat.slug}`} className={`group flex items-center gap-1.5 rounded-xl px-3.5 py-3 text-sm font-semibold transition-all ${activeMenu === cat.id ? 'bg-brand-50 text-brand-600 dark:bg-brand-950/30 dark:text-brand-400' : 'text-gray-700 hover:bg-gray-100 hover:text-brand-600 dark:text-gray-200 dark:hover:bg-gray-800'}`}>
-                    {cat.name}
-                    {hasSubs && <ChevronDown className={`h-3.5 w-3.5 transition-transform ${activeMenu === cat.id ? 'rotate-180' : ''}`} />}
-                  </Link>
-                  {activeMenu === cat.id && hasSubs && <CategoryDropdown cat={cat} onClose={() => setMenuWithDelay(null)} onKeepOpen={() => { if (menuTimer.current) clearTimeout(menuTimer.current); }} />}
-                </div>
-              );
-            })}
+            {/* Menu items from admin config, or fallback to full category tree */}
+            {hasCustomNav
+              ? activeMenuItems.map(renderNavItem)
+              : parentCats.slice(0, 6).map(cat => {
+                  const hasSubs = CATEGORIES.some(c => c.parentId === cat.id);
+                  return (
+                    <div key={cat.id} className="relative" onMouseEnter={() => setMenuWithDelay(cat.id)}>
+                      <Link href={`/store/category/${cat.slug}`} className={`group flex items-center gap-1.5 rounded-xl px-3.5 py-3 text-sm font-semibold transition-all ${activeMenu === cat.id ? 'bg-brand-50 text-brand-600 dark:bg-brand-950/30 dark:text-brand-400' : 'text-gray-700 hover:bg-gray-100 hover:text-brand-600 dark:text-gray-200 dark:hover:bg-gray-800'}`}>
+                        {cat.name}
+                        {hasSubs && <ChevronDown className={`h-3.5 w-3.5 transition-transform ${activeMenu === cat.id ? 'rotate-180' : ''}`} />}
+                      </Link>
+                      {activeMenu === cat.id && hasSubs && <CategoryDropdown cat={cat} onClose={() => setMenuWithDelay(null)} onKeepOpen={() => { if (menuTimer.current) clearTimeout(menuTimer.current); }} />}
+                    </div>
+                  );
+                })}
 
+            {/* Flash Sale & New Arrivals */}
             <div className="ml-auto flex items-center gap-3">
-              <Link href="/store/products?filter=sale" className="flex items-center gap-1.5 rounded-full bg-linear-to-r from-rose-500 to-pink-500 px-4 py-1.5 text-xs font-bold text-white shadow-sm transition-all hover:shadow-md">
-                <Gift className="h-3.5 w-3.5" /> Flash Sale
-              </Link>
-              <Link href="/store/products?filter=new" className="flex items-center gap-1.5 rounded-full bg-linear-to-r from-emerald-500 to-teal-500 px-4 py-1.5 text-xs font-bold text-white shadow-sm transition-all hover:shadow-md">
-                <Sparkles className="h-3.5 w-3.5" /> New Arrivals
-              </Link>
+              {menu.navigation_show_flash_sale && (
+                <Link href="/store/products?filter=sale" className="flex items-center gap-1.5 rounded-full bg-linear-to-r from-rose-500 to-pink-500 px-4 py-1.5 text-xs font-bold text-white shadow-sm transition-all hover:shadow-md">
+                  <Gift className="h-3.5 w-3.5" /> Flash Sale
+                </Link>
+              )}
+              {menu.navigation_show_new_arrivals && (
+                <Link href="/store/products?filter=new" className="flex items-center gap-1.5 rounded-full bg-linear-to-r from-emerald-500 to-teal-500 px-4 py-1.5 text-xs font-bold text-white shadow-sm transition-all hover:shadow-md">
+                  <Sparkles className="h-3.5 w-3.5" /> New Arrivals
+                </Link>
+              )}
             </div>
           </div>
           {activeMenu === 'all' && <MegaMenu onClose={() => setMenuWithDelay(null)} onKeepOpen={() => { if (menuTimer.current) clearTimeout(menuTimer.current); }} />}

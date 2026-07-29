@@ -4,12 +4,6 @@ import { useState, useEffect, useCallback } from 'react';
 import {
   Menu,
   Loader2,
-  Plus,
-  X,
-  Trash2,
-  ChevronUp,
-  ChevronDown,
-  GripVertical,
   Monitor,
   Search,
   Heart,
@@ -23,18 +17,10 @@ import {
 import { GiSave } from 'react-icons/gi';
 import headerMenuService from '@/services/headerMenuService';
 import { notify } from '@/lib/notifications';
-import type { HeaderMenuConfig, NavLink } from '@/types/api.types';
+import type { HeaderMenuConfig } from '@/types/api.types';
 
 const DEFAULT_UTILITY_BG = '#7c3aed';
 const DEFAULT_UTILITY_TEXT = '#ffffff';
-
-function generateId(): string {
-  return Math.random().toString(36).substring(2, 10);
-}
-
-function emptyLink(sort_order: number): NavLink {
-  return { id: generateId(), label: '', url: '', sort_order, open_in_new_tab: false, is_active: true };
-}
 
 function Toggle({ checked, onChange, id }: { checked: boolean; onChange: (v: boolean) => void; id: string }) {
   return (
@@ -65,17 +51,16 @@ export default function HeaderMenuPage() {
     utility_bar_bg_color: DEFAULT_UTILITY_BG,
     utility_bar_text_color: DEFAULT_UTILITY_TEXT,
     nav_links: [],
+    navigation_show_all_categories: true,
+    navigation_show_flash_sale: true,
+    navigation_show_new_arrivals: true,
+    menu_items: [],
     show_search_bar: true,
     show_wishlist_icon: true,
     show_account_icon: true,
     show_cart_icon: true,
     sticky_header: true,
   });
-
-  const [showLinkForm, setShowLinkForm] = useState(false);
-  const [editingLink, setEditingLink] = useState<NavLink | null>(null);
-  const [linkForm, setLinkForm] = useState<NavLink>(emptyLink(0));
-  const [expandedLinkId, setExpandedLinkId] = useState<string | null>(null);
 
   const markDirty = useCallback(() => setDirty(true), []);
 
@@ -100,68 +85,12 @@ export default function HeaderMenuPage() {
     fetchConfig();
   }, [fetchConfig]);
 
-  const openAddLink = () => {
-    setEditingLink(null);
-    setLinkForm(emptyLink(config.nav_links.length));
-    setShowLinkForm(true);
-  };
-
-  const openEditLink = (link: NavLink) => {
-    setEditingLink(link);
-    setLinkForm({ ...link });
-    setShowLinkForm(true);
-    setExpandedLinkId(null);
-  };
-
-  const closeLinkForm = () => {
-    setShowLinkForm(false);
-    setEditingLink(null);
-  };
-
-  const saveLink = () => {
-    if (!linkForm.label.trim()) {
-      notify.error('Link label is required');
-      return;
-    }
-    if (!linkForm.url.trim()) {
-      notify.error('Link URL is required');
-      return;
-    }
-
-    let updated: NavLink[];
-    if (editingLink) {
-      updated = config.nav_links.map(l => (l.id === editingLink.id ? { ...linkForm } : l));
-    } else {
-      updated = [...config.nav_links, { ...linkForm, id: generateId(), sort_order: config.nav_links.length }];
-    }
-
-    updateConfig({ nav_links: updated });
-    closeLinkForm();
-    notify.success(editingLink ? 'Link updated' : 'Link added');
-  };
-
-  const removeLink = (id: string) => {
-    updateConfig({ nav_links: config.nav_links.filter(l => l.id !== id) });
-    notify.success('Link removed');
-  };
-
-  const moveLink = (id: string, direction: -1 | 1) => {
-    const idx = config.nav_links.findIndex(l => l.id === id);
-    if (idx === -1) return;
-    const newIdx = idx + direction;
-    if (newIdx < 0 || newIdx >= config.nav_links.length) return;
-
-    const links = [...config.nav_links];
-    [links[idx], links[newIdx]] = [links[newIdx], links[idx]];
-    updateConfig({ nav_links: links.map((l, i) => ({ ...l, sort_order: i })) });
-  };
-
   const handleSave = async () => {
     if (!dirty) return;
     setSaving(true);
     try {
       await headerMenuService.update(config);
-      notify.success('Header & menu saved successfully');
+      notify.success('Header settings saved successfully');
       setDirty(false);
     } catch (err: any) {
       notify.error(err?.response?.data?.message || 'Failed to save header settings');
@@ -169,8 +98,6 @@ export default function HeaderMenuPage() {
       setSaving(false);
     }
   };
-
-  const visibleLinks = config.nav_links.filter(l => l.is_active);
 
   if (loading) {
     return (
@@ -312,146 +239,6 @@ export default function HeaderMenuPage() {
         </div>
       </div>
 
-      {/* Navigation Menu */}
-      <div className="bg-white dark:bg-gray-800 rounded-md shadow-sm border border-gray-200 dark:border-gray-700 p-4">
-        <div className="flex items-center justify-between mb-4">
-          <div className="flex items-center gap-2">
-            <Menu className="w-4 h-4 text-indigo-600 dark:text-indigo-400" />
-            <h2 className="text-sm font-semibold text-gray-900 dark:text-gray-100">Navigation Links</h2>
-          </div>
-          <button
-            onClick={openAddLink}
-            className="inline-flex items-center gap-1 px-3 py-1 text-xs font-medium text-indigo-600 dark:text-indigo-400 border border-indigo-300 dark:border-indigo-600 rounded hover:bg-indigo-50 dark:hover:bg-indigo-900/20 transition-colors cursor-pointer"
-          >
-            <Plus className="w-3 h-3" />
-            Add Link
-          </button>
-        </div>
-
-        {showLinkForm && (
-          <div className="mb-4 p-3 bg-gray-50 dark:bg-gray-750 rounded border border-gray-200 dark:border-gray-600">
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-3">
-              <div>
-                <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">Label</label>
-                <input
-                  type="text"
-                  value={linkForm.label}
-                  onChange={e => setLinkForm(f => ({ ...f, label: e.target.value }))}
-                  placeholder="e.g. Shop Now"
-                  className="w-full px-3 py-1.5 text-sm border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-1 focus:ring-indigo-500"
-                />
-              </div>
-              <div>
-                <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">URL</label>
-                <input
-                  type="text"
-                  value={linkForm.url}
-                  onChange={e => setLinkForm(f => ({ ...f, url: e.target.value }))}
-                  placeholder="/products or https://"
-                  className="w-full px-3 py-1.5 text-sm border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-1 focus:ring-indigo-500"
-                />
-              </div>
-            </div>
-            <div className="flex items-center gap-4 mb-3">
-              <label className="flex items-center gap-2 cursor-pointer select-none">
-                <input
-                  type="checkbox"
-                  checked={linkForm.open_in_new_tab}
-                  onChange={e => setLinkForm(f => ({ ...f, open_in_new_tab: e.target.checked }))}
-                  className="w-4 h-4 text-indigo-600 border-gray-300 rounded focus:ring-indigo-500 cursor-pointer"
-                />
-                <span className="text-xs font-medium text-gray-700 dark:text-gray-300">Open in new tab</span>
-              </label>
-              <label className="flex items-center gap-2 cursor-pointer select-none">
-                <input
-                  type="checkbox"
-                  checked={linkForm.is_active}
-                  onChange={e => setLinkForm(f => ({ ...f, is_active: e.target.checked }))}
-                  className="w-4 h-4 text-indigo-600 border-gray-300 rounded focus:ring-indigo-500 cursor-pointer"
-                />
-                <span className="text-xs font-medium text-gray-700 dark:text-gray-300">Active</span>
-              </label>
-            </div>
-            <div className="flex gap-2">
-              <button
-                onClick={saveLink}
-                className="px-3 py-1 bg-indigo-600 text-white text-xs font-medium rounded hover:bg-indigo-700 transition-colors cursor-pointer"
-              >
-                {editingLink ? 'Update' : 'Add'}
-              </button>
-              <button
-                onClick={closeLinkForm}
-                className="px-3 py-1 bg-gray-500 text-white text-xs font-medium rounded hover:bg-gray-600 transition-colors cursor-pointer"
-              >
-                Cancel
-              </button>
-            </div>
-          </div>
-        )}
-
-        {config.nav_links.length === 0 ? (
-          <div className="flex items-center justify-center h-16 bg-gray-50 dark:bg-gray-750 border border-dashed border-gray-200 dark:border-gray-600 rounded">
-            <p className="text-xs text-gray-400">No navigation links yet. Click &quot;Add Link&quot; to create one.</p>
-          </div>
-        ) : (
-          <div className="space-y-1">
-            {config.nav_links.map((link, idx) => (
-              <div
-                key={link.id}
-                className="flex items-center gap-2 px-3 py-2 bg-gray-50 dark:bg-gray-750 rounded border border-gray-200 dark:border-gray-600"
-              >
-                <GripVertical className="w-4 h-4 text-gray-400 shrink-0 cursor-grab" />
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-2">
-                    <span className={`text-sm font-medium truncate ${link.is_active ? 'text-gray-900 dark:text-gray-100' : 'text-gray-400 dark:text-gray-500 line-through'}`}>
-                      {link.label || 'Untitled'}
-                    </span>
-                    {link.open_in_new_tab && (
-                      <span className="text-[10px] font-medium text-gray-400 dark:text-gray-500 uppercase tracking-wider">New Tab</span>
-                    )}
-                  </div>
-                  <p className="text-xs text-gray-400 truncate">{link.url}</p>
-                </div>
-                <div className="flex items-center gap-0.5">
-                  <button
-                    onClick={() => moveLink(link.id, -1)}
-                    disabled={idx === 0}
-                    className="p-1 text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 disabled:opacity-30 disabled:cursor-not-allowed cursor-pointer"
-                    title="Move up"
-                  >
-                    <ChevronUp className="w-3.5 h-3.5" />
-                  </button>
-                  <button
-                    onClick={() => moveLink(link.id, 1)}
-                    disabled={idx === config.nav_links.length - 1}
-                    className="p-1 text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 disabled:opacity-30 disabled:cursor-not-allowed cursor-pointer"
-                    title="Move down"
-                  >
-                    <ChevronDown className="w-3.5 h-3.5" />
-                  </button>
-                  <button
-                    onClick={() => openEditLink(link)}
-                    className="p-1 text-gray-400 hover:text-indigo-600 cursor-pointer"
-                    title="Edit"
-                  >
-                    <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
-                      <path strokeLinecap="round" strokeLinejoin="round" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
-                    </svg>
-                  </button>
-                  <button
-                    onClick={() => removeLink(link.id)}
-                    className="p-1 text-gray-400 hover:text-red-600 cursor-pointer"
-                    title="Remove"
-                  >
-                    <X className="w-3.5 h-3.5" />
-                  </button>
-                </div>
-              </div>
-            ))}
-          </div>
-        )}
-      </div>
-
       {/* Live Preview */}
       <div className="bg-white dark:bg-gray-800 rounded-md shadow-sm border border-gray-200 dark:border-gray-700 p-4">
         <div className="flex items-center gap-2 mb-3">
@@ -512,17 +299,6 @@ export default function HeaderMenuPage() {
               </div>
             </div>
           </div>
-
-          {/* Nav preview */}
-          {visibleLinks.length > 0 && (
-            <div className="flex items-center gap-1 px-4 py-2 bg-gray-50 dark:bg-gray-750 border-b border-gray-200 dark:border-gray-700">
-              {visibleLinks.map(link => (
-                <span key={link.id} className="px-2.5 py-1 text-xs font-semibold text-gray-700 dark:text-gray-200 rounded hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors cursor-default">
-                  {link.label}
-                </span>
-              ))}
-            </div>
-          )}
         </div>
       </div>
     </div>
