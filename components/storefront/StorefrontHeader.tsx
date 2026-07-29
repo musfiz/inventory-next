@@ -45,12 +45,12 @@ const CategoryDropdown = ({ cat, onClose, onKeepOpen }: { cat: typeof CATEGORIES
 
   return (
     <div
-      className="absolute left-0 top-full z-40 mt-0 w-56 overflow-hidden rounded-2xl border border-gray-100 bg-white shadow-2xl dark:border-gray-800 dark:bg-gray-950 sf-fade-in"
+      className="absolute left-0 top-full z-40 mt-0 w-56 overflow-hidden rounded-lg border border-gray-100 bg-white shadow-2xl dark:border-gray-800 dark:bg-gray-950 sf-fade-in"
       onMouseEnter={onKeepOpen}
       onMouseLeave={onClose}
     >
       <div className="p-2">
-        <Link href={`/store/category/${cat.slug}`} onClick={onClose} className="flex items-center gap-2 rounded-xl px-3 py-2.5 text-xs font-bold uppercase tracking-wider text-brand-600 transition-all hover:bg-brand-50 dark:text-brand-400 dark:hover:bg-brand-950/30">
+        <Link href={`/store/category/${cat.slug}`} onClick={onClose} className="flex items-center gap-2 rounded-lg px-3 py-2.5 text-xs font-bold uppercase tracking-wider text-brand-600 transition-all hover:bg-brand-50 dark:text-brand-400 dark:hover:bg-brand-950/30">
           View all {cat.name} <ChevronRight className="h-3 w-3" />
         </Link>
       </div>
@@ -59,9 +59,8 @@ const CategoryDropdown = ({ cat, onClose, onKeepOpen }: { cat: typeof CATEGORIES
           const subSubs = CATEGORIES.filter(c => c.parentId === sub.id);
           return (
             <li key={sub.id}>
-              <Link href={`/store/category/${sub.slug}`} onClick={onClose} className="group flex items-center justify-between rounded-xl px-3 py-2.5 text-sm font-semibold text-gray-700 transition-all hover:bg-brand-50 hover:text-brand-700 dark:text-gray-300 dark:hover:bg-brand-950/30">
+              <Link href={`/store/category/${sub.slug}`} onClick={onClose} className="block rounded-none px-3 py-2.5 text-sm font-semibold text-gray-700 transition-all hover:bg-brand-50 hover:text-brand-700 dark:text-gray-300 dark:hover:bg-brand-950/30">
                 {sub.name}
-                {subSubs.length > 0 && <ChevronRight className="h-3.5 w-3.5 text-gray-400 transition-all group-hover:translate-x-0.5" />}
               </Link>
               {subSubs.length > 0 && (
                 <ul className="ml-3 mt-0.5 space-y-0.5 border-l-2 border-gray-100 pl-3 dark:border-gray-800">
@@ -75,6 +74,50 @@ const CategoryDropdown = ({ cat, onClose, onKeepOpen }: { cat: typeof CATEGORIES
             </li>
           );
         })}
+      </ul>
+    </div>
+  );
+};
+
+/**
+ * CustomDropdown — renders a dropdown menu with user-assigned categories
+ * (from admin StorefrontNavigation → dropdown_items).
+ */
+const CustomDropdown = ({
+  item,
+  onClose,
+  onKeepOpen,
+}: {
+  item: StorefrontNavigationItem;
+  onClose: () => void;
+  onKeepOpen: () => void;
+}) => {
+  const dropdownItems = item.dropdown_items || [];
+  if (dropdownItems.length === 0) return null;
+
+  return (
+    <div
+      className="absolute left-0 top-full z-40 mt-0 w-56 overflow-hidden rounded-lg border border-gray-100 bg-white shadow-2xl dark:border-gray-800 dark:bg-gray-950 sf-fade-in"
+      onMouseEnter={onKeepOpen}
+      onMouseLeave={onClose}
+    >
+      <div className="p-2">
+        <p className="px-3 py-2 text-xs font-bold uppercase tracking-wider text-gray-500">
+          {item.label}
+        </p>
+      </div>
+      <ul className="border-t border-gray-100 p-2 dark:border-gray-800">
+        {dropdownItems.map(di => (
+          <li key={di.id}>
+            <Link
+              href={`/store/category/${di.category_slug}`}
+              onClick={onClose}
+              className="block rounded-none px-3 py-2.5 text-sm font-semibold text-gray-700 transition-all hover:bg-brand-50 hover:text-brand-700 dark:text-gray-300 dark:hover:bg-brand-950/30"
+            >
+              {di.label}
+            </Link>
+          </li>
+        ))}
       </ul>
     </div>
   );
@@ -206,7 +249,7 @@ const SearchBar = ({ onClose }: { onClose?: () => void }) => {
       </form>
 
       {open && (
-        <div className="absolute left-0 right-0 top-full z-50 mt-2 max-h-[480px] overflow-auto rounded-2xl border border-gray-100 bg-white shadow-2xl shadow-black/5 backdrop-blur-xl dark:border-gray-800 dark:bg-gray-950 sf-fade-in">
+        <div className="absolute left-0 right-0 top-full z-50 mt-2 max-h-[480px] overflow-auto rounded-lg border border-gray-100 bg-white shadow-2xl shadow-black/5 backdrop-blur-xl dark:border-gray-800 dark:bg-gray-950 sf-fade-in">
           {!query.trim() ? (
             <div className="grid grid-cols-1 gap-6 p-5 md:grid-cols-2">
               {recentSearches.length > 0 && (
@@ -285,7 +328,7 @@ const AccountMenu = ({ onClose }: { onClose?: () => void }) => {
   const handleLogout = () => { logout(); onClose?.(); router.push('/'); };
 
   return (
-    <div className="absolute right-0 top-full z-50 mt-2 w-72 overflow-hidden rounded-2xl border border-gray-100 bg-white shadow-2xl shadow-black/5 backdrop-blur-xl dark:border-gray-800 dark:bg-gray-950 sf-fade-in">
+    <div className="absolute right-0 top-full z-50 mt-2 w-72 overflow-hidden rounded-lg border border-gray-100 bg-white shadow-2xl shadow-black/5 backdrop-blur-xl dark:border-gray-800 dark:bg-gray-950 sf-fade-in">
       <div className="bg-linear-to-br from-brand-600 to-purple-700 p-6 text-white">
         <div className="flex items-center gap-3">
           <div className="flex h-12 w-12 items-center justify-center rounded-full bg-white/20 text-lg font-bold backdrop-blur-sm">{user.name.charAt(0).toUpperCase()}</div>
@@ -322,8 +365,14 @@ const AccountMenu = ({ onClose }: { onClose?: () => void }) => {
 
 const MobileMenu = ({ open, onClose, headerLogo, ready }: { open: boolean; onClose: () => void; headerLogo: string | null; ready: boolean }) => {
   const [expanded, setExpanded] = useState<string | null>(null);
+  const { config: menu } = useHeaderMenu();
   if (!open) return null;
   const parentCats = CATEGORIES.filter(c => !c.parentId);
+
+  // Custom nav items from admin config
+  const navConfig = menu.menu_items ?? [];
+  const activeMenuItems = navConfig.filter((i: StorefrontNavigationItem) => i.is_active);
+  const hasCustomNav = activeMenuItems.length > 0;
 
   return (
     <div className="fixed inset-0 z-50 lg:hidden">
@@ -347,31 +396,76 @@ const MobileMenu = ({ open, onClose, headerLogo, ready }: { open: boolean; onClo
         <div className="px-3 py-4">
           <p className="mb-3 px-2 text-xs font-bold uppercase tracking-wider text-gray-500">Shop by Category</p>
           <ul className="space-y-0.5">
-            {parentCats.map(cat => {
-              const subs = CATEGORIES.filter(c => c.parentId === cat.id);
-              const isOpen = expanded === cat.id;
-              return (
-                <li key={cat.id}>
-                  <div className="flex items-center justify-between rounded-xl transition-all hover:bg-gray-50 dark:hover:bg-gray-900">
-                    <Link href={`/store/category/${cat.slug}`} onClick={onClose} className="flex-1 px-3 py-3 text-sm font-bold text-gray-800 dark:text-gray-200">{cat.name}</Link>
-                    {subs.length > 0 && (
-                      <button onClick={() => setExpanded(isOpen ? null : cat.id)} className="rounded-lg p-3 text-gray-500">
-                        <ChevronDown className={`h-4 w-4 transition-transform ${isOpen ? 'rotate-180' : ''}`} />
-                      </button>
+            {hasCustomNav ? (
+              // Render custom nav items in mobile menu
+              activeMenuItems.map((item: StorefrontNavigationItem) => {
+                const dropdownItems = item.dropdown_items || [];
+                const isOpen = expanded === item.id;
+                return (
+                  <li key={item.id}>
+                    {item.type === 'custom_link' ? (
+                      <Link href={item.url || '#'} onClick={onClose} className="flex items-center gap-3 rounded-xl px-3 py-3 text-sm font-bold text-gray-800 transition-all hover:bg-gray-50 dark:text-gray-200 dark:hover:bg-gray-900">
+                        <LinkIcon className="h-4 w-4 text-gray-400" />
+                        {item.label}
+                      </Link>
+                    ) : item.display_mode === 'single' ? (
+                      <Link href={`/store/category/${item.category_slug}`} onClick={onClose} className="flex items-center gap-3 rounded-xl px-3 py-3 text-sm font-bold text-gray-800 transition-all hover:bg-gray-50 dark:text-gray-200 dark:hover:bg-gray-900">
+                        {item.label}
+                      </Link>
+                    ) : (
+                      <>
+                        <div className="flex items-center justify-between rounded-xl transition-all hover:bg-gray-50 dark:hover:bg-gray-900">
+                          <span className="flex-1 px-3 py-3 text-sm font-bold text-gray-800 dark:text-gray-200">{item.label}</span>
+                          {dropdownItems.length > 0 && (
+                            <button onClick={() => setExpanded(isOpen ? null : item.id)} className="rounded-lg p-3 text-gray-500">
+                              <ChevronDown className={`h-4 w-4 transition-transform ${isOpen ? 'rotate-180' : ''}`} />
+                            </button>
+                          )}
+                        </div>
+                        {isOpen && dropdownItems.length > 0 && (
+                          <ul className="ml-4 mt-0.5 space-y-0.5 border-l-2 border-brand-100 pl-3 dark:border-brand-900/40">
+                            {dropdownItems.map(di => (
+                              <li key={di.id}>
+                                <Link href={`/store/category/${di.category_slug}`} onClick={onClose} className="block rounded-lg px-3 py-2 text-sm text-gray-600 transition-all hover:bg-brand-50 hover:text-brand-700 dark:text-gray-400 dark:hover:bg-brand-950/30 dark:hover:text-brand-300">
+                                  {di.label}
+                                </Link>
+                              </li>
+                            ))}
+                          </ul>
+                        )}
+                      </>
                     )}
-                  </div>
-                  {isOpen && subs.length > 0 && (
-                    <ul className="ml-4 mt-0.5 space-y-0.5 border-l-2 border-brand-100 pl-3 dark:border-brand-900/40">
-                      {subs.map(sub => (
-                        <li key={sub.id}>
-                          <Link href={`/store/category/${sub.slug}`} onClick={onClose} className="block rounded-lg px-3 py-2 text-sm text-gray-600 transition-all hover:bg-brand-50 hover:text-brand-700 dark:text-gray-400 dark:hover:bg-brand-950/30 dark:hover:text-brand-300">{sub.name}</Link>
-                        </li>
-                      ))}
-                    </ul>
-                  )}
-                </li>
-              );
-            })}
+                  </li>
+                );
+              })
+            ) : (
+              // Fallback: render mock categories
+              parentCats.map(cat => {
+                const subs = CATEGORIES.filter(c => c.parentId === cat.id);
+                const isOpen = expanded === cat.id;
+                return (
+                  <li key={cat.id}>
+                    <div className="flex items-center justify-between rounded-xl transition-all hover:bg-gray-50 dark:hover:bg-gray-900">
+                      <Link href={`/store/category/${cat.slug}`} onClick={onClose} className="flex-1 px-3 py-3 text-sm font-bold text-gray-800 dark:text-gray-200">{cat.name}</Link>
+                      {subs.length > 0 && (
+                        <button onClick={() => setExpanded(isOpen ? null : cat.id)} className="rounded-lg p-3 text-gray-500">
+                          <ChevronDown className={`h-4 w-4 transition-transform ${isOpen ? 'rotate-180' : ''}`} />
+                        </button>
+                      )}
+                    </div>
+                    {isOpen && subs.length > 0 && (
+                      <ul className="ml-4 mt-0.5 space-y-0.5 border-l-2 border-brand-100 pl-3 dark:border-brand-900/40">
+                        {subs.map(sub => (
+                          <li key={sub.id}>
+                            <Link href={`/store/category/${sub.slug}`} onClick={onClose} className="block rounded-lg px-3 py-2 text-sm text-gray-600 transition-all hover:bg-brand-50 hover:text-brand-700 dark:text-gray-400 dark:hover:bg-brand-950/30 dark:hover:text-brand-300">{sub.name}</Link>
+                          </li>
+                        ))}
+                      </ul>
+                    )}
+                  </li>
+                );
+              })
+            )}
           </ul>
           <div className="mt-6 border-t border-gray-100 pt-4 dark:border-gray-800">
             <p className="mb-3 px-2 text-xs font-bold uppercase tracking-wider text-gray-500">Quick Links</p>
@@ -426,7 +520,7 @@ export default function StorefrontHeader() {
   const activeMenuItems = navConfig.filter((i: StorefrontNavigationItem) => i.is_active);
   const hasCustomNav = activeMenuItems.length > 0;
 
-  // Find a mock category by slug (for subcategory dropdowns)
+  // Find a mock category by slug (for subcategory dropdowns fallback)
   const findCategoryBySlug = (slug: string) => CATEGORIES.find(c => c.slug === slug || c.name.toLowerCase().replace(/\s+/g, '-') === slug);
 
   // Render a category-based menu item with dropdown if display_mode is 'dropdown'
@@ -446,21 +540,50 @@ export default function StorefrontHeader() {
       );
     }
 
-    // Category item
+    // Category item with dropdown (multiple selected categories)
+    if (item.display_mode === 'dropdown') {
+      const hasDropdownItems = item.dropdown_items && item.dropdown_items.length > 0;
+      return (
+        <div key={item.id} className="relative" onMouseEnter={() => setMenuWithDelay(item.id)}>
+          <button
+            className={`group flex items-center gap-1.5 rounded-xl px-3.5 py-3 text-sm font-semibold transition-all cursor-pointer ${
+              activeMenu === item.id
+                ? 'bg-brand-50 text-brand-600 dark:bg-brand-950/30 dark:text-brand-400'
+                : 'text-gray-700 hover:bg-gray-100 hover:text-brand-600 dark:text-gray-200 dark:hover:bg-gray-800'
+            }`}
+          >
+            {item.label}
+            <ChevronDown className={`h-3.5 w-3.5 transition-transform ${activeMenu === item.id ? 'rotate-180' : ''}`} />
+          </button>
+          {activeMenu === item.id && hasDropdownItems && (
+            <CustomDropdown
+              item={item}
+              onClose={() => setMenuWithDelay(null)}
+              onKeepOpen={() => { if (menuTimer.current) clearTimeout(menuTimer.current); }}
+            />
+          )}
+        </div>
+      );
+    }
+
+    // Category item — single link mode
     const cat = item.category_slug ? findCategoryBySlug(item.category_slug) : null;
     const hasSubs = cat ? CATEGORIES.some(c => c.parentId === cat.id) : false;
-    const showDropdown = item.display_mode === 'dropdown' && hasSubs;
 
     return (
       <div key={item.id} className="relative" onMouseEnter={() => setMenuWithDelay(item.id)}>
         <Link
           href={item.url || '#'}
-          className={`group flex items-center gap-1.5 rounded-xl px-3.5 py-3 text-sm font-semibold transition-all ${activeMenu === item.id ? 'bg-brand-50 text-brand-600 dark:bg-brand-950/30 dark:text-brand-400' : 'text-gray-700 hover:bg-gray-100 hover:text-brand-600 dark:text-gray-200 dark:hover:bg-gray-800'}`}
+          className={`group flex items-center gap-1.5 rounded-xl px-3.5 py-3 text-sm font-semibold transition-all ${
+            activeMenu === item.id
+              ? 'bg-brand-50 text-brand-600 dark:bg-brand-950/30 dark:text-brand-400'
+              : 'text-gray-700 hover:bg-gray-100 hover:text-brand-600 dark:text-gray-200 dark:hover:bg-gray-800'
+          }`}
         >
           {item.label}
-          {showDropdown && <ChevronDown className={`h-3.5 w-3.5 transition-transform ${activeMenu === item.id ? 'rotate-180' : ''}`} />}
+          {hasSubs && <ChevronDown className={`h-3.5 w-3.5 transition-transform ${activeMenu === item.id ? 'rotate-180' : ''}`} />}
         </Link>
-        {activeMenu === item.id && showDropdown && cat && (
+        {activeMenu === item.id && hasSubs && cat && (
           <CategoryDropdown cat={cat} onClose={() => setMenuWithDelay(null)} onKeepOpen={() => { if (menuTimer.current) clearTimeout(menuTimer.current); }} />
         )}
       </div>
@@ -675,4 +798,3 @@ export default function StorefrontHeader() {
     </>
   );
 }
-

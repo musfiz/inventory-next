@@ -16,12 +16,13 @@ import {
   Search,
   Sparkles,
   Gift,
+  GripVertical,
 } from 'lucide-react';
 import { GiSave } from 'react-icons/gi';
 import headerMenuService from '@/services/headerMenuService';
 import commonService from '@/services/commonService';
 import { notify } from '@/lib/notifications';
-import type { HeaderMenuConfig, StorefrontNavigationItem, Category } from '@/types/api.types';
+import type { HeaderMenuConfig, StorefrontNavigationItem, Category, DropdownCategoryItem } from '@/types/api.types';
 
 /* ──────────────────────── Helpers ──────────────────────── */
 
@@ -41,6 +42,7 @@ function emptyMenuItem(sort_order: number): StorefrontNavigationItem {
     sort_order,
     is_active: true,
     open_in_new_tab: false,
+    dropdown_items: [],
   };
 }
 
@@ -94,6 +96,7 @@ export default function StorefrontNavigationPage() {
   const [editingItem, setEditingItem] = useState<StorefrontNavigationItem | null>(null);
   const [form, setForm] = useState<StorefrontNavigationItem>(emptyMenuItem(0));
   const [categorySearch, setCategorySearch] = useState('');
+  const [dropdownCategorySearch, setDropdownCategorySearch] = useState('');
 
   const markDirty = useCallback(() => setDirty(true), []);
 
@@ -139,7 +142,6 @@ export default function StorefrontNavigationPage() {
     if (!dirty) return;
     setSaving(true);
     try {
-      // Update only the navigation fields via the existing header-menu config
       await headerMenuService.update({
         navigation_show_all_categories: showAllCategories,
         navigation_show_flash_sale: showFlashSale,
@@ -161,6 +163,7 @@ export default function StorefrontNavigationPage() {
     setEditingItem(null);
     setForm(emptyMenuItem(menuItems.length));
     setCategorySearch('');
+    setDropdownCategorySearch('');
     setShowForm(true);
   };
 
@@ -168,6 +171,7 @@ export default function StorefrontNavigationPage() {
     setEditingItem(item);
     setForm({ ...item });
     setCategorySearch(item.category_slug || '');
+    setDropdownCategorySearch('');
     setShowForm(true);
   };
 
@@ -185,6 +189,14 @@ export default function StorefrontNavigationPage() {
       notify.error('URL is required for custom links');
       return;
     }
+    if (form.type === 'category' && form.display_mode === 'single' && !form.category_id) {
+      notify.error('Please select a category');
+      return;
+    }
+    if (form.type === 'category' && form.display_mode === 'dropdown' && (!form.dropdown_items || form.dropdown_items.length === 0)) {
+      notify.error('Please add at least one category to the dropdown');
+      return;
+    }
 
     let updated: StorefrontNavigationItem[];
     if (editingItem) {
@@ -196,7 +208,6 @@ export default function StorefrontNavigationPage() {
     setMenuItems(updated);
     markDirty();
     closeForm();
-    notify.success(editingItem ? 'Item updated' : 'Item added');
   };
 
   const handleRemoveItem = (id: string) => {
@@ -217,7 +228,7 @@ export default function StorefrontNavigationPage() {
     markDirty();
   };
 
-  /* ────── Category selection ────── */
+  /* ────── Category selection (single mode) ────── */
 
   const filteredCategories = categorySearch.trim()
     ? categories.filter(c =>
@@ -236,6 +247,65 @@ export default function StorefrontNavigationPage() {
       url: `/store/category/${cat.name.toLowerCase().replace(/\s+/g, '-')}`,
     });
     setCategorySearch(cat.name);
+  };
+
+  /* ────── Dropdown category management ────── */
+
+  const filteredDropdownCategories = dropdownCategorySearch.trim()
+    ? categories.filter(c =>
+        c.name.toLowerCase().includes(dropdownCategorySearch.toLowerCase())
+      )
+    : categories;
+
+  const addDropdownCategory = (cat: Category) => {
+    const alreadyAdded = form.dropdown_items?.some(di => di.category_id === cat.id);
+    if (alreadyAdded) {
+      notify.info('Category already added to dropdown');
+      return;
+    }
+    const newItem: DropdownCategoryItem = {
+      id: generateId(),
+      category_id: cat.id,
+      category_slug: cat.name.toLowerCase().replace(/\s+/g, '-'),
+      label: cat.name,
+      sort_order: form.dropdown_items?.length ?? 0,
+    };
+    setForm({
+      ...form,
+      dropdown_items: [...(form.dropdown_items || []), newItem],
+    });
+    setDropdownCategorySearch('');
+  };
+
+  const removeDropdownCategory = (itemId: string) => {
+    setForm({
+      ...form,
+      dropdown_items: (form.dropdown_items || [])
+        .filter(di => di.id !== itemId)
+        .map((di, idx) => ({ ...di, sort_order: idx })),
+    });
+  };
+
+  const moveDropdownCategory = (itemId: string, direction: -1 | 1) => {
+    const items = [...(form.dropdown_items || [])];
+    const idx = items.findIndex(di => di.id === itemId);
+    if (idx === -1) return;
+    const newIdx = idx + direction;
+    if (newIdx < 0 || newIdx >= items.length) return;
+    [items[idx], items[newIdx]] = [items[newIdx], items[idx]];
+    setForm({
+      ...form,
+      dropdown_items: items.map((di, pos) => ({ ...di, sort_order: pos })),
+    });
+  };
+
+  const updateDropdownLabel = (itemId: string, label: string) => {
+    setForm({
+      ...form,
+      dropdown_items: (form.dropdown_items || []).map(di =>
+        di.id === itemId ? { ...di, label } : di
+      ),
+    });
   };
 
   /* ────── Loading ────── */
@@ -345,7 +415,13 @@ export default function StorefrontNavigationPage() {
                 <input
                   type="radio"
                   checked={form.type === 'category'}
-                  onChange={() => setForm(f => ({ ...f, type: 'category' }))}
+                  onChange={() => setForm(f => ({
+                    ...f,
+                    type: 'category',
+                    category_id: null,
+                    category_slug: null,
+                    dropdown_items: [],
+                  }))}
                   className="w-4 h-4 text-indigo-600 border-gray-300 focus:ring-indigo-500 cursor-pointer"
                 />
                 <span className="text-xs font-medium text-gray-700 dark:text-gray-300">Category Link</span>
@@ -354,7 +430,13 @@ export default function StorefrontNavigationPage() {
                 <input
                   type="radio"
                   checked={form.type === 'custom_link'}
-                  onChange={() => setForm(f => ({ ...f, type: 'custom_link', category_id: null, category_slug: null }))}
+                  onChange={() => setForm(f => ({
+                    ...f,
+                    type: 'custom_link',
+                    category_id: null,
+                    category_slug: null,
+                    dropdown_items: [],
+                  }))}
                   className="w-4 h-4 text-indigo-600 border-gray-300 focus:ring-indigo-500 cursor-pointer"
                 />
                 <span className="text-xs font-medium text-gray-700 dark:text-gray-300">Custom Link</span>
@@ -373,80 +455,214 @@ export default function StorefrontNavigationPage() {
               />
             </div>
 
-            {/* Category selector */}
+            {/* Category type fields */}
             {form.type === 'category' && (
-              <div className="mb-3">
-                <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">
-                  Select Category
-                </label>
-                <div className="relative">
-                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-gray-400" />
-                  <input
-                    type="text"
-                    value={categorySearch}
-                    onChange={e => {
-                      setCategorySearch(e.target.value);
-                      loadCategories(e.target.value);
-                    }}
-                    placeholder="Search categories..."
-                    className="w-full pl-9 pr-3 py-1.5 text-sm border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-1 focus:ring-indigo-500"
-                  />
-                </div>
-                {categoriesLoading ? (
-                  <div className="flex items-center justify-center py-3">
-                    <Loader2 className="w-4 h-4 animate-spin text-gray-400" />
-                  </div>
-                ) : filteredCategories.length > 0 ? (
-                  <div className="mt-1 max-h-40 overflow-y-auto border border-gray-200 dark:border-gray-600 rounded">
-                    {filteredCategories.map(cat => (
-                      <button
-                        key={cat.id}
-                        type="button"
-                        onClick={() => selectCategory(cat)}
-                        className={`w-full text-left px-3 py-2 text-xs transition-colors cursor-pointer ${
-                          form.category_id === cat.id
-                            ? 'bg-indigo-50 text-indigo-700 dark:bg-indigo-900/30 dark:text-indigo-300'
-                            : 'text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700'
-                        }`}
-                      >
-                        <div className="flex items-center gap-2">
-                          <FolderTree className="w-3.5 h-3.5 text-gray-400 shrink-0" />
-                          <span className="font-medium">{cat.name}</span>
-                          {cat.parent && (
-                            <span className="text-gray-400">— {cat.parent.name}</span>
-                          )}
-                        </div>
-                      </button>
-                    ))}
-                  </div>
-                ) : categorySearch.trim() ? (
-                  <p className="mt-1 text-xs text-gray-400">No categories found</p>
-                ) : null}
-
+              <>
                 {/* Display mode */}
-                {form.type === 'category' && (
-                  <div className="flex items-center gap-4 mt-3">
-                    <label className="flex items-center gap-2 cursor-pointer select-none">
-                      <input
-                        type="radio"
-                        checked={form.display_mode === 'single'}
-                        onChange={() => setForm(f => ({ ...f, display_mode: 'single' }))}
-                        className="w-4 h-4 text-indigo-600 border-gray-300 focus:ring-indigo-500 cursor-pointer"
-                      />
-                      <span className="text-xs font-medium text-gray-700 dark:text-gray-300">Single Link</span>
+                <div className="flex items-center gap-4 mb-3">
+                  <label className="flex items-center gap-2 cursor-pointer select-none">
+                    <input
+                      type="radio"
+                      checked={form.display_mode === 'single'}
+                      onChange={() => setForm(f => ({ ...f, display_mode: 'single', dropdown_items: [] }))}
+                      className="w-4 h-4 text-indigo-600 border-gray-300 focus:ring-indigo-500 cursor-pointer"
+                    />
+                    <span className="text-xs font-medium text-gray-700 dark:text-gray-300">Single Link</span>
+                  </label>
+                  <label className="flex items-center gap-2 cursor-pointer select-none">
+                    <input
+                      type="radio"
+                      checked={form.display_mode === 'dropdown'}
+                      onChange={() => setForm(f => ({ ...f, display_mode: 'dropdown', category_id: null, category_slug: null }))}
+                      className="w-4 h-4 text-indigo-600 border-gray-300 focus:ring-indigo-500 cursor-pointer"
+                    />
+                    <span className="text-xs font-medium text-gray-700 dark:text-gray-300">Dropdown (select multiple categories)</span>
+                  </label>
+                </div>
+
+                {/* Single category selector */}
+                {form.display_mode === 'single' && (
+                  <div className="mb-3">
+                    <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">
+                      Select Category
                     </label>
-                    <label className="flex items-center gap-2 cursor-pointer select-none">
+                    <div className="relative">
+                      <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-gray-400" />
                       <input
-                        type="radio"
-                        checked={form.display_mode === 'dropdown'}
-                        onChange={() => setForm(f => ({ ...f, display_mode: 'dropdown' }))}
-                        className="w-4 h-4 text-indigo-600 border-gray-300 focus:ring-indigo-500 cursor-pointer"
+                        type="text"
+                        value={categorySearch}
+                        onChange={e => {
+                          setCategorySearch(e.target.value);
+                          loadCategories(e.target.value);
+                        }}
+                        placeholder="Search categories..."
+                        className="w-full pl-9 pr-3 py-1.5 text-sm border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-1 focus:ring-indigo-500"
                       />
-                      <span className="text-xs font-medium text-gray-700 dark:text-gray-300">Dropdown (show subcategories)</span>
-                    </label>
+                    </div>
+                    {categoriesLoading ? (
+                      <div className="flex items-center justify-center py-3">
+                        <Loader2 className="w-4 h-4 animate-spin text-gray-400" />
+                      </div>
+                    ) : filteredCategories.length > 0 ? (
+                      <div className="mt-1 max-h-40 overflow-y-auto border border-gray-200 dark:border-gray-600 rounded">
+                        {filteredCategories.map(cat => (
+                          <button
+                            key={cat.id}
+                            type="button"
+                            onClick={() => selectCategory(cat)}
+                            className={`w-full text-left px-3 py-2 text-xs transition-colors cursor-pointer ${
+                              form.category_id === cat.id
+                                ? 'bg-indigo-50 text-indigo-700 dark:bg-indigo-900/30 dark:text-indigo-300'
+                                : 'text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700'
+                            }`}
+                          >
+                            <div className="flex items-center gap-2">
+                              <FolderTree className="w-3.5 h-3.5 text-gray-400 shrink-0" />
+                              <span className="font-medium">{cat.name}</span>
+                              {cat.parent && (
+                                <span className="text-gray-400">— {cat.parent.name}</span>
+                              )}
+                            </div>
+                          </button>
+                        ))}
+                      </div>
+                    ) : categorySearch.trim() ? (
+                      <p className="mt-1 text-xs text-gray-400">No categories found</p>
+                    ) : null}
                   </div>
                 )}
-              </div>
+
+                {/* Dropdown multi-category selector */}
+                {form.display_mode === 'dropdown' && (
+                  <div className="mb-3">
+                    <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">
+                      Dropdown Categories
+                    </label>
+                    <p className="text-[10px] text-gray-500 mb-2">
+                      Add categories that will appear in this dropdown menu. The label above is the dropdown trigger text.
+                    </p>
+
+                    {/* Search and add categories */}
+                    <div className="relative mb-2">
+                      <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-gray-400" />
+                      <input
+                        type="text"
+                        value={dropdownCategorySearch}
+                        onChange={e => {
+                          setDropdownCategorySearch(e.target.value);
+                          loadCategories(e.target.value);
+                        }}
+                        placeholder="Search categories to add..."
+                        className="w-full pl-9 pr-3 py-1.5 text-sm border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-1 focus:ring-indigo-500"
+                      />
+                    </div>
+
+                    {/* Search results */}
+                    {dropdownCategorySearch.trim() && (
+                      <>
+                        {categoriesLoading ? (
+                          <div className="flex items-center justify-center py-2">
+                            <Loader2 className="w-4 h-4 animate-spin text-gray-400" />
+                          </div>
+                        ) : filteredDropdownCategories.length > 0 ? (
+                          <div className="mb-2 max-h-32 overflow-y-auto border border-gray-200 dark:border-gray-600 rounded">
+                            {filteredDropdownCategories.map(cat => {
+                              const alreadyAdded = form.dropdown_items?.some(di => di.category_id === cat.id);
+                              return (
+                                <button
+                                  key={cat.id}
+                                  type="button"
+                                  onClick={() => addDropdownCategory(cat)}
+                                  disabled={alreadyAdded}
+                                  className={`w-full text-left px-3 py-2 text-xs transition-colors cursor-pointer flex items-center justify-between ${
+                                    alreadyAdded
+                                      ? 'text-gray-400 dark:text-gray-500 bg-gray-100 dark:bg-gray-700 cursor-not-allowed'
+                                      : 'text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700'
+                                  }`}
+                                >
+                                  <div className="flex items-center gap-2">
+                                    <FolderTree className="w-3.5 h-3.5 text-gray-400 shrink-0" />
+                                    <span className="font-medium">{cat.name}</span>
+                                    {cat.parent && (
+                                      <span className="text-gray-400">— {cat.parent.name}</span>
+                                    )}
+                                  </div>
+                                  {alreadyAdded ? (
+                                    <span className="text-[10px] text-gray-400">Added</span>
+                                  ) : (
+                                    <Plus className="w-3 h-3 text-indigo-500 shrink-0" />
+                                  )}
+                                </button>
+                              );
+                            })}
+                          </div>
+                        ) : (
+                          <p className="mb-2 text-xs text-gray-400">No categories found</p>
+                        )}
+                      </>
+                    )}
+
+                    {/* Assigned dropdown items list */}
+                    {form.dropdown_items && form.dropdown_items.length > 0 ? (
+                      <div className="space-y-1 border border-gray-200 dark:border-gray-600 rounded p-1">
+                        {form.dropdown_items.map((di, idx) => (
+                          <div
+                            key={di.id}
+                            className="flex items-center gap-2 px-2 py-1.5 bg-white dark:bg-gray-700 rounded border border-gray-100 dark:border-gray-600"
+                          >
+                            <div className="flex flex-col gap-0.5">
+                              <button
+                                onClick={() => moveDropdownCategory(di.id, -1)}
+                                disabled={idx === 0}
+                                className="p-0.5 text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 disabled:opacity-30 disabled:cursor-not-allowed cursor-pointer"
+                              >
+                                <ChevronUp className="w-2.5 h-2.5" />
+                              </button>
+                              <button
+                                onClick={() => moveDropdownCategory(di.id, 1)}
+                                disabled={idx === form.dropdown_items!.length - 1}
+                                className="p-0.5 text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 disabled:opacity-30 disabled:cursor-not-allowed cursor-pointer"
+                              >
+                                <ChevronDown className="w-2.5 h-2.5" />
+                              </button>
+                            </div>
+                            <GripVertical className="w-3 h-3 text-gray-300 shrink-0" />
+                            <FolderTree className="w-3 h-3 text-indigo-500 shrink-0" />
+                            <div className="flex-1 min-w-0">
+                              <input
+                                type="text"
+                                value={di.label}
+                                onChange={e => updateDropdownLabel(di.id, e.target.value)}
+                                className="w-full text-xs font-medium text-gray-800 dark:text-gray-200 bg-transparent border-b border-dashed border-transparent hover:border-gray-300 focus:border-indigo-400 focus:outline-none px-1 py-0.5"
+                                placeholder="Category label"
+                              />
+                              <p className="text-[10px] text-gray-400 truncate px-1">
+                                /store/category/{di.category_slug}
+                              </p>
+                            </div>
+                            <button
+                              onClick={() => removeDropdownCategory(di.id)}
+                              className="p-1 text-gray-400 hover:text-red-600 cursor-pointer shrink-0"
+                              title="Remove from dropdown"
+                            >
+                              <X className="w-3 h-3" />
+                            </button>
+                          </div>
+                        ))}
+                      </div>
+                    ) : (
+                      <div className="flex items-center justify-center h-10 bg-white dark:bg-gray-700 border border-dashed border-gray-200 dark:border-gray-600 rounded">
+                        <p className="text-[10px] text-gray-400">Search and select categories above to add them to this dropdown</p>
+                      </div>
+                    )}
+
+                    {/* Category count */}
+                    <p className="mt-1.5 text-[10px] text-gray-400">
+                      {form.dropdown_items?.length || 0} categor{(form.dropdown_items?.length || 0) === 1 ? 'y' : 'ies'} in this dropdown
+                    </p>
+                  </div>
+                )}
+              </>
             )}
 
             {/* URL (custom link) */}
@@ -545,20 +761,36 @@ export default function StorefrontNavigationPage() {
                       {item.label || 'Untitled'}
                     </span>
                     {item.display_mode === 'dropdown' && (
-                      <span className="text-[10px] font-medium text-indigo-500 dark:text-indigo-400 uppercase tracking-wider shrink-0">Dropdown</span>
+                      <span className="text-[10px] font-medium text-indigo-500 dark:text-indigo-400 uppercase tracking-wider shrink-0">
+                        Dropdown ({(item.dropdown_items || []).length} cats)
+                      </span>
+                    )}
+                    {item.display_mode === 'single' && item.type === 'category' && (
+                      <span className="text-[10px] font-medium text-emerald-600 dark:text-emerald-400 uppercase tracking-wider shrink-0">Single</span>
                     )}
                     {item.type === 'custom_link' && (
                       <span className="text-[10px] font-medium text-emerald-600 dark:text-emerald-400 uppercase tracking-wider shrink-0">Link</span>
                     )}
                   </div>
                   <div className="flex items-center gap-2 mt-0.5">
-                    {item.type === 'category' && item.category_slug && (
+                    {item.type === 'category' && item.display_mode === 'single' && item.category_slug && (
                       <CategoryBadge slug={item.category_slug} />
                     )}
+                    {item.type === 'category' && item.display_mode === 'dropdown' && item.dropdown_items && item.dropdown_items.length > 0 && (
+                      <div className="flex items-center gap-1 flex-wrap">
+                        {item.dropdown_items.slice(0, 3).map(di => (
+                          <CategoryBadge key={di.id} slug={di.category_slug} />
+                        ))}
+                        {item.dropdown_items.length > 3 && (
+                          <span className="text-[10px] text-gray-400">+{item.dropdown_items.length - 3} more</span>
+                        )}
+                      </div>
+                    )}
                     <p className="text-xs text-gray-400 truncate">
-                      {item.type === 'category'
+                      {item.type === 'category' && item.display_mode === 'single'
                         ? `/store/category/${item.category_slug || '...'}`
-                        : item.url
+                        : item.type === 'custom_link' ? item.url
+                        : 'Dropdown menu'
                       }
                     </p>
                   </div>
@@ -609,8 +841,8 @@ export default function StorefrontNavigationPage() {
             <p className="font-medium mb-1">How the menu works on your storefront:</p>
             <ul className="list-disc list-inside space-y-0.5">
               <li>Active menu items replace the default category links in the navigation bar</li>
-              <li>Category items set to <strong>Dropdown</strong> will show subcategories when hovered</li>
-              <li>Category items set to <strong>Single Link</strong> will link directly to the category page</li>
+              <li>Category items set to <strong>Dropdown</strong> let you assign multiple categories that appear in a dropdown menu when hovered</li>
+              <li>Category items set to <strong>Single Link</strong> will link directly to a single category page</li>
               <li>If no items are active, the full category tree will be shown automatically</li>
               <li>The &quot;All Categories&quot; mega menu button can be toggled on/off separately</li>
             </ul>

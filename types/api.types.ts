@@ -1032,6 +1032,14 @@ export interface NavLink {
   is_active: boolean;
 }
 
+export interface DropdownCategoryItem {
+  id: string;
+  category_id: string;
+  category_slug: string;
+  label: string;
+  sort_order: number;
+}
+
 export interface StorefrontNavigationItem {
   id: string;
   label: string;
@@ -1040,6 +1048,8 @@ export interface StorefrontNavigationItem {
   category_slug?: string | null;
   url?: string | null;
   display_mode: 'single' | 'dropdown';
+  /** When display_mode is 'dropdown', these are the multiple categories shown in the dropdown */
+  dropdown_items?: DropdownCategoryItem[];
   sort_order: number;
   is_active: boolean;
   open_in_new_tab: boolean;
