@@ -9,22 +9,7 @@ const nextConfig: NextConfig = {
     remotePatterns: [
       {
         protocol: 'https',
-        hostname: 'images.unsplash.com',
-        pathname: '/**',
-      },
-      {
-        protocol: 'https',
-        hostname: 'plus.unsplash.com',
-        pathname: '/**',
-      },
-      {
-        protocol: 'https',
-        hostname: 'cdn.uims.shop',
-        pathname: '/**',
-      },
-      {
-        protocol: 'https',
-        hostname: 'api.dicebear.com',
+        hostname: 'api.musfiz.com',
         pathname: '/**',
       },
       {

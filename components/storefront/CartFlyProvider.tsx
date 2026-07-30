@@ -8,10 +8,11 @@ interface FlyItem {
   startX: number;
   startY: number;
   image: string;
+  name?: string;
 }
 
 interface CartFlyContextValue {
-  flyToCart: (e: React.MouseEvent, image: string) => void;
+  flyToCart: (e: React.MouseEvent, image: string, name?: string) => void;
 }
 
 const CartFlyContext = createContext<CartFlyContextValue>({
@@ -27,13 +28,13 @@ export function CartFlyProvider({ children }: { children: React.ReactNode }) {
   const idRef = useRef(0);
   const cartRef = useRef<HTMLDivElement>(null);
 
-  const flyToCart = useCallback((e: React.MouseEvent, image: string) => {
+  const flyToCart = useCallback((e: React.MouseEvent, image: string, name?: string) => {
     const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
     const startX = rect.left + rect.width / 2;
     const startY = rect.top + rect.height / 2;
     const id = ++idRef.current;
 
-    setItems(prev => [...prev, { id, startX, startY, image }]);
+    setItems(prev => [...prev, { id, startX, startY, image, name }]);
 
     setTimeout(() => {
       setItems(prev => prev.filter(f => f.id !== id));
@@ -72,7 +73,7 @@ export function CartFlyProvider({ children }: { children: React.ReactNode }) {
                 />
               ) : (
                 <div className="flex h-full w-full items-center justify-center bg-gray-100">
-                  <span className="text-lg font-bold text-gray-300">{item.name[0]}</span>
+                  <span className="text-lg font-bold text-gray-300">{item.name?.[0] ?? '?'}</span>
                 </div>
               )}
             </div>

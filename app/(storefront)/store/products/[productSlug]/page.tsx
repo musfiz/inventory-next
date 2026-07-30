@@ -107,7 +107,7 @@ export default function ProductDetailPage() {
   const handleAdd = (e: React.MouseEvent) => {
     const res = addItem(product.id, variation.id, qty);
     if (res.ok) {
-      flyToCart(e, variation.image || product.images[0]);
+      flyToCart(e, variation.image || product.images[0], product.name);
     } else {
       notify.error(res.message || 'Could not add to bag');
     }

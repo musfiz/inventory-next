@@ -53,7 +53,7 @@ export default function ProductCard({
     const vid = variationId || defaultVariation.id;
     const res = addItem(product.id, vid, 1);
     if (res.ok) {
-      flyToCart(e, defaultVariation.image || product.images[0]);
+      flyToCart(e, defaultVariation.image || product.images[0], product.name);
       setShowQuickAdd(false);
     } else {
       notify.error(res.message || 'Could not add to bag');
