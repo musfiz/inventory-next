@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { useState, useRef, useEffect } from 'react';
+import { useState, useMemo, useRef, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import {
   Search,
@@ -28,7 +28,9 @@ import {
 } from 'lucide-react';
 import { ImCart } from 'react-icons/im';
 import { IoCartSharp } from 'react-icons/io5';
-import { CATEGORIES, POPULAR_SEARCHES } from '@/lib/storefront/mock-data';
+import { POPULAR_SEARCHES } from '@/lib/storefront/mock-data';
+import { useStorefrontCategories } from '@/hooks/use-storefront-categories';
+import type { CategoryTreeItem } from '@/services/storefrontService';
 import { useCartStore } from '@/stores/cart-store';
 import { useWishlistStore } from '@/stores/wishlist-store';
 import { useCustomerAuthStore } from '@/stores/customer-auth-store';
@@ -39,9 +41,9 @@ import { useBranding } from '@/hooks/use-branding';
 import { useHeaderMenu } from '@/hooks/use-header-menu';
 import type { StorefrontNavigationItem } from '@/types/api.types';
 
-const CategoryDropdown = ({ cat, onClose, onKeepOpen }: { cat: typeof CATEGORIES[0]; onClose: () => void; onKeepOpen: () => void }) => {
-  const subs = CATEGORIES.filter(c => c.parentId === cat.id);
-  if (subs.length === 0) return null;
+const CategoryDropdown = ({ cat, onClose, onKeepOpen }: { cat: CategoryTreeItem; onClose: () => void; onKeepOpen: () => void }) => {
+  const children = cat.children ?? [];
+  if (children.length === 0) return null;
 
   return (
     <div
@@ -55,18 +57,18 @@ const CategoryDropdown = ({ cat, onClose, onKeepOpen }: { cat: typeof CATEGORIES
         </Link>
       </div>
       <ul className="border-t border-gray-100 p-2 dark:border-gray-800">
-        {subs.map(sub => {
-          const subSubs = CATEGORIES.filter(c => c.parentId === sub.id);
+        {children.map(sub => {
+          const grandChildren = sub.children ?? [];
           return (
             <li key={sub.id}>
               <Link href={`/store/category/${sub.slug}`} onClick={onClose} className="block rounded-none px-3 py-2.5 text-sm font-semibold text-gray-700 transition-all hover:bg-brand-50 hover:text-brand-700 dark:text-gray-300 dark:hover:bg-brand-950/30">
                 {sub.name}
               </Link>
-              {subSubs.length > 0 && (
+              {grandChildren.length > 0 && (
                 <ul className="ml-3 mt-0.5 space-y-0.5 border-l-2 border-gray-100 pl-3 dark:border-gray-800">
-                  {subSubs.map(subSub => (
-                    <li key={subSub.id}>
-                      <Link href={`/store/category/${subSub.slug}`} onClick={onClose} className="block rounded-lg px-3 py-1.5 text-xs text-gray-500 transition-colors hover:text-brand-600 dark:text-gray-400 dark:hover:text-brand-400">{subSub.name}</Link>
+                  {grandChildren.map(grandChild => (
+                    <li key={grandChild.id}>
+                      <Link href={`/store/category/${grandChild.slug}`} onClick={onClose} className="block rounded-lg px-3 py-1.5 text-xs text-gray-500 transition-colors hover:text-brand-600 dark:text-gray-400 dark:hover:text-brand-400">{grandChild.name}</Link>
                     </li>
                   ))}
                 </ul>
@@ -124,56 +126,110 @@ const CustomDropdown = ({
 };
 
 const MegaMenu = ({ onClose, onKeepOpen }: { onClose: () => void; onKeepOpen: () => void }) => {
-  const parentCats = CATEGORIES.filter(c => !c.parentId);
-  const colCount = Math.min(parentCats.length, 4);
+  const { categories, loading } = useStorefrontCategories();
+  const { config: menu } = useHeaderMenu();
+  const megaConfig = menu.mega_menu_config;
+
+  // ── All hooks MUST be before any early return ──
+  const categoryMap = useMemo(() => {
+    const map = new Map<string, CategoryTreeItem>();
+    const walk = (items: CategoryTreeItem[]) => {
+      for (const item of items) {
+        map.set(item.id, item);
+        if (item.children) walk(item.children);
+      }
+    };
+    walk(categories);
+    return map;
+  }, [categories]);
+
+  const sortedItems = useMemo(() => {
+    if (!megaConfig?.items) return [];
+    return [...megaConfig.items].sort((a, b) => a.sort_order - b.sort_order);
+  }, [megaConfig]);
+
+  // ── Early returns (safe — all hooks above) ──
+  if (loading) return null;
+  if (categories.length === 0) return null;
+  if (megaConfig?.enabled !== true) return null;
+  if (sortedItems.length === 0) return null;
+
+  const colCount = megaConfig?.columns && megaConfig.columns > 0
+    ? Math.min(megaConfig.columns, 6)
+    : Math.min(sortedItems.length, 4);
+  const showProductCount = megaConfig?.show_product_count ?? false;
+
+  const renderCategoryTree = (cat: CategoryTreeItem, depth: number) => {
+    const children = cat.children ?? [];
+    return (
+      <div key={cat.id}>
+        <Link
+          href={`/store/category/${cat.slug}`}
+          onClick={onClose}
+          className={`group flex items-center gap-1 transition-colors ${
+            depth === 0
+              ? 'text-xs font-medium text-gray-500 hover:text-brand-600 dark:text-gray-400 dark:hover:text-brand-400'
+              : 'text-[11px] text-gray-400 hover:text-gray-600 dark:text-gray-500 dark:hover:text-gray-300'
+          }`}
+        >
+          <span>{cat.name}</span>
+          {showProductCount && (
+            <span className="text-[10px] text-gray-300 group-hover:text-inherit">({cat.productCount ?? 0})</span>
+          )}
+        </Link>
+        {children.length > 0 && (
+          <div className={`space-y-0.5 ${
+            depth === 0
+              ? 'mt-1'
+              : 'ml-2 mt-0.5 pl-2 border-l-[1.5px] border-gray-100 dark:border-gray-800'
+          }`}>
+            {children.map(child => renderCategoryTree(child, depth + 1))}
+          </div>
+        )}
+      </div>
+    );
+  };
 
   return (
     <div
-      className="absolute left-0 right-0 top-full z-40 bg-white shadow-xl dark:bg-gray-950 sf-fade-in"
+      className="absolute left-0 right-0 top-full z-40 bg-white shadow-2xl shadow-black/10 dark:bg-gray-950 sf-fade-in"
       onMouseEnter={onKeepOpen}
       onMouseLeave={onClose}
     >
-      <div className="mx-auto max-w-7xl px-4 py-10">
-        <p className="mb-6 text-xs font-bold uppercase tracking-[0.15em] text-gray-400">All Categories</p>
-        <div className="grid gap-x-12 gap-y-8" style={{ gridTemplateColumns: `repeat(${colCount}, 1fr)` }}>
-          {parentCats.map(cat => {
-            const subs = CATEGORIES.filter(c => c.parentId === cat.id);
+      <div className="mx-auto max-w-7xl px-5 py-5">
+        <p className="mb-3 text-[10px] font-bold uppercase tracking-[0.2em] text-gray-400">All Categories</p>
+        <div className="grid gap-x-6 gap-y-5" style={{ gridTemplateColumns: `repeat(${Math.min(colCount, 6)}, 1fr)` }}>
+          {sortedItems.map(item => {
+            const span = item.columns ?? 1;
+            const assigned = item.category_ids
+              .map(id => categoryMap.get(id))
+              .filter(Boolean) as CategoryTreeItem[];
+
             return (
-              <div key={cat.id}>
-                <Link href={`/store/category/${cat.slug}`} onClick={onClose} className="text-sm font-bold text-gray-900 transition-colors hover:text-gray-600 dark:text-gray-100 dark:hover:text-gray-400">
-                  {cat.name}
-                </Link>
-                {subs.length > 0 && (
-                  <ul className="mt-2.5 space-y-1">
-                    {subs.map(sub => {
-                      const subSubs = CATEGORIES.filter(c => c.parentId === sub.id);
-                      return (
-                        <li key={sub.id}>
-                          <Link href={`/store/category/${sub.slug}`} onClick={onClose} className="block text-sm text-gray-500 transition-colors hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-200">
-                            {sub.name}
-                          </Link>
-                          {subSubs.length > 0 && (
-                            <ul className="ml-3 mt-0.5 space-y-0.5 border-l border-gray-200 pl-3 dark:border-gray-700">
-                              {subSubs.map(subSub => (
-                                <li key={subSub.id}>
-                                  <Link href={`/store/category/${subSub.slug}`} onClick={onClose} className="block text-xs text-gray-400 transition-colors hover:text-gray-700 dark:text-gray-500 dark:hover:text-gray-300">{subSub.name}</Link>
-                                </li>
-                              ))}
-                            </ul>
-                          )}
-                        </li>
-                      );
-                    })}
-                  </ul>
+              <div key={item.id} style={{ gridColumn: `span ${Math.min(span, colCount)}` }}>
+                {/* Parent header — accent bar */}
+                <div className="mb-2 border-l-[3px] border-brand-500 pl-2">
+                  <h3 className="text-xs font-bold uppercase tracking-wider text-gray-900 dark:text-white">
+                    {item.name}
+                  </h3>
+                </div>
+
+                {/* Category tree */}
+                {assigned.length === 0 ? (
+                  <p className="pl-2 text-[11px] italic text-gray-400">No categories</p>
+                ) : (
+                  <div className="space-y-1.5 pl-2">
+                    {assigned.map(cat => renderCategoryTree(cat, 0))}
+                  </div>
                 )}
               </div>
             );
           })}
         </div>
 
-        <div className="mt-8 border-t border-gray-100 pt-6 dark:border-gray-800">
-          <Link href="/store/products" onClick={onClose} className="inline-flex items-center gap-1.5 text-sm font-semibold text-gray-900 transition-colors hover:text-gray-600 dark:text-gray-100 dark:hover:text-gray-400">
-            Browse all products <IoCartSharp className="h-4 w-4" />
+        <div className="mt-6 border-t border-gray-100 pt-4 dark:border-gray-800">
+          <Link href="/store/products" onClick={onClose} className="inline-flex items-center gap-1 text-xs font-semibold text-gray-900 transition-colors hover:text-gray-600 dark:text-gray-100 dark:hover:text-gray-400">
+            Browse all products <IoCartSharp className="h-3.5 w-3.5" />
           </Link>
         </div>
       </div>
@@ -372,8 +428,8 @@ const AccountMenu = ({ onClose }: { onClose?: () => void }) => {
 const MobileMenu = ({ open, onClose, headerLogo, ready }: { open: boolean; onClose: () => void; headerLogo: string | null; ready: boolean }) => {
   const [expanded, setExpanded] = useState<string | null>(null);
   const { config: menu, ready: menuReady } = useHeaderMenu();
+  const { categories } = useStorefrontCategories();
   if (!open) return null;
-  const parentCats = CATEGORIES.filter(c => !c.parentId);
 
   // Custom nav items from admin config
   const navConfig = menu.menu_items ?? [];
@@ -452,9 +508,9 @@ const MobileMenu = ({ open, onClose, headerLogo, ready }: { open: boolean; onClo
                 );
               })
             ) : (
-              // Fallback: render mock categories
-              parentCats.map(cat => {
-                const subs = CATEGORIES.filter(c => c.parentId === cat.id);
+              // Fallback: render dynamic categories from API
+              categories.map(cat => {
+                const subs = cat.children ?? [];
                 const isOpen = expanded === cat.id;
                 return (
                   <li key={cat.id}>
@@ -523,18 +579,27 @@ export default function StorefrontHeader() {
   const openCart = useCartStore(s => s.openDrawer);
   const { headerLogo, ready } = useBranding();
   const { config: menu, ready: menuReady } = useHeaderMenu();
+  const { categories } = useStorefrontCategories();
   const user = useCustomerAuthStore(s => s.user);
   const router = useRouter();
-
-  const parentCats = CATEGORIES.filter(c => !c.parentId);
 
   // Navigation from admin config
   const navConfig = menu.menu_items ?? [];
   const activeMenuItems = navConfig.filter((i: StorefrontNavigationItem) => i.is_active);
   const hasCustomNav = activeMenuItems.length > 0;
 
-  // Find a mock category by slug (for subcategory dropdowns fallback)
-  const findCategoryBySlug = (slug: string) => CATEGORIES.find(c => c.slug === slug || c.name.toLowerCase().replace(/\s+/g, '-') === slug);
+  // Recursively find a category by slug across the entire tree
+  const findCategoryBySlug = (slug: string, list?: CategoryTreeItem[]): CategoryTreeItem | undefined => {
+    const cats = list ?? categories;
+    for (const cat of cats) {
+      if (cat.slug === slug) return cat;
+      if (cat.children?.length) {
+        const found = findCategoryBySlug(slug, cat.children);
+        if (found) return found;
+      }
+    }
+    return undefined;
+  };
 
   // Render a category-based menu item with dropdown if display_mode is 'dropdown'
   const renderNavItem = (item: StorefrontNavigationItem) => {
@@ -581,7 +646,7 @@ export default function StorefrontHeader() {
 
     // Category item — single link mode
     const cat = item.category_slug ? findCategoryBySlug(item.category_slug) : null;
-    const hasSubs = cat ? CATEGORIES.some(c => c.parentId === cat.id) : false;
+    const hasSubs = cat ? (cat.children?.length ?? 0) > 0 : false;
 
     return (
       <div key={item.id} className="relative" onMouseEnter={() => setMenuWithDelay(item.id)}>
@@ -721,13 +786,18 @@ export default function StorefrontHeader() {
                     if (user) { setAccountOpen(o => !o); }
                     else { router.push('/store/account/login'); }
                   }}
-                  className="rounded-xl p-2.5 text-gray-600 transition-all hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-gray-800"
+                  className="flex items-center gap-2 rounded-xl p-2 text-gray-600 transition-all hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-gray-800"
                   aria-label="Account"
                 >
                   {user ? (
-                    <span className="flex h-5 w-5 items-center justify-center rounded-full bg-linear-to-br from-brand-600 to-purple-600 text-[11px] font-bold text-white">
-                      {user.name?.charAt(0)?.toUpperCase() || '?'}
-                    </span>
+                    <>
+                      <span className="flex h-6 w-6 items-center justify-center rounded-full bg-linear-to-br from-brand-600 to-purple-600 text-[11px] font-bold text-white">
+                        {user.name?.charAt(0)?.toUpperCase() || '?'}
+                      </span>
+                      <span className="hidden text-sm font-semibold sm:inline-block">
+                        Hi, {user.name?.split(' ')[0] || 'User'}
+                      </span>
+                    </>
                   ) : (
                     <User className="h-5 w-5" />
                   )}
@@ -765,7 +835,7 @@ export default function StorefrontHeader() {
             {menuReady ? (
               <>
                 {/* All Categories button */}
-                {menu.navigation_show_all_categories && (
+                {(menu.mega_menu_config?.enabled === true) && (
                   <div onMouseEnter={() => setMenuWithDelay('all')}>
                     <button className="flex items-center gap-2.5 rounded-xl bg-linear-to-r from-brand-600 to-purple-600 px-5 py-3 text-sm font-bold text-white shadow-md shadow-brand-600/20 transition-all hover:shadow-lg hover:shadow-brand-600/30">
                       <Menu className="h-4 w-4" />
@@ -778,8 +848,8 @@ export default function StorefrontHeader() {
                 {/* Menu items from admin config, or fallback to full category tree */}
                 {hasCustomNav
                   ? activeMenuItems.map(renderNavItem)
-                  : parentCats.slice(0, 6).map(cat => {
-                      const hasSubs = CATEGORIES.some(c => c.parentId === cat.id);
+                  : categories.slice(0, 6).map(cat => {
+                      const hasSubs = (cat.children?.length ?? 0) > 0;
                       return (
                         <div key={cat.id} className="relative" onMouseEnter={() => setMenuWithDelay(cat.id)}>
                           <Link href={`/store/category/${cat.slug}`} className={`group flex items-center gap-1.5 rounded-xl px-3.5 py-3 text-sm font-semibold transition-all ${activeMenu === cat.id ? 'bg-brand-50 text-brand-600 dark:bg-brand-950/30 dark:text-brand-400' : 'text-gray-700 hover:bg-gray-100 hover:text-brand-600 dark:text-gray-200 dark:hover:bg-gray-800'}`}>

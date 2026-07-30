@@ -12,7 +12,6 @@ const DEFAULT_CONFIG: HeaderMenuConfig = {
   utility_bar_bg_color: '#7c3aed',
   utility_bar_text_color: '#ffffff',
   nav_links: [],
-  navigation_show_all_categories: true,
   navigation_show_flash_sale: true,
   navigation_show_new_arrivals: true,
   menu_items: [],
@@ -21,6 +20,7 @@ const DEFAULT_CONFIG: HeaderMenuConfig = {
   show_account_icon: true,
   show_cart_icon: true,
   sticky_header: true,
+  mega_menu_config: null,
 };
 
 interface HeaderMenuStore {

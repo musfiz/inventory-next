@@ -87,7 +87,6 @@ export default function StorefrontNavigationPage() {
 
   // Config state (navigation-specific fields from header-menu config)
   const [menuItems, setMenuItems] = useState<StorefrontNavigationItem[]>([]);
-  const [showAllCategories, setShowAllCategories] = useState(true);
   const [showFlashSale, setShowFlashSale] = useState(true);
   const [showNewArrivals, setShowNewArrivals] = useState(true);
 
@@ -107,7 +106,6 @@ export default function StorefrontNavigationPage() {
     try {
       const res = await headerMenuService.get();
       setMenuItems(res.menu_items || []);
-      setShowAllCategories(res.navigation_show_all_categories ?? true);
       setShowFlashSale(res.navigation_show_flash_sale ?? true);
       setShowNewArrivals(res.navigation_show_new_arrivals ?? true);
     } catch {
@@ -143,7 +141,6 @@ export default function StorefrontNavigationPage() {
     setSaving(true);
     try {
       await headerMenuService.update({
-        navigation_show_all_categories: showAllCategories,
         navigation_show_flash_sale: showFlashSale,
         navigation_show_new_arrivals: showNewArrivals,
         menu_items: menuItems,
@@ -346,20 +343,6 @@ export default function StorefrontNavigationPage() {
         </div>
 
         <div className="space-y-3">
-          <div className="flex items-center justify-between py-2 px-3 bg-gray-50 dark:bg-gray-750 rounded border border-gray-200 dark:border-gray-600">
-            <div className="flex items-center gap-2">
-              <FolderTree className="w-4 h-4 text-gray-500" />
-              <span className="text-sm font-medium text-gray-700 dark:text-gray-200">
-                Show &quot;All Categories&quot; button
-              </span>
-            </div>
-            <Toggle
-              checked={showAllCategories}
-              onChange={v => { setShowAllCategories(v); markDirty(); }}
-              id="toggle-all-categories"
-            />
-          </div>
-
           <div className="flex items-center justify-between py-2 px-3 bg-gray-50 dark:bg-gray-750 rounded border border-gray-200 dark:border-gray-600">
             <div className="flex items-center gap-2">
               <Sparkles className="w-4 h-4 text-gray-500" />
@@ -844,7 +827,7 @@ export default function StorefrontNavigationPage() {
               <li>Category items set to <strong>Dropdown</strong> let you assign multiple categories that appear in a dropdown menu when hovered</li>
               <li>Category items set to <strong>Single Link</strong> will link directly to a single category page</li>
               <li>If no items are active, the full category tree will be shown automatically</li>
-              <li>The &quot;All Categories&quot; mega menu button can be toggled on/off separately</li>
+              <li>The &quot;All Categories&quot; mega menu is managed in <strong>Appearance → All Categories Mega Menu</strong></li>
             </ul>
           </div>
         </div>

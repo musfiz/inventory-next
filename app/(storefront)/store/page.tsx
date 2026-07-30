@@ -26,11 +26,19 @@ import type { StorefrontHeroSlider } from '@/services/storefrontService';
 import type { StorefrontOfferSlide } from '@/types/storefront';
 import {
   PROMO_BANNERS,
-  CATEGORIES,
   PRODUCTS,
   formatMoney,
   STORE_INFO,
 } from '@/lib/storefront/mock-data';
+import { useStorefrontCategories } from '@/hooks/use-storefront-categories';
+
+const resolveImageUrl = (url?: string | null) => {
+  if (!url) return '';
+  if (/^https?:\/\//i.test(url) || url.startsWith('data:') || url.startsWith('blob:')) return url;
+  const baseUrl = (process.env.NEXT_PUBLIC_BACKEND_URL || '').replace(/\/+$/, '');
+  if (!baseUrl) return url;
+  return `${baseUrl}${url.startsWith('/') ? url : '/' + url}`;
+};
 
 const CATEGORY_ICONS: Record<string, string> = {
   electronics: '💻',
@@ -48,13 +56,67 @@ const CATEGORY_ICONS: Record<string, string> = {
   home: '🏠',
   beauty: '💄',
   sports: '⚽',
+  food: '🍔',
+  beverage: '🥤',
+  toy: '🧸',
+  book: '📚',
+  automotive: '🚗',
+  pet: '🐾',
+  health: '💊',
+  jewelry: '💎',
+  accessory: '👜',
+  tool: '🔧',
+  garden: '🌱',
+  office: '📎',
+  baby: '👶',
+  music: '🎵',
+  game: '🎮',
+  camera: '📷',
+  furniture: '🪑',
+  lighting: '💡',
+  bath: '🛁',
+  kitchen: '🍳',
+  mattress: '🛏️',
+  outdoor: '🏕️',
+  luggage: '🧳',
+  watch: '⌚',
+  perfume: '🧴',
+  skincare: '🧖',
+  supplement: '💊',
+  organic: '🌿',
+  frozen: '❄️',
+  dairy: '🥛',
+  meat: '🥩',
+  seafood: '🦐',
 };
 
 /* ================================================================ */
 /*  Section: Category Strip — "Shop by Category" icon grid           */
 /* ================================================================ */
 const CategoryStrip = () => {
-  const visible = CATEGORIES.filter(c => !c.parentId).slice(0, 10);
+  const { categories, loading } = useStorefrontCategories();
+  const visible = categories.slice(0, 10);
+
+  if (loading) {
+    return (
+      <section className="py-10 sm:py-12">
+        <div className="mb-6">
+          <div className="h-8 w-64 animate-pulse rounded-lg bg-gray-200 dark:bg-gray-800" />
+        </div>
+        <div className="grid grid-cols-3 gap-3 sm:grid-cols-5 lg:grid-cols-10">
+          {[...Array(10)].map((_, i) => (
+            <div key={i} className="flex flex-col items-center gap-2 rounded-2xl border border-gray-200 bg-white p-3 dark:border-gray-800 dark:bg-gray-900">
+              <div className="aspect-square w-full animate-pulse rounded-xl bg-gray-200 dark:bg-gray-800" />
+              <div className="h-3 w-16 animate-pulse rounded bg-gray-200 dark:bg-gray-800" />
+            </div>
+          ))}
+        </div>
+      </section>
+    );
+  }
+
+  if (visible.length === 0) return null;
+
   return (
     <section className="py-10 sm:py-12">
       <ScrollReveal animation="fade-up" as="div" className="mb-6">
@@ -87,7 +149,7 @@ const CategoryStrip = () => {
               <div className="relative aspect-square w-full overflow-hidden rounded-xl bg-linear-to-br from-brand-50 to-purple-50 dark:from-brand-950/30 dark:to-purple-950/30">
                 {cat.image ? (
                   <Image
-                    src={cat.image}
+                    src={resolveImageUrl(cat.image)}
                     alt={cat.name}
                     fill
                     sizes="120px"

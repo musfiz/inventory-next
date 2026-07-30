@@ -6,6 +6,7 @@ import { useState, useEffect, useMemo, useRef } from 'react';
 import { usePermissions } from '@/hooks/use-permissions';
 import {
   LayoutDashboard,
+  LayoutGrid,
   LayoutTemplate,
   LayoutList,
   Users,
@@ -267,6 +268,7 @@ const navigation: NavigationItem[] = [
           { name: 'Theme & Colors', href: '/ecommerce/appearance/theme', icon: Palette },
           { name: 'Logo & Favicon', href: '/ecommerce/appearance/logo', icon: Image },
           { name: 'Header & Info ', href: '/ecommerce/appearance/header-menu', icon: MenuIcon },
+          { name: 'Mega Menu', href: '/ecommerce/appearance/mega-menu', icon: LayoutGrid },
           { name: 'Navigation Menu', href: '/ecommerce/appearance/storefront-navigation', icon: LayoutList },
           { name: 'Footer Builder', href: '/ecommerce/appearance/footer', icon: PanelBottom },
         ],

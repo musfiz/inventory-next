@@ -15,6 +15,16 @@ export interface StorefrontHeroSlider {
 
 import type { StorefrontOfferSlide } from '@/types/storefront';
 
+export interface CategoryTreeItem {
+  id: string;
+  name: string;
+  slug: string;
+  image: string | null;
+  parentId: string | null;
+  productCount: number;
+  children: CategoryTreeItem[];
+}
+
 export interface CategoryPageData {
   id: string;
   name: string;
@@ -56,6 +66,13 @@ class StorefrontService {
       `/api/v1/storefront/category/${slug}`
     );
     return response.data.data;
+  }
+
+  async getCategories(): Promise<CategoryTreeItem[]> {
+    const response = await apiClient.get<ApiResponse<CategoryTreeItem[]>>(
+      '/api/v1/storefront/categories'
+    );
+    return response.data.data ?? [];
   }
 
   async getProducts(params: {

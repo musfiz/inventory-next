@@ -51,7 +51,6 @@ export default function HeaderMenuPage() {
     utility_bar_bg_color: DEFAULT_UTILITY_BG,
     utility_bar_text_color: DEFAULT_UTILITY_TEXT,
     nav_links: [],
-    navigation_show_all_categories: true,
     navigation_show_flash_sale: true,
     navigation_show_new_arrivals: true,
     menu_items: [],
@@ -60,6 +59,7 @@ export default function HeaderMenuPage() {
     show_account_icon: true,
     show_cart_icon: true,
     sticky_header: true,
+    mega_menu_config: null,
   });
 
   const markDirty = useCallback(() => setDirty(true), []);

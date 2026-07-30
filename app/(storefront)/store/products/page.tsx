@@ -15,10 +15,10 @@ import ScrollReveal from '@/components/storefront/ScrollReveal';
 import ProductCardSkeleton from '@/components/storefront/ProductCardSkeleton';
 import {
   PRODUCTS,
-  CATEGORIES,
   BRANDS,
   formatMoney,
 } from '@/lib/storefront/mock-data';
+import { useStorefrontCategories } from '@/hooks/use-storefront-categories';
 import type { Product } from '@/types/storefront';
 
 const SORTS = [
@@ -51,7 +51,40 @@ export default function AllProductsPage() {
   const [visibleCount, setVisibleCount] = useState(ITEMS_PER_PAGE);
   const sentinelRef = useRef<HTMLDivElement>(null);
 
-  const parentCats = CATEGORIES.filter(c => !c.parentId);
+  const { categories: parentCats } = useStorefrontCategories();
+
+  // Flatten all category tree items into a single array for quick lookup
+  const allCategories = useMemo(() => {
+    const flat: import('@/services/storefrontService').CategoryTreeItem[] = [];
+    const walk = (items: import('@/services/storefrontService').CategoryTreeItem[]) => {
+      for (const item of items) {
+        flat.push(item);
+        if (item.children?.length) walk(item.children);
+      }
+    };
+    walk(parentCats);
+    return flat;
+  }, [parentCats]);
+
+  // Build: for each parent category ID, collect all descendant (child) category IDs
+  const childrenOf = useMemo(() => {
+    const map: Record<string, Set<string>> = {};
+    const collect = (items: import('@/services/storefrontService').CategoryTreeItem[]) => {
+      for (const item of items) {
+        const ids = new Set<string>();
+        const gather = (children: import('@/services/storefrontService').CategoryTreeItem[]) => {
+          for (const child of children) {
+            ids.add(child.id);
+            if (child.children?.length) gather(child.children);
+          }
+        };
+        if (item.children?.length) gather(item.children);
+        map[item.id] = ids;
+      }
+    };
+    collect(parentCats);
+    return map;
+  }, [parentCats]);
 
   const allFiltered = useMemo(() => {
     const step = PRICE_STEPS.find(s => s.id === priceStep)!;
@@ -59,10 +92,7 @@ export default function AllProductsPage() {
       if (selectedCats.length > 0) {
         const match =
           selectedCats.includes(p.category.id) ||
-          selectedCats.some(cid => {
-            const cat = CATEGORIES.find(c => c.id === cid);
-            return cat && CATEGORIES.some(c => c.parentId === cat.id && c.id === p.category.id);
-          });
+          selectedCats.some(cid => childrenOf[cid]?.has(p.category.id));
         if (!match) return false;
       }
       if (selectedBrands.length > 0 && (!p.brand || !selectedBrands.includes(p.brand.id))) return false;
@@ -74,7 +104,7 @@ export default function AllProductsPage() {
     const sortCfg = SORTS.find(s => s.id === sort)!;
     list = [...list].sort(sortCfg.fn);
     return list;
-  }, [sort, selectedCats, selectedBrands, priceStep, inStockOnly]);
+  }, [sort, selectedCats, selectedBrands, priceStep, inStockOnly, childrenOf]);
 
   const filtered = allFiltered.slice(0, visibleCount);
   const hasMore = visibleCount < allFiltered.length;
@@ -123,7 +153,7 @@ export default function AllProductsPage() {
         </p>
         <ul className="space-y-2">
           {parentCats.map(c => {
-            const childCats = CATEGORIES.filter(cc => cc.parentId === c.id);
+            const childCats = c.children ?? [];
             return (
               <li key={c.id}>
                 <label className="flex items-center gap-2 text-sm text-gray-700 dark:text-gray-300">
@@ -323,7 +353,7 @@ export default function AllProductsPage() {
             {activeFilterCount > 0 && (
               <div className="mb-4 flex flex-wrap gap-2">
                 {selectedCats.map(id => {
-                  const c = CATEGORIES.find(cc => cc.id === id);
+                  const c = allCategories.find(cc => cc.id === id);
                   return (
                     <button
                       key={id}

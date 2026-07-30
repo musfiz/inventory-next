@@ -1055,6 +1055,23 @@ export interface StorefrontNavigationItem {
   open_in_new_tab: boolean;
 }
 
+/* ─────────────── All Categories Mega Menu Config ─────────────── */
+
+export interface MegaMenuItem {
+  id: string;
+  name: string;
+  columns: number | null;
+  sort_order: number;
+  category_ids: string[];
+}
+
+export interface MegaMenuConfig {
+  enabled: boolean;
+  columns: number;
+  show_product_count: boolean;
+  items: MegaMenuItem[];
+}
+
 export interface HeaderMenuConfig {
   utility_bar_enabled: boolean;
   utility_bar_text_free_shipping: string;
@@ -1066,10 +1083,12 @@ export interface HeaderMenuConfig {
   nav_links: NavLink[];
 
   /** Storefront navigation menu settings */
-  navigation_show_all_categories: boolean;
   navigation_show_flash_sale: boolean;
   navigation_show_new_arrivals: boolean;
   menu_items: StorefrontNavigationItem[];
+
+  /** All Categories Mega Menu customization */
+  mega_menu_config: MegaMenuConfig | null;
 
   show_search_bar: boolean;
   show_wishlist_icon: boolean;

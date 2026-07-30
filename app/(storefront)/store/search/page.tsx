@@ -9,10 +9,10 @@ import ScrollReveal from '@/components/storefront/ScrollReveal';
 import ProductCardSkeleton from '@/components/storefront/ProductCardSkeleton';
 import {
   PRODUCTS,
-  CATEGORIES,
   BRANDS,
   POPULAR_SEARCHES,
 } from '@/lib/storefront/mock-data';
+import { useStorefrontCategories } from '@/hooks/use-storefront-categories';
 import type { Product } from '@/types/storefront';
 
 const SORTS = [
@@ -67,7 +67,7 @@ export default function SearchPage() {
     return [...list].sort(sortFns[sort]);
   }, [q, sort, selectedBrands, selectedCats]);
 
-  const parentCats = CATEGORIES.filter(c => !c.parentId);
+  const { categories: parentCats } = useStorefrontCategories();
 
   return (
     <div className="bg-gray-50 dark:bg-gray-950">
