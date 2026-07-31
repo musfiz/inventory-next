@@ -40,6 +40,7 @@
 }
 
 @layer base {
+
   button:not(:disabled),
   [role='button']:not(:disabled) {
     @apply cursor-pointer;
@@ -99,6 +100,7 @@
     opacity: 0;
     transform: translateY(8px);
   }
+
   to {
     opacity: 1;
     transform: translateY(0);
@@ -114,14 +116,20 @@
 }
 
 @keyframes sf-fade-out {
-  from { opacity: 1; }
-  to   { opacity: 0; }
+  from {
+    opacity: 1;
+  }
+
+  to {
+    opacity: 0;
+  }
 }
 
 @keyframes sf-slide-in-right {
   from {
     transform: translateX(100%);
   }
+
   to {
     transform: translateX(0);
   }
@@ -136,14 +144,20 @@
 }
 
 @keyframes sf-slide-out-right {
-  from { transform: translateX(0); }
-  to   { transform: translateX(100%); }
+  from {
+    transform: translateX(0);
+  }
+
+  to {
+    transform: translateX(100%);
+  }
 }
 
 @keyframes sf-slide-in-left {
   from {
     transform: translateX(-100%);
   }
+
   to {
     transform: translateX(0);
   }
@@ -158,6 +172,7 @@
     opacity: 0;
     transform: scale(0.95);
   }
+
   to {
     opacity: 1;
     transform: scale(1);
@@ -168,34 +183,86 @@
   animation: sf-fade-in-zoom 0.25s ease-out both;
 }
 
+/* Cascading menu — column reveals horizontally with a slight rightward slide */
+@keyframes sf-cascade-in {
+  from {
+    opacity: 0;
+    transform: translateX(-10px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+.sf-cascade-in {
+  animation: sf-cascade-in 0.2s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
 /* ================================================================ */
 /*  Scroll-triggered reveal animations                               */
 /*  Used by the ScrollReveal component                               */
 /* ================================================================ */
 
 @keyframes sf-fade-up {
-  from { opacity: 0; transform: translateY(24px); }
-  to   { opacity: 1; transform: translateY(0); }
+  from {
+    opacity: 0;
+    transform: translateY(24px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
 @keyframes sf-zoom-in {
-  from { opacity: 0; transform: scale(0.92) translateY(12px); }
-  to   { opacity: 1; transform: scale(1) translateY(0); }
+  from {
+    opacity: 0;
+    transform: scale(0.92) translateY(12px);
+  }
+
+  to {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
 }
 
 @keyframes sf-pop {
-  from { opacity: 0; transform: scale(0.85); }
-  to   { opacity: 1; transform: scale(1); }
+  from {
+    opacity: 0;
+    transform: scale(0.85);
+  }
+
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
 }
 
 @keyframes sf-slide-left {
-  from { opacity: 0; transform: translateX(-30px); }
-  to   { opacity: 1; transform: translateX(0); }
+  from {
+    opacity: 0;
+    transform: translateX(-30px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
 }
 
 @keyframes sf-slide-right {
-  from { opacity: 0; transform: translateX(30px); }
-  to   { opacity: 1; transform: translateX(0); }
+  from {
+    opacity: 0;
+    transform: translateX(30px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
 }
 
 /* Each animation class only sets the name; shared timing via custom properties */
@@ -210,14 +277,29 @@
   animation-delay: var(--sf-delay, 0ms);
 }
 
-.sf-fade-up     { animation-name: sf-fade-up; }
-.sf-zoom-in     { animation-name: sf-zoom-in; }
-.sf-pop         { animation-name: sf-pop; }
-.sf-slide-left  { animation-name: sf-slide-left; }
-.sf-slide-right { animation-name: sf-slide-right; }
+.sf-fade-up {
+  animation-name: sf-fade-up;
+}
+
+.sf-zoom-in {
+  animation-name: sf-zoom-in;
+}
+
+.sf-pop {
+  animation-name: sf-pop;
+}
+
+.sf-slide-left {
+  animation-name: sf-slide-left;
+}
+
+.sf-slide-right {
+  animation-name: sf-slide-right;
+}
 
 /* Reduced motion — respect user preference */
 @media (prefers-reduced-motion: reduce) {
+
   .sf-fade-up,
   .sf-zoom-in,
   .sf-pop,
@@ -233,29 +315,26 @@
   0% {
     background-position: -1000px 0;
   }
+
   100% {
     background-position: 1000px 0;
   }
 }
 
 .sf-shimmer {
-  background: linear-gradient(
-    90deg,
-    rgba(244, 244, 245, 1) 0%,
-    rgba(228, 228, 231, 1) 50%,
-    rgba(244, 244, 245, 1) 100%
-  );
+  background: linear-gradient(90deg,
+      rgba(244, 244, 245, 1) 0%,
+      rgba(228, 228, 231, 1) 50%,
+      rgba(244, 244, 245, 1) 100%);
   background-size: 1000px 100%;
   animation: sf-shimmer 1.8s infinite linear;
 }
 
 .dark .sf-shimmer {
-  background: linear-gradient(
-    90deg,
-    rgba(39, 39, 42, 1) 0%,
-    rgba(63, 63, 70, 1) 50%,
-    rgba(39, 39, 42, 1) 100%
-  );
+  background: linear-gradient(90deg,
+      rgba(39, 39, 42, 1) 0%,
+      rgba(63, 63, 70, 1) 50%,
+      rgba(39, 39, 42, 1) 100%);
   background-size: 1000px 100%;
 }
 
@@ -263,6 +342,7 @@
   0% {
     transform: translateX(0);
   }
+
   100% {
     transform: translateX(-50%);
   }

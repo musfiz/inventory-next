@@ -453,8 +453,8 @@ const TrustStrip = () => (
       { icon: Headphones, title: '24/7 Support', desc: 'Dedicated help' },
     ].map(({ icon: Icon, title, desc }, i) => (
       <ScrollReveal key={title} animation="pop" staggerIndex={i} staggerGap={100}>
-        <div className="flex items-center gap-3 rounded-2xl border border-gray-200 bg-white p-4 dark:border-gray-800 dark:bg-gray-900">
-          <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-emerald-50 text-emerald-600 dark:bg-emerald-950/30 dark:text-emerald-400">
+        <div className="flex items-center gap-3 border border-gray-200 bg-white p-4 dark:border-gray-800 dark:bg-gray-900">
+          <div className="flex h-11 w-11 shrink-0 items-center justify-center bg-emerald-50 text-emerald-600 dark:bg-emerald-950/30 dark:text-emerald-400">
             <Icon className="h-5 w-5" />
           </div>
           <div>

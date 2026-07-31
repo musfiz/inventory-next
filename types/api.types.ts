@@ -1067,6 +1067,8 @@ export interface MegaMenuItem {
 
 export interface MegaMenuConfig {
   enabled: boolean;
+  /** Which UI variant renders the "All Categories" panel */
+  display_style: 'mega' | 'cascading';
   columns: number;
   show_product_count: boolean;
   items: MegaMenuItem[];

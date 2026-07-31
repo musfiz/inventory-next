@@ -17,7 +17,7 @@ const resolveImageUrl = (url?: string | null) => {
 
 export function HeroCarouselSkeleton() {
   return (
-    <div className="h-[420px] overflow-hidden rounded-2xl sm:h-[480px] lg:h-[520px]">
+    <div className="h-[420px] overflow-hidden sm:h-[480px] lg:h-[520px]">
       <div className="sf-shimmer h-full w-full" />
     </div>
   );
@@ -49,7 +49,7 @@ export default function HeroCarousel({ slides }: { slides: StorefrontHeroSlider[
 
   return (
     <div
-      className="group relative h-[420px] overflow-hidden rounded-2xl sm:h-[480px] lg:h-[520px]"
+      className="group relative h-[420px] overflow-hidden sm:h-[480px] lg:h-[520px]"
       onMouseEnter={() => setPaused(true)}
       onMouseLeave={() => setPaused(false)}
     >

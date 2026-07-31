@@ -33,6 +33,7 @@ import type { CategoryTreeItem } from '@/services/storefrontService';
 
 const DEFAULT_MEGA_MENU: MegaMenuConfig = {
   enabled: true,
+  display_style: 'mega',
   columns: 4,
   show_product_count: false,
   items: [],
@@ -56,16 +57,14 @@ function Toggle({
       role="switch"
       aria-checked={checked}
       onClick={() => onChange(!checked)}
-      className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer items-center rounded-full border-2 border-transparent transition-all duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 ${
-        checked
+      className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer items-center rounded-full border-2 border-transparent transition-all duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 ${checked
           ? 'bg-indigo-600 dark:bg-indigo-500'
           : 'bg-gray-300 dark:bg-gray-600'
-      }`}
+        }`}
     >
       <span
-        className={`inline-block h-5 w-5 transform rounded-full bg-white shadow-md ring-0 transition-all duration-200 ease-in-out ${
-          checked ? 'translate-x-5' : 'translate-x-0'
-        }`}
+        className={`inline-block h-5 w-5 transform rounded-full bg-white shadow-md ring-0 transition-all duration-200 ease-in-out ${checked ? 'translate-x-5' : 'translate-x-0'
+          }`}
       />
     </button>
   );
@@ -96,11 +95,10 @@ function ColumnOverride({
           key={String(opt.value)}
           type="button"
           onClick={() => onChange(opt.value)}
-          className={`rounded-lg border px-2.5 py-1 text-xs font-semibold transition-all cursor-pointer ${
-            value === opt.value
+          className={`rounded-lg border px-2.5 py-1 text-xs font-semibold transition-all cursor-pointer ${value === opt.value
               ? 'border-indigo-500 bg-indigo-50 text-indigo-700 dark:border-indigo-400 dark:bg-indigo-900/30 dark:text-indigo-300'
               : 'border-gray-200 bg-white text-gray-600 hover:border-gray-300 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-300'
-          }`}
+            }`}
         >
           {opt.label}
         </button>
@@ -134,11 +132,10 @@ function GlobalColumnSelector({
           key={opt.value}
           type="button"
           onClick={() => onChange(opt.value)}
-          className={`inline-flex items-center gap-1.5 rounded-lg border px-4 py-2 text-xs font-semibold transition-all cursor-pointer ${
-            value === opt.value
+          className={`inline-flex items-center gap-1.5 rounded-lg border px-4 py-2 text-xs font-semibold transition-all cursor-pointer ${value === opt.value
               ? 'border-indigo-500 bg-indigo-50 text-indigo-700 shadow-sm dark:border-indigo-400 dark:bg-indigo-900/30 dark:text-indigo-300'
               : 'border-gray-200 bg-white text-gray-600 hover:border-gray-300 hover:bg-gray-50 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-300 dark:hover:border-gray-500'
-          }`}
+            }`}
         >
           <Columns3 className="h-3.5 w-3.5" />
           {opt.label}
@@ -531,11 +528,10 @@ function MegaMenuPreview({
         </div>
         {children.length > 0 && (
           <div
-            className={`space-y-0.5 ${
-              depth === 0
+            className={`space-y-0.5 ${depth === 0
                 ? 'mt-1.5'
                 : 'ml-3 mt-0.5 pl-2 border-l-2 border-gray-100 dark:border-gray-800'
-            }`}
+              }`}
           >
             {children.map((child) =>
               renderCategoryTree(child, depth + 1),
@@ -737,6 +733,7 @@ export default function MegaMenuPage() {
         // New format — use directly
         setConfig({
           enabled: savedConfig.enabled ?? true,
+          display_style: savedConfig.display_style ?? 'mega',
           columns: savedConfig.columns ?? 4,
           show_product_count: savedConfig.show_product_count ?? false,
           items: savedConfig.items,
@@ -757,6 +754,7 @@ export default function MegaMenuPage() {
           }));
         setConfig({
           enabled: savedConfig?.enabled ?? true,
+          display_style: savedConfig?.display_style ?? 'mega',
           columns: savedConfig?.columns ?? 4,
           show_product_count: savedConfig?.show_product_count ?? false,
           items: migrated,
@@ -765,6 +763,7 @@ export default function MegaMenuPage() {
         // No data — start fresh
         setConfig({
           enabled: savedConfig?.enabled ?? true,
+          display_style: savedConfig?.display_style ?? 'mega',
           columns: savedConfig?.columns ?? 4,
           show_product_count: savedConfig?.show_product_count ?? false,
           items: [],
@@ -920,23 +919,60 @@ export default function MegaMenuPage() {
               </div>
             </div>
             <div className="space-y-5 p-6">
-              {/* Columns */}
+              {/* Menu Style */}
               <div>
                 <div className="mb-2 flex items-center gap-2">
-                  <Columns3 className="h-4 w-4 text-gray-400" />
+                  <LayoutGrid className="h-4 w-4 text-gray-400" />
                   <label className="text-xs font-semibold uppercase tracking-wider text-gray-500">
-                    Columns
+                    Menu Style
                   </label>
                 </div>
-                <GlobalColumnSelector
-                  value={config.columns}
-                  onChange={(v) => updateConfig({ columns: v })}
-                />
+                <div className="inline-flex rounded-xl border border-gray-200 bg-gray-50 p-1 dark:border-gray-700 dark:bg-gray-800/50">
+                  {(
+                    [
+                      { value: 'mega' as const, label: 'Mega Menu' },
+                      { value: 'cascading' as const, label: 'Cascading Menu' },
+                    ]
+                  ).map((opt) => (
+                    <button
+                      key={opt.value}
+                      type="button"
+                      onClick={() => updateConfig({ display_style: opt.value })}
+                      className={`rounded-lg px-4 py-2 text-xs font-bold transition-all ${config.display_style === opt.value
+                          ? 'bg-white text-indigo-600 shadow-sm dark:bg-gray-900 dark:text-indigo-400'
+                          : 'text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200'
+                        }`}
+                    >
+                      {opt.label}
+                    </button>
+                  ))}
+                </div>
                 <p className="mt-1.5 text-[11px] text-gray-400">
-                  &ldquo;Auto&rdquo; adapts to the number of parent items (max
-                  6). Each item can override its column span below.
+                  Mega Menu shows a full-width grid panel. Cascading Menu shows
+                  a compact flyout that reveals nested category levels one
+                  column at a time.
                 </p>
               </div>
+
+              {/* Columns */}
+              {config.display_style !== 'cascading' && (
+                <div>
+                  <div className="mb-2 flex items-center gap-2">
+                    <Columns3 className="h-4 w-4 text-gray-400" />
+                    <label className="text-xs font-semibold uppercase tracking-wider text-gray-500">
+                      Columns
+                    </label>
+                  </div>
+                  <GlobalColumnSelector
+                    value={config.columns}
+                    onChange={(v) => updateConfig({ columns: v })}
+                  />
+                  <p className="mt-1.5 text-[11px] text-gray-400">
+                    &ldquo;Auto&rdquo; adapts to the number of parent items (max
+                    6). Each item can override its column span below.
+                  </p>
+                </div>
+              )}
 
               {/* Product Count Toggle */}
               <div className="flex items-center justify-between rounded-xl border border-gray-100 bg-gray-50/50 px-4 py-3 dark:border-gray-700 dark:bg-gray-800/50">
