@@ -87,6 +87,13 @@ class StorefrontService {
     );
     return { data: response.data.data, meta: response.data.meta };
   }
+
+  async getProductBySlug(slug: string): Promise<Product> {
+    const response = await apiClient.get<ApiResponse<Product>>(
+      `/api/v1/storefront/products/${slug}`
+    );
+    return response.data.data;
+  }
 }
 
 export default new StorefrontService();

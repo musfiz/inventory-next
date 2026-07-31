@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
 import { useParams, notFound } from 'next/navigation';
@@ -35,9 +35,8 @@ export default function CategoryPage() {
   const [productsLoading, setProductsLoading] = useState(true);
   const [meta, setMeta] = useState({ current_page: 1, last_page: 1, total: 0 });
   const [hasMore, setHasMore] = useState(false);
+  const [loadingMore, setLoadingMore] = useState(false);
   const [bannerError, setBannerError] = useState(false);
-
-  const sentinelRef = useRef<HTMLDivElement>(null);
 
   // Helpers — image URL resolver
   const resolveImageUrl = (url?: string | null) => {
@@ -101,7 +100,8 @@ export default function CategoryPage() {
 
   // Load more pagination
   const loadMore = () => {
-    if (!hasMore || !category?.id || productsLoading) return;
+    if (!hasMore || !category?.id || loadingMore) return;
+    setLoadingMore(true);
     const nextPage = meta.current_page + 1;
     storefrontService
       .getProducts({
@@ -115,22 +115,8 @@ export default function CategoryPage() {
         setMeta(res.meta);
         setHasMore(res.meta.current_page < res.meta.last_page);
       })
-      .catch(() => {});
+      .finally(() => setLoadingMore(false));
   };
-
-  // IntersectionObserver for infinite scroll
-  useEffect(() => {
-    const el = sentinelRef.current;
-    if (!el || !hasMore || productsLoading) return;
-    const obs = new IntersectionObserver(
-      entries => {
-        if (entries[0].isIntersecting) loadMore();
-      },
-      { rootMargin: '200px' },
-    );
-    obs.observe(el);
-    return () => obs.disconnect();
-  }, [hasMore, productsLoading]);
 
   // 404 handling
   if (is404) notFound();
@@ -259,40 +245,41 @@ export default function CategoryPage() {
             ))}
           </div>
         ) : /* Empty state */
-        products.length === 0 ? (
-          <div className="rounded-2xl border border-dashed border-gray-300 bg-white py-16 text-center dark:border-gray-700 dark:bg-gray-900">
-            <p className="text-base font-bold text-gray-900 dark:text-gray-100">
-              No products in this category yet
-            </p>
-            <Link
-              href="/store/products"
-              className="mt-4 inline-flex items-center gap-1.5 text-sm font-bold text-brand-600"
-            >
-              Browse all products <ArrowRight className="h-4 w-4" />
-            </Link>
-          </div>
-        ) : (
-          <>
-            <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
-              {products.map((p, i) => (
-                <ScrollReveal key={p.id} animation="zoom-in" staggerIndex={i}>
-                  <ProductCard product={p} />
-                </ScrollReveal>
-              ))}
+          products.length === 0 ? (
+            <div className="rounded-2xl border border-dashed border-gray-300 bg-white py-16 text-center dark:border-gray-700 dark:bg-gray-900">
+              <p className="text-base font-bold text-gray-900 dark:text-gray-100">
+                No products in this category yet
+              </p>
+              <Link
+                href="/store/products"
+                className="mt-4 inline-flex items-center gap-1.5 text-sm font-bold text-brand-600"
+              >
+                Browse all products <ArrowRight className="h-4 w-4" />
+              </Link>
             </div>
-            {hasMore && (
-              <div className="mt-8 text-center" ref={sentinelRef}>
-                <button
-                  onClick={loadMore}
-                  className="inline-flex items-center gap-2 rounded-full border border-gray-300 bg-white px-8 py-3 text-sm font-bold text-gray-700 transition-all hover:border-brand-400 hover:text-brand-600 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-300"
-                >
-                  Load more ({meta.total - products.length} remaining)
-                  <ChevronDown className="h-4 w-4" />
-                </button>
+          ) : (
+            <>
+              <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
+                {products.map((p, i) => (
+                  <ScrollReveal key={p.id} animation="zoom-in" staggerIndex={i}>
+                    <ProductCard product={p} />
+                  </ScrollReveal>
+                ))}
               </div>
-            )}
-          </>
-        )}
+              {hasMore && (
+                <div className="mt-8 text-center">
+                  <button
+                    onClick={loadMore}
+                    disabled={loadingMore}
+                    className="inline-flex items-center gap-2 rounded-full border border-gray-300 bg-white px-8 py-3 text-sm font-bold text-gray-700 transition-all hover:border-brand-400 hover:text-brand-600 disabled:cursor-not-allowed disabled:opacity-60 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-300"
+                  >
+                    {loadingMore ? 'Loading…' : `Load more (${meta.total - products.length} remaining)`}
+                    <ChevronDown className="h-4 w-4" />
+                  </button>
+                </div>
+              )}
+            </>
+          )}
       </div>
     </div>
   );

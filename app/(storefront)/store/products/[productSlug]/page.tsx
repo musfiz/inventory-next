@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
 import { useParams, notFound } from 'next/navigation';
@@ -16,10 +16,11 @@ import {
   ChevronRight,
   Check,
   Zap,
+  Image as ImageIcon,
 } from 'lucide-react';
 import { IoCartSharp } from 'react-icons/io5';
+import { GlassMagnifier } from 'react-image-magnifiers';
 import {
-  PRODUCTS,
   REVIEWS,
   formatMoney,
   formatMoneyDecimal,
@@ -30,9 +31,10 @@ import { useWishlistStore } from '@/stores/wishlist-store';
 import { useRecentlyViewed } from '@/hooks/use-recently-viewed';
 import { useCartFly } from '@/components/storefront/CartFlyProvider';
 import { useRouter } from 'next/navigation';
-import { useEffect } from 'react';
 import { notify } from '@/lib/notifications';
 import ecommerceSettingsService from '@/services/ecommerceSettingsService';
+import storefrontService from '@/services/storefrontService';
+import type { Product } from '@/types/storefront';
 import Rating from '@/components/storefront/Rating';
 import Badge from '@/components/storefront/Badge';
 import ProductCard from '@/components/storefront/ProductCard';
@@ -41,23 +43,55 @@ import ScrollReveal from '@/components/storefront/ScrollReveal';
 export default function ProductDetailPage() {
   const { productSlug } = useParams<{ productSlug: string }>();
   const router = useRouter();
-  const product = PRODUCTS.find(p => p.slug === productSlug);
   const { trackView } = useRecentlyViewed();
+
+  const [product, setProduct] = useState<Product | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [is404, setIs404] = useState(false);
+  const [related, setRelated] = useState<Product[]>([]);
+
+  useEffect(() => {
+    if (!productSlug) return;
+    let cancelled = false;
+    setLoading(true);
+    setIs404(false);
+    storefrontService
+      .getProductBySlug(productSlug)
+      .then(data => {
+        if (cancelled) return;
+        setProduct(data);
+        setLoading(false);
+      })
+      .catch(err => {
+        if (cancelled) return;
+        if (err?.response?.status === 404) setIs404(true);
+        setLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [productSlug]);
 
   useEffect(() => {
     if (product) trackView(product.id);
   }, [product, trackView]);
 
+  useEffect(() => {
+    if (!product?.category?.id) return;
+    storefrontService
+      .getProducts({ category_id: Number(product.category.id), per_page: 6 })
+      .then(res => setRelated(res.data.filter(p => p.id !== product.id).slice(0, 5)))
+      .catch(() => setRelated([]));
+  }, [product?.category?.id, product?.id]);
+
   const [activeImg, setActiveImg] = useState(0);
   const [selectedVariationId, setSelectedVariationId] = useState<string>('');
   const [qty, setQty] = useState(1);
-  const [zoom, setZoom] = useState(false);
-  const [zoomPos, setZoomPos] = useState({ x: 50, y: 50 });
   const [tab, setTab] = useState<'description' | 'specs' | 'reviews' | 'shipping'>('description');
   const [showSimilar, setShowSimilar] = useState(true);
 
   useEffect(() => {
-    ecommerceSettingsService.get().then(s => setShowSimilar(s.show_similar_products)).catch(() => {});
+    ecommerceSettingsService.get().then(s => setShowSimilar(s.show_similar_products)).catch(() => { });
   }, []);
 
   const addItem = useCartStore(s => s.addItem);
@@ -72,6 +106,38 @@ export default function ProductDetailPage() {
     return product.variations.find(v => v.id === selectedVariationId) || def;
   }, [product, selectedVariationId]);
 
+  // For variable products: group variations by attribute to build swatches
+  const variationsByAttr = useMemo(() => {
+    const map: Record<string, Record<string, Product['variations'][0]>> = {};
+    if (!product) return map;
+    product.variations.forEach(v => {
+      Object.entries(v.attributes).forEach(([k, val]) => {
+        if (!map[k]) map[k] = {};
+        if (!map[k][val]) map[k][val] = v;
+      });
+    });
+    return map;
+  }, [product]);
+
+  if (is404) notFound();
+
+  if (loading) {
+    return (
+      <div className="mx-auto max-w-7xl px-4 py-6 lg:py-8">
+        <div className="grid gap-8 lg:grid-cols-2 lg:gap-12">
+          <div className="aspect-square animate-pulse rounded-2xl bg-gray-200 dark:bg-gray-800" />
+          <div className="space-y-4">
+            <div className="h-4 w-1/4 animate-pulse rounded bg-gray-200 dark:bg-gray-800" />
+            <div className="h-8 w-2/3 animate-pulse rounded bg-gray-200 dark:bg-gray-800" />
+            <div className="h-10 w-1/3 animate-pulse rounded bg-gray-200 dark:bg-gray-800" />
+            <div className="h-24 w-full animate-pulse rounded bg-gray-200 dark:bg-gray-800" />
+            <div className="h-12 w-full animate-pulse rounded-full bg-gray-200 dark:bg-gray-800" />
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   if (!product || !variation) {
     notFound();
   }
@@ -83,29 +149,15 @@ export default function ProductDetailPage() {
 
   // Group attributes for selectors
   const attributeKeys = Object.keys(variation.attributes);
-  // For variable products: group variations by attribute to build swatches
-  const variationsByAttr = useMemo(() => {
-    const map: Record<string, Record<string, typeof product.variations[0]>> = {};
-    product.variations.forEach(v => {
-      Object.entries(v.attributes).forEach(([k, val]) => {
-        if (!map[k]) map[k] = {};
-        if (!map[k][val]) map[k][val] = v;
-      });
-    });
-    return map;
-  }, [product]);
 
   const reviews = REVIEWS.filter(r => r.productId === product.id);
   const ratingDist = [5, 4, 3, 2, 1].map(stars => ({
     stars,
     count: reviews.filter(r => Math.round(r.rating) === stars).length,
   }));
-  const related = PRODUCTS.filter(
-    p => p.category.id === product.category.id && p.id !== product.id
-  ).slice(0, 5);
 
   const handleAdd = (e: React.MouseEvent) => {
-    const res = addItem(product.id, variation.id, qty);
+    const res = addItem(product, variation.id, qty);
     if (res.ok) {
       flyToCart(e, variation.image || product.images[0], product.name);
     } else {
@@ -113,7 +165,7 @@ export default function ProductDetailPage() {
     }
   };
   const handleBuyNow = () => {
-    const res = addItem(product.id, variation.id, qty);
+    const res = addItem(product, variation.id, qty);
     if (res.ok) router.push('/store/checkout');
   };
   const handleWish = () => {
@@ -149,11 +201,10 @@ export default function ProductDetailPage() {
                   <button
                     key={i}
                     onClick={() => setActiveImg(i)}
-                    className={`relative aspect-square w-16 shrink-0 overflow-hidden rounded-xl border-2 transition-all lg:w-20 ${
-                      activeImg === i
-                        ? 'border-brand-500 ring-2 ring-brand-500/20'
-                        : 'border-gray-200 hover:border-gray-300 dark:border-gray-700'
-                    }`}
+                    className={`relative aspect-square w-16 shrink-0 overflow-hidden rounded-xl border-2 transition-all lg:w-20 ${activeImg === i
+                      ? 'border-brand-500 ring-2 ring-brand-500/20'
+                      : 'border-gray-200 hover:border-gray-300 dark:border-gray-700'
+                      }`}
                   >
                     <Image
                       src={img}
@@ -168,33 +219,23 @@ export default function ProductDetailPage() {
             )}
             {/* Main image */}
             <div className="order-1 flex-1">
-              <div
-                className="relative aspect-square overflow-hidden rounded-2xl border border-gray-100 bg-gray-50 dark:border-gray-800 dark:bg-gray-900"
-                onMouseEnter={() => setZoom(true)}
-                onMouseLeave={() => setZoom(false)}
-                onMouseMove={e => {
-                  const rect = e.currentTarget.getBoundingClientRect();
-                  setZoomPos({
-                    x: ((e.clientX - rect.left) / rect.width) * 100,
-                    y: ((e.clientY - rect.top) / rect.height) * 100,
-                  });
-                }}
-              >
-                <Image
-                  src={product.images[activeImg]}
-                  alt={product.name}
-                  fill
-                  sizes="(max-width: 1024px) 100vw, 50vw"
-                  priority
-                  className={`object-cover transition-transform duration-300 ${
-                    zoom ? 'scale-[1.6]' : 'scale-100'
-                  }`}
-                  style={
-                    zoom
-                      ? { transformOrigin: `${zoomPos.x}% ${zoomPos.y}%` }
-                      : undefined
-                  }
-                />
+              <div className="relative aspect-square overflow-hidden rounded-2xl border border-gray-100 bg-gray-50 dark:border-gray-800 dark:bg-gray-900">
+                {product.images[activeImg] ? (
+                  <GlassMagnifier
+                    imageSrc={product.images[activeImg]}
+                    largeImageSrc={product.images[activeImg]}
+                    imageAlt={product.name}
+                    square
+                    magnifierSize="35%"
+                    magnifierBorderSize={2}
+                    magnifierBorderColor="rgba(255,255,255,.8)"
+                    className="pdp-glass-magnifier absolute inset-0"
+                  />
+                ) : (
+                  <div className="flex h-full w-full items-center justify-center">
+                    <ImageIcon className="h-16 w-16 text-gray-300 dark:text-gray-600" />
+                  </div>
+                )}
                 <div className="absolute left-4 top-4 flex flex-col gap-1.5">
                   {discountPct > 0 && <Badge variant="sale">-{discountPct}%</Badge>}
                   {product.isNew && <Badge variant="new">New</Badge>}
@@ -296,11 +337,10 @@ export default function ProductDetailPage() {
                               <button
                                 key={val}
                                 onClick={() => setSelectedVariationId(v.id)}
-                                className={`flex items-center gap-2 rounded-lg border px-3 py-2 text-xs font-semibold transition-all ${
-                                  active
-                                    ? 'border-brand-500 bg-brand-50 ring-1 ring-brand-500/30 dark:bg-brand-950/30'
-                                    : 'border-gray-200 hover:border-gray-300 dark:border-gray-700'
-                                }`}
+                                className={`flex items-center gap-2 rounded-lg border px-3 py-2 text-xs font-semibold transition-all ${active
+                                  ? 'border-brand-500 bg-brand-50 ring-1 ring-brand-500/30 dark:bg-brand-950/30'
+                                  : 'border-gray-200 hover:border-gray-300 dark:border-gray-700'
+                                  }`}
                               >
                                 {val}
                               </button>
@@ -318,11 +358,10 @@ export default function ProductDetailPage() {
                                 key={val}
                                 disabled={oos}
                                 onClick={() => setSelectedVariationId(v.id)}
-                                className={`min-w-[44px] rounded-lg border px-3 py-2 text-xs font-semibold transition-all disabled:cursor-not-allowed disabled:opacity-40 ${
-                                  active
-                                    ? 'border-brand-500 bg-brand-50 ring-1 ring-brand-500/30 dark:bg-brand-950/30'
-                                    : 'border-gray-200 hover:border-gray-300 dark:border-gray-700'
-                                }`}
+                                className={`min-w-[44px] rounded-lg border px-3 py-2 text-xs font-semibold transition-all disabled:cursor-not-allowed disabled:opacity-40 ${active
+                                  ? 'border-brand-500 bg-brand-50 ring-1 ring-brand-500/30 dark:bg-brand-950/30'
+                                  : 'border-gray-200 hover:border-gray-300 dark:border-gray-700'
+                                  }`}
                               >
                                 {val}
                               </button>
@@ -431,11 +470,10 @@ export default function ProductDetailPage() {
               <button
                 key={id}
                 onClick={() => setTab(id)}
-                className={`relative whitespace-nowrap px-5 py-3 text-sm font-bold transition-colors ${
-                  tab === id
-                    ? 'text-brand-600 dark:text-brand-400'
-                    : 'text-gray-500 hover:text-gray-800 dark:hover:text-gray-200'
-                }`}
+                className={`relative whitespace-nowrap px-5 py-3 text-sm font-bold transition-colors ${tab === id
+                  ? 'text-brand-600 dark:text-brand-400'
+                  : 'text-gray-500 hover:text-gray-800 dark:hover:text-gray-200'
+                  }`}
               >
                 {label}
                 {tab === id && (
@@ -565,7 +603,7 @@ export default function ProductDetailPage() {
         {/* Related products */}
         {showSimilar && related.length > 0 && (
           <section className="mt-14">
-            <ScrollReveal animation="fade-up"  as="div" className="mb-5">
+            <ScrollReveal animation="fade-up" as="div" className="mb-5">
               <h2 className="text-xl font-black text-gray-900 dark:text-white sm:text-2xl">
                 You may also like
               </h2>

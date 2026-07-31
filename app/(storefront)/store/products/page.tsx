@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useMemo, useEffect, useRef } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import Link from 'next/link';
 import {
   SlidersHorizontal,
@@ -13,13 +13,9 @@ import { IoListSharp } from 'react-icons/io5';
 import ProductCard from '@/components/storefront/ProductCard';
 import ScrollReveal from '@/components/storefront/ScrollReveal';
 import ProductCardSkeleton from '@/components/storefront/ProductCardSkeleton';
-import {
-  PRODUCTS,
-  BRANDS,
-  formatMoney,
-} from '@/lib/storefront/mock-data';
+import storefrontService from '@/services/storefrontService';
 import { useStorefrontCategories } from '@/hooks/use-storefront-categories';
-import type { Product } from '@/types/storefront';
+import type { Product, Brand } from '@/types/storefront';
 
 const SORTS = [
   { id: 'featured', label: 'Featured', fn: (a: Product, b: Product) => Number(b.isFeatured) - Number(a.isFeatured) },
@@ -47,11 +43,68 @@ export default function AllProductsPage() {
   const [selectedBrands, setSelectedBrands] = useState<string[]>([]);
   const [priceStep, setPriceStep] = useState('all');
   const [inStockOnly, setInStockOnly] = useState(false);
-  const [loading] = useState(false);
-  const [visibleCount, setVisibleCount] = useState(ITEMS_PER_PAGE);
-  const sentinelRef = useRef<HTMLDivElement>(null);
+  const [products, setProducts] = useState<Product[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [loadingMore, setLoadingMore] = useState(false);
+  const [page, setPage] = useState(1);
+  const [totalProducts, setTotalProducts] = useState(0);
+  const [hasMorePages, setHasMorePages] = useState(false);
 
   const { categories: parentCats } = useStorefrontCategories();
+
+  useEffect(() => {
+    let cancelled = false;
+
+    const loadFirstPage = async () => {
+      setLoading(true);
+      try {
+        const res = await storefrontService.getProducts({ page: 1, per_page: ITEMS_PER_PAGE, sort: 'featured' });
+        if (cancelled) return;
+        setProducts(res.data);
+        setPage(1);
+        setTotalProducts(res.meta.total);
+        setHasMorePages(res.meta.current_page < res.meta.last_page);
+      } catch {
+        if (!cancelled) setProducts([]);
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    };
+
+    loadFirstPage();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  const loadMore = async () => {
+    if (!hasMorePages || loadingMore) return;
+    setLoadingMore(true);
+    try {
+      const nextPage = page + 1;
+      const res = await storefrontService.getProducts({ page: nextPage, per_page: ITEMS_PER_PAGE, sort: 'featured' });
+      setProducts(prev => prev.concat(res.data));
+      setPage(nextPage);
+      setTotalProducts(res.meta.total);
+      setHasMorePages(res.meta.current_page < res.meta.last_page);
+    } finally {
+      setLoadingMore(false);
+    }
+  };
+
+  const brands = useMemo(() => {
+    const map = new Map<string, Brand>();
+    for (const p of products) {
+      if (p.brand && !map.has(p.brand.id)) map.set(p.brand.id, { ...p.brand, productCount: 0 });
+    }
+    for (const p of products) {
+      if (p.brand) {
+        const b = map.get(p.brand.id)!;
+        b.productCount = (b.productCount ?? 0) + 1;
+      }
+    }
+    return Array.from(map.values());
+  }, [products]);
 
   // Flatten all category tree items into a single array for quick lookup
   const allCategories = useMemo(() => {
@@ -88,7 +141,7 @@ export default function AllProductsPage() {
 
   const allFiltered = useMemo(() => {
     const step = PRICE_STEPS.find(s => s.id === priceStep)!;
-    let list = PRODUCTS.filter(p => {
+    let list = products.filter(p => {
       if (selectedCats.length > 0) {
         const match =
           selectedCats.includes(p.category.id) ||
@@ -104,27 +157,9 @@ export default function AllProductsPage() {
     const sortCfg = SORTS.find(s => s.id === sort)!;
     list = [...list].sort(sortCfg.fn);
     return list;
-  }, [sort, selectedCats, selectedBrands, priceStep, inStockOnly, childrenOf]);
+  }, [sort, selectedCats, selectedBrands, priceStep, inStockOnly, childrenOf, products]);
 
-  const filtered = allFiltered.slice(0, visibleCount);
-  const hasMore = visibleCount < allFiltered.length;
-  const loadMore = () => {
-    if (hasMore) setVisibleCount(prev => Math.min(prev + ITEMS_PER_PAGE, allFiltered.length));
-  };
-
-  useEffect(() => {
-    setVisibleCount(ITEMS_PER_PAGE);
-  }, [sort, selectedCats, selectedBrands, priceStep, inStockOnly]);
-
-  useEffect(() => {
-    const el = sentinelRef.current;
-    if (!el || !hasMore) return;
-    const obs = new IntersectionObserver(entries => {
-      if (entries[0].isIntersecting) loadMore();
-    }, { rootMargin: '200px' });
-    obs.observe(el);
-    return () => obs.disconnect();
-  }, [hasMore]);
+  const filtered = allFiltered;
 
   const toggle = (
     arr: string[],
@@ -220,7 +255,7 @@ export default function AllProductsPage() {
           Brand
         </p>
         <ul className="max-h-60 space-y-2 overflow-auto scrollbar-thin">
-          {BRANDS.map(b => (
+          {brands.map(b => (
             <li key={b.id}>
               <label className="flex items-center gap-2 text-sm text-gray-700 dark:text-gray-300">
                 <input
@@ -230,7 +265,7 @@ export default function AllProductsPage() {
                   onChange={() => toggle(selectedBrands, setSelectedBrands, b.id)}
                 />
                 {b.name}
-                <span className="text-xs text-gray-400">({b.productCount})</span>
+                <span className="text-xs text-gray-400">({b.productCount ?? 0})</span>
               </label>
             </li>
           ))}
@@ -265,20 +300,43 @@ export default function AllProductsPage() {
 
   return (
     <div className="bg-gray-50 dark:bg-gray-950">
-      {/* Breadcrumb + heading */}
-      <ScrollReveal animation="fade-up"  as="div" className="border-b border-gray-200 bg-white dark:border-gray-800 dark:bg-gray-900">
-        <div className="mx-auto max-w-7xl px-4 py-6">
-          <nav className="text-xs text-gray-500 dark:text-gray-400">
-            <Link href="/" className="hover:text-brand-600">Home</Link>
-            <span className="mx-2">/</span>
-            <span className="text-gray-900 dark:text-gray-100">All Products</span>
-          </nav>
-          <h1 className="mt-3 text-2xl font-black text-gray-900 dark:text-white sm:text-3xl">
-            All Products
-          </h1>
-          <p className="mt-1 text-sm text-gray-500">
-            Browse our complete catalog of {PRODUCTS.length} products
-          </p>
+      {/* Hero */}
+      <ScrollReveal animation="fade-up" duration="normal" as="div" className="relative h-44 overflow-hidden sm:h-60">
+        <div className="absolute inset-0 overflow-hidden">
+          <div className="absolute inset-0 bg-linear-to-br from-brand-600 via-brand-700 to-purple-800" />
+          <div
+            className="absolute inset-0 opacity-[0.08]"
+            style={{
+              backgroundImage: 'radial-gradient(circle, white 1px, transparent 1px)',
+              backgroundSize: '24px 24px',
+            }}
+          />
+          <div className="absolute -right-24 -top-24 h-96 w-96 rounded-full border-[40px] border-white/5" />
+          <div className="absolute -bottom-32 -left-32 h-80 w-80 rounded-full border-[40px] border-white/5" />
+          <div
+            className="pointer-events-none absolute inset-0 flex select-none items-center justify-center"
+            aria-hidden="true"
+          >
+            <span className="whitespace-nowrap text-[10rem] font-black leading-none tracking-widest text-white/5 sm:text-[16rem]">
+              All Products
+            </span>
+          </div>
+        </div>
+        <div className="absolute inset-0 bg-linear-to-t from-black/70 via-black/30 to-transparent" />
+        <div className="absolute inset-0 flex flex-col justify-end">
+          <div className="mx-auto w-full max-w-7xl px-4 pb-6">
+            <nav className="text-xs text-white/80">
+              <Link href="/" className="hover:text-white">Home</Link>
+              <span className="mx-2">/</span>
+              <span className="font-semibold text-white">All Products</span>
+            </nav>
+            <h1 className="mt-2 text-3xl font-black text-white sm:text-4xl">
+              All Products
+            </h1>
+            <p className="mt-1 text-sm text-white/80">
+              Browse our complete catalog of {totalProducts} products
+            </p>
+          </div>
         </div>
       </ScrollReveal>
 
@@ -313,7 +371,7 @@ export default function AllProductsPage() {
                   )}
                 </button>
                 <p className="text-sm text-gray-500">
-                  Showing <span className="font-bold text-gray-900 dark:text-gray-100">{filtered.length}</span> of {allFiltered.length} products
+                  Showing <span className="font-bold text-gray-900 dark:text-gray-100">{filtered.length}</span> of {totalProducts} products
                 </p>
               </div>
 
@@ -366,7 +424,7 @@ export default function AllProductsPage() {
                   );
                 })}
                 {selectedBrands.map(id => {
-                  const b = BRANDS.find(bb => bb.id === id);
+                  const b = brands.find(bb => bb.id === id);
                   return (
                     <button
                       key={id}
@@ -432,13 +490,14 @@ export default function AllProductsPage() {
                     </ScrollReveal>
                   ))}
                 </div>
-                {hasMore && (
-                  <div className="mt-8 text-center" ref={sentinelRef}>
+                {hasMorePages && (
+                  <div className="mt-8 text-center">
                     <button
                       onClick={loadMore}
-                      className="inline-flex items-center gap-2 rounded-full border border-gray-300 bg-white px-8 py-3 text-sm font-bold text-gray-700 transition-all hover:border-brand-400 hover:text-brand-600 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-300"
+                      disabled={loadingMore}
+                      className="inline-flex items-center gap-2 rounded-full border border-gray-300 bg-white px-8 py-3 text-sm font-bold text-gray-700 transition-all hover:border-brand-400 hover:text-brand-600 disabled:cursor-not-allowed disabled:opacity-60 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-300"
                     >
-                      Load more ({allFiltered.length - visibleCount} remaining)
+                      {loadingMore ? 'Loading…' : `Load more (${totalProducts - products.length} remaining)`}
                       <ChevronDown className="h-4 w-4" />
                     </button>
                   </div>

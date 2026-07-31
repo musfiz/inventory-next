@@ -2,8 +2,7 @@
 
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
-import type { CartItem } from '@/types/storefront';
-import { PRODUCTS } from '@/lib/storefront/mock-data';
+import type { CartItem, Product } from '@/types/storefront';
 
 interface CartState {
   items: CartItem[];
@@ -12,7 +11,7 @@ interface CartState {
   couponDiscount: number;
   freeShippingOverride: boolean;
   addItem: (
-    productId: string,
+    product: Product,
     variationId: string,
     quantity?: number
   ) => { ok: boolean; message?: string };
@@ -38,11 +37,7 @@ export const useCartStore = create<CartState>()(
       couponDiscount: 0,
       freeShippingOverride: false,
 
-      addItem: (productId, variationId, quantity = 1) => {
-        const product = PRODUCTS.find(p => p.id === productId);
-        if (!product) {
-          return { ok: false, message: 'Product not found' };
-        }
+      addItem: (product, variationId, quantity = 1) => {
         const variation = product.variations.find(v => v.id === variationId);
         if (!variation) {
           return { ok: false, message: 'Variation not found' };
@@ -61,10 +56,10 @@ export const useCartStore = create<CartState>()(
             items: items.map(i =>
               i.variationId === variationId
                 ? {
-                    ...i,
-                    quantity: newQty,
-                    lineTotal: i.unitPrice * newQty,
-                  }
+                  ...i,
+                  quantity: newQty,
+                  lineTotal: i.unitPrice * newQty,
+                }
                 : i
             ),
           });

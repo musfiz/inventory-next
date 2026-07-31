@@ -2,12 +2,15 @@
 
 import Link from 'next/link';
 import { useState, useRef, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import { useRouter } from 'next/navigation';
 import {
   User,
   Heart,
   Menu,
   ChevronDown,
+  ChevronLeft,
+  ChevronRight,
   Phone,
   BadgePercent,
   Gift,
@@ -47,6 +50,10 @@ export default function StorefrontHeader() {
   const [scrolled, setScrolled] = useState(false);
   const menuTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const accountRef = useRef<HTMLDivElement>(null);
+  const navScrollRef = useRef<HTMLDivElement>(null);
+  const [canScrollLeft, setCanScrollLeft] = useState(false);
+  const [canScrollRight, setCanScrollRight] = useState(false);
+  const [menuAnchorRect, setMenuAnchorRect] = useState<DOMRect | null>(null);
   const itemCount = useCartStore(s => s.getItemCount());
   const subtotal = useCartStore(s => s.getSubtotal());
   const wishlistCount = useWishlistStore(s => s.items.length);
@@ -84,7 +91,7 @@ export default function StorefrontHeader() {
           href={item.url || '#'}
           target={item.open_in_new_tab ? '_blank' : undefined}
           rel={item.open_in_new_tab ? 'noopener noreferrer' : undefined}
-          className="flex items-center gap-1.5 px-3.5 py-3 text-sm font-semibold text-gray-700 hover:bg-gray-100 hover:text-brand-600 dark:text-gray-200 dark:hover:bg-gray-800"
+          className="flex shrink-0 items-center gap-1.5 whitespace-nowrap px-3.5 py-3 text-sm font-semibold text-gray-700 hover:bg-gray-100 hover:text-brand-600 dark:text-gray-200 dark:hover:bg-gray-800"
         >
           <LinkIcon className="h-3.5 w-3.5" />
           {item.label}
@@ -96,22 +103,28 @@ export default function StorefrontHeader() {
     if (item.display_mode === 'dropdown') {
       const hasDropdownItems = item.dropdown_items && item.dropdown_items.length > 0;
       return (
-        <div key={item.id} className="relative" onMouseEnter={() => setMenuWithDelay(item.id)}>
+        <div
+          key={item.id}
+          className="relative shrink-0"
+          onMouseEnter={(e) => { setMenuWithDelay(item.id); setMenuAnchorRect(e.currentTarget.getBoundingClientRect()); }}
+        >
           <button
-            className={`group flex items-center gap-1.5 px-3.5 py-3 text-sm font-semibold transition-all cursor-pointer ${activeMenu === item.id
-                ? 'bg-brand-50 text-brand-600 dark:bg-brand-950/30 dark:text-brand-400'
-                : 'text-gray-700 hover:bg-gray-100 hover:text-brand-600 dark:text-gray-200 dark:hover:bg-gray-800'
+            className={`group flex items-center gap-1.5 whitespace-nowrap px-3.5 py-3 text-sm font-semibold transition-all cursor-pointer ${activeMenu === item.id
+              ? 'bg-brand-50 text-brand-600 dark:bg-brand-950/30 dark:text-brand-400'
+              : 'text-gray-700 hover:bg-gray-100 hover:text-brand-600 dark:text-gray-200 dark:hover:bg-gray-800'
               }`}
           >
             {item.label}
             <ChevronDown className={`h-3.5 w-3.5 transition-transform ${activeMenu === item.id ? 'rotate-180' : ''}`} />
           </button>
-          {activeMenu === item.id && hasDropdownItems && (
+          {activeMenu === item.id && hasDropdownItems && menuAnchorRect && createPortal(
             <CustomDropdown
               item={item}
+              style={{ top: menuAnchorRect.bottom, left: menuAnchorRect.left }}
               onClose={() => setMenuWithDelay(null)}
               onKeepOpen={() => { if (menuTimer.current) clearTimeout(menuTimer.current); }}
-            />
+            />,
+            document.body
           )}
         </div>
       );
@@ -122,19 +135,24 @@ export default function StorefrontHeader() {
     const hasSubs = cat ? (cat.children?.length ?? 0) > 0 : false;
 
     return (
-      <div key={item.id} className="relative" onMouseEnter={() => setMenuWithDelay(item.id)}>
+      <div
+        key={item.id}
+        className="relative shrink-0"
+        onMouseEnter={(e) => { setMenuWithDelay(item.id); setMenuAnchorRect(e.currentTarget.getBoundingClientRect()); }}
+      >
         <Link
           href={item.url || '#'}
-          className={`group flex items-center gap-1.5 px-3.5 py-3 text-sm font-semibold transition-all ${activeMenu === item.id
-              ? 'bg-brand-50 text-brand-600 dark:bg-brand-950/30 dark:text-brand-400'
-              : 'text-gray-700 hover:bg-gray-100 hover:text-brand-600 dark:text-gray-200 dark:hover:bg-gray-800'
+          className={`group flex items-center gap-1.5 whitespace-nowrap px-3.5 py-3 text-sm font-semibold transition-all ${activeMenu === item.id
+            ? 'bg-brand-50 text-brand-600 dark:bg-brand-950/30 dark:text-brand-400'
+            : 'text-gray-700 hover:bg-gray-100 hover:text-brand-600 dark:text-gray-200 dark:hover:bg-gray-800'
             }`}
         >
           {item.label}
           {hasSubs && <ChevronDown className={`h-3.5 w-3.5 transition-transform ${activeMenu === item.id ? 'rotate-180' : ''}`} />}
         </Link>
-        {activeMenu === item.id && hasSubs && cat && (
-          <CategoryDropdown cat={cat} onClose={() => setMenuWithDelay(null)} onKeepOpen={() => { if (menuTimer.current) clearTimeout(menuTimer.current); }} />
+        {activeMenu === item.id && hasSubs && cat && menuAnchorRect && createPortal(
+          <CategoryDropdown cat={cat} style={{ top: menuAnchorRect.bottom, left: menuAnchorRect.left }} onClose={() => setMenuWithDelay(null)} onKeepOpen={() => { if (menuTimer.current) clearTimeout(menuTimer.current); }} />,
+          document.body
         )}
       </div>
     );
@@ -153,6 +171,30 @@ export default function StorefrontHeader() {
     document.addEventListener('mousedown', handler);
     return () => document.removeEventListener('mousedown', handler);
   }, []);
+
+  // Show/hide slide arrows when the category nav row overflows its width
+  useEffect(() => {
+    const el = navScrollRef.current;
+    if (!el) return;
+
+    const updateScrollState = () => {
+      setCanScrollLeft(el.scrollLeft > 4);
+      setCanScrollRight(el.scrollLeft + el.clientWidth < el.scrollWidth - 4);
+    };
+
+    updateScrollState();
+    el.addEventListener('scroll', updateScrollState);
+    const resizeObserver = new ResizeObserver(updateScrollState);
+    resizeObserver.observe(el);
+    return () => {
+      el.removeEventListener('scroll', updateScrollState);
+      resizeObserver.disconnect();
+    };
+  }, [menuReady, hasCustomNav, activeMenuItems.length, categories.length]);
+
+  const slideNav = (direction: -1 | 1) => {
+    navScrollRef.current?.scrollBy({ left: direction * 240, behavior: 'smooth' });
+  };
 
   const setMenuWithDelay = (id: string | null) => {
     if (menuTimer.current) clearTimeout(menuTimer.current);
@@ -320,21 +362,55 @@ export default function StorefrontHeader() {
                   </div>
                 )}
 
-                {/* Menu items from admin config, or fallback to full category tree */}
-                {hasCustomNav
-                  ? activeMenuItems.map(renderNavItem)
-                  : categories.slice(0, 6).map(cat => {
-                    const hasSubs = (cat.children?.length ?? 0) > 0;
-                    return (
-                      <div key={cat.id} className="relative" onMouseEnter={() => setMenuWithDelay(cat.id)}>
-                        <Link href={`/store/category/${cat.slug}`} className={`group flex items-center gap-1.5 px-3.5 py-3 text-sm font-semibold transition-all ${activeMenu === cat.id ? 'bg-brand-50 text-brand-600 dark:bg-brand-950/30 dark:text-brand-400' : 'text-gray-700 hover:bg-gray-100 hover:text-brand-600 dark:text-gray-200 dark:hover:bg-gray-800'}`}>
-                          {cat.name}
-                          {hasSubs && <ChevronDown className={`h-3.5 w-3.5 transition-transform ${activeMenu === cat.id ? 'rotate-180' : ''}`} />}
-                        </Link>
-                        {activeMenu === cat.id && hasSubs && <CategoryDropdown cat={cat} onClose={() => setMenuWithDelay(null)} onKeepOpen={() => { if (menuTimer.current) clearTimeout(menuTimer.current); }} />}
-                      </div>
-                    );
-                  })}
+                {/* Menu items from admin config, or fallback to full category tree — horizontally scrollable when overflowing */}
+                <div className="relative flex min-w-0 flex-1 items-center">
+                  {canScrollLeft && (
+                    <button
+                      type="button"
+                      onClick={() => slideNav(-1)}
+                      aria-label="Scroll categories left"
+                      className="absolute left-0 z-10 flex h-full items-center bg-linear-to-r from-white via-white to-transparent pl-1 pr-4 text-gray-500 hover:text-brand-600 dark:from-gray-950 dark:via-gray-950 dark:text-gray-400"
+                    >
+                      <ChevronLeft className="h-4 w-4" />
+                    </button>
+                  )}
+                  <div
+                    ref={navScrollRef}
+                    className="flex items-center gap-1 overflow-x-auto scroll-smooth scrollbar-none"
+                  >
+                    {hasCustomNav
+                      ? activeMenuItems.map(renderNavItem)
+                      : categories.slice(0, 6).map(cat => {
+                        const hasSubs = (cat.children?.length ?? 0) > 0;
+                        return (
+                          <div
+                            key={cat.id}
+                            className="relative shrink-0"
+                            onMouseEnter={(e) => { setMenuWithDelay(cat.id); setMenuAnchorRect(e.currentTarget.getBoundingClientRect()); }}
+                          >
+                            <Link href={`/store/category/${cat.slug}`} className={`group flex items-center gap-1.5 whitespace-nowrap px-3.5 py-3 text-sm font-semibold transition-all ${activeMenu === cat.id ? 'bg-brand-50 text-brand-600 dark:bg-brand-950/30 dark:text-brand-400' : 'text-gray-700 hover:bg-gray-100 hover:text-brand-600 dark:text-gray-200 dark:hover:bg-gray-800'}`}>
+                              {cat.name}
+                              {hasSubs && <ChevronDown className={`h-3.5 w-3.5 transition-transform ${activeMenu === cat.id ? 'rotate-180' : ''}`} />}
+                            </Link>
+                            {activeMenu === cat.id && hasSubs && menuAnchorRect && createPortal(
+                              <CategoryDropdown cat={cat} style={{ top: menuAnchorRect.bottom, left: menuAnchorRect.left }} onClose={() => setMenuWithDelay(null)} onKeepOpen={() => { if (menuTimer.current) clearTimeout(menuTimer.current); }} />,
+                              document.body
+                            )}
+                          </div>
+                        );
+                      })}
+                  </div>
+                  {canScrollRight && (
+                    <button
+                      type="button"
+                      onClick={() => slideNav(1)}
+                      aria-label="Scroll categories right"
+                      className="absolute right-0 z-10 flex h-full items-center bg-linear-to-l from-white via-white to-transparent pl-4 pr-1 text-gray-500 hover:text-brand-600 dark:from-gray-950 dark:via-gray-950 dark:text-gray-400"
+                    >
+                      <ChevronRight className="h-4 w-4" />
+                    </button>
+                  )}
+                </div>
 
                 {/* Flash Sale & New Arrivals */}
                 <div className="ml-auto flex items-center gap-3">

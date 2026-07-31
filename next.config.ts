@@ -6,6 +6,8 @@ const nextConfig: NextConfig = {
   output: 'standalone',
   trailingSlash: true,
   images: {
+    // Local dev backend runs on localhost, which next/image blocks by default (SSRF protection)
+    dangerouslyAllowLocalIP: true,
     remotePatterns: [
       {
         protocol: 'https',

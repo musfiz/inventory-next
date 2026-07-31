@@ -105,8 +105,8 @@ const CategoryStrip = () => {
         </div>
         <div className="grid grid-cols-3 gap-3 sm:grid-cols-5 lg:grid-cols-10">
           {[...Array(10)].map((_, i) => (
-            <div key={i} className="flex flex-col items-center gap-2 rounded-2xl border border-gray-200 bg-white p-3 dark:border-gray-800 dark:bg-gray-900">
-              <div className="aspect-square w-full animate-pulse rounded-xl bg-gray-200 dark:bg-gray-800" />
+            <div key={i} className="flex flex-col items-center gap-2 rounded-lg border border-gray-200 bg-white p-3 dark:border-gray-800 dark:bg-gray-900">
+              <div className="aspect-square w-full animate-pulse rounded-md bg-gray-200 dark:bg-gray-800" />
               <div className="h-3 w-16 animate-pulse rounded bg-gray-200 dark:bg-gray-800" />
             </div>
           ))}
@@ -144,9 +144,9 @@ const CategoryStrip = () => {
           <ScrollReveal key={cat.id} animation="zoom-in" staggerIndex={i}>
             <Link
               href={`/store/category/${cat.slug}`}
-              className="group flex flex-col items-center gap-2 rounded-2xl border border-gray-200 bg-white p-3 text-center transition-all hover:-translate-y-1 hover:border-brand-300 hover:shadow-lg dark:border-gray-800 dark:bg-gray-900 dark:hover:border-brand-700"
+              className="group flex flex-col items-center gap-2 rounded-lg border border-gray-200 bg-white p-3 text-center transition-all hover:-translate-y-1 hover:border-brand-300 hover:shadow-lg dark:border-gray-800 dark:bg-gray-900 dark:hover:border-brand-700"
             >
-              <div className="relative aspect-square w-full overflow-hidden rounded-xl bg-linear-to-br from-brand-50 to-purple-50 dark:from-brand-950/30 dark:to-purple-950/30">
+              <div className="relative aspect-square w-full overflow-hidden rounded-md bg-linear-to-br from-brand-50 to-purple-50 dark:from-brand-950/30 dark:to-purple-950/30">
                 {cat.image ? (
                   <Image
                     src={resolveImageUrl(cat.image)}
@@ -201,7 +201,7 @@ const FlashSale = () => {
   if (saleProducts.length === 0) return null;
 
   return (
-    <section className="my-10 overflow-hidden rounded-2xl bg-linear-to-br from-rose-600 via-pink-600 to-purple-700 p-6 sm:p-8 text-white sm:my-12">
+    <section className="my-10 overflow-hidden rounded-lg bg-linear-to-br from-rose-600 via-pink-600 to-purple-700 p-6 sm:p-8 text-white sm:my-12">
       <ScrollReveal animation="fade-up" as="div" className="mb-6">
         <div className="flex flex-wrap items-end justify-between gap-3">
           <div>

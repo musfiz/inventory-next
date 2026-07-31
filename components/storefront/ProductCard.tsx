@@ -51,7 +51,7 @@ export default function ProductCard({
     e.preventDefault();
     e.stopPropagation();
     const vid = variationId || defaultVariation.id;
-    const res = addItem(product.id, vid, 1);
+    const res = addItem(product, vid, 1);
     if (res.ok) {
       flyToCart(e, defaultVariation.image || product.images[0], product.name);
       setShowQuickAdd(false);
@@ -74,10 +74,10 @@ export default function ProductCard({
       <Link
         href={`/store/products/${product.slug}`}
         onClick={() => trackView(product.id)}
-        className="group flex gap-4 rounded-2xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 p-4 transition-all hover:border-brand-300 dark:hover:border-brand-700 hover:shadow-md"
+        className="group flex gap-4 rounded-none border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 p-4 transition-all hover:border-brand-300 dark:hover:border-brand-700 hover:shadow-md"
       >
         <div
-          className="relative h-32 w-32 shrink-0 overflow-hidden rounded-xl bg-gray-100 dark:bg-gray-800"
+          className="relative h-32 w-32 shrink-0 overflow-hidden bg-gray-100 dark:bg-gray-800"
           onMouseEnter={() => setHovered(true)}
           onMouseLeave={() => setHovered(false)}
         >
@@ -111,23 +111,24 @@ export default function ProductCard({
         <div className="flex flex-1 flex-col">
           <div className="flex items-start justify-between gap-2">
             <div className="min-w-0">
-              <p className="text-xs font-medium uppercase tracking-wide text-brand-600 dark:text-brand-400">
-                {product.brand?.name}
-              </p>
-              <h3 className="mt-1 font-semibold text-gray-900 dark:text-gray-100 line-clamp-2 group-hover:text-brand-600">
+              {product.brand?.name && (
+                <p className="text-xs font-medium uppercase tracking-wide text-brand-600 dark:text-brand-400">
+                  {product.brand.name}
+                </p>
+              )}
+              <h3 title={product.name} className="mt-1 truncate text-sm font-semibold text-gray-900 dark:text-gray-100 group-hover:text-brand-600">
                 {product.name}
               </h3>
             </div>
             {showWishlist && (
               <button
                 onClick={handleWish}
-                className="rounded-full p-2 text-gray-400 hover:bg-gray-100 hover:text-accent-500 dark:hover:bg-gray-800"
+                className="rounded-none p-2 text-gray-400 hover:bg-gray-100 hover:text-accent-500 dark:hover:bg-gray-800"
                 aria-label="Add to wishlist"
               >
                 <Heart
-                  className={`h-5 w-5 ${
-                    isWished ? 'fill-accent-500 text-accent-500' : ''
-                  }`}
+                  className={`h-5 w-5 ${isWished ? 'fill-accent-500 text-accent-500' : ''
+                    }`}
                 />
               </button>
             )}
@@ -158,7 +159,7 @@ export default function ProductCard({
             <button
               onClick={handleAdd}
               disabled={!inStock}
-              className="inline-flex items-center gap-1.5 rounded-lg bg-brand-600 px-3.5 py-2 text-sm font-semibold text-white shadow-sm transition-all hover:bg-brand-700 active:scale-95 disabled:cursor-not-allowed disabled:bg-gray-300"
+              className="inline-flex items-center gap-1.5 rounded-none bg-brand-600 px-3.5 py-2 text-sm font-semibold text-white shadow-sm transition-all hover:bg-brand-700 active:scale-95 disabled:cursor-not-allowed disabled:bg-gray-300"
             >
               <IoCartSharp className="h-4 w-4" />
               {inStock ? 'Add' : 'Sold out'}
@@ -173,7 +174,7 @@ export default function ProductCard({
     <Link
       href={`/store/products/${product.slug}`}
       onClick={() => trackView(product.id)}
-      className="group relative flex flex-col overflow-hidden rounded-2xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 transition-[transform,box-shadow] duration-200 hover:-translate-y-1 hover:border-brand-300 hover:shadow-[0_8px_25px_rgba(0,0,0,0.08)] dark:hover:border-brand-700"
+      className="group relative flex h-full flex-col overflow-hidden rounded-none border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 transition-shadow duration-200 hover:border-brand-300 hover:shadow-[0_8px_25px_rgba(0,0,0,0.08)] dark:hover:border-brand-700"
     >
       <div
         className="relative aspect-square overflow-hidden bg-gray-100 dark:bg-gray-800"
@@ -222,22 +223,21 @@ export default function ProductCard({
         {showWishlist && (
           <button
             onClick={handleWish}
-            className="absolute right-3 top-3 z-10 flex h-9 w-9 items-center justify-center rounded-full bg-white/90 shadow-sm backdrop-blur-sm transition-all hover:bg-white hover:scale-110 dark:bg-gray-900/90 dark:hover:bg-gray-900"
+            className="absolute right-3 top-3 z-10 flex h-9 w-9 items-center justify-center rounded-none bg-white/90 shadow-sm backdrop-blur-sm transition-all hover:bg-white dark:bg-gray-900/90 dark:hover:bg-gray-900"
             aria-label="Add to wishlist"
           >
             <Heart
-              className={`h-4 w-4 transition-colors ${
-                isWished
-                  ? 'fill-accent-500 text-accent-500'
-                  : 'text-gray-600 dark:text-gray-400'
-              }`}
+              className={`h-4 w-4 transition-colors ${isWished
+                ? 'fill-accent-500 text-accent-500'
+                : 'text-gray-600 dark:text-gray-400'
+                }`}
             />
           </button>
         )}
 
         {!inStock && (
           <div className="absolute inset-0 z-10 flex items-center justify-center bg-white/60 backdrop-blur-sm dark:bg-gray-950/60">
-            <span className="rounded-full bg-gray-900 px-4 py-1.5 text-xs font-semibold uppercase tracking-wide text-white">
+            <span className="rounded-none bg-gray-900 px-4 py-1.5 text-xs font-semibold uppercase tracking-wide text-white">
               Sold out
             </span>
           </div>
@@ -258,13 +258,13 @@ export default function ProductCard({
                   key={v.id}
                   onClick={e => handleAdd(e, v.id)}
                   disabled={v.stock <= 0}
-                  className="rounded-md border border-gray-200 px-2 py-1 text-[10px] font-semibold text-gray-700 transition-colors hover:border-brand-400 hover:bg-brand-50 hover:text-brand-600 disabled:cursor-not-allowed disabled:opacity-40 dark:border-gray-700 dark:text-gray-300"
+                  className="rounded-none border border-gray-200 px-2 py-1 text-[10px] font-semibold text-gray-700 transition-colors hover:border-brand-400 hover:bg-brand-50 hover:text-brand-600 disabled:cursor-not-allowed disabled:opacity-40 dark:border-gray-700 dark:text-gray-300"
                 >
                   {Object.values(v.attributes).join(' ') || v.name}
                 </button>
               ))}
               {product.variations.length > 5 && (
-                <span className="rounded-md bg-gray-100 px-2 py-1 text-[10px] font-semibold text-gray-500 dark:bg-gray-800">
+                <span className="rounded-none bg-gray-100 px-2 py-1 text-[10px] font-semibold text-gray-500 dark:bg-gray-800">
                   +{product.variations.length - 5}
                 </span>
               )}
@@ -274,12 +274,12 @@ export default function ProductCard({
       </div>
 
       <div className="flex flex-1 flex-col p-4">
-        {product.brand && (
+        {product.brand?.name && (
           <p className="text-xs font-medium uppercase tracking-wider text-brand-600 dark:text-brand-400">
             {product.brand.name}
           </p>
         )}
-        <h3 className="mt-1 font-semibold text-gray-900 dark:text-gray-100 line-clamp-2 group-hover:text-brand-600 dark:group-hover:text-brand-400 transition-colors">
+        <h3 title={product.name} className="mt-1 truncate text-[13px] font-semibold text-gray-900 dark:text-gray-100 group-hover:text-brand-600 dark:group-hover:text-brand-400 transition-colors">
           {product.name}
         </h3>
 
@@ -298,9 +298,9 @@ export default function ProductCard({
           </div>
         )}
 
-        {hasManyVariations && variant !== 'compact' && (
+        {variant !== 'compact' && (
           <p className="mt-1.5 text-xs text-gray-500 dark:text-gray-400">
-            {product.variations.length} options
+            {hasManyVariations ? `${product.variations.length} options` : '\u00A0'}
           </p>
         )}
 
@@ -325,7 +325,7 @@ export default function ProductCard({
           <button
             onClick={handleAdd}
             disabled={!inStock}
-            className="flex h-9 w-9 items-center justify-center rounded-lg bg-brand-600 text-white shadow-sm transition-all hover:bg-brand-700 hover:scale-105 active:scale-95 disabled:cursor-not-allowed disabled:bg-gray-300 disabled:hover:scale-100"
+            className="flex h-9 w-9 items-center justify-center rounded-none bg-brand-600 text-white shadow-sm transition-all hover:bg-brand-700 active:scale-95 disabled:cursor-not-allowed disabled:bg-gray-300"
             aria-label="Add to cart"
           >
             <IoCartSharp className="h-4 w-4" />

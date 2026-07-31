@@ -4,13 +4,14 @@ import Link from 'next/link';
 import { ChevronRight } from 'lucide-react';
 import type { CategoryTreeItem } from '@/services/storefrontService';
 
-export const CategoryDropdown = ({ cat, onClose, onKeepOpen }: { cat: CategoryTreeItem; onClose: () => void; onKeepOpen: () => void }) => {
+export const CategoryDropdown = ({ cat, onClose, onKeepOpen, style }: { cat: CategoryTreeItem; onClose: () => void; onKeepOpen: () => void; style?: React.CSSProperties }) => {
   const children = cat.children ?? [];
   if (children.length === 0) return null;
 
   return (
     <div
-      className="absolute left-0 top-full z-40 mt-0 w-56 overflow-hidden border border-gray-200 bg-white dark:border-gray-800 dark:bg-gray-950 sf-fade-in"
+      className="fixed z-50 w-56 overflow-hidden border border-gray-200 bg-white dark:border-gray-800 dark:bg-gray-950 sf-fade-in"
+      style={style}
       onMouseEnter={onKeepOpen}
       onMouseLeave={onClose}
     >
