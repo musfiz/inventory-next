@@ -89,7 +89,13 @@ export default function HeaderMenuPage() {
     if (!dirty) return;
     setSaving(true);
     try {
-      await headerMenuService.update(config);
+      const payload: Partial<HeaderMenuConfig> = { ...config };
+      // This page manages header settings only — never let a null
+      // mega_menu_config wipe the mega menu parent items on save.
+      if (payload.mega_menu_config === null) {
+        delete payload.mega_menu_config;
+      }
+      await headerMenuService.update(payload);
       notify.success('Header settings saved successfully');
       setDirty(false);
     } catch (err: any) {

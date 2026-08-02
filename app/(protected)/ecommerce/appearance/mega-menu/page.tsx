@@ -721,12 +721,15 @@ export default function MegaMenuPage() {
   const fetchData = useCallback(async () => {
     setLoading(true);
     try {
-      const [menuRes, categoryTree] = await Promise.all([
-        headerMenuService.get(),
-        storefrontService.getCategories(),
-      ]);
-
-      setCategories(categoryTree);
+      // Load the saved menu config first. The category tree is optional — a
+      // failure there must never prevent the parent items from loading,
+      // otherwise a later save would persist an empty items list.
+      const menuRes = await headerMenuService.get();
+      try {
+        setCategories(await storefrontService.getCategories());
+      } catch {
+        setCategories([]);
+      }
       const savedConfig = menuRes.mega_menu_config;
 
       if (savedConfig?.items && savedConfig.items.length > 0) {
