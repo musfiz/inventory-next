@@ -19,7 +19,7 @@ import {
   Image as ImageIcon,
 } from 'lucide-react';
 import { IoCartSharp } from 'react-icons/io5';
-import { GlassMagnifier } from 'react-image-magnifiers';
+import ProductMagnifier from '@/components/storefront/ProductMagnifier';
 import {
   REVIEWS,
   formatMoney,
@@ -32,6 +32,7 @@ import { useRecentlyViewed } from '@/hooks/use-recently-viewed';
 import { useCartFly } from '@/components/storefront/CartFlyProvider';
 import { useRouter } from 'next/navigation';
 import { notify } from '@/lib/notifications';
+import { imageUrl } from '@/lib/image-url';
 import ecommerceSettingsService from '@/services/ecommerceSettingsService';
 import storefrontService from '@/services/storefrontService';
 import type { Product } from '@/types/storefront';
@@ -159,7 +160,7 @@ export default function ProductDetailPage() {
   const handleAdd = (e: React.MouseEvent) => {
     const res = addItem(product, variation.id, qty);
     if (res.ok) {
-      flyToCart(e, variation.image || product.images[0], product.name);
+      flyToCart(e, imageUrl(variation.image) || imageUrl(product.images[0]) || '', product.name);
     } else {
       notify.error(res.message || 'Could not add to bag');
     }
@@ -207,7 +208,7 @@ export default function ProductDetailPage() {
                       }`}
                   >
                     <Image
-                      src={img}
+                      src={imageUrl(img) || ''}
                       alt={`${product.name} ${i + 1}`}
                       fill
                       sizes="80px"
@@ -221,15 +222,14 @@ export default function ProductDetailPage() {
             <div className="order-1 flex-1">
               <div className="relative aspect-square overflow-hidden rounded-2xl border border-gray-100 bg-gray-50 dark:border-gray-800 dark:bg-gray-900">
                 {product.images[activeImg] ? (
-                  <GlassMagnifier
-                    imageSrc={product.images[activeImg]}
-                    largeImageSrc={product.images[activeImg]}
-                    imageAlt={product.name}
-                    square
-                    magnifierSize="35%"
-                    magnifierBorderSize={2}
-                    magnifierBorderColor="rgba(255,255,255,.8)"
-                    className="pdp-glass-magnifier absolute inset-0"
+                  <ProductMagnifier
+                    src={imageUrl(product.images[activeImg]) || ''}
+                    largeSrc={
+                      imageUrl(product.imagesLarge?.[activeImg]) ||
+                      imageUrl(product.images[activeImg]) ||
+                      ''
+                    }
+                    alt={product.name}
                   />
                 ) : (
                   <div className="flex h-full w-full items-center justify-center">

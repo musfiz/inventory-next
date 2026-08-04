@@ -12,6 +12,7 @@ import { useWishlistStore } from '@/stores/wishlist-store';
 import { useRecentlyViewed } from '@/hooks/use-recently-viewed';
 import { useCartFly } from '@/components/storefront/CartFlyProvider';
 import { notify } from '@/lib/notifications';
+import { imageUrl } from '@/lib/image-url';
 import Badge from './Badge';
 
 interface ProductCardProps {
@@ -53,7 +54,7 @@ export default function ProductCard({
     const vid = variationId || defaultVariation.id;
     const res = addItem(product, vid, 1);
     if (res.ok) {
-      flyToCart(e, defaultVariation.image || product.images[0], product.name);
+      flyToCart(e, imageUrl(defaultVariation.image) || imageUrl(product.images[0]) || '', product.name);
       setShowQuickAdd(false);
     } else {
       notify.error(res.message || 'Could not add to bag');
@@ -84,7 +85,7 @@ export default function ProductCard({
           {product.images[0] ? (
             <>
               <Image
-                src={product.images[0]}
+                src={imageUrl(product.images[0]) || ''}
                 alt={product.name}
                 fill
                 sizes="128px"
@@ -93,7 +94,7 @@ export default function ProductCard({
               />
               {product.images[1] && (
                 <Image
-                  src={product.images[1]}
+                  src={imageUrl(product.images[1]) || ''}
                   alt={product.name}
                   fill
                   sizes="128px"
@@ -184,7 +185,7 @@ export default function ProductCard({
         {product.images[0] ? (
           <>
             <Image
-              src={product.images[0]}
+              src={imageUrl(product.images[0]) || ''}
               alt={product.name}
               fill
               sizes="(max-width: 640px) 50vw, (max-width: 1024px) 25vw, 20vw"
@@ -193,7 +194,7 @@ export default function ProductCard({
             />
             {product.images[1] && (
               <Image
-                src={product.images[1]}
+                src={imageUrl(product.images[1]) || ''}
                 alt={product.name}
                 fill
                 sizes="(max-width: 640px) 50vw, (max-width: 1024px) 25vw, 20vw"

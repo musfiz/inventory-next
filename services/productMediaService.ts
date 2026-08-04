@@ -12,10 +12,10 @@ class ProductMediaService {
     return response.data.data;
   }
 
-  async uploadImage(formData: FormData): Promise<ProductMediaItem> {
+  async uploadImage(formData: FormData): Promise<ProductMediaItem[]> {
     const response = await apiClient.post<{
       success: boolean;
-      data: ProductMediaItem;
+      data: ProductMediaItem[];
     }>('/api/v1/ecommerce/products/product-media', formData, {
       headers: { 'Content-Type': 'multipart/form-data' },
     });

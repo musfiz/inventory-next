@@ -352,14 +352,6 @@
   animation: sf-marquee 30s linear infinite;
 }
 
-/* Product detail glass magnifier — force the base image to fill/cover its square container */
-.pdp-glass-magnifier>img:first-of-type {
-  width: 100% !important;
-  height: 100% !important;
-  object-fit: cover !important;
-  display: block;
-}
-
 /* Hide scrollbar but keep functionality */
 .scrollbar-hide::-webkit-scrollbar {
   display: none;

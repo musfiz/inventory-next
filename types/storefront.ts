@@ -46,6 +46,7 @@ export interface Product {
   category: Category;
   brand?: Brand;
   images: string[];
+  imagesLarge?: string[];
   lqip?: string;
   variations: ProductVariation[];
   rating: number;

@@ -1144,8 +1144,10 @@ export interface ProductMediaItem {
   file_url_thumb: string;
   file_path_medium: string;
   file_url_medium: string;
-  file_path_magnify: string;
-  file_url_magnify: string;
+  file_path_large: string;
+  file_url_large: string;
+  file_path_zoom: string | null;
+  file_url_zoom: string | null;
   alt_text: string | null;
   is_primary: boolean;
   sort_order: number;
