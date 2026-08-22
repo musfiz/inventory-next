@@ -28,7 +28,8 @@ export const FORMATTING = {
   shortDateTime(value: string | null | undefined): string {
     if (!value) return '—';
     try {
-      const d = new Date(value);
+      // API returns UTC datetime strings without 'Z' suffix — parse as UTC
+      const d = new Date(value + (value.includes('Z') || value.includes('+') ? '' : 'Z'));
       if (isNaN(d.getTime())) return value;
       return d.toLocaleString();
     } catch {

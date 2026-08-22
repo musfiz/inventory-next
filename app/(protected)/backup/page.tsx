@@ -122,6 +122,13 @@ export default function BackupPage() {
   const handleJobStarted = (job: BackupJobStatus) => {
     setActiveJob(job);
     setModalOpen(true);
+    // Fast jobs can already be terminal by the time the first status
+    // fetch lands (sync queue / tiny tenant). The polling effect skips
+    // terminal jobs, so refresh the history here or the new backup won't
+    // appear in the list until a manual reload.
+    if (job.status === 'completed' || job.status === 'failed') {
+      refreshHistory();
+    }
   };
 
   const handleDelete = async (job: BackupJobStatus) => {
