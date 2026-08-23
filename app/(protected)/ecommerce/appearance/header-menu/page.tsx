@@ -73,7 +73,17 @@ export default function HeaderMenuPage() {
     setLoading(true);
     try {
       const res = await headerMenuService.get();
-      setConfig(res);
+      // Normalize nullable API fields so controlled inputs never receive
+      // a null `value` (React warns and typing breaks).
+      setConfig(prev => ({
+        ...prev,
+        ...res,
+        utility_bar_text_free_shipping: res.utility_bar_text_free_shipping ?? '',
+        utility_bar_text_discount: res.utility_bar_text_discount ?? '',
+        utility_bar_phone: res.utility_bar_phone ?? '',
+        utility_bar_bg_color: res.utility_bar_bg_color ?? DEFAULT_UTILITY_BG,
+        utility_bar_text_color: res.utility_bar_text_color ?? DEFAULT_UTILITY_TEXT,
+      }));
     } catch {
       // First load - defaults are fine
     } finally {
