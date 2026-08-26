@@ -9,6 +9,7 @@ export interface SelectedProduct {
   product_id: string;
   product_name: string;
   product_sku?: string;
+  product_image?: string;
 }
 
 interface ProductSelectorProps {
@@ -23,6 +24,17 @@ interface SelectOption {
   value: string;
   label: string;
   sku?: string;
+  image?: string;
+}
+
+/** Prefix relative backend URLs (e.g. /storage/...) with the API origin */
+function resolveImageUrl(url?: string | null): string {
+  if (!url) return '';
+  if (/^https?:\/\//i.test(url) || url.startsWith('data:') || url.startsWith('blob:'))
+    return url;
+  const baseUrl = (process.env.NEXT_PUBLIC_BACKEND_URL || '').replace(/\/+$/, '');
+  if (!baseUrl) return url;
+  return `${baseUrl}${url.startsWith('/') ? url : '/' + url}`;
 }
 
 /**
@@ -33,6 +45,7 @@ function toOptions(products: SelectedProduct[]): SelectOption[] {
     value: p.product_id,
     label: p.product_name,
     sku: p.product_sku,
+    image: p.product_image,
   }));
 }
 
@@ -44,6 +57,7 @@ function fromOptions(options: readonly SelectOption[]): SelectedProduct[] {
     product_id: o.value,
     product_name: o.label,
     product_sku: o.sku,
+    product_image: o.image,
   }));
 }
 
@@ -153,19 +167,53 @@ export default function ProductSelector({
         value: p.id,
         label: p.name,
         sku: p.sku,
+        image: p.image_url,
       }));
     },
     [categoryId]
   );
 
-  const formatOptionLabel = (option: SelectOption) => (
-    <div className="flex items-center justify-between">
-      <span className="text-sm">{option.label}</span>
-      {option.sku && (
-        <span className="text-xs text-gray-400 ml-2 font-mono">{option.sku}</span>
-      )}
-    </div>
-  );
+  const formatOptionLabel = (
+    option: SelectOption,
+    { context }: { context: 'menu' | 'value' }
+  ) => {
+    const thumb = resolveImageUrl(option.image);
+    if (context === 'value') {
+      return (
+        <span className="flex items-center gap-1.5">
+          {thumb ? (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img
+              src={thumb}
+              alt=""
+              className="w-4 h-4 rounded-sm object-cover bg-white/20"
+            />
+          ) : null}
+          <span>{option.label}</span>
+        </span>
+      );
+    }
+    return (
+      <div className="flex items-center gap-2">
+        {thumb ? (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img
+            src={thumb}
+            alt=""
+            className="w-7 h-7 rounded object-cover border border-gray-300 dark:border-gray-500 shrink-0"
+          />
+        ) : (
+          <span className="w-7 h-7 rounded bg-gray-200 dark:bg-gray-600 shrink-0" />
+        )}
+        <span className="text-sm">{option.label}</span>
+        {option.sku && (
+          <span className="text-xs text-gray-400 ml-auto font-mono">
+            {option.sku}
+          </span>
+        )}
+      </div>
+    );
+  };
 
   return (
     <AsyncSelect

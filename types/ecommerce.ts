@@ -105,6 +105,7 @@ export type CampaignStatus = 'scheduled' | 'active' | 'ended' | 'paused';
 
 export interface FlashSaleCampaign {
   id: string;
+  tenant_id?: string | number | null;
   name: string;
   description: string;
   start_date: string;

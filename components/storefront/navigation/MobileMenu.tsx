@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { useState } from 'react';
-import { Sparkles, X, ChevronDown, Package, Heart, User, Link as LinkIcon } from 'lucide-react';
+import { Sparkles, X, ChevronDown, Package, Heart, User, Home, LayoutGrid, Link as LinkIcon } from 'lucide-react';
 import { useHeaderMenu } from '@/hooks/use-header-menu';
 import { useStorefrontCategories } from '@/hooks/use-storefront-categories';
 import type { StorefrontNavigationItem } from '@/types/api.types';
@@ -40,6 +40,18 @@ export const MobileMenu = ({ open, onClose, headerLogo, ready }: { open: boolean
         <div className="px-3 py-4">
           <p className="mb-3 px-2 text-xs font-bold uppercase tracking-wider text-gray-500">Shop by Category</p>
           <ul className="space-y-0.5">
+            <li>
+              <Link href="/store" onClick={onClose} className="flex items-center gap-3 rounded-xl px-3 py-3 text-sm font-bold text-gray-800 transition-all hover:bg-gray-50 dark:text-gray-200 dark:hover:bg-gray-900">
+                <Home className="h-4 w-4 text-gray-400" />
+                Home
+              </Link>
+            </li>
+            <li>
+              <Link href="/store/products" onClick={onClose} className="flex items-center gap-3 rounded-xl px-3 py-3 text-sm font-bold text-gray-800 transition-all hover:bg-gray-50 dark:text-gray-200 dark:hover:bg-gray-900">
+                <LayoutGrid className="h-4 w-4 text-gray-400" />
+                All Products
+              </Link>
+            </li>
             {!menuReady ? (
               // Loading skeleton while header menu data is being fetched
               [...Array(5)].map((_, i) => (

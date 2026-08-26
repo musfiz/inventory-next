@@ -5,17 +5,12 @@ import { useState, useEffect } from 'react';
 import { useBranding } from '@/hooks/use-branding';
 import ScrollReveal from '@/components/storefront/ScrollReveal';
 import footerService from '@/services/footerService';
+import storefrontService from '@/services/storefrontService';
 import type { FooterConfig, SocialLink } from '@/types/api.types';
 import {
   Mail,
   Phone,
   MapPin,
-  Facebook,
-  Instagram,
-  Twitter,
-  Youtube,
-  Linkedin,
-  Music2,
   Truck,
   RotateCcw,
   ShieldCheck,
@@ -28,7 +23,16 @@ import {
   Package,
   Clock,
   BadgePercent,
+  Copyright,
 } from 'lucide-react';
+import {
+  FaFacebook,
+  FaInstagram,
+  FaYoutube,
+  FaLinkedin,
+  FaTiktok,
+  FaXTwitter,
+} from 'react-icons/fa6';
 
 const VALUE_PROP_ICONS: Record<string, any> = {
   Truck, RotateCcw, ShieldCheck, Headphones, Gift, Sparkles,
@@ -36,12 +40,12 @@ const VALUE_PROP_ICONS: Record<string, any> = {
 };
 
 const SOCIAL_PLATFORMS: Record<string, any> = {
-  facebook: Facebook,
-  instagram: Instagram,
-  twitter: Twitter,
-  youtube: Youtube,
-  linkedin: Linkedin,
-  tiktok: Music2,
+  facebook: FaFacebook,
+  instagram: FaInstagram,
+  twitter: FaXTwitter,
+  youtube: FaYoutube,
+  linkedin: FaLinkedin,
+  tiktok: FaTiktok,
 };
 
 function getSocialColor(platform: string) {
@@ -84,13 +88,13 @@ const FALLBACK_CONFIG: FooterConfig = {
   newsletter_subtitle: 'Be the first to get exclusive deals, new arrivals & insider updates.',
   columns: [
     {
-      id: 'c1', title: 'Shop', sort_order: 0,
+      id: 'c1', title: 'Shop', sort_order: 1,
       links: [
-        { id: 'l1', label: 'New Arrivals', url: '/store/products?filter=new', sort_order: 0, open_in_new_tab: false, is_active: true },
-        { id: 'l2', label: 'Best Sellers', url: '/store/products?filter=bestseller', sort_order: 1, open_in_new_tab: false, is_active: true },
-        { id: 'l3', label: 'Featured Products', url: '/store/products?filter=featured', sort_order: 2, open_in_new_tab: false, is_active: true },
-        { id: 'l4', label: 'Flash Sale', url: '/store/products?filter=sale', sort_order: 3, open_in_new_tab: false, is_active: true },
-        { id: 'l5', label: 'All Categories', url: '/store/products', sort_order: 4, open_in_new_tab: false, is_active: true },
+        { id: 'l1', label: 'All Categories', url: '/store/products', sort_order: 1, open_in_new_tab: false, is_active: true },
+        { id: 'l2', label: 'New Arrivals', url: '/store/products?filter=new', sort_order: 1, open_in_new_tab: false, is_active: true },
+        { id: 'l3', label: 'Best Sellers', url: '/store/products?filter=bestseller', sort_order: 2, open_in_new_tab: false, is_active: true },
+        { id: 'l4', label: 'Featured Products', url: '/store/products?filter=featured', sort_order: 3, open_in_new_tab: false, is_active: true },
+        { id: 'l5', label: 'Flash Sale', url: '/store/products?filter=sale', sort_order: 4, open_in_new_tab: false, is_active: true },
       ],
     },
     {
@@ -128,12 +132,12 @@ const FALLBACK_CONFIG: FooterConfig = {
   contact_email: 'support@uims.shop',
   about_text: 'Your one-stop online shop for quality products across electronics, fashion, home & living, and more.',
   social_links: [
-    { id: 's1', platform: 'facebook', url: '', is_active: true },
-    { id: 's2', platform: 'instagram', url: '', is_active: true },
-    { id: 's3', platform: 'twitter', url: '', is_active: true },
-    { id: 's4', platform: 'youtube', url: '', is_active: true },
+    { id: 's1', platform: 'facebook', url: 'https://facebook.com', is_active: true },
+    { id: 's2', platform: 'instagram', url: 'https://instagram.com', is_active: true },
+    { id: 's3', platform: 'twitter', url: 'https://x.com', is_active: true },
+    { id: 's4', platform: 'youtube', url: 'https://youtube.com', is_active: true },
   ],
-  copyright_text: '\u00A9 {year} UIMS Store. All rights reserved.',
+  copyright_text: '{year} UIMS Store. All rights reserved.',
   show_payment_badges: true,
   payment_badges: [
     { id: 'p1', name: 'Visa', is_active: true },
@@ -150,9 +154,31 @@ export default function StorefrontFooter() {
   const { footerLogo, ready } = useBranding();
   const [subscribed, setSubscribed] = useState(false);
   const [config, setConfig] = useState<FooterConfig | null>(null);
+  const [storeStats, setStoreStats] = useState<{ productCount: number; categoryCount: number } | null>(null);
 
   useEffect(() => {
     footerService.get().then(setConfig).catch(() => setConfig(FALLBACK_CONFIG));
+  }, []);
+
+  // Dynamic dashboard/storefront data — live product & category counts (from dashboard-managed catalog)
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const [cats, productsRes] = await Promise.all([
+          storefrontService.getCategories().catch(() => [] as any),
+          storefrontService.getProducts({ per_page: 1 }).catch(() => ({ meta: { total: 0 } } as any)),
+        ]);
+        const categoryCount = Array.isArray(cats) ? cats.length : 0;
+        const productCount = productsRes?.meta?.total ?? 0;
+        if (!cancelled && (productCount > 0 || categoryCount > 0)) {
+          setStoreStats({ productCount, categoryCount });
+        }
+      } catch {
+        // keep null — hides stats strip
+      }
+    })();
+    return () => { cancelled = true; };
   }, []);
 
   if (!config) return null;
@@ -175,10 +201,11 @@ export default function StorefrontFooter() {
   } = config;
 
   const activeValueProps = value_props.filter(v => v.is_active);
-  const activeSocialLinks = social_links.filter((s: SocialLink) => s.is_active && (s.url || '').trim());
+  const activeSocialLinks = social_links.filter((s: SocialLink) => s.is_active);
   const activeBadges = payment_badges.filter(b => b.is_active);
   const displayColumns = columns.filter(c => c.links.some(l => l.is_active));
-  const copyrightDisplay = (copyright_text || '').replace('{year}', String(new Date().getFullYear()));
+  const rawCopyright = (copyright_text || '').trim() || '{year} UIMS Store. All rights reserved.';
+  const copyrightDisplay = rawCopyright.replace('{year}', String(new Date().getFullYear()));
 
   const handleSubscribe = (e: React.FormEvent) => {
     e.preventDefault();
@@ -284,7 +311,7 @@ export default function StorefrontFooter() {
             {activeSocialLinks.length > 0 && (
               <div className="mt-5 flex items-center gap-2">
                 {activeSocialLinks.map(sl => {
-                  const Icon = SOCIAL_PLATFORMS[sl.platform] || Facebook;
+                  const Icon = SOCIAL_PLATFORMS[sl.platform] || FaFacebook;
                   return (
                     <a
                       key={sl.id}
@@ -326,10 +353,31 @@ export default function StorefrontFooter() {
         </div>
       </div>
 
+      {/* Dynamic storefront stats — live dashboard data (products/categories) */}
+      {storeStats && (storeStats.productCount > 0 || storeStats.categoryCount > 0) && (
+        <div className="border-t border-gray-200 bg-white dark:border-gray-800 dark:bg-gray-900">
+          <div className="mx-auto flex max-w-7xl flex-wrap items-center justify-center gap-6 px-4 py-3 text-xs text-gray-600 dark:text-gray-400">
+            <span className="inline-flex items-center gap-1.5">
+              <Package className="h-3.5 w-3.5 text-brand-600" />
+              <span className="font-bold text-gray-900 dark:text-gray-100">{storeStats.productCount.toLocaleString()}</span> products live
+            </span>
+            <span className="hidden h-3 w-px bg-gray-300 dark:bg-gray-700 sm:block" aria-hidden />
+            <span className="inline-flex items-center gap-1.5">
+              <Sparkles className="h-3.5 w-3.5 text-brand-600" />
+              <span className="font-bold text-gray-900 dark:text-gray-100">{storeStats.categoryCount}</span> categories
+            </span>
+            <span className="text-gray-500">— catalog synced from dashboard</span>
+          </div>
+        </div>
+      )}
+
       {/* Bottom bar */}
       <div className="border-t border-brand-200 bg-linear-to-r from-brand-50 via-purple-50 to-pink-50 dark:border-gray-800 dark:from-gray-900 dark:via-gray-900 dark:to-gray-900">
         <div className="mx-auto flex max-w-7xl flex-col items-center justify-between gap-4 px-4 py-5 text-xs text-gray-600 sm:flex-row dark:text-gray-400">
-          <p>{copyrightDisplay}</p>
+          <p className="inline-flex items-center gap-1.5">
+            <Copyright className="h-3.5 w-3.5 shrink-0 text-gray-500 dark:text-gray-400" />
+            <span>{copyrightDisplay}</span>
+          </p>
           {show_payment_badges && activeBadges.length > 0 && (
             <div className="flex items-center gap-2">
               <span className="font-semibold">We accept:</span>

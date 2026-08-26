@@ -19,6 +19,13 @@ import { ImUpload } from 'react-icons/im';
 import offerSlideService from '@/services/offerSlideService';
 import { notify, confirm } from '@/lib/notifications';
 import type { StorefrontOfferSlide } from '@/types/storefront';
+import {
+  accentDisplayClass,
+  accentOverlayStyle,
+  accentSwatchStyle,
+  isCustomAccent,
+  parseCustomAccent,
+} from '@/lib/utils/offer-accent';
 
 const ACCENT_PRESETS = [
   { label: 'Indigo-Purple', value: 'from-indigo-600/85 to-purple-700/85' },
@@ -52,6 +59,29 @@ const emptyForm: OfferForm = {
   is_active: true,
   image: null,
   image_preview: null,
+};
+
+const DEFAULT_CUSTOM_ACCENT = { from: '#4f46e5', to: '#9333ea', intensity: 85 };
+
+/** Overlay rendered exactly like the storefront Top Offers cards */
+const AccentOverlay = ({ accent }: { accent?: string | null }) => (
+  <div
+    aria-hidden
+    className={`absolute inset-0 bg-linear-to-r ${accentDisplayClass(accent)}`}
+    style={accentOverlayStyle(accent)}
+  />
+);
+
+/** Tiny swatch showing the raw gradient colors (not the display fade) */
+const AccentSwatch = ({ accent }: { accent?: string | null }) => {
+  const preset = ACCENT_PRESETS.find(p => p.value === accent);
+  const hasVisual = preset || isCustomAccent(accent);
+  return (
+    <span
+      className={`inline-block w-4 h-3 rounded bg-linear-to-r ${preset?.value ?? ''} ${hasVisual ? '' : 'bg-gray-300 dark:bg-gray-600'}`}
+      style={preset ? undefined : accentSwatchStyle(accent)}
+    />
+  );
 };
 
 const resolveImageUrl = (url?: string | null) => {
@@ -229,6 +259,17 @@ export default function BannersPage() {
     ? resolveImageUrl(offers.find(o => o.id === form.id)?.image_url) || null
     : form.image_preview;
 
+  const customAccent = parseCustomAccent(form.accent) ?? DEFAULT_CUSTOM_ACCENT;
+
+  const setCustomAccent = (patch: Partial<typeof DEFAULT_CUSTOM_ACCENT>) => {
+    const next = { ...customAccent, ...patch };
+    const intensity = Math.min(100, Math.max(0, Math.round(next.intensity)));
+    setForm(f => ({
+      ...f,
+      accent: `${next.from}|${next.to}|${intensity}`,
+    }));
+  };
+
   return (
     <div className="space-y-6">
       {/* ---- Header ---- */}
@@ -306,7 +347,7 @@ export default function BannersPage() {
 
               {/* Accent color */}
               <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Overlay Accent</label>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Overlay Gradient</label>
                 <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
                   {ACCENT_PRESETS.map(p => (
                     <button
@@ -315,11 +356,30 @@ export default function BannersPage() {
                       onClick={() => setForm(f => ({ ...f, accent: p.value }))}
                       className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded border text-xs font-medium transition-colors cursor-pointer ${form.accent === p.value ? 'border-indigo-500 bg-indigo-50 text-indigo-700 dark:bg-indigo-950/30 dark:text-indigo-300 dark:border-indigo-400' : 'border-gray-200 dark:border-gray-600 text-gray-600 dark:text-gray-300 hover:border-gray-400'}`}
                     >
-                      <span className={`w-4 h-4 rounded bg-linear-to-r ${p.value.replace('85', '100')}`} />
+                      <span className={`w-4 h-4 rounded bg-linear-to-r ${p.value}`} />
                       {p.label}
                     </button>
                   ))}
                 </div>
+
+                {/* Custom gradient colors — stored to the backend offer_slides.accent column */}
+                <div className={`mt-2 flex flex-wrap items-center gap-x-4 gap-y-2 rounded border px-3 py-2 ${isCustomAccent(form.accent) ? 'border-indigo-500 bg-indigo-50/60 dark:bg-indigo-950/20 dark:border-indigo-400' : 'border-gray-200 dark:border-gray-600'}`}>
+                  <span className={`text-xs font-medium ${isCustomAccent(form.accent) ? 'text-indigo-700 dark:text-indigo-300' : 'text-gray-600 dark:text-gray-300'}`}>Custom Gradient</span>
+                  <label className="flex items-center gap-1.5 text-xs text-gray-600 dark:text-gray-300">
+                    From
+                    <input type="color" value={customAccent.from} onChange={e => setCustomAccent({ from: e.target.value })} className="h-6 w-9 cursor-pointer rounded border border-gray-300 dark:border-gray-600 bg-transparent p-0.5" />
+                  </label>
+                  <label className="flex items-center gap-1.5 text-xs text-gray-600 dark:text-gray-300">
+                    To
+                    <input type="color" value={customAccent.to} onChange={e => setCustomAccent({ to: e.target.value })} className="h-6 w-9 cursor-pointer rounded border border-gray-300 dark:border-gray-600 bg-transparent p-0.5" />
+                  </label>
+                  <label className="flex items-center gap-2 text-xs text-gray-600 dark:text-gray-300">
+                    Intensity
+                    <input type="range" min="10" max="100" step="5" value={customAccent.intensity} onChange={e => setCustomAccent({ intensity: Number(e.target.value) })} className="w-24 cursor-pointer accent-indigo-600" />
+                    <span className="w-8 tabular-nums">{customAccent.intensity}%</span>
+                  </label>
+                </div>
+                <p className="text-xs text-gray-400 mt-0.5">The overlay fades toward the right so the banner image stays visible on the storefront.</p>
               </div>
 
               {/* Sort Order + Active */}
@@ -349,7 +409,7 @@ export default function BannersPage() {
                     </div>
                   </div>
                 )}
-                <div className={`absolute inset-0 bg-linear-to-r ${form.accent}`} aria-hidden />
+                <AccentOverlay accent={form.accent} />
                 <div className="absolute inset-0 flex items-center p-5">
                   <div className="text-white">
                     <p className="text-[10px] font-bold uppercase tracking-wider text-white/85">Limited time</p>
@@ -371,7 +431,7 @@ export default function BannersPage() {
                     <p className="text-xs text-gray-400">No image</p>
                   </div>
                 )}
-                <div className={`absolute inset-0 bg-linear-to-r ${form.accent}`} aria-hidden />
+                <AccentOverlay accent={form.accent} />
                 <div className="absolute inset-0 flex items-center p-4">
                   <div className="text-white">
                     <p className="text-[9px] font-bold uppercase tracking-wider text-white/85">Limited time</p>
@@ -424,7 +484,7 @@ export default function BannersPage() {
               {/* Card image with overlay */}
               <div className="relative h-36 bg-gray-100 dark:bg-gray-700">
                 <img src={resolveImageUrl(offer.image_url)} alt={offer.title} className="w-full h-full object-cover" />
-                <div className={`absolute inset-0 bg-linear-to-r ${offer.accent || ACCENT_PRESETS[0].value}`} aria-hidden />
+                <AccentOverlay accent={offer.accent} />
                 <div className="absolute inset-0 flex items-center p-4">
                   <div className="text-white min-w-0">
                     <p className="text-[10px] font-bold uppercase tracking-wider text-white/85">Offer</p>
@@ -457,7 +517,7 @@ export default function BannersPage() {
                     <p><span className="font-medium">Subtitle:</span> {offer.subtitle || '-'}</p>
                     <div className="flex items-center gap-1.5">
                       <span className="font-medium">Accent:</span>
-                      <span className={`w-4 h-3 rounded bg-linear-to-r ${(offer.accent || '').replace('85', '100')}`} />
+                      <AccentSwatch accent={offer.accent} />
                     </div>
                   </div>
                 )}

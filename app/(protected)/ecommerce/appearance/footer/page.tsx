@@ -25,14 +25,16 @@ import {
   Mail,
   Phone,
   MapPin,
-  Facebook,
-  Instagram,
-  Twitter,
-  Youtube,
-  Linkedin,
-  Music2,
 } from 'lucide-react';
 import { GiSave } from 'react-icons/gi';
+import {
+  FaFacebook,
+  FaInstagram,
+  FaYoutube,
+  FaLinkedin,
+  FaTiktok,
+  FaXTwitter,
+} from 'react-icons/fa6';
 import footerService from '@/services/footerService';
 import { notify } from '@/lib/notifications';
 import type {
@@ -50,12 +52,12 @@ const VALUE_PROP_ICONS: Record<string, any> = {
 };
 
 const SOCIAL_PLATFORMS = [
-  { value: 'facebook', label: 'Facebook', icon: Facebook },
-  { value: 'instagram', label: 'Instagram', icon: Instagram },
-  { value: 'twitter', label: 'Twitter', icon: Twitter },
-  { value: 'youtube', label: 'YouTube', icon: Youtube },
-  { value: 'linkedin', label: 'LinkedIn', icon: Linkedin },
-  { value: 'tiktok', label: 'TikTok', icon: Music2 },
+  { value: 'facebook', label: 'Facebook', icon: FaFacebook },
+  { value: 'instagram', label: 'Instagram', icon: FaInstagram },
+  { value: 'twitter', label: 'Twitter (X)', icon: FaXTwitter },
+  { value: 'youtube', label: 'YouTube', icon: FaYoutube },
+  { value: 'linkedin', label: 'LinkedIn', icon: FaLinkedin },
+  { value: 'tiktok', label: 'TikTok', icon: FaTiktok },
 ];
 
 const DEFAULT_PAYMENT_BADGES = [
@@ -476,7 +478,7 @@ export default function FooterBuilderPage() {
 
   const getSocialIcon = (platform: string) => {
     const found = SOCIAL_PLATFORMS.find(p => p.value === platform);
-    return found ? found.icon : Facebook;
+    return found ? found.icon : FaFacebook;
   };
 
   const getSocialColor = (platform: string) => {
@@ -910,7 +912,7 @@ export default function FooterBuilderPage() {
       <div className="bg-white dark:bg-gray-800 rounded-md shadow-sm border border-gray-200 dark:border-gray-700 p-4">
         <div className="flex items-center justify-between mb-4">
           <div className="flex items-center gap-2">
-            <Facebook className="w-4 h-4 text-indigo-600 dark:text-indigo-400" />
+            <FaFacebook className="w-4 h-4 text-indigo-600 dark:text-indigo-400" />
             <h2 className="text-sm font-semibold text-gray-900 dark:text-gray-100">Social Links</h2>
           </div>
           <button

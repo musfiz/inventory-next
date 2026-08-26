@@ -13,6 +13,34 @@ export interface StorefrontHeroSlider {
   sort_order: number;
 }
 
+export interface StorefrontFlashSaleCampaign {
+  id: string;
+  name: string;
+  description: string | null;
+  start_date: string;
+  end_date: string;
+  discount_type: 'percentage' | 'fixed';
+  discount_value: number;
+  banner_image_url: string | null;
+  products: StorefrontFlashSaleProduct[];
+}
+
+export interface StorefrontFlashSaleProduct {
+  id: string;
+  name: string;
+  slug: string;
+  sku: string;
+  selling_price: number;
+  mrp: number;
+  discount_type: 'percentage' | 'fixed';
+  discount_value: number;
+  image_url: string | null;
+  images: string[];
+  original_price: number;
+  sale_price: number;
+  discount_percentage: number;
+}
+
 import type { StorefrontOfferSlide } from '@/types/storefront';
 
 export interface CategoryTreeItem {
@@ -61,6 +89,13 @@ class StorefrontService {
     return response.data.data ?? [];
   }
 
+  async getFlashSale(): Promise<StorefrontFlashSaleCampaign[]> {
+    const response = await apiClient.get<ApiResponse<{ campaigns: StorefrontFlashSaleCampaign[] }>>(
+      '/api/v1/storefront/flash-sale'
+    );
+    return response.data.data?.campaigns ?? [];
+  }
+
   async getCategoryBySlug(slug: string): Promise<CategoryPageData> {
     const response = await apiClient.get<ApiResponse<CategoryPageData>>(
       `/api/v1/storefront/category/${slug}`
@@ -77,9 +112,15 @@ class StorefrontService {
 
   async getProducts(params: {
     category_id?: number;
+    brand_id?: number;
     sort?: string;
     page?: number;
     per_page?: number;
+    is_featured?: boolean;
+    is_new?: boolean;
+    is_bestseller?: boolean;
+    is_on_sale?: boolean;
+    search?: string;
   }): Promise<ProductsResponse> {
     const response = await apiClient.get<{ success: boolean; data: Product[]; meta: ProductsResponse['meta'] }>(
       '/api/v1/storefront/products',

@@ -148,6 +148,7 @@ class FlashSaleCampaignService {
       }
       formData.append('is_paused', data.is_paused ? '1' : '0');
       formData.append('is_active', data.is_active !== false ? '1' : '0');
+      // Tenant is resolved server-side from the active storefront (storefront settings)
 
       if (data.banner) {
         formData.append('banner', data.banner);

@@ -49,13 +49,24 @@ export default function CountdownBannerPreview({
 }: CountdownBannerPreviewProps) {
   const [now, setNow] = useState<number>(Date.now());
 
+  // Prefix relative backend URLs (e.g. /storage/...) with the API origin
+  const resolvedBanner = (() => {
+    const url = banner_preview || banner_image_url;
+    if (!url) return '';
+    if (/^https?:\/\//i.test(url) || url.startsWith('data:') || url.startsWith('blob:'))
+      return url;
+    const baseUrl = (process.env.NEXT_PUBLIC_BACKEND_URL || '').replace(/\/+$/, '');
+    if (!baseUrl) return url;
+    return `${baseUrl}${url.startsWith('/') ? url : '/' + url}`;
+  })();
+
+  const hasBanner = !!resolvedBanner;
+
   // Tick every second
   useEffect(() => {
     const id = setInterval(() => setNow(Date.now()), 1_000);
     return () => clearInterval(id);
   }, []);
-
-  const hasBanner = !!(banner_image_url || banner_preview);
 
   // Determine phase
   const missingDates = !start_date || !end_date;
@@ -105,7 +116,7 @@ export default function CountdownBannerPreview({
         aspectRatio: '3 / 1',
         ...(hasBanner
           ? {
-            backgroundImage: `url(${banner_preview || banner_image_url})`,
+            backgroundImage: `url(${resolvedBanner})`,
             backgroundSize: 'cover',
             backgroundPosition: 'center',
           }

@@ -13,8 +13,10 @@ import {
   ChevronRight,
   Phone,
   BadgePercent,
-  Gift,
+  Home,
+  LayoutGrid,
   Sparkles,
+  TrendingUp,
   Link as LinkIcon,
 } from 'lucide-react';
 import { ImCart } from 'react-icons/im';
@@ -378,6 +380,22 @@ export default function StorefrontHeader() {
                     ref={navScrollRef}
                     className="flex items-center gap-1 overflow-x-auto scroll-smooth scrollbar-none"
                   >
+                    <Link
+                      href="/store"
+                      onMouseEnter={() => setMenuWithDelay(null)}
+                      className="flex shrink-0 items-center gap-1.5 whitespace-nowrap px-3.5 py-3 text-sm font-semibold text-gray-700 hover:bg-gray-100 hover:text-brand-600 dark:text-gray-200 dark:hover:bg-gray-800"
+                    >
+                      <Home className="h-3.5 w-3.5" />
+                      Home
+                    </Link>
+                    <Link
+                      href="/store/products"
+                      onMouseEnter={() => setMenuWithDelay(null)}
+                      className="flex shrink-0 items-center gap-1.5 whitespace-nowrap px-3.5 py-3 text-sm font-semibold text-gray-700 hover:bg-gray-100 hover:text-brand-600 dark:text-gray-200 dark:hover:bg-gray-800"
+                    >
+                      <LayoutGrid className="h-3.5 w-3.5" />
+                      All Products
+                    </Link>
                     {hasCustomNav
                       ? activeMenuItems.map(renderNavItem)
                       : categories.slice(0, 6).map(cat => {
@@ -412,13 +430,11 @@ export default function StorefrontHeader() {
                   )}
                 </div>
 
-                {/* Flash Sale & New Arrivals */}
-                <div className="ml-auto flex items-center gap-3">
-                  {menu.navigation_show_flash_sale && (
-                    <Link href="/store/products?filter=sale" className="flex items-center gap-1.5 bg-rose-600 px-4 py-1.5 text-xs font-bold text-white transition-colors hover:bg-rose-700">
-                      <Gift className="h-3.5 w-3.5" /> Flash Sale
-                    </Link>
-                  )}
+                {/* Best Sellers + New Arrivals (Flash Sale removed per request) */}
+                <div className="ml-auto flex items-center gap-2">
+                  <Link href="/store/products?filter=bestseller" className="flex items-center gap-1.5 bg-amber-500 px-4 py-1.5 text-xs font-bold text-white transition-colors hover:bg-amber-600">
+                    <TrendingUp className="h-3.5 w-3.5" /> Best Sellers
+                  </Link>
                   {menu.navigation_show_new_arrivals && (
                     <Link href="/store/products?filter=new" className="flex items-center gap-1.5 bg-emerald-600 px-4 py-1.5 text-xs font-bold text-white transition-colors hover:bg-emerald-700">
                       <Sparkles className="h-3.5 w-3.5" /> New Arrivals

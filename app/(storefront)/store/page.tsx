@@ -6,30 +6,25 @@ import Image from 'next/image';
 import {
   ChevronLeft,
   ChevronRight,
-  Truck,
-  ShieldCheck,
-  RotateCcw,
-  Headphones,
   Sparkles,
-  Flame,
   TrendingUp,
   Tag,
   ArrowRight,
   History,
 } from 'lucide-react';
 import ProductCard from '@/components/storefront/ProductCard';
+import ProductCardSkeleton from '@/components/storefront/ProductCardSkeleton';
 import ScrollReveal from '@/components/storefront/ScrollReveal';
 import HeroCarousel, { HeroCarouselSkeleton } from '@/components/storefront/HeroCarousel';
 import { useRecentlyViewed } from '@/hooks/use-recently-viewed';
 import storefrontService from '@/services/storefrontService';
 import type { StorefrontHeroSlider } from '@/services/storefrontService';
-import type { StorefrontOfferSlide } from '@/types/storefront';
+import type { StorefrontOfferSlide, Product } from '@/types/storefront';
 import {
-  PROMO_BANNERS,
-  PRODUCTS,
-  formatMoney,
-  STORE_INFO,
-} from '@/lib/storefront/mock-data';
+  accentDisplayClass,
+  accentOverlayStyle,
+} from '@/lib/utils/offer-accent';
+import { PROMO_BANNERS } from '@/lib/storefront/mock-data';
 import { useStorefrontCategories } from '@/hooks/use-storefront-categories';
 
 const resolveImageUrl = (url?: string | null) => {
@@ -173,123 +168,73 @@ const CategoryStrip = () => {
 };
 
 /* ================================================================ */
-/*  Section: Flash Sale — countdown timer + sale product cards       */
+/*  Section: Featured Products — dynamic from API (is_featured flag) */
+/*  Only products where ecommerce_product_visibility.is_featured = 1 */
+/*  (set via Admin > Ecommerce > Products > Flags page). Hidden     */
+/*  entirely when no featured products exist.                        */
 /* ================================================================ */
-const FlashSale = () => {
-  const saleProducts = PRODUCTS.filter(p => p.isOnSale).slice(0, 6);
-  const [time, setTime] = useState({ h: 5, m: 42, s: 18 });
+const FeaturedProducts = () => {
+  const [products, setProducts] = useState<Product[]>([]);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const t = setInterval(() => {
-      setTime(prev => {
-        let { h, m, s } = prev;
-        if (s > 0) s--;
-        else if (m > 0) {
-          m--;
-          s = 59;
-        } else if (h > 0) {
-          h--;
-          m = 59;
-          s = 59;
-        }
-        return { h, m, s };
+    let cancelled = false;
+    storefrontService
+      .getProducts({ is_featured: true, per_page: 8 })
+      .then(res => {
+        if (!cancelled) setProducts(res.data ?? []);
+      })
+      .catch(() => {
+        if (!cancelled) setProducts([]);
+      })
+      .finally(() => {
+        if (!cancelled) setLoading(false);
       });
-    }, 1000);
-    return () => clearInterval(t);
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
-  if (saleProducts.length === 0) return null;
-
-  return (
-    <section className="my-10 overflow-hidden rounded-lg bg-linear-to-br from-rose-600 via-pink-600 to-purple-700 p-6 sm:p-8 text-white sm:my-12">
-      <ScrollReveal animation="fade-up" as="div" className="mb-6">
-        <div className="flex flex-wrap items-end justify-between gap-3">
-          <div>
-            <div className="flex items-center gap-2">
-              <Flame className="h-6 w-6" />
-              <h2 className="text-2xl font-black sm:text-3xl">Flash Sale</h2>
+  if (loading) {
+    return (
+      <section className="py-8 sm:py-10">
+        <div className="mb-6 flex items-end justify-between">
+          <div className="flex items-center gap-3">
+            <div className="h-11 w-11 animate-pulse rounded-xl bg-gray-200 dark:bg-gray-800" />
+            <div>
+              <div className="h-6 w-48 animate-pulse rounded bg-gray-200 dark:bg-gray-800" />
+              <div className="mt-2 h-4 w-32 animate-pulse rounded bg-gray-200 dark:bg-gray-800" />
             </div>
-            <p className="mt-1 text-sm text-white/85">
-              Limited time offers — don&apos;t miss out!
-            </p>
-          </div>
-          <div className="flex items-center gap-2">
-            <span className="text-sm font-semibold text-white/85">Ends in</span>
-            <div className="flex items-center gap-1 font-mono text-lg font-black">
-              <span className="rounded-lg bg-white/15 px-2.5 py-1 backdrop-blur-sm">
-                {String(time.h).padStart(2, '0')}
-              </span>
-              <span>:</span>
-              <span className="rounded-lg bg-white/15 px-2.5 py-1 backdrop-blur-sm">
-                {String(time.m).padStart(2, '0')}
-              </span>
-              <span>:</span>
-              <span className="rounded-lg bg-white/15 px-2.5 py-1 backdrop-blur-sm">
-                {String(time.s).padStart(2, '0')}
-              </span>
-            </div>
-            <Link
-              href="/store/products?filter=sale"
-              className="ml-2 inline-flex items-center gap-1 rounded-full bg-white px-4 py-2 text-sm font-bold text-rose-600 transition-transform hover:scale-105"
-            >
-              View all
-              <ArrowRight className="h-4 w-4" />
-            </Link>
           </div>
         </div>
-      </ScrollReveal>
-
-      <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
-        {saleProducts.map((p, i) => (
-          <ScrollReveal key={p.id} animation="zoom-in" staggerIndex={i}>
-            <ProductCard product={p} showWishlist={false} />
-          </ScrollReveal>
-        ))}
-      </div>
-    </section>
-  );
-};
-
-/* ================================================================ */
-/*  Section: Product Section — reusable product grid (Featured /     */
-/*  Best Sellers / New Arrivals)                                     */
-/* ================================================================ */
-const ProductSection = ({
-  title,
-  subtitle,
-  icon: Icon,
-  filter,
-  viewAllLink,
-  bgClass = '',
-}: {
-  title: string;
-  subtitle: string;
-  icon: React.ComponentType<{ className?: string }>;
-  filter: (p: typeof PRODUCTS[0]) => boolean;
-  viewAllLink: string;
-  bgClass?: string;
-}) => {
-  const products = PRODUCTS.filter(filter).slice(0, 8);
+        <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-4 xl:grid-cols-5">
+          {[...Array(8)].map((_, i) => (
+            <ProductCardSkeleton key={i} />
+          ))}
+        </div>
+      </section>
+    );
+  }
 
   if (products.length === 0) return null;
 
   return (
-    <section className={`py-8 sm:py-10 ${bgClass}`}>
+    <section className="py-8 sm:py-10">
       <ScrollReveal animation="fade-up" as="div" className="mb-6">
         <div className="flex items-end justify-between">
           <div className="flex items-center gap-3">
             <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-brand-50 text-brand-600 dark:bg-brand-950/50">
-              <Icon className="h-5 w-5" />
+              <Sparkles className="h-5 w-5" />
             </div>
             <div>
               <h2 className="text-2xl font-black text-gray-900 dark:text-white sm:text-3xl">
-                {title}
+                Featured Products
               </h2>
-              <p className="text-sm text-gray-500">{subtitle}</p>
+              <p className="text-sm text-gray-500">Hand-picked by our team</p>
             </div>
           </div>
           <Link
-            href={viewAllLink}
+            href="/store/products"
             className="inline-flex items-center gap-1.5 rounded-full border border-brand-200 bg-brand-50 px-4 py-2 text-sm font-bold text-brand-700 transition-all hover:bg-brand-100 hover:text-brand-800 dark:border-brand-800 dark:bg-brand-950/30 dark:text-brand-400"
           >
             View all
@@ -301,7 +246,181 @@ const ProductSection = ({
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-4 xl:grid-cols-5">
         {products.map((p, i) => (
           <ScrollReveal key={p.id} animation="zoom-in" staggerIndex={i}>
-            <ProductCard product={p} />
+            <ProductCard product={p as any} />
+          </ScrollReveal>
+        ))}
+      </div>
+    </section>
+  );
+};
+
+/* ================================================================ */
+/*  Section: Best Sellers — dynamic from API (is_bestseller flag)   */
+/*  Only products where ecommerce_product_visibility.is_bestseller=1 */
+/*  (set via Admin > Ecommerce > Products > Flags page). Hidden     */
+/*  entirely when no best sellers exist.                             */
+/* ================================================================ */
+const BestSellers = () => {
+  const [products, setProducts] = useState<Product[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    let cancelled = false;
+    storefrontService
+      .getProducts({ is_bestseller: true, per_page: 8 })
+      .then(res => {
+        if (!cancelled) setProducts(res.data ?? []);
+      })
+      .catch(() => {
+        if (!cancelled) setProducts([]);
+      })
+      .finally(() => {
+        if (!cancelled) setLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  if (loading) {
+    return (
+      <section className="py-8 sm:py-10">
+        <div className="mb-6 flex items-end justify-between">
+          <div className="flex items-center gap-3">
+            <div className="h-11 w-11 animate-pulse rounded-xl bg-gray-200 dark:bg-gray-800" />
+            <div>
+              <div className="h-6 w-48 animate-pulse rounded bg-gray-200 dark:bg-gray-800" />
+              <div className="mt-2 h-4 w-32 animate-pulse rounded bg-gray-200 dark:bg-gray-800" />
+            </div>
+          </div>
+        </div>
+        <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-4 xl:grid-cols-5">
+          {[...Array(8)].map((_, i) => (
+            <ProductCardSkeleton key={i} />
+          ))}
+        </div>
+      </section>
+    );
+  }
+
+  if (products.length === 0) return null;
+
+  return (
+    <section className="py-8 sm:py-10">
+      <ScrollReveal animation="fade-up" as="div" className="mb-6">
+        <div className="flex items-end justify-between">
+          <div className="flex items-center gap-3">
+            <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-brand-50 text-brand-600 dark:bg-brand-950/50">
+              <TrendingUp className="h-5 w-5" />
+            </div>
+            <div>
+              <h2 className="text-2xl font-black text-gray-900 dark:text-white sm:text-3xl">
+                Best Sellers
+              </h2>
+              <p className="text-sm text-gray-500">What everyone&apos;s buying right now</p>
+            </div>
+          </div>
+          <Link
+            href="/store/products"
+            className="inline-flex items-center gap-1.5 rounded-full border border-brand-200 bg-brand-50 px-4 py-2 text-sm font-bold text-brand-700 transition-all hover:bg-brand-100 hover:text-brand-800 dark:border-brand-800 dark:bg-brand-950/30 dark:text-brand-400"
+          >
+            View all
+            <ArrowRight className="h-4 w-4" />
+          </Link>
+        </div>
+      </ScrollReveal>
+
+      <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-4 xl:grid-cols-5">
+        {products.map((p, i) => (
+          <ScrollReveal key={p.id} animation="zoom-in" staggerIndex={i}>
+            <ProductCard product={p as any} />
+          </ScrollReveal>
+        ))}
+      </div>
+    </section>
+  );
+};
+
+/* ================================================================ */
+/*  Section: New Arrivals — dynamic from API (is_new flag)           */
+/*  Only products where ecommerce_product_visibility.is_new = 1       */
+/*  (set via Admin > Ecommerce > Products > Flags page). Hidden      */
+/*  entirely when no new arrivals exist.                             */
+/* ================================================================ */
+const NewArrivals = () => {
+  const [products, setProducts] = useState<Product[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    let cancelled = false;
+    storefrontService
+      .getProducts({ is_new: true, per_page: 8 })
+      .then(res => {
+        if (!cancelled) setProducts(res.data ?? []);
+      })
+      .catch(() => {
+        if (!cancelled) setProducts([]);
+      })
+      .finally(() => {
+        if (!cancelled) setLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  if (loading) {
+    return (
+      <section className="py-8 sm:py-10">
+        <div className="mb-6 flex items-end justify-between">
+          <div className="flex items-center gap-3">
+            <div className="h-11 w-11 animate-pulse rounded-xl bg-gray-200 dark:bg-gray-800" />
+            <div>
+              <div className="h-6 w-48 animate-pulse rounded bg-gray-200 dark:bg-gray-800" />
+              <div className="mt-2 h-4 w-32 animate-pulse rounded bg-gray-200 dark:bg-gray-800" />
+            </div>
+          </div>
+        </div>
+        <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-4 xl:grid-cols-5">
+          {[...Array(8)].map((_, i) => (
+            <ProductCardSkeleton key={i} />
+          ))}
+        </div>
+      </section>
+    );
+  }
+
+  if (products.length === 0) return null;
+
+  return (
+    <section className="py-8 sm:py-10">
+      <ScrollReveal animation="fade-up" as="div" className="mb-6">
+        <div className="flex items-end justify-between">
+          <div className="flex items-center gap-3">
+            <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-brand-50 text-brand-600 dark:bg-brand-950/50">
+              <Tag className="h-5 w-5" />
+            </div>
+            <div>
+              <h2 className="text-2xl font-black text-gray-900 dark:text-white sm:text-3xl">
+                New Arrivals
+              </h2>
+              <p className="text-sm text-gray-500">Fresh styles just landed</p>
+            </div>
+          </div>
+          <Link
+            href="/store/products"
+            className="inline-flex items-center gap-1.5 rounded-full border border-brand-200 bg-brand-50 px-4 py-2 text-sm font-bold text-brand-700 transition-all hover:bg-brand-100 hover:text-brand-800 dark:border-brand-800 dark:bg-brand-950/30 dark:text-brand-400"
+          >
+            View all
+            <ArrowRight className="h-4 w-4" />
+          </Link>
+        </div>
+      </ScrollReveal>
+
+      <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-4 xl:grid-cols-5">
+        {products.map((p, i) => (
+          <ScrollReveal key={p.id} animation="zoom-in" staggerIndex={i}>
+            <ProductCard product={p as any} />
           </ScrollReveal>
         ))}
       </div>
@@ -415,7 +534,8 @@ const OffersCarousel = ({ slides }: { slides: StorefrontOfferSlide[] }) => {
               ) : null}
             </div>
             <div
-              className={`absolute inset-0 bg-linear-to-r ${o.accent || 'from-indigo-600/85 to-purple-700/85'}`}
+              className={`absolute inset-0 bg-linear-to-r ${accentDisplayClass(o.accent)}`}
+              style={accentOverlayStyle(o.accent)}
               aria-hidden
             />
             <div className="absolute inset-0 flex items-center p-6">
@@ -439,33 +559,6 @@ const OffersCarousel = ({ slides }: { slides: StorefrontOfferSlide[] }) => {
     </ScrollReveal>
   );
 };
-
-/* ================================================================ */
-/*  Section: Trust Strip — value-proposition badges (shipping,       */
-/*  returns, payment, support)                                       */
-/* ================================================================ */
-const TrustStrip = () => (
-  <section className="my-10 grid grid-cols-2 gap-4 sm:my-12 md:grid-cols-4">
-    {[
-      { icon: Truck, title: 'Free Shipping', desc: `On orders over ${formatMoney(STORE_INFO.freeShippingThreshold)}` },
-      { icon: RotateCcw, title: '7-Day Returns', desc: 'Hassle-free returns' },
-      { icon: ShieldCheck, title: 'Secure Payment', desc: '100% protected' },
-      { icon: Headphones, title: '24/7 Support', desc: 'Dedicated help' },
-    ].map(({ icon: Icon, title, desc }, i) => (
-      <ScrollReveal key={title} animation="pop" staggerIndex={i} staggerGap={100}>
-        <div className="flex items-center gap-3 border border-gray-200 bg-white p-4 dark:border-gray-800 dark:bg-gray-900">
-          <div className="flex h-11 w-11 shrink-0 items-center justify-center bg-emerald-50 text-emerald-600 dark:bg-emerald-950/30 dark:text-emerald-400">
-            <Icon className="h-5 w-5" />
-          </div>
-          <div>
-            <p className="font-bold text-gray-900 dark:text-gray-100">{title}</p>
-            <p className="text-xs text-gray-500">{desc}</p>
-          </div>
-        </div>
-      </ScrollReveal>
-    ))}
-  </section>
-);
 
 /* ================================================================ */
 /*  Section: Recently Viewed — products the user browsed earlier     */
@@ -525,8 +618,8 @@ export default function HomePage() {
         {/* Section 1 — Hero Carousel (main banner slider) */}
         {heroLoading ? <HeroCarouselSkeleton /> : <HeroCarousel slides={heroSliders} />}
 
-        {/* Section 2 — Trust Strip */}
-        <TrustStrip />
+        {/* Section 2 — Shop by Category (replaces Trust Strip) */}
+        <CategoryStrip />
 
         {/* Section 3 — Recently Viewed */}
         <RecentlyViewed />
@@ -534,41 +627,17 @@ export default function HomePage() {
         {/* Section 4 — Top Offers Carousel */}
         <OffersCarousel slides={offerSlides} />
 
-        {/* Section 5 — Shop by Category */}
-        <CategoryStrip />
-
-        {/* Section 6 — Flash Sale */}
-        <FlashSale />
-
-        {/* Section 7 — Featured Products */}
-        <ProductSection
-          title="Featured Products"
-          subtitle="Hand-picked by our team"
-          icon={Sparkles}
-          filter={p => !!p.isFeatured}
-          viewAllLink="/store/products"
-        />
+        {/* Section 6 — Featured Products (dynamic: epv.is_featured, hidden if empty) */}
+        <FeaturedProducts />
 
         {/* Section 8 — Promo Banners */}
         <PromoBanners />
 
-        {/* Section 9 — Best Sellers */}
-        <ProductSection
-          title="Best Sellers"
-          subtitle="What everyone's buying right now"
-          icon={TrendingUp}
-          filter={p => !!p.isBestseller}
-          viewAllLink="/store/products"
-        />
+        {/* Section 9 — Best Sellers (dynamic: epv.is_bestseller, hidden if empty) */}
+        <BestSellers />
 
-        {/* Section 10 — New Arrivals */}
-        <ProductSection
-          title="New Arrivals"
-          subtitle="Fresh styles just landed"
-          icon={Tag}
-          filter={p => !!p.isNew}
-          viewAllLink="/store/products"
-        />
+        {/* Section 10 — New Arrivals (dynamic: epv.is_new, hidden if empty) */}
+        <NewArrivals />
       </div>
     </div>
   );
