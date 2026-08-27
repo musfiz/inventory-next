@@ -25,6 +25,7 @@ import {
   SHIPPING_METHODS,
   PAYMENT_METHODS,
 } from '@/lib/storefront/mock-data';
+import { imageUrl } from '@/lib/image-url';
 import type { Address } from '@/types/storefront';
 import { notify } from '@/lib/notifications';
 
@@ -379,7 +380,7 @@ export default function CheckoutPage() {
                   <li key={item.variationId} className="flex gap-3">
                     <div className="relative h-14 w-14 shrink-0 overflow-hidden rounded-lg bg-gray-100 dark:bg-gray-800">
                       {item.image ? (
-                        <Image src={item.image} alt={item.name} fill sizes="56px" className="object-cover" />
+                        <Image src={imageUrl(item.image) || ''} alt={item.name} fill sizes="56px" className="object-cover" />
                       ) : (
                         <div className="flex h-full w-full items-center justify-center">
                           <span className="text-lg font-bold text-gray-300 dark:text-gray-600">{item.name[0]}</span>

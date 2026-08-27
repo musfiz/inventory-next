@@ -18,6 +18,7 @@ import {
   formatMoneyDecimal,
   STORE_INFO,
 } from '@/lib/storefront/mock-data';
+import { imageUrl } from '@/lib/image-url';
 import { notify } from '@/lib/notifications';
 
 export default function CartDrawer() {
@@ -201,7 +202,7 @@ export default function CartDrawer() {
                   >
                     {item.image ? (
                       <Image
-                        src={item.image}
+                        src={imageUrl(item.image) || ''}
                         alt={item.name}
                         fill
                         sizes="56px"

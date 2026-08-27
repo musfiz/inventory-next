@@ -18,6 +18,7 @@ import {
   formatMoneyDecimal,
   STORE_INFO,
 } from '@/lib/storefront/mock-data';
+import { imageUrl } from '@/lib/image-url';
 import { notify } from '@/lib/notifications';
 
 export default function CartPage() {
@@ -109,7 +110,7 @@ export default function CartPage() {
                       <div className="relative h-24 w-24 shrink-0 overflow-hidden rounded-xl bg-gray-100 dark:bg-gray-800">
                         {item.image ? (
                           <Image
-                            src={item.image}
+                            src={imageUrl(item.image) || ''}
                             alt={item.name}
                             fill
                             sizes="96px"

@@ -20,6 +20,7 @@ import {
   ExternalLink,
 } from 'lucide-react';
 import { SAMPLE_ORDERS, formatMoney, formatMoneyDecimal } from '@/lib/storefront/mock-data';
+import { imageUrl } from '@/lib/image-url';
 import { useState } from 'react';
 import Rating from '@/components/storefront/Rating';
 
@@ -169,7 +170,7 @@ export default function OrderDetailPage({
                 >
                   {item.image ? (
                     <Image
-                      src={item.image}
+                      src={imageUrl(item.image) || ''}
                       alt={item.name}
                       fill
                       sizes="80px"
