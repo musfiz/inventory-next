@@ -13,7 +13,11 @@ import apiClient from '@/lib/api/axios';
 import { usePermissions } from '@/hooks/use-permissions';
 import { confirm, notify } from '@/lib/notifications';
 import { useAuthStore } from '@/stores/auth-store';
-import { BarcodeStickerPrint } from '@/components/print/barcode/BarcodeStickerPrint';
+import dynamic from 'next/dynamic';
+const BarcodeStickerPrint = dynamic(
+  () => import('@/components/print/barcode/BarcodeStickerPrint'),
+  { ssr: false, loading: () => null },
+);
 import { ImDownload } from "react-icons/im";
 import { RiDragDropLine, RiFileExcel2Line } from "react-icons/ri";
 import { TiUploadOutline } from "react-icons/ti";

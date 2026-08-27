@@ -119,6 +119,7 @@ class FlashSaleCampaignService {
 
       return { data, total: data.length, page: 1, per_page: data.length };
     } catch (error) {
+      if (process.env.NEXT_PUBLIC_USE_MOCK !== 'true') throw error;
       console.warn('FlashSaleCampaign API unavailable, using mock data:', error);
       return this.fallbackList(params);
     }

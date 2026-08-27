@@ -93,6 +93,7 @@ function DataTableInner<T extends Record<string, any>>({
   const prevEndpointRef = useRef(apiEndpoint);
   const prevFilterParamsKeyRef = useRef('');
   const initialSyncDone = useRef(false);
+  const abortRef = useRef<AbortController | null>(null);
   const filterParamsKey = JSON.stringify(filterParams);
 
   const updateURL = (overrides: Record<string, string | undefined | null>) => {
@@ -113,6 +114,10 @@ function DataTableInner<T extends Record<string, any>>({
   };
 
   const fetchDataInternal = async () => {
+    abortRef.current?.abort();
+    const controller = new AbortController();
+    abortRef.current = controller;
+    const signal = controller.signal;
     setLoading(true);
     try {
       const params = {
@@ -125,7 +130,7 @@ function DataTableInner<T extends Record<string, any>>({
 
       let result;
       if (fetchData) {
-        result = await fetchData({ ...params, ...filterParams });
+        result = await fetchData({ ...params, ...filterParams, signal });
       } else if (apiEndpoint) {
         const queryParams = new URLSearchParams();
         [...Object.entries(params), ...Object.entries(filterParams || {})].forEach(([key, value]) => {
@@ -135,7 +140,8 @@ function DataTableInner<T extends Record<string, any>>({
         });
         const fullEndpoint = `${baseApiPath}${apiEndpoint.startsWith('/') ? '' : '/'}${apiEndpoint}`;
         const response = await apiClient.get(
-          `${fullEndpoint}${fullEndpoint.includes('?') ? '&' : '?'}${queryParams.toString()}`
+          `${fullEndpoint}${fullEndpoint.includes('?') ? '&' : '?'}${queryParams.toString()}`,
+          { signal }
         );
         result = response.data;
       } else {
@@ -161,6 +167,7 @@ function DataTableInner<T extends Record<string, any>>({
         }));
       }
     } catch (error) {
+      if (signal.aborted) return;
       console.error('Failed to fetch data:', error);
     } finally {
       setLoading(false);
@@ -173,6 +180,8 @@ function DataTableInner<T extends Record<string, any>>({
     }
     prevRefreshKeyRef.current = refreshKey;
   }, [refreshKey]);
+
+  useEffect(() => () => abortRef.current?.abort(), []);
 
   useEffect(() => {
     const timer = setTimeout(() => {

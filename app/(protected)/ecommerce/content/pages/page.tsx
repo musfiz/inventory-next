@@ -18,7 +18,13 @@ import {
 import { GiSave } from 'react-icons/gi';
 import staticPageService from '@/services/staticPageService';
 import { notify, confirm } from '@/lib/notifications';
-import RichTextEditor from '@/components/ui/rich-text-editor';
+import dynamic from 'next/dynamic';
+const RichTextEditor = dynamic(() => import('@/components/ui/rich-text-editor'), {
+  ssr: false,
+  loading: () => (
+    <div className="h-72 w-full animate-pulse rounded-lg border border-gray-200 bg-gray-50 dark:border-gray-700 dark:bg-gray-800" />
+  ),
+});
 import type { StaticPage } from '@/types/api.types';
 
 type PageForm = {

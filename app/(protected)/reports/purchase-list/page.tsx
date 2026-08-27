@@ -22,9 +22,6 @@ import { notify } from '@/lib/notifications';
 import purchaseOrderService from '@/services/purchaseOrderService';
 import { usePermissions } from '@/hooks/use-permissions';
 import { useAuthStore } from '@/stores/auth-store';
-import jsPDF from 'jspdf';
-import html2canvas from 'html2canvas';
-
 // ─── Types ────────────────────────────────────────────────────────────────────
 
 interface PurchaseOrder {
@@ -168,6 +165,7 @@ export default function PurchaseReportPage() {
 
     setIsGeneratingPDF(true);
     try {
+      const { default: jsPDF } = await import('jspdf');
       const pdf = new jsPDF('l', 'mm', 'a4'); // Landscape orientation
       const pageWidth = pdf.internal.pageSize.getWidth();
       const pageHeight = pdf.internal.pageSize.getHeight();

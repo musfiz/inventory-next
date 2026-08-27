@@ -88,6 +88,7 @@ class EcommerceCustomerService {
       }
       throw new Error('Unexpected API response format');
     } catch (error) {
+      if (process.env.NEXT_PUBLIC_USE_MOCK !== 'true') throw error;
       console.warn('EcommerceCustomer API unavailable, using mock data:', error);
       return this.fallbackList(params);
     }

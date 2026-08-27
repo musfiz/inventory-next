@@ -1,6 +1,7 @@
 'use client';
 
 import Link from 'next/link';
+import Image from 'next/image';
 import { useState, useRef, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { useRouter } from 'next/navigation';
@@ -262,7 +263,14 @@ export default function StorefrontHeader() {
 
             <Link href="/" className="flex shrink-0 items-center gap-2.5">
               {headerLogo ? (
-                <img src={headerLogo} alt="Store logo" className="h-10 w-auto object-contain" />
+                <Image
+                  src={headerLogo}
+                  alt="Store logo"
+                  width={160}
+                  height={40}
+                  className="h-10 w-auto object-contain"
+                  unoptimized={headerLogo.startsWith('data:')}
+                />
               ) : ready ? (
                 <>
                   <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-linear-to-br from-brand-600 to-purple-600 text-white shadow-lg shadow-brand-600/20">

@@ -10,6 +10,11 @@ import type {
   Coupon,
 } from '@/types/storefront';
 
+// Gate fabricated storefront data behind an explicit opt-in flag so production
+// deployments never render mock products/orders to real users. Set
+// NEXT_PUBLIC_USE_MOCK=true only in local dev where the storefront backend is absent.
+export const USE_MOCK = process.env.NEXT_PUBLIC_USE_MOCK === 'true';
+
 export const CURRENCY = {
   code: 'BDT',
   symbol: '৳',
@@ -30,7 +35,7 @@ export const STORE_INFO = {
   taxRate: 5,
 };
 
-export const CATEGORIES: Category[] = [
+export const CATEGORIES: Category[] = USE_MOCK ? [
   {
     id: 'c-electronics',
     name: 'Electronics',
@@ -150,9 +155,9 @@ export const CATEGORIES: Category[] = [
       'https://images.unsplash.com/photo-1571019613454-1cb2f99b2d8b?w=400&h=400&fit=crop',
     productCount: 64,
   },
-];
+]: [];
 
-export const BRANDS: Brand[] = [
+export const BRANDS: Brand[] = USE_MOCK ? [
   { id: 'b-apple', name: 'Apple', slug: 'apple', productCount: 28 },
   { id: 'b-samsung', name: 'Samsung', slug: 'samsung', productCount: 42 },
   { id: 'b-xiaomi', name: 'Xiaomi', slug: 'xiaomi', productCount: 35 },
@@ -163,7 +168,7 @@ export const BRANDS: Brand[] = [
   { id: 'b-adidas', name: 'Adidas', slug: 'adidas', productCount: 28 },
   { id: 'b-zara', name: "Zara", slug: 'zara', productCount: 22 },
   { id: 'b-anker', name: 'Anker', slug: 'anker', productCount: 14 },
-];
+]: [];
 
 const img = (id: string, q = 80) =>
   `https://images.unsplash.com/photo-${id}?w=${q * 8}&h=${q * 8}&fit=crop&auto=format`;
@@ -199,7 +204,7 @@ const PHOTOS = {
   bike: '1571333250630-f0230c320b6d',
 };
 
-export const PRODUCTS: Product[] = [
+export const PRODUCTS: Product[] = USE_MOCK ? [
   {
     id: 'p-001',
     name: 'iPhone 15 Pro 256GB',
@@ -819,9 +824,9 @@ export const PRODUCTS: Product[] = [
     freeShipping: false,
     estimatedDeliveryDays: 2,
   },
-];
+]: [];
 
-export const REVIEWS: Review[] = [
+export const REVIEWS: Review[] = USE_MOCK ? [
   {
     id: 'r-1',
     productId: 'p-001',
@@ -866,9 +871,9 @@ export const REVIEWS: Review[] = [
     isVerifiedPurchase: true,
     helpfulCount: 18,
   },
-];
+]: [];
 
-export const SAMPLE_ADDRESSES: Address[] = [
+export const SAMPLE_ADDRESSES: Address[] = USE_MOCK ? [
   {
     id: 'a-1',
     label: 'Home',
@@ -894,9 +899,9 @@ export const SAMPLE_ADDRESSES: Address[] = [
     zipCode: '1212',
     country: 'Bangladesh',
   },
-];
+]: [];
 
-export const SAMPLE_ORDERS: Order[] = [
+export const SAMPLE_ORDERS: Order[] = USE_MOCK ? [
   {
     id: 'o-1',
     orderNumber: 'ORD-2026-00123',
@@ -1026,9 +1031,9 @@ export const SAMPLE_ORDERS: Order[] = [
       { status: 'Delivered', date: 'Pending', completed: false },
     ],
   },
-];
+]: [];
 
-export const SHIPPING_METHODS: ShippingMethod[] = [
+export const SHIPPING_METHODS: ShippingMethod[] = USE_MOCK ? [
   {
     id: 'ship-standard',
     name: 'Standard Delivery',
@@ -1051,9 +1056,9 @@ export const SHIPPING_METHODS: ShippingMethod[] = [
     estimatedDays: 'Same day',
     isFree: true,
   },
-];
+]: [];
 
-export const PAYMENT_METHODS: PaymentMethod[] = [
+export const PAYMENT_METHODS: PaymentMethod[] = USE_MOCK ? [
   {
     id: 'pm-cod',
     name: 'Cash on Delivery',
@@ -1091,9 +1096,9 @@ export const PAYMENT_METHODS: PaymentMethod[] = [
     description: 'Pay with any local payment method',
     icon: 'Shield',
   },
-];
+]: [];
 
-export const COUPONS: Coupon[] = [
+export const COUPONS: Coupon[] = USE_MOCK ? [
   {
     code: 'WELCOME10',
     type: 'percentage',
@@ -1119,9 +1124,9 @@ export const COUPONS: Coupon[] = [
     description: '25% off - Summer sale',
     validUntil: '2026-08-31',
   },
-];
+]: [];
 
-export const HERO_BANNERS = [
+export const HERO_BANNERS = USE_MOCK ? [
   {
     id: 'b-1',
     title: 'iPhone 15 Pro',
@@ -1155,9 +1160,9 @@ export const HERO_BANNERS = [
     link: '/category/electronics',
     accent: 'from-slate-900/80 to-blue-900/60',
   },
-];
+]: [];
 
-export const PROMO_BANNERS = [
+export const PROMO_BANNERS = USE_MOCK ? [
   {
     id: 'pb-1',
     title: 'Free Shipping',
@@ -1176,9 +1181,9 @@ export const PROMO_BANNERS = [
     link: '/products?filter=new',
     accent: 'bg-indigo-600',
   },
-];
+]: [];
 
-export const POPULAR_SEARCHES = [
+export const POPULAR_SEARCHES = USE_MOCK ? [
   'iphone 15',
   'wireless earbuds',
   'laptop bag',
@@ -1187,4 +1192,4 @@ export const POPULAR_SEARCHES = [
   'usb-c cable',
   'coffee maker',
   'lipstick',
-];
+]: [];

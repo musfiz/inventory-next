@@ -34,7 +34,7 @@ import HeldOrdersDialog from '@/components/pos/HeldOrdersDialog';
 import { PosOrderPrintMenu } from '@/components/print';
 import type { PrintSettings } from '@/services/posService';
 import type { Payment, PosOrderDetail } from '@/types/api.types';
-import Swal from 'sweetalert2';
+
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -106,6 +106,8 @@ export default function POSSalesPage() {
   const [productsLoading, setProductsLoading] = useState(false);
   const [productsError, setProductsError] = useState<string | null>(null);
   const searchDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const loadProductsAbortRef = useRef<AbortController | null>(null);
+  const customerSearchAbortRef = useRef<AbortController | null>(null);
   const hasMountedRef = useRef(false);
 
   // ── Customer Dialog State ────────────────────────────────────────────────────
@@ -255,6 +257,10 @@ export default function POSSalesPage() {
   };
 
   const loadProducts = async (categoryId?: number, search?: string, tenantId?: string | number) => {
+    loadProductsAbortRef.current?.abort();
+    const controller = new AbortController();
+    loadProductsAbortRef.current = controller;
+    const signal = controller.signal;
     setProductsLoading(true);
     setProductsError(null);
     try {
@@ -263,7 +269,7 @@ export default function POSSalesPage() {
       if (categoryId) params.category_id = categoryId;
       if (search && search.trim()) params.search = search.trim();
       if (tid) params.tenant_id = tid;
-      const variations: any = await posService.getProducts(params);
+      const variations: any = await posService.getProducts(params, { signal });
       const productList: any[] = Array.isArray(variations)
         ? variations
         : Array.isArray(variations?.data)
@@ -318,6 +324,7 @@ export default function POSSalesPage() {
       setProducts(mapped);
       setFilteredProducts(mapped);
     } catch (error: any) {
+      if (signal.aborted) return;
       const msg = error?.response?.data?.message || error?.message || 'Failed to load products';
       setProductsError(msg);
     } finally {
@@ -339,11 +346,16 @@ export default function POSSalesPage() {
   };
 
   const searchCustomerApi = async (q: string) => {
+    customerSearchAbortRef.current?.abort();
+    const controller = new AbortController();
+    customerSearchAbortRef.current = controller;
+    const signal = controller.signal;
     setCustomerSearchLoading(true);
     try {
-      const results = await customerService.getCustomersDropdown({ search: q, per_page: 20 });
+      const results = await customerService.getCustomersDropdown({ search: q, per_page: 20 }, { signal });
       setCustomerResults(results || []);
     } catch {
+      if (signal.aborted) return;
       setCustomerResults([]);
     } finally {
       setCustomerSearchLoading(false);
@@ -457,7 +469,8 @@ export default function POSSalesPage() {
     setCart([]);
   };
 
-  const addToCart = (product: Product) => {
+  const addToCart = async (product: Product) => {
+    const Swal = (await import('sweetalert2')).default;
     const existingItem = cart.find(item => item.product_id === product.id);
     const price = product.selling_price;
 
@@ -516,7 +529,8 @@ export default function POSSalesPage() {
     setCart(cart.filter(item => item.id !== itemId));
   };
 
-  const clearCart = () => {
+  const clearCart = async () => {
+    const Swal = (await import('sweetalert2')).default;
     Swal.fire({
       title: 'Clear Cart?',
       text: 'This will remove all items from the cart',
@@ -1282,7 +1296,8 @@ export default function POSSalesPage() {
                 Print
               </button>
               <button
-                onClick={() => {
+                onClick={async () => {
+                  const Swal = (await import('sweetalert2')).default;
                   Swal.fire({
                     icon: 'info',
                     title: 'Email Receipt',

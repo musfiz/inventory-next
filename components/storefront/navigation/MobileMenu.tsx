@@ -1,6 +1,7 @@
 'use client';
 
 import Link from 'next/link';
+import Image from 'next/image';
 import { useState } from 'react';
 import { Sparkles, X, ChevronDown, Package, Heart, User, Home, LayoutGrid, Link as LinkIcon } from 'lucide-react';
 import { useHeaderMenu } from '@/hooks/use-header-menu';
@@ -25,7 +26,14 @@ export const MobileMenu = ({ open, onClose, headerLogo, ready }: { open: boolean
         <div className="sticky top-0 flex items-center justify-between border-b border-gray-100 bg-white/90 px-5 py-4 backdrop-blur-lg dark:border-gray-800 dark:bg-gray-950/90">
           <Link href="/" onClick={onClose} className="flex items-center gap-2">
             {headerLogo ? (
-              <img src={headerLogo} alt="Logo" className="h-8 w-auto object-contain" />
+              <Image
+                src={headerLogo}
+                alt="Logo"
+                width={128}
+                height={32}
+                className="h-8 w-auto object-contain"
+                unoptimized={headerLogo.startsWith('data:')}
+              />
             ) : ready ? (
               <>
                 <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-linear-to-br from-brand-600 to-purple-600 text-white"><Sparkles className="h-4 w-4" /></div>

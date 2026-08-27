@@ -10,7 +10,11 @@ import commonService from '@/services/commonService';
 import { ProductBarcode } from '@/services/barcodeService';
 import DataTable from '@/components/ui/datatable';
 import CustomSelect from '@/components/ui/custom-select';
-import BarcodeStickerPrint from '@/components/print/barcode/BarcodeStickerPrint';
+import dynamic from 'next/dynamic';
+const BarcodeStickerPrint = dynamic(
+  () => import('@/components/print/barcode/BarcodeStickerPrint'),
+  { ssr: false, loading: () => null },
+);
 import { useRouter } from 'next/navigation';
 import { usePermissions } from '@/hooks/use-permissions';
 import { useAuthStore } from '@/stores/auth-store';

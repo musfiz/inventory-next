@@ -5,7 +5,7 @@ import { Plus, X, CheckCircle, Check, RefreshCw, AlertTriangle, Ban, Undo2, File
 import { ColumnDef } from '@tanstack/react-table';
 import { notify, confirm, info as notifyInfo } from '@/lib/notifications';
 import { posRefundService } from '@/services';
-import Swal from 'sweetalert2';
+
 import type { PosRefund } from '@/services/posRefundService';
 import type { PosOrderItemForRefund } from '@/types/api.types';
 import DataTable from '@/components/ui/datatable';
@@ -492,6 +492,7 @@ export default function PosRefundsPage() {
   // them as risky (approval may have triggered side effects in other
   // implementations). Pending refunds get a standard confirm.
   const handleCancelRefund = async (refund: PosRefund) => {
+    const Swal = (await import('sweetalert2')).default;
     if (refund.status === 'approved') {
       // Stronger prompt for approved — typed confirmation so a stray
       // double-click can't cancel it. The label is short and the

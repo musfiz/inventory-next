@@ -1,6 +1,7 @@
 'use client';
 
 import Link from 'next/link';
+import Image from 'next/image';
 import { useState, useEffect } from 'react';
 import { useBranding } from '@/hooks/use-branding';
 import { useStorefrontCategories } from '@/hooks/use-storefront-categories';
@@ -281,7 +282,14 @@ export default function StorefrontFooter() {
           <div className="lg:col-span-2">
             <Link href="/" className="inline-flex items-center" aria-label="UIMS Store">
               {footerLogo ? (
-                <img src={footerLogo} alt="UIMS Store" className="h-9 w-auto object-contain" />
+                <Image
+                  src={footerLogo}
+                  alt="UIMS Store"
+                  width={144}
+                  height={36}
+                  className="h-9 w-auto object-contain"
+                  unoptimized={footerLogo.startsWith('data:')}
+                />
               ) : ready ? (
                 <span className="text-2xl font-black text-gray-900 dark:text-white">
                   UIMS<span className="text-brand-600">.</span>

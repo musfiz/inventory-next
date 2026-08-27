@@ -63,8 +63,8 @@ class PosService {
     per_page?: number;
     category_id?: number;
     tenant_id?: string | number;
-  }) {
-    const response = await apiClient.get(`/api/v1/pos/products`, { params });
+  }, options?: { signal?: AbortSignal }) {
+    const response = await apiClient.get(`/api/v1/pos/products`, { params, signal: options?.signal });
     return response.data.data;
   }
 

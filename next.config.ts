@@ -9,10 +9,11 @@ const backendHost = (() => {
   }
 })();
 
+const isDev = process.env.NODE_ENV !== 'production';
 const csp = [
   "default-src 'self'",
-  // Next.js bootstrap requires inline scripts; eval is required in dev mode.
-  "script-src 'self' 'unsafe-inline' 'unsafe-eval'",
+  // Next.js bootstrap requires inline scripts; eval is only needed in dev (React Refresh).
+  `script-src 'self' 'unsafe-inline'${isDev ? " 'unsafe-eval'" : ''}`,
   "style-src 'self' 'unsafe-inline'",
   `img-src 'self' data: blob: https:${backendHost ? ` http://${backendHost} https://${backendHost}` : ''}`,
   "font-src 'self' data:",
@@ -39,7 +40,7 @@ const securityHeaders = [
 ];
 
 const nextConfig: NextConfig = {
-  reactStrictMode: false,
+  reactStrictMode: true,
   // output: 'export',
   output: 'standalone',
   images: {

@@ -87,6 +87,7 @@ class WishlistInsightsService {
       if (stats) return stats;
       throw new Error('Unexpected API response format');
     } catch (error) {
+      if (process.env.NEXT_PUBLIC_USE_MOCK !== 'true') throw error;
       console.warn('Wishlist insights API unavailable, using mock data:', error);
       return mockStats;
     }
@@ -106,6 +107,7 @@ class WishlistInsightsService {
       }
       throw new Error('Unexpected API response format');
     } catch (error) {
+      if (process.env.NEXT_PUBLIC_USE_MOCK !== 'true') throw error;
       console.warn('Wishlist top-products API unavailable, using mock data:', error);
       await new Promise(r => setTimeout(r, 200));
       let filtered = [...mockTopProducts];
@@ -126,6 +128,7 @@ class WishlistInsightsService {
       if (trends) return trends;
       throw new Error('Unexpected API response format');
     } catch (error) {
+      if (process.env.NEXT_PUBLIC_USE_MOCK !== 'true') throw error;
       console.warn('Wishlist trends API unavailable, using mock data:', error);
       return mockTrends;
     }
@@ -151,6 +154,7 @@ class WishlistInsightsService {
       }
       throw new Error('Unexpected API response format');
     } catch (error) {
+      if (process.env.NEXT_PUBLIC_USE_MOCK !== 'true') throw error;
       console.warn('Wishlist customer activity API unavailable, using mock data:', error);
       await new Promise(r => setTimeout(r, 300));
       let filtered = [...mockCustomerActivities];
@@ -182,6 +186,7 @@ class WishlistInsightsService {
       }
       throw new Error('Unexpected API response format');
     } catch (error) {
+      if (process.env.NEXT_PUBLIC_USE_MOCK !== 'true') throw error;
       console.warn('Wishlist customer detail API unavailable, using mock data:', error);
       await new Promise(r => setTimeout(r, 200));
       const customer = mockCustomerActivities.find(c => c.customer_id === customerId);

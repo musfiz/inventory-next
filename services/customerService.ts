@@ -85,9 +85,10 @@ class CustomerService {
     return response.data;
   }
 
-  async getCustomersDropdown(params?: Record<string, any>) {
+  async getCustomersDropdown(params?: Record<string, any>, options?: { signal?: AbortSignal }) {
     const response = await apiClient.get<ApiResponse<Customer[]>>('/api/v1/customers', {
-      params: { ...params, per_page: params?.per_page || 100 }
+      params: { ...params, per_page: params?.per_page || 100 },
+      signal: options?.signal,
     });
     return response.data.data || [];
   }
