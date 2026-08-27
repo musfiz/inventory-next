@@ -168,7 +168,10 @@ export default function BackupPage() {
           disabled={refreshing}
           className="inline-flex items-center gap-1.5 px-2.5 py-1 text-xs border border-gray-300 dark:border-gray-600 rounded hover:bg-gray-50 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-200 disabled:opacity-50 disabled:cursor-not-allowed"
         >
-          <RefreshCw className={`w-3.5 h-3.5 ${refreshing ? 'animate-spin' : ''}`} />
+          <RefreshCw
+            className={`w-3.5 h-3.5 ${refreshing ? 'animate-spin' : ''}`}
+            aria-hidden="true"
+          />
           {refreshing ? 'Refreshing…' : 'Refresh history'}
         </button>
       </div>

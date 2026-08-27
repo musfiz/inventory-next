@@ -694,7 +694,7 @@ export default function SalesReturnsPage() {
                 </div>
                 {loadingItems ? (
                   <div className="flex items-center justify-center py-6 text-sm text-gray-500">
-                    <div className="animate-spin w-5 h-5 border-2 border-blue-500 border-t-transparent rounded-full mr-2" />
+                    <Spinner size="sm" className="mr-2" />
                     Loading order items…
                   </div>
                 ) : (

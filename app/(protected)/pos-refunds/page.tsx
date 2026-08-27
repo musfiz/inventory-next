@@ -9,6 +9,7 @@ import Swal from 'sweetalert2';
 import type { PosRefund } from '@/services/posRefundService';
 import type { PosOrderItemForRefund } from '@/types/api.types';
 import DataTable from '@/components/ui/datatable';
+import Spinner from '@/components/ui/spinner';
 import CustomSelect from '@/components/ui/custom-select';
 import TenantSelect from '@/components/ui/tenant-select';
 import { useRouter } from 'next/navigation';
@@ -810,7 +811,10 @@ export default function PosRefundsPage() {
                         aria-label="Re-check available quantities"
                         className="inline-flex items-center justify-center gap-2 h-[34px] px-2 rounded-sm border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors cursor-pointer"
                       >
-                        <RefreshCw className={`w-4 h-4 ${loadingItems ? 'animate-spin' : ''}`} />
+                        <RefreshCw
+                          className={`w-4 h-4 ${loadingItems ? 'animate-spin' : ''}`}
+                          aria-hidden="true"
+                        />
                         <span className="text-sm font-medium">Refresh</span>
                       </button>
                       {/* Cancel selection: wipes the chosen order and any
@@ -869,7 +873,7 @@ export default function PosRefundsPage() {
                 </div>
                 {loadingItems ? (
                   <div className="flex items-center justify-center py-6 text-sm text-gray-500">
-                    <div className="animate-spin w-5 h-5 border-2 border-blue-500 border-t-transparent rounded-full mr-2" />
+                    <Spinner size="sm" className="mr-2" />
                     Loading order items…
                   </div>
                 ) : (

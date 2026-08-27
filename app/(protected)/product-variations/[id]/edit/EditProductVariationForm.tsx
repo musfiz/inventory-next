@@ -634,7 +634,10 @@ export default function EditProductVariationPage() {
                     className="px-2.5 py-1 bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 text-gray-700 dark:text-gray-300 rounded-sm transition-colors disabled:opacity-50 text-sm cursor-pointer"
                     title="Generate SKU"
                   >
-                    <RefreshCw className={`w-3.5 h-3.5 ${generatingSku ? 'animate-spin' : ''}`} />
+                    <RefreshCw
+                      className={`w-3.5 h-3.5 ${generatingSku ? 'animate-spin' : ''}`}
+                      aria-label={generatingSku ? 'Generating SKU…' : 'Generate SKU'}
+                    />
                   </button>
                 </div>
                 {hasFieldError('sku') && (

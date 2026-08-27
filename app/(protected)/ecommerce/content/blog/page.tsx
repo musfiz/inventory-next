@@ -309,7 +309,11 @@ export default function BlogPostsPage() {
           className="p-1.5 rounded border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-600 disabled:opacity-50 disabled:cursor-not-allowed transition-colors cursor-pointer"
           title="Refresh data"
         >
-          <RefreshCw className={`h-3.5 w-3.5 ${loading ? 'animate-spin' : ''}`} />
+          <RefreshCw
+            className={`h-3.5 w-3.5 ${loading ? 'animate-spin' : ''}`}
+            aria-label={loading ? 'Refreshing…' : 'Refresh'}
+            role={loading ? 'status' : undefined}
+          />
         </button>
       </div>
 

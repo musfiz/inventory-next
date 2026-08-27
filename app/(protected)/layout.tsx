@@ -10,6 +10,7 @@ import { useSyncTenantStore } from '@/hooks/use-sync-tenant-store';
 import Header from '@/components/layout/header';
 import Sidebar from '@/components/layout/sidebar';
 import PageLoader from '@/components/ui/page-loader';
+import Spinner from '@/components/ui/spinner';
 
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
   const { user: authUser, isRedirecting, isLoading } = useAuth({ middleware: 'auth' });
@@ -82,7 +83,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
             >
               {switchingBack ? (
                 <>
-                  <div className="w-4 h-3 animate-spin rounded-full border-2 border-orange-600 border-t-transparent" />
+                  <Spinner size="xs" />
                   Switching...
                 </>
               ) : (

@@ -371,14 +371,14 @@ Security headers have been implemented in `next.config.ts` via the `headers()` f
 
 ### 4.2 Missing Loading States in Admin
 
-- [ ] Add `loading.tsx` to `app/(protected)/` root
-- [ ] Add `loading.tsx` to `app/(protected)/products/`
-- [ ] Add `loading.tsx` to `app/(protected)/sales-orders/`
-- [ ] Add `loading.tsx` to `app/(protected)/pos-sales/`
-- [ ] Add `loading.tsx` to `app/(protected)/purchase-orders/`
-- [ ] Add skeleton loading states for data tables instead of simple spinners
+- [x] Add `loading.tsx` to `app/(protected)/` root
+- [x] Add `loading.tsx` to `app/(protected)/products/`
+- [x] Add `loading.tsx` to `app/(protected)/sales-orders/`
+- [x] Add `loading.tsx` to `app/(protected)/pos-sales/`
+- [x] Add `loading.tsx` to `app/(protected)/purchase-orders/`
+- [x] Add skeleton loading states for data tables instead of simple spinners
 
-**Current behavior:** Only 4 `loading.tsx` files exist (1 global + 3 storefront). The entire admin section shows nothing during route transitions.
+**Current behavior:** Implemented via `LOADING_STATE_STANDARDIZATION_PLAN.md` (Phases 1–6). Route-level `loading.tsx` files now exist for the five major admin segments; table pages use a shared `TableSkeleton` (`components/ui/table-skeleton.tsx`) that mirrors the `DataTable` layout. A single non-blocking `TopProgressBar` (`components/ui/top-progress-bar.tsx`) mounted in `app/layout.tsx` covers navigation + API activity, driven by a Zustand `loading-store` wired into Axios. Custom border/SVG spinners were migrated to the shared `Spinner` (`components/ui/spinner.tsx`). The previous timer-based progress bar in `app/(protected)/layout.tsx` was removed.
 
 ---
 

@@ -1,6 +1,7 @@
 'use client';
 
 import Link from 'next/link';
+import Spinner from '@/components/ui/spinner';
 import { useState, useEffect, useRef } from 'react';
 import {
   Menu,
@@ -302,7 +303,7 @@ export default function Header({
                       >
                         {switchingBack ? (
                           <>
-                            <div className="w-5 h-5 animate-spin rounded-full border-2 border-orange-600 border-t-transparent" />
+                            <Spinner size="sm" />
                             Switching back...
                           </>
                         ) : (

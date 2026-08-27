@@ -4,6 +4,7 @@ import { useState, useEffect, useMemo, Fragment } from 'react';
 import { useRouter } from 'next/navigation';
 import { Shield, Search, UserCheck, Check, X } from 'lucide-react';
 import CustomSelect from '@/components/ui/custom-select';
+import Spinner from '@/components/ui/spinner';
 import { notify } from '@/lib/notifications';
 import userPermissionService, {
   UserPermissionModule,
@@ -472,7 +473,7 @@ export default function UserPermissionsPage() {
           >
             {saving ? (
               <>
-                <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                <Spinner size="sm" tone="white" className="mr-2" />
                 Saving...
               </>
             ) : (

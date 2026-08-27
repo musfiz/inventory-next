@@ -7,6 +7,7 @@ import {
   Mail, Lock, Eye, EyeOff, Sparkles, User, Phone, Check,
 } from 'lucide-react';
 import { useCustomerAuthStore } from '@/stores/customer-auth-store';
+import Spinner from '@/components/ui/spinner';
 import { notify } from '@/lib/notifications';
 
 type Tab = 'login' | 'register';
@@ -115,7 +116,7 @@ function LoginForm() {
 
       <button type="submit" disabled={loading} className="flex w-full items-center justify-center gap-2 rounded-lg bg-brand-600 py-3 text-sm font-bold text-white shadow-lg shadow-brand-600/20 transition-all hover:bg-brand-700 hover:shadow-xl hover:shadow-brand-600/30 disabled:opacity-50">
         {loading ? (
-          <><div className="h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent" /> Signing in...</>
+          <><Spinner size="sm" tone="white" /> Signing in...</>
         ) : 'Sign in'}
       </button>
     </form>
@@ -215,7 +216,7 @@ function RegisterForm() {
 
       <button type="submit" disabled={loading} className="flex w-full items-center justify-center gap-2 rounded-lg bg-brand-600 py-3 text-sm font-bold text-white shadow-lg shadow-brand-600/20 transition-all hover:bg-brand-700 hover:shadow-xl hover:shadow-brand-600/30 disabled:opacity-50">
         {loading ? (
-          <><div className="h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent" /> Creating account...</>
+          <><Spinner size="sm" tone="white" /> Creating account...</>
         ) : 'Create account'}
       </button>
     </form>

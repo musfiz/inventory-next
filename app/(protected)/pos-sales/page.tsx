@@ -28,6 +28,7 @@ import { useAuthStore } from '@/stores/auth-store';
 import { useTenantStore } from '@/stores/tenant-store';
 import { usePermissions } from '@/hooks/use-permissions';
 import CustomSelect from '@/components/ui/custom-select';
+import Spinner from '@/components/ui/spinner';
 import PaymentModal from '@/components/pos/PaymentModal';
 import HeldOrdersDialog from '@/components/pos/HeldOrdersDialog';
 import { PosOrderPrintMenu } from '@/components/print';
@@ -665,10 +666,7 @@ export default function POSSalesPage() {
   if (sessionLoading) {
     return (
       <div className="h-full w-full flex flex-col items-center justify-center bg-gray-50 dark:bg-gray-950">
-        <svg className="w-10 h-10 text-blue-500 animate-spin mb-3" fill="none" viewBox="0 0 24 24">
-          <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-          <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z" />
-        </svg>
+        <Spinner size="md" className="mb-3" />
         <p className="text-sm text-gray-500 dark:text-gray-400">Checking session...</p>
       </div>
     );
@@ -847,10 +845,7 @@ export default function POSSalesPage() {
                 className="w-full pl-10 pr-10 py-1.5 text-sm bg-gray-50 dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-md text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
               />
               {productsLoading ? (
-                <svg className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-blue-500 animate-spin" fill="none" viewBox="0 0 24 24">
-                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z" />
-                </svg>
+                <Spinner size="sm" className="absolute right-3 top-1/2 -translate-y-1/2" />
               ) : searchQuery ? (
                 <button
                   onClick={() => { setSearchQuery(''); const catId = selectedCategory === 'all' ? undefined : selectedCategory; loadProducts(catId); searchInputRef.current?.focus(); }}
@@ -1342,10 +1337,7 @@ export default function POSSalesPage() {
 
       {printLoading && (
         <div className="fixed bottom-4 right-4 z-40 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl shadow-lg px-4 py-3 flex items-center gap-2">
-          <svg className="w-4 h-4 text-blue-500 animate-spin" fill="none" viewBox="0 0 24 24">
-            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z" />
-          </svg>
+          <Spinner size="sm" />
           <span className="text-xs text-gray-600 dark:text-gray-300">Loading order…</span>
         </div>
       )}
@@ -1375,10 +1367,7 @@ export default function POSSalesPage() {
                   className="w-full pl-9 pr-4 py-2 text-sm border border-gray-300 dark:border-gray-600 rounded-lg bg-gray-50 dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
                 />
                 {customerSearchLoading && (
-                  <svg className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-blue-500 animate-spin" fill="none" viewBox="0 0 24 24">
-                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z" />
-                  </svg>
+                  <Spinner size="sm" className="absolute right-3 top-1/2 -translate-y-1/2" />
                 )}
               </div>
             </div>
@@ -1453,10 +1442,7 @@ export default function POSSalesPage() {
                       className="flex-1 py-2 text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 rounded-lg transition-colors disabled:opacity-50 flex items-center justify-center gap-1"
                     >
                       {customerCreateLoading ? (
-                        <svg className="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
-                          <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-                          <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z" />
-                        </svg>
+                        <Spinner size="sm" tone="white" />
                       ) : <Plus className="w-4 h-4" />}
                       Save &amp; Select
                     </button>

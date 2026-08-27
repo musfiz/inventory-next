@@ -9,6 +9,7 @@ import { useRouter } from 'next/navigation';
 import { usePermissions } from '@/hooks/use-permissions';
 import { Package2, RefreshCcw } from 'lucide-react';
 import { GiSave } from 'react-icons/gi';
+import Spinner from '@/components/ui/spinner';
 
 export default function StockAddPage() {
   const { isSuperAdmin, hasPermission, isHydrated } = usePermissions();
@@ -387,10 +388,7 @@ export default function StockAddPage() {
         {/* Section Loading Overlay */}
         {isLoading && (
           <div className="absolute inset-0 z-50 flex flex-col items-center justify-center bg-white/80 dark:bg-gray-800/80 rounded-md">
-            <svg className="w-8 h-8 text-blue-500 animate-spin mb-2" fill="none" viewBox="0 0 24 24">
-              <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-              <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z" />
-            </svg>
+            <Spinner size="md" className="mb-2" />
             <p className="text-sm text-gray-500 dark:text-gray-400">Loading...</p>
           </div>
         )}

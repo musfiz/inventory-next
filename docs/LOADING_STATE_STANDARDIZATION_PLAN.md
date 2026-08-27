@@ -228,31 +228,62 @@ The request counter should drive the top progress bar only. Individual pages sho
 
 ### Phase 5: Route-level loading coverage
 
-- [ ] Add loading fallbacks to the major protected route segments.
-- [ ] Add admin table skeletons where the table structure is predictable.
-- [ ] Keep storefront product and hero skeletons, aligning them with shared tokens.
-- [ ] Keep `AccountLayoutSkeleton` where it accurately represents the account layout.
+- [x] Add loading fallbacks to the major protected route segments.
+- [x] Add admin table skeletons where the table structure is predictable.
+- [x] Keep storefront product and hero skeletons, aligning them with shared tokens.
+- [x] Keep `AccountLayoutSkeleton` where it accurately represents the account layout.
 
 ### Phase 6: Incremental component migration
 
-- [ ] Replace custom border spinners with `Spinner` as files are changed.
-- [ ] Replace custom SVG spinners in POS controls.
-- [ ] Update refresh buttons with a shared accessible loading pattern.
-- [ ] Preserve operation-specific button text.
-- [ ] Avoid a risky bulk rewrite of all 50+ working forms in one change.
+- [x] Replace custom border spinners with `Spinner` as files are changed.
+- [x] Replace custom SVG spinners in POS controls.
+- [x] Update refresh buttons with a shared accessible loading pattern.
+- [x] Preserve operation-specific button text.
+- [x] Avoid a risky bulk rewrite of all 50+ working forms in one change.
+
+#### Phase 6 migration notes
+
+`Spinner` gained a `tone` prop (`brand` default, `white` for colored buttons) so it can replace white/colored custom spinners without losing contrast.
+
+Custom border spinners replaced with `<Spinner>`:
+- `components/dashboard/TenantDashboard.tsx`, `components/dashboard/ChartCard.tsx` (blue border)
+- `app/(protected)/users/page.tsx`, `app/(protected)/layout.tsx` (orange border)
+- `app/(protected)/pos-refunds/page.tsx`, `app/(protected)/sales-return/page.tsx` (blue border, `Loading order items…` text kept)
+- `components/layout/header.tsx` (switch-back button)
+- `app/(storefront)/store/account/login/page.tsx` (white border → `tone="white"`)
+- `app/(protected)/user-permissions/page.tsx` (white border → `tone="white"`)
+
+Custom SVG spinners replaced with `<Spinner>`:
+- `components/pos/PaymentModal.tsx`, `components/pos/HeldOrdersDialog.tsx` (incl. restore/cancel buttons)
+- `app/(protected)/pos-sales/page.tsx` (session, product-search, customer-search, print, create-customer)
+- `app/(protected)/tenants/page.tsx`, `app/(protected)/sales-orders/add/page.tsx`, `app/(protected)/stock/add/page.tsx`
+
+Refresh buttons updated with shared accessible loading pattern (aria-label / `role="status"` when spinning; `aria-hidden` when text already conveys state):
+- `components/ui/datatable.tsx`, `app/(protected)/backup/page.tsx`, `app/(protected)/accounts/page.tsx`
+- `app/(protected)/ecommerce/content/blog/page.tsx`, `app/(protected)/ecommerce/content/pages/page.tsx`
+- `app/(protected)/product-variations/[id]/edit/EditProductVariationForm.tsx`, `app/(protected)/product-variations/add/page.tsx`
+- `app/(protected)/pos-refunds/page.tsx`, `components/pos/HeldOrdersDialog.tsx`
+
+Deferred (gradual, per plan): the ~50+ `Loader2`-based button spinners (Pattern 5/6) were intentionally left untouched to avoid a risky bulk rewrite. `components/rich-text-editor.tsx` keeps its editor-toolbar SVG spinner (library-adjacent).
 
 ### Phase 7: Documentation and validation
 
-- [ ] Update section 4.2 of `GAP_ANALYSIS_CHECKLIST.md` after implementation.
-- [ ] Document when to use a page loader, skeleton, inline spinner, top progress bar, or blocking progress modal.
-- [ ] Run `npm run lint`.
-- [ ] Run `npm run build`.
-- [ ] Test admin-to-admin navigation.
-- [ ] Test storefront navigation.
-- [ ] Test authentication redirects and logout loading behavior.
-- [ ] Test one successful API request, one rejected request, concurrent requests, and a CSRF retry if reproducible.
-- [ ] Confirm the top progress bar is not duplicated by the protected layout.
-- [ ] Confirm loading text and controls do not overlap on mobile widths.
+- [x] Update section 4.2 of `GAP_ANALYSIS_CHECKLIST.md` after implementation.
+- [x] Document when to use a page loader, skeleton, inline spinner, top progress bar, or blocking progress modal (see "Loading UI Decision Guide").
+- [ ] Run `npm run lint` — **BLOCKED**: `eslint-config-next` is pinned to `^0.2.4` in `package.json`, but `eslint.config.mjs` (flat config, ESLint 10) imports `eslint-config-next/core-web-vitals` and `/typescript`, which that ancient version does not export. Pre-existing repo/tooling issue, unrelated to these changes. (Type validity of all loading-state files was confirmed via `tsc --noEmit` — no errors.)
+- [ ] Run `npm run build` — **BLOCKED** by the same ESLint config failure; requires the lint tooling to be fixed first.
+- [ ] Test admin-to-admin navigation — **manual**: requires running dev server + browser.
+- [ ] Test storefront navigation — **manual**: requires running dev server + browser.
+- [ ] Test authentication redirects and logout loading behavior — **manual**.
+- [ ] Test one successful API request, one rejected request, concurrent requests, and a CSRF retry if reproducible — **manual**.
+- [x] Confirm the top progress bar is not duplicated by the protected layout.
+- [ ] Confirm loading text and controls do not overlap on mobile widths — **manual** (static review done: `inline-flex` spinners, `flex` overlays, width-preserving disabled buttons; recommend a 360px viewport check).
+
+#### Phase 7 validation notes
+
+- **Top progress bar not duplicated:** `TopProgressBar` is mounted only in `app/layout.tsx` (line 44). The previous timer-based bar in `app/(protected)/layout.tsx` was removed in Phase 4, so there is exactly one instance.
+- **Mobile overlap:** loading UIs use `inline-flex` spinners centered with their labels and `flex` overlays; button spinners preserve width via `disabled` + fixed action text. No absolute-positioned loading text overlaps controls. Manual confirmation on a 360px viewport is still recommended.
+- **Lint/build & runtime tests (admin/storefront nav, auth redirects, API success/failure/concurrency/CSRF retry):** require a running dev server + browser and are listed as manual acceptance checks. In this environment `npm run lint` fails because `eslint-config-next/core-web-vitals` cannot be resolved (pre-existing, unrelated to these changes); `npm run build` should be run in a working environment.
 
 ## Usage Rules
 
@@ -266,6 +297,32 @@ The request counter should drive the top progress bar only. Individual pages sho
 | Any active API or route transition | Non-blocking global top progress bar |
 | Backup, restore, import, or export with real progress | Blocking progress modal |
 | Short redirect page | Shared `PageLoader` or route-level fallback |
+
+### Loading UI Decision Guide
+
+Use exactly one of the following per situation. Do not stack competing indicators for the same work.
+
+- **`PageLoader` (`components/ui/page-loader.tsx`)** — full-page or available-space fallback for a route segment when the layout is *not* predictable, or for short redirect/auth-guard screens. Mounted via `app/loading.tsx` and used as the Suspense fallback in `app/(protected)/layout.tsx`.
+  - Use when: a route has no obvious content shape, or you need a generic "wait" screen.
+  - Do **not** use for a page whose final layout is known (prefer a skeleton).
+
+- **`Skeleton` / `TableSkeleton` (`components/ui/table-skeleton.tsx`)** — content-shaped placeholder that matches the final layout (tables, cards, grids, account layout).
+  - Use when: the page structure is predictable (especially admin `DataTable` lists and storefront product/hero sections).
+  - Add as a route-level `loading.tsx` so it shows during segment rendering.
+
+- **`Spinner` (`components/ui/spinner.tsx`)** — inline, local, short-duration activity. Sizes `xs`/`sm`/`md`/`lg`; `tone="white"` for colored buttons.
+  - Use when: a button mutation is in flight (keep the button disabled with operation-specific text like `Saving…`), a small inline fetch runs, or a refresh/search icon needs a spinner.
+  - Make icon-only spinners accessible: `aria-label` + `role="status"` when spinning, or `aria-hidden` when adjacent text already states the state.
+
+- **`TopProgressBar` (`components/ui/top-progress-bar.tsx`)** — one non-blocking 2–3px bar across the top, mounted once in `app/layout.tsx`, driven by the Zustand `loading-store` (Axios request counter) and `usePathname()`.
+  - Use for: *every* client-side route transition and *every* API request, automatically. No per-page wiring needed.
+  - Never blocking; never duplicate it in a layout.
+
+- **Blocking progress modal (`BackupProgressModal` and similar)** — full-screen modal that shows real, server-reported progress and blocks interaction until done.
+  - Use only for: backup/restore, long imports/exports, or operations with meaningful progress.
+  - Do **not** use for ordinary navigation, routine API requests, or short form submits.
+
+**Mobile / responsive:** spinners and loading text must not overlap controls at narrow widths. Keep spinners `inline-flex` with the label, give buttons `min-width` stability (preserve width when text changes), and ensure overlays use `flex` centering so text wraps instead of colliding with icons.
 
 ## Non-Goals
 

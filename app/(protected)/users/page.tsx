@@ -10,6 +10,7 @@ import { User } from '@/types';
 import { useAuthStore } from '@/stores/auth-store';
 import { usePermissions } from '@/hooks/use-permissions';
 import { confirm, notify } from '@/lib/notifications';
+import Spinner from '@/components/ui/spinner';
 import { userService } from '@/services';
 
 
@@ -338,7 +339,7 @@ export default function UsersPage() {
               }}
             >
               {switchingUser === row.original.id ? (
-                <div className="w-3.5 h-3.5 animate-spin rounded-full border-2 border-orange-600 border-t-transparent" />
+                <Spinner size="xs" />
               ) : (
                 <UserCheck className="w-3.5 h-3.5" />
               )}

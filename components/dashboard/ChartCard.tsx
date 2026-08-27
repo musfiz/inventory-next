@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { RefreshCw } from 'lucide-react';
+import Spinner from '@/components/ui/spinner';
 
 interface ChartCardProps {
   title: string;
@@ -63,7 +64,7 @@ export default function ChartCard({
       <div className={`px-5 pb-4 ${height}`}>
         {loading ? (
           <div className="w-full h-full flex items-center justify-center">
-            <div className="w-8 h-8 border-2 border-blue-500 border-t-transparent rounded-full animate-spin" />
+            <Spinner size="md" />
           </div>
         ) : (
           children

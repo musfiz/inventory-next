@@ -1,6 +1,7 @@
 import * as React from 'react';
 
 export type SpinnerSize = 'xs' | 'sm' | 'md' | 'lg';
+export type SpinnerTone = 'brand' | 'white';
 
 /**
  * Loading color/spacing tokens (see globals.css `@theme`).
@@ -16,8 +17,15 @@ const SIZE_CLASSES: Record<SpinnerSize, string> = {
   lg: 'h-16 w-16 border-4',
 };
 
+const TONE_CLASSES: Record<SpinnerTone, string> = {
+  brand: 'border-indigo-600 border-t-transparent',
+  white: 'border-white border-t-transparent',
+};
+
 export interface SpinnerProps extends React.HTMLAttributes<HTMLSpanElement> {
   size?: SpinnerSize;
+  /** Color of the spinner ring. `brand` uses the project token; `white` for colored buttons. */
+  tone?: SpinnerTone;
   /** Accessible label announced to assistive technology. */
   label?: string;
   /** Hide from assistive tech when a parent already announces status. */
@@ -30,6 +38,7 @@ export interface SpinnerProps extends React.HTMLAttributes<HTMLSpanElement> {
  */
 export default function Spinner({
   size = 'md',
+  tone = 'brand',
   label = 'Loading',
   decorative = false,
   className = '',
@@ -38,7 +47,7 @@ export default function Spinner({
   const spinner = (
     <span
       aria-hidden="true"
-      className={`block rounded-full border-indigo-600 border-t-transparent animate-spin ${SIZE_CLASSES[size]}`}
+      className={`block rounded-full animate-spin ${SIZE_CLASSES[size]} ${TONE_CLASSES[tone]}`}
     />
   );
 

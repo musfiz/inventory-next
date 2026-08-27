@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
+import Spinner from '@/components/ui/spinner';
 import {
   ShoppingCart, Receipt, Package, Banknote,
   AlertTriangle, XCircle, Calendar, DollarSign,
@@ -543,7 +544,7 @@ export default function TenantDashboard() {
               <div className="px-5 pb-4 h-52">
                 {loading ? (
                   <div className="w-full h-full flex items-center justify-center">
-                    <div className="w-8 h-8 border-2 border-blue-500 border-t-transparent rounded-full animate-spin" />
+                    <Spinner size="md" />
                   </div>
                 ) : (
                   <ResponsiveContainer width="100%" height="100%">
