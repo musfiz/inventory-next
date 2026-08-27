@@ -6,7 +6,8 @@ import { useParams, notFound } from 'next/navigation';
 import { ChevronDown, ArrowRight } from 'lucide-react';
 import ProductCard from '@/components/storefront/ProductCard';
 import ScrollReveal from '@/components/storefront/ScrollReveal';
-import { BRANDS, PRODUCTS, formatMoney } from '@/lib/storefront/mock-data';
+import { BRANDS, PRODUCTS } from '@/lib/storefront/mock-data';
+import { formatMoney } from '@/lib/utils/format';
 import type { Product } from '@/types/storefront';
 
 const SORTS = [

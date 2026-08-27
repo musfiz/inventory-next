@@ -101,3 +101,25 @@ export function formatQty(n: number | null | undefined): string {
   if (isNaN(num)) return '0';
   return num % 1 === 0 ? num.toString() : num.toFixed(2);
 }
+
+const MONEY_LOCALE = 'en-IN';
+
+export function formatMoney(amount: number | null | undefined): string {
+  const num = typeof amount === 'number' ? amount : Number(amount) || 0;
+  const symbol = CURRENCY_SYMBOLS.BDT;
+  const formatted = Math.round(num).toLocaleString(MONEY_LOCALE, {
+    minimumFractionDigits: 0,
+    maximumFractionDigits: 0,
+  });
+  return `${symbol}${formatted}`;
+}
+
+export function formatMoneyDecimal(amount: number | null | undefined): string {
+  const num = typeof amount === 'number' ? amount : Number(amount) || 0;
+  const symbol = CURRENCY_SYMBOLS.BDT;
+  const formatted = num.toLocaleString(MONEY_LOCALE, {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  });
+  return `${symbol}${formatted}`;
+}

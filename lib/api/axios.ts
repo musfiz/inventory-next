@@ -1,7 +1,9 @@
 import Axios from 'axios';
 
 const axios = Axios.create({
-  baseURL: process.env.NEXT_PUBLIC_BACKEND_URL,
+  // Calls are same-origin; next.config.ts rewrites /api and /sanctum to the backend.
+  // This keeps the session cookie first-party so proxy.ts can read it for auth.
+  baseURL: '',
   headers: {
     'X-Requested-With': 'XMLHttpRequest',
     Accept: 'application/json',
@@ -23,7 +25,7 @@ axios.interceptors.request.use(
     if (method && methodsRequiringCsrf.includes(method) && !csrfCookieFetched) {
       try {
         // Fetch CSRF cookie
-        await Axios.get(`${process.env.NEXT_PUBLIC_BACKEND_URL}/sanctum/csrf-cookie`, {
+        await Axios.get(`/sanctum/csrf-cookie`, {
           withCredentials: true,
         });
         csrfCookieFetched = true;
@@ -52,7 +54,7 @@ axios.interceptors.response.use(
 
       try {
         // Refetch CSRF cookie
-        await Axios.get(`${process.env.NEXT_PUBLIC_BACKEND_URL}/sanctum/csrf-cookie`, {
+        await Axios.get(`/sanctum/csrf-cookie`, {
           withCredentials: true,
         });
         csrfCookieFetched = true;

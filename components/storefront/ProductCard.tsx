@@ -6,7 +6,7 @@ import { Heart, Star, Plus, ImageIcon } from 'lucide-react';
 import { IoCartSharp } from 'react-icons/io5';
 import { useState } from 'react';
 import type { Product } from '@/types/storefront';
-import { formatMoney, formatMoneyDecimal } from '@/lib/storefront/mock-data';
+import { formatMoney, formatMoneyDecimal } from '@/lib/utils/format';
 import { useCartStore } from '@/stores/cart-store';
 import { useWishlistStore } from '@/stores/wishlist-store';
 import { useRecentlyViewed } from '@/hooks/use-recently-viewed';

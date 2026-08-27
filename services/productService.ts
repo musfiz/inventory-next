@@ -72,7 +72,7 @@ class ProductService {
    * DELETE /api/v1/products/{id}
    */
   async deleteProduct(id: string): Promise<void> {
-    await apiClient.get(`/api/v1/products/destroy/${id}`);
+    await apiClient.delete(`/api/v1/products/${id}`);
   }
 }
 

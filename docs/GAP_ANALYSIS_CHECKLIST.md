@@ -24,33 +24,67 @@
 
 These items represent security vulnerabilities or architectural flaws that should be addressed before any new feature work.
 
-### 1.1 No `middleware.ts` — Client-Side Auth Only
+### 1.1 No `proxy.ts` — Client-Side Auth Only
 
-- [ ] **Create `middleware.ts`** in the project root
-- [ ] Protect all `/dashboard`, `/products`, `/sales-orders`, etc. routes server-side
+> **Next.js 16 note:** `middleware.ts` was deprecated in v16.0.0 and renamed to `proxy.ts`. The exported function is now `proxy()` instead of `middleware()`. Migrate with: `npx @next/codemod@canary middleware-to-proxy .`
+
+- [ ] **Create `proxy.ts`** in the project root (Next.js 16 file convention replaces `middleware.ts`)
+- [ ] Export a `proxy()` function that reads session cookies and performs optimistic auth checks
 - [ ] Redirect unauthenticated users to `/login` before any page HTML is sent
 - [ ] Redirect authenticated users away from `/login` to `/dashboard`
 - [ ] Protect `/store/account/*` routes for customer auth
+- [ ] Configure `matcher` to exclude static assets: `/((?!api|_next/static|_next/image|favicon.ico|sitemap.xml|robots.txt).*)`
 - [ ] Remove the 5-second timeout fallback hack in `app/(protected)/layout.tsx`
 - [ ] Eliminate "flash of protected content" for unauthenticated visits
+- [ ] **Optional:** Create a Data Access Layer (DAL) with `verifySession()` for secure server-side checks in Server Components and Server Actions
 
 **Current behavior:** Auth is checked via `useEffect` + `useAuth({ middleware: 'auth' })` inside the client layout. Unauthenticated users see a loading spinner for up to 5 seconds, then get redirected. A direct URL hit shows protected HTML before the JS hydrates.
 
-**Fix:** Next.js `middleware.ts` with cookie-based session validation runs at the edge before any page renders.
+**Fix (Next.js 16 pattern):** Create `proxy.ts` at the project root. The proxy runs on the server before routes render — read the session cookie, perform an optimistic check, and redirect if invalid. For secure checks, use a DAL with `verifySession()` in Server Components/Actions.
+
+```ts
+// proxy.ts (Next.js 16+)
+import { NextResponse } from 'next/server';
+import type { NextRequest } from 'next/server';
+
+const protectedRoutes = ['/dashboard', '/products', '/sales-orders', '/pos-sales'];
+const publicRoutes = ['/login', '/welcome'];
+
+export function proxy(request: NextRequest) {
+  const path = request.nextUrl.pathname;
+  const session = request.cookies.get('session')?.value;
+
+  if (protectedRoutes.some(r => path.startsWith(r)) && !session) {
+    return NextResponse.redirect(new URL('/login', request.nextUrl));
+  }
+  if (publicRoutes.includes(path) && session) {
+    return NextResponse.redirect(new URL('/dashboard', request.nextUrl));
+  }
+  return NextResponse.next();
+}
+
+export const config = {
+  matcher: ['/((?!api|_next/static|_next/image|favicon.ico|sitemap.xml|robots.txt).*)'],
+};
+```
 
 ---
 
-### 1.2 No Security Headers (CSP, X-Frame-Options, etc.)
+### 1.2 ~~No Security Headers~~ — RESOLVED ✅
 
-- [ ] Add `headers()` function to `next.config.ts`
-- [ ] Set `Content-Security-Policy` — restrict `script-src`, `style-src`, `img-src`, `frame-ancestors`
-- [ ] Set `X-Frame-Options: DENY` (prevent clickjacking)
-- [ ] Set `X-Content-Type-Options: nosniff` (prevent MIME sniffing)
-- [ ] Set `Referrer-Policy: strict-origin-when-cross-origin`
-- [ ] Set `Permissions-Policy` to disable unused browser APIs (camera, microphone, geolocation)
-- [ ] Set `Strict-Transport-Security` for HTTPS enforcement
+Security headers have been implemented in `next.config.ts` via the `headers()` function:
 
-**Risk:** Without CSP, the app is vulnerable to XSS via injected scripts. Without `X-Frame-Options`, any site can embed the admin panel in an iframe for clickjacking attacks.
+- [x] `Content-Security-Policy` — restricts `script-src`, `style-src`, `img-src`, `connect-src`, `frame-ancestors 'none'`
+- [x] `X-Frame-Options: DENY`
+- [x] `X-Content-Type-Options: nosniff`
+- [x] `Referrer-Policy: strict-origin-when-cross-origin`
+- [x] `Permissions-Policy` — disables camera, microphone, geolocation, browsing-topics
+- [x] `Strict-Transport-Security` — `max-age=63072000; includeSubDomains; preload`
+
+**Remaining refinement:**
+
+- [ ] Tighten CSP `script-src` — remove `'unsafe-eval'` in production (currently needed for dev mode only; use `process.env.NODE_ENV` conditional)
+- [ ] Tighten CSP `style-src` — remove `'unsafe-inline'` if possible (may require nonce-based approach for Tailwind)
 
 ---
 
@@ -154,19 +188,24 @@ These items represent security vulnerabilities or architectural flaws that shoul
 
 ### 2.5 100% Client Components — No SSR/Server Components
 
+> **Next.js 16 note:** Next.js 16 encourages Server Components by default. Layouts don't re-render on navigation, so auth checks should NOT live in layouts — use `proxy.ts` for optimistic checks and a Data Access Layer (DAL) with `verifySession()` in page-level Server Components for secure checks.
+
 - [ ] Convert storefront catalog pages to Server Components (product listing, product detail, category pages)
-- [ ] Use `generateMetadata()` for dynamic SEO on storefront pages
+- [ ] Use `generateMetadata()` for dynamic SEO on storefront pages (Next.js 16 supports streaming metadata — it won't block initial UI)
 - [ ] Convert storefront static pages (help, blog posts) to Server Components
 - [ ] Keep admin dashboard as client components (acceptable for authenticated SPA)
 - [ ] Add `loading.tsx` files to all major route segments under `(protected)/`
+- [ ] For auth-gated Server Components, use a DAL (`verifySession()`) rather than layout-level checks
+- [ ] Wrap session-dependent shell UI (user menu, nav) in `<Suspense>` to avoid blocking the first streamed chunk
 
 **Impact:** The entire storefront is client-rendered, which means:
 
 - No SEO (search engines see empty HTML until JS loads)
 - Slower perceived load time (blank screen → spinner → content)
 - No social media link previews (Open Graph tags need SSR)
+- Streaming metadata (Next.js 16) is unused — `generateMetadata()` can now resolve async without blocking page paint
 
-**Note:** Admin pages being `'use client'` is acceptable — they're behind auth and not indexed by search engines.
+**Note:** Admin pages being `'use client'` is acceptable — they're behind auth and not indexed by search engines. However, per Next.js 16 docs, avoid auth checks in layouts (they don't re-render on navigation) — use `proxy.ts` + DAL instead.
 
 ---
 
@@ -628,31 +667,31 @@ These features are documented in project docs but have no backend or frontend im
 
 ## 9. Summary Statistics
 
-| Metric                              | Count                               |
-| ----------------------------------- | ----------------------------------- |
-| **P0 Security/Architecture items**  | 5 issues, ~17 tasks                 |
-| **P1 Performance items**            | 7 issues, ~20 tasks                 |
-| **P2 Code Quality items**           | 7 issues, ~35 tasks                 |
-| **P3 UX/Accessibility items**       | 4 issues, ~25 tasks                 |
-| **P4 Storefront feature gaps**      | 7 areas, ~35 tasks                  |
-| **P5 Ecommerce admin stubs**        | 16 stub pages to build              |
-| **P6 Missing report pages**         | 13 report pages to build            |
-| **P7 Planned but unbuilt features** | 20+ feature areas                   |
-|                                     |                                     |
-| **Total ecommerce pages**           | 46 (30 real + 16 stubs)             |
-| **Mock data imports**               | 16 production files                 |
-| **`any` type usages**               | 96+ across 33+ files                |
-| **Test files**                      | 0                                   |
-| **Backend APIs without frontend**   | 13 report + 17 storefront endpoints |
-| **Dynamic imports**                 | 0                                   |
-| **`middleware.ts`**                 | Does not exist                      |
-| **Security headers**                | None configured                     |
+| Metric                               | Count                               |
+| ------------------------------------ | ----------------------------------- |
+| **P0 Security/Architecture items**   | 5 issues (1 resolved), ~12 tasks    |
+| **P1 Performance items**             | 7 issues, ~20 tasks                 |
+| **P2 Code Quality items**            | 7 issues, ~35 tasks                 |
+| **P3 UX/Accessibility items**        | 4 issues, ~25 tasks                 |
+| **P4 Storefront feature gaps**       | 7 areas, ~35 tasks                  |
+| **P5 Ecommerce admin stubs**         | 16 stub pages to build              |
+| **P6 Missing report pages**          | 13 report pages to build            |
+| **P7 Planned but unbuilt features**  | 20+ feature areas                   |
+|                                      |                                     |
+| **Total ecommerce pages**            | 46 (30 real + 16 stubs)             |
+| **Mock data imports**                | 16 production files                 |
+| **`any` type usages**                | 96+ across 33+ files                |
+| **Test files**                       | 0                                   |
+| **Backend APIs without frontend**    | 13 report + 17 storefront endpoints |
+| **Dynamic imports**                  | 0                                   |
+| **`proxy.ts`** (was `middleware.ts`) | Does not exist                      |
+| **Security headers**                 | ✅ Implemented in `next.config.ts`  |
 
 ---
 
 ### Recommended Priority Order
 
-1. **P0** — Security headers, middleware.ts, HTML sanitization, remove mock data from production paths, fix DELETE-via-GET
+1. **P0** — `proxy.ts` (auth guard), tighten CSP, HTML sanitization, remove mock data from production paths, fix DELETE-via-GET
 2. **P1** — Dynamic imports, remove dead deps, request cancellation, enable strict mode
 3. **P2** — Add testing framework + critical tests, fix `any` types, adopt consistent data fetching, form validation
 4. **P3** — Accessibility audit, loading states, error boundaries, POS UX

@@ -17,7 +17,7 @@ const expenseService = {
   pay: (id: number, data?: { payment_method?: string }) =>
     apiClient.post(`/expenses/${id}/pay`, data ?? {}),
 
-  destroy: (id: number) => apiClient.get(`/expenses/delete/${id}`),
+  destroy: (id: number) => apiClient.delete(`/expenses/${id}`),
 };
 
 export default expenseService;

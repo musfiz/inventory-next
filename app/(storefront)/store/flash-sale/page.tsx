@@ -4,7 +4,7 @@ import { useState, useEffect, useMemo } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
 import { Flame, ArrowRight, AlertCircle, Clock, Zap } from 'lucide-react';
-import { formatMoney } from '@/lib/storefront/mock-data';
+import { formatMoney } from '@/lib/utils/format';
 import ProductCard from '@/components/storefront/ProductCard';
 import ProductCardSkeleton from '@/components/storefront/ProductCardSkeleton';
 import ScrollReveal from '@/components/storefront/ScrollReveal';

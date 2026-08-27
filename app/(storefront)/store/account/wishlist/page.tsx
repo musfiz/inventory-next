@@ -3,7 +3,8 @@
 import Link from 'next/link';
 import { Heart, ShoppingBag, ArrowRight, Trash2 } from 'lucide-react';
 import { useWishlistStore } from '@/stores/wishlist-store';
-import { PRODUCTS, formatMoney } from '@/lib/storefront/mock-data';
+import { PRODUCTS } from '@/lib/storefront/mock-data';
+import { formatMoney } from '@/lib/utils/format';
 import ProductCard from '@/components/storefront/ProductCard';
 import ScrollReveal from '@/components/storefront/ScrollReveal';
 import { notify } from '@/lib/notifications';

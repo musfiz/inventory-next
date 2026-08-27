@@ -5,7 +5,8 @@ import Image from 'next/image';
 import { useState, useRef, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { Search, X, TrendingUp, History } from 'lucide-react';
-import { POPULAR_SEARCHES, PRODUCTS, formatMoney } from '@/lib/storefront/mock-data';
+import { POPULAR_SEARCHES, PRODUCTS } from '@/lib/storefront/mock-data';
+import { formatMoney } from '@/lib/utils/format';
 
 export const SearchBar = ({ onClose }: { onClose?: () => void }) => {
   const [query, setQuery] = useState('');

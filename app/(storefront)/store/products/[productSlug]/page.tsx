@@ -22,10 +22,9 @@ import { IoCartSharp } from 'react-icons/io5';
 import ProductMagnifier from '@/components/storefront/ProductMagnifier';
 import {
   REVIEWS,
-  formatMoney,
-  formatMoneyDecimal,
   STORE_INFO,
 } from '@/lib/storefront/mock-data';
+import { formatMoney, formatMoneyDecimal } from '@/lib/utils/format';
 import { useCartStore } from '@/stores/cart-store';
 import { useWishlistStore } from '@/stores/wishlist-store';
 import { useRecentlyViewed } from '@/hooks/use-recently-viewed';
@@ -33,6 +32,7 @@ import { useCartFly } from '@/components/storefront/CartFlyProvider';
 import { useRouter } from 'next/navigation';
 import { notify } from '@/lib/notifications';
 import { imageUrl } from '@/lib/image-url';
+import SafeHTML from '@/components/ui/safe-html';
 import ecommerceSettingsService from '@/services/ecommerceSettingsService';
 import storefrontService from '@/services/storefrontService';
 import type { Product } from '@/types/storefront';
@@ -487,9 +487,10 @@ export default function ProductDetailPage() {
         <div className="prose prose-sm mt-6 max-w-none dark:prose-invert">
           {tab === 'description' && (
             <div>
-              <p className="text-sm leading-relaxed text-gray-700 dark:text-gray-300">
-                {product.description}
-              </p>
+              <SafeHTML
+                html={product.description}
+                className="text-sm leading-relaxed text-gray-700 dark:text-gray-300"
+              />
             </div>
           )}
           {tab === 'specs' && (

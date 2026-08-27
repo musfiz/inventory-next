@@ -24,7 +24,6 @@ import {
   accentDisplayClass,
   accentOverlayStyle,
 } from '@/lib/utils/offer-accent';
-import { PROMO_BANNERS } from '@/lib/storefront/mock-data';
 import { useStorefrontCategories } from '@/hooks/use-storefront-categories';
 
 const resolveImageUrl = (url?: string | null) => {
@@ -431,37 +430,44 @@ const NewArrivals = () => {
 /* ================================================================ */
 /*  Section: Promo Banners — two-column image + CTA cards            */
 /* ================================================================ */
-const PromoBanners = () => (
-  <section className="my-10 grid gap-4 sm:my-12 md:grid-cols-2">
-    {PROMO_BANNERS.map((b, i) => (
-      <ScrollReveal key={b.id} animation="fade-up" staggerIndex={i} staggerGap={150}>
-        <Link
-          href={b.link}
-          className="group relative block h-44 overflow-hidden rounded-2xl sm:h-56"
-        >
-          <Image
-            src={b.image}
-            alt={b.title}
-            fill
-            sizes="(max-width: 768px) 100vw, 50vw"
-            className="object-cover transition-transform duration-700 group-hover:scale-110"
-          />
-          <div className="absolute inset-0 bg-linear-to-r from-black/60 to-transparent" />
-          <div className="absolute inset-0 flex items-center p-6 sm:p-8">
-            <div className="text-white">
-              <h3 className="text-2xl font-black sm:text-3xl">{b.title}</h3>
-              <p className="mt-1 text-sm text-white/90">{b.subtitle}</p>
-              <span className="mt-4 inline-flex items-center gap-1.5 text-sm font-bold underline-offset-4 group-hover:underline">
-                Shop now
-                <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-1" />
-              </span>
+const PromoBanners = ({ slides }: { slides: StorefrontOfferSlide[] }) => {
+  const promos = slides.slice(0, 2);
+  if (promos.length === 0) return null;
+
+  return (
+    <section className="my-10 grid gap-4 sm:my-12 md:grid-cols-2">
+      {promos.map((b, i) => (
+        <ScrollReveal key={b.id} animation="fade-up" staggerIndex={i} staggerGap={150}>
+          <Link
+            href={b.link}
+            className="group relative block h-44 overflow-hidden rounded-2xl sm:h-56"
+          >
+            {b.image_url ? (
+              <Image
+                src={resolveOfferImageUrl(b.image_url)}
+                alt={b.title}
+                fill
+                sizes="(max-width: 768px) 100vw, 50vw"
+                className="object-cover transition-transform duration-700 group-hover:scale-110"
+              />
+            ) : null}
+            <div className="absolute inset-0 bg-linear-to-r from-black/60 to-transparent" />
+            <div className="absolute inset-0 flex items-center p-6 sm:p-8">
+              <div className="text-white">
+                <h3 className="text-2xl font-black sm:text-3xl">{b.title}</h3>
+                <p className="mt-1 text-sm text-white/90">{b.subtitle}</p>
+                <span className="mt-4 inline-flex items-center gap-1.5 text-sm font-bold underline-offset-4 group-hover:underline">
+                  Shop now
+                  <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-1" />
+                </span>
+              </div>
             </div>
-          </div>
-        </Link>
-      </ScrollReveal>
-    ))}
-  </section>
-);
+          </Link>
+        </ScrollReveal>
+      ))}
+    </section>
+  );
+};
 
 /* ================================================================ */
 /*  Section: Top Offers Carousel — horizontal scrolling deal cards   */
@@ -630,8 +636,8 @@ export default function HomePage() {
         {/* Section 6 — Featured Products (dynamic: epv.is_featured, hidden if empty) */}
         <FeaturedProducts />
 
-        {/* Section 8 — Promo Banners */}
-        <PromoBanners />
+        {/* Section 8 — Promo Banners (real offer slide data) */}
+        <PromoBanners slides={offerSlides} />
 
         {/* Section 9 — Best Sellers (dynamic: epv.is_bestseller, hidden if empty) */}
         <BestSellers />

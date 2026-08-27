@@ -1,7 +1,7 @@
 'use client';
 
 import { useCartStore } from '@/stores/cart-store';
-import { formatMoney } from '@/lib/storefront/mock-data';
+import { formatMoney } from '@/lib/utils/format';
 import { GiPaperBagOpen } from 'react-icons/gi';
 
 export default function FloatingCartButton() {

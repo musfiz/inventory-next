@@ -14,7 +14,8 @@ import {
 } from 'lucide-react';
 import { useCustomerAuthStore } from '@/stores/customer-auth-store';
 import { useWishlistStore } from '@/stores/wishlist-store';
-import { SAMPLE_ORDERS, formatMoney, formatMoneyDecimal } from '@/lib/storefront/mock-data';
+import { SAMPLE_ORDERS } from '@/lib/storefront/mock-data';
+import { formatMoney, formatMoneyDecimal } from '@/lib/utils/format';
 import Rating from '@/components/storefront/Rating';
 
 const STATUS_CONFIG: Record<string, { color: string; bg: string; icon: any; label: string }> = {

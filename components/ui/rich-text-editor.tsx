@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useMemo, useRef, useCallback, useState, useEffect } from 'react';
+import { sanitizeHtml } from '@/lib/sanitize';
 import {
   createEditorSystem,
   boldExtension,
@@ -453,7 +454,7 @@ function EditorInner({
       }
 
       const html = commands.exportToHTML();
-      const htmlNormalized = html || '';
+      const htmlNormalized = html ? sanitizeHtml(html) : '';
 
       if (htmlNormalized !== prevHtmlRef.current) {
         // Detect removed images

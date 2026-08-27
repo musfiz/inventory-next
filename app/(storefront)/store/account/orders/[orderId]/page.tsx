@@ -19,7 +19,8 @@ import {
   Mail,
   ExternalLink,
 } from 'lucide-react';
-import { SAMPLE_ORDERS, formatMoney, formatMoneyDecimal } from '@/lib/storefront/mock-data';
+import { SAMPLE_ORDERS } from '@/lib/storefront/mock-data';
+import { formatMoney, formatMoneyDecimal } from '@/lib/utils/format';
 import { imageUrl } from '@/lib/image-url';
 import { useState } from 'react';
 import Rating from '@/components/storefront/Rating';

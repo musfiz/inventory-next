@@ -10,6 +10,7 @@ import FloatingCartButton from '@/components/storefront/FloatingCartButton';
 import { CartFlyProvider } from '@/components/storefront/CartFlyProvider';
 import ScrollToTop from '@/components/storefront/ScrollToTop';
 import MobileBottomNav from '@/components/storefront/MobileBottomNav';
+import FaviconSetter from '@/components/storefront/FaviconSetter';
 export default function StorefrontLayout({
   children,
 }: {
@@ -37,6 +38,7 @@ export default function StorefrontLayout({
 
   return (
     <CartFlyProvider>
+      <FaviconSetter />
       <div className="flex min-h-screen flex-col bg-white text-gray-900 dark:bg-gray-950 dark:text-gray-100">
         <ScrollToTop />
         <StorefrontHeader />

@@ -26,26 +26,6 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   const [searchQuery, setSearchQuery] = useState('');
   const [isRouteLoading, setIsRouteLoading] = useState(false);
   const [switchingBack, setSwitchingBack] = useState(false);
-  const [loadTimeout, setLoadTimeout] = useState(false);
-
-  // Fallback timeout - if loading takes too long, force redirect to login
-  useEffect(() => {
-    if (isLoading) {
-      const timeout = setTimeout(() => {
-        setLoadTimeout(true);
-      }, 5000); // 5 second timeout
-      return () => clearTimeout(timeout);
-    } else {
-      setLoadTimeout(false);
-    }
-  }, [isLoading]);
-
-  // If timeout occurs, redirect to login
-  useEffect(() => {
-    if (loadTimeout && !authUser) {
-      router.push('/login');
-    }
-  }, [loadTimeout, authUser, router]);
 
   // Handle route changes - show loading indicator
   useEffect(() => {
@@ -78,13 +58,13 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
     }
   };
 
-  // Show loading while store is hydrating, authenticating, or redirecting (but not if timeout occurred)
-  if ((!hydrated || isLoading || isRedirecting) && !loadTimeout) {
+  // Show loading while store is hydrating, authenticating, or redirecting
+  if (!hydrated || isLoading || isRedirecting) {
     return <Loading />;
   }
 
   // If no user after loading completes, let the redirect happen
-  if (!authUser && !isLoading && !loadTimeout) {
+  if (!authUser && !isLoading) {
     return <Loading />;
   }
 

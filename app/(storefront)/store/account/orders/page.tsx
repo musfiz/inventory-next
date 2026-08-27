@@ -13,7 +13,8 @@ import {
   Filter,
 } from 'lucide-react';
 import { useState } from 'react';
-import { SAMPLE_ORDERS, formatMoney } from '@/lib/storefront/mock-data';
+import { SAMPLE_ORDERS } from '@/lib/storefront/mock-data';
+import { formatMoney } from '@/lib/utils/format';
 
 const STATUS_CONFIG: Record<string, { color: string; bg: string; icon: any; label: string }> = {
   placed: { color: 'text-blue-700', bg: 'bg-blue-100 dark:bg-blue-900/30 dark:text-blue-300', icon: Clock, label: 'Placed' },

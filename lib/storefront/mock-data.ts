@@ -16,21 +16,7 @@ export const CURRENCY = {
   position: 'left' as const,
 };
 
-export const formatMoney = (amount: number): string => {
-  const formatted = new Intl.NumberFormat('en-IN', {
-    minimumFractionDigits: 0,
-    maximumFractionDigits: 0,
-  }).format(Math.round(amount));
-  return `${CURRENCY.symbol}${formatted}`;
-};
-
-export const formatMoneyDecimal = (amount: number): string => {
-  const formatted = new Intl.NumberFormat('en-IN', {
-    minimumFractionDigits: 2,
-    maximumFractionDigits: 2,
-  }).format(amount);
-  return `${CURRENCY.symbol}${formatted}`;
-};
+export { formatMoney, formatMoneyDecimal } from '@/lib/utils/format';
 
 export const STORE_INFO = {
   name: 'UIMS Store',

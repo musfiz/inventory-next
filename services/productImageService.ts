@@ -78,10 +78,10 @@ class ProductImageService {
 
   /**
    * Delete product image
-   * GET /api/v1/products/images/{imageId}/destroy
+   * DELETE /api/v1/products/images/{imageId}
    */
   async deleteProductImage(imageId: string): Promise<void> {
-    await apiClient.get(`/api/v1/products/images/${imageId}/destroy`);
+    await apiClient.delete(`/api/v1/products/images/${imageId}`);
   }
 
   /**

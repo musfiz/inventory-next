@@ -25,7 +25,7 @@ import type { CategoryTreeItem } from '@/services/storefrontService';
 import { useCartStore } from '@/stores/cart-store';
 import { useWishlistStore } from '@/stores/wishlist-store';
 import { useCustomerAuthStore } from '@/stores/customer-auth-store';
-import { formatMoney } from '@/lib/storefront/mock-data';
+import { formatMoney } from '@/lib/utils/format';
 import { useBranding } from '@/hooks/use-branding';
 import { useHeaderMenu } from '@/hooks/use-header-menu';
 import type { StorefrontNavigationItem } from '@/types/api.types';
