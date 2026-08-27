@@ -17,6 +17,7 @@ import { GiSave } from 'react-icons/gi';
 import { useRouter } from 'next/navigation';
 import { usePermissions } from '@/hooks/use-permissions';
 import { useAuthStore } from '@/stores/auth-store';
+import PageLoader from '@/components/ui/page-loader';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -87,7 +88,7 @@ const summaryInputCls =
 
 export default function AddPurchaseOrderPageWrapper() {
   return (
-    <Suspense fallback={<div className="p-4 text-sm">Loading…</div>}>
+    <Suspense fallback={<PageLoader />}>
       <AddPurchaseOrderPage />
     </Suspense>
   );

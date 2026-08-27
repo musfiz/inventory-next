@@ -7,6 +7,12 @@ class HeaderMenuService {
     return response.data.data;
   }
 
+  /** Public storefront variant (no auth required). */
+  async getStorefront(): Promise<HeaderMenuConfig> {
+    const response = await apiClient.get<ApiResponse<HeaderMenuConfig>>('/api/v1/storefront/header-menu');
+    return response.data.data;
+  }
+
   async update(data: Partial<HeaderMenuConfig>): Promise<HeaderMenuConfig> {
     const response = await apiClient.put<ApiResponse<HeaderMenuConfig>>('/api/v1/header-menu', data);
     return response.data.data;

@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from 'react';
+import Spinner from '@/components/ui/spinner';
 import { Users as UsersIcon, Plus, Edit, Trash2, X, Eye } from 'lucide-react';
 import { GiSave } from 'react-icons/gi';
 import { ColumnDef } from '@tanstack/react-table';
@@ -574,7 +575,7 @@ export default function CustomersPage() {
             <div className="p-5 space-y-4 max-h-[75vh] overflow-y-auto">
               {statementLoading ? (
                 <div className="py-12 flex items-center justify-center">
-                  <div className="animate-spin w-8 h-8 border-2 border-blue-500 border-t-transparent rounded-full" />
+                  <Spinner size="md" />
                 </div>
               ) : (
                 <>

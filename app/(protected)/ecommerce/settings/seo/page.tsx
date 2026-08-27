@@ -5,6 +5,7 @@ import { Search, Save } from 'lucide-react';
 import { GiSave } from 'react-icons/gi';
 import { notify } from '@/lib/notifications';
 import ecommerceSettingsService from '@/services/ecommerceSettingsService';
+import Spinner from '@/components/ui/spinner';
 import type { EcommerceSettings } from '@/types/ecommerce';
 
 export default function SeoPage() {
@@ -29,7 +30,7 @@ export default function SeoPage() {
     } catch { notify.error('Failed to save'); }
   };
 
-  if (loading) return <div className="flex items-center justify-center h-64"><div className="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-600" /></div>;
+  if (loading) return <div className="flex items-center justify-center h-64"><Spinner size="md" /></div>;
 
   return (
     <div className="space-y-2">

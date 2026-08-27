@@ -9,6 +9,7 @@ import { GiSave } from 'react-icons/gi';
 import { usePermissions } from '@/hooks/use-permissions';
 import BusinessTypeSelect from '@/components/ui/business-type-select';
 import CustomDatePicker from '@/components/ui/date-picker';
+import Spinner from '@/components/ui/spinner';
 import { SUBSCRIPTION_PLANS, SUBSCRIPTION_STATUSES } from '@/lib/constants';
 
 interface TenantFormData {
@@ -221,7 +222,7 @@ export default function TenantForm({ editRef }: { editRef?: string }) {
     return (
       <div className="flex items-center justify-center h-40">
         <div className="text-center">
-          <div className="w-10 h-10 border-4 border-indigo-600 border-t-transparent rounded-full animate-spin mx-auto mb-3" />
+          <Spinner size="md" className="mb-3" />
           <p className="text-sm text-gray-600 dark:text-gray-400">Loading...</p>
         </div>
       </div>

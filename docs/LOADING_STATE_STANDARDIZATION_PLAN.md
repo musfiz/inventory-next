@@ -219,12 +219,12 @@ The request counter should drive the top progress bar only. Individual pages sho
 
 ### Phase 4: Existing fallback cleanup
 
-- [ ] Replace the markup in `app/loading.tsx` with `PageLoader`.
-- [ ] Remove the fake timer-based progress bar from `app/(protected)/layout.tsx`.
-- [ ] Keep auth-guard loading behavior while `hydrated`, auth, or redirect state is unresolved.
-- [ ] Reuse `PageLoader` for the protected layout's Suspense fallback.
-- [ ] Standardize the raw `Loading...` and `Loading…` Suspense fallbacks.
-- [ ] Replace the ecommerce redirect spinner with the shared loader.
+- [x] Replace the markup in `app/loading.tsx` with `PageLoader`.
+- [x] Remove the fake timer-based progress bar from `app/(protected)/layout.tsx`.
+- [x] Keep auth-guard loading behavior while `hydrated`, auth, or redirect state is unresolved.
+- [x] Reuse `PageLoader` for the protected layout's Suspense fallback.
+- [x] Standardize the raw `Loading...` and `Loading…` Suspense fallbacks.
+- [x] Replace the ecommerce redirect spinner with the shared loader.
 
 ### Phase 5: Route-level loading coverage
 

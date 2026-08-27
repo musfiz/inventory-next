@@ -10,6 +10,7 @@ import CustomSelect from '@/components/ui/custom-select';
 import { commonService, posRegisterService } from '@/services';
 import posService from '@/services/posService';
 import { notify } from '@/lib/notifications';
+import Spinner from '@/components/ui/spinner';
 import type { PosOrderDetail } from '@/types/api.types';
 import { PosOrderPrintMenu } from '@/components/print';
 
@@ -441,7 +442,7 @@ export default function PosOrdersPage() {
             <div className="overflow-y-auto flex-1 px-5 py-3 space-y-3">
               {detailLoading || !detailOrder ? (
                 <div className="flex items-center justify-center py-12">
-                  <div className="animate-spin w-10 h-10 border-4 border-blue-500 border-t-transparent rounded-full" />
+                  <Spinner size="md" />
                 </div>
               ) : (
                 <>

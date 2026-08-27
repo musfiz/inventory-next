@@ -38,14 +38,17 @@ export const useHeaderMenuStore = create<HeaderMenuStore>()((set, get) => ({
   _fetchPromise: null,
 
   fetch: async () => {
-    const { _fetchPromise } = get();
+    const { ready, config, _fetchPromise } = get();
+    // Already loaded successfully — reuse the cached config instead of refetching
+    // on every dropdown open or navigation.
+    if (ready && config !== DEFAULT_CONFIG) return;
     if (_fetchPromise) return _fetchPromise;
 
     set({ loading: true });
 
     const promise = (async () => {
       try {
-        const config = await headerMenuService.get();
+        const config = await headerMenuService.getStorefront();
         set({
           config,
           loading: false,

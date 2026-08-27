@@ -1,4 +1,5 @@
 import Axios from 'axios';
+import { useLoadingStore } from '@/stores/loading-store';
 
 const axios = Axios.create({
   // Calls are same-origin; next.config.ts rewrites /api and /sanctum to the backend.
@@ -12,12 +13,22 @@ const axios = Axios.create({
   withXSRFToken: true,
 });
 
+// Track global request activity for the top progress bar (client only).
+const trackStart = () => {
+  if (typeof window !== 'undefined') useLoadingStore.getState().start();
+};
+const trackStop = () => {
+  if (typeof window !== 'undefined') useLoadingStore.getState().stop();
+};
+
 // Flag to track if CSRF cookie has been fetched
 let csrfCookieFetched = false;
 
 // Request interceptor to fetch CSRF cookie before POST requests
 axios.interceptors.request.use(
   async config => {
+    trackStart();
+
     // Only fetch CSRF cookie for POST, PUT, PATCH, DELETE requests
     const methodsRequiringCsrf = ['post', 'put', 'patch', 'delete'];
     const method = config.method?.toLowerCase();
@@ -37,14 +48,23 @@ axios.interceptors.request.use(
     return config;
   },
   error => {
+    // Balance a start() that already happened for this request.
+    trackStop();
     return Promise.reject(error);
   }
 );
 
 // Response interceptor to handle 419 CSRF token mismatch and 403 permission errors
 axios.interceptors.response.use(
-  response => response,
+  response => {
+    trackStop();
+    return response;
+  },
   async error => {
+    // Stop tracking for the failed request. The 419 retry below re-enters the
+    // request interceptor and calls trackStart() again, so counting stays balanced.
+    trackStop();
+
     const originalRequest = error.config;
 
     // If we get a 419 error (CSRF token mismatch), refetch the cookie and retry

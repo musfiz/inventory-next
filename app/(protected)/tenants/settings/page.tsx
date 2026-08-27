@@ -3,6 +3,7 @@
 import { Suspense } from 'react';
 import { useSearchParams } from 'next/navigation';
 import TenantSettingsForm from '@/app/(protected)/tenants/_components/TenantSettingsForm';
+import PageLoader from '@/components/ui/page-loader';
 
 function TenantSettingsContent() {
   const searchParams = useSearchParams();
@@ -12,7 +13,7 @@ function TenantSettingsContent() {
 
 export default function TenantSettingsPage() {
   return (
-    <Suspense fallback={<div className="flex items-center justify-center h-40 text-sm text-gray-500">Loading…</div>}>
+    <Suspense fallback={<PageLoader />}>
       <TenantSettingsContent />
     </Suspense>
   );

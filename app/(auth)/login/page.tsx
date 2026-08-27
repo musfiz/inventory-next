@@ -4,6 +4,7 @@ import { useState, Suspense } from 'react';
 import { Mail, Lock, Eye, EyeOff, Loader2 } from 'lucide-react';
 import Link from 'next/link';
 import { useAuth } from '@/hooks/use-auth';
+import PageLoader from '@/components/ui/page-loader';
 
 interface ValidationErrors {
   email?: string[];
@@ -222,7 +223,7 @@ function LoginForm() {
 
 export default function LoginPage() {
   return (
-    <Suspense fallback={<div>Loading...</div>}>
+    <Suspense fallback={<PageLoader />}>
       <LoginForm />
     </Suspense>
   );

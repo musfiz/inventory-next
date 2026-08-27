@@ -3,6 +3,7 @@
 import Link from 'next/link';
 import { useState, useEffect } from 'react';
 import { useBranding } from '@/hooks/use-branding';
+import { useStorefrontCategories } from '@/hooks/use-storefront-categories';
 import ScrollReveal from '@/components/storefront/ScrollReveal';
 import footerService from '@/services/footerService';
 import storefrontService from '@/services/storefrontService';
@@ -156,30 +157,32 @@ export default function StorefrontFooter() {
   const [config, setConfig] = useState<FooterConfig | null>(null);
   const [storeStats, setStoreStats] = useState<{ productCount: number; categoryCount: number } | null>(null);
 
+  // Category data is shared via the storefront categories store (fetched once),
+  // so we reuse it here instead of firing a second /storefront/categories call.
+  const { categories, ready: catsReady } = useStorefrontCategories();
+
   useEffect(() => {
     footerService.get().then(setConfig).catch(() => setConfig(FALLBACK_CONFIG));
   }, []);
 
-  // Dynamic dashboard/storefront data — live product & category counts (from dashboard-managed catalog)
+  // Live product & category counts (from dashboard-managed catalog).
+  const [productCount, setProductCount] = useState(0);
   useEffect(() => {
     let cancelled = false;
-    (async () => {
-      try {
-        const [cats, productsRes] = await Promise.all([
-          storefrontService.getCategories().catch(() => [] as any),
-          storefrontService.getProducts({ per_page: 1 }).catch(() => ({ meta: { total: 0 } } as any)),
-        ]);
-        const categoryCount = Array.isArray(cats) ? cats.length : 0;
-        const productCount = productsRes?.meta?.total ?? 0;
-        if (!cancelled && (productCount > 0 || categoryCount > 0)) {
-          setStoreStats({ productCount, categoryCount });
-        }
-      } catch {
-        // keep null — hides stats strip
-      }
-    })();
+    storefrontService
+      .getProducts({ per_page: 1 })
+      .then((res) => { if (!cancelled) setProductCount(res?.meta?.total ?? 0); })
+      .catch(() => {});
     return () => { cancelled = true; };
   }, []);
+
+  useEffect(() => {
+    if (!catsReady) return;
+    const categoryCount = categories.length;
+    if (productCount > 0 || categoryCount > 0) {
+      setStoreStats({ productCount, categoryCount });
+    }
+  }, [catsReady, categories, productCount]);
 
   if (!config) return null;
 

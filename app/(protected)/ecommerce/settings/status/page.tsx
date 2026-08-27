@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import { Power, PowerOff, ExternalLink, Building2, Clock } from 'lucide-react';
 import { notify } from '@/lib/notifications';
 import ecommerceSettingsService from '@/services/ecommerceSettingsService';
+import Spinner from '@/components/ui/spinner';
 import type { EcommerceSettings } from '@/types/ecommerce';
 import { formatDate } from '@/lib/utils/date';
 import Link from 'next/link';
@@ -30,7 +31,7 @@ export default function StatusActivationPage() {
     } catch { notify.error('Failed to toggle storefront'); }
   };
 
-  if (loading) return <div className="flex items-center justify-center h-64"><div className="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-600" /></div>;
+  if (loading) return <div className="flex items-center justify-center h-64"><Spinner size="md" /></div>;
 
   return (
     <div className="space-y-2">

@@ -10,6 +10,7 @@ import salesOrderService from '@/services/salesOrderService';
 import { useRouter } from 'next/navigation';
 import { usePermissions } from '@/hooks/use-permissions';
 import { SalesOrderPrintMenu } from '@/components/print';
+import Spinner from '@/components/ui/spinner';
 
 export default function SalesOrdersPage() {
   const router = useRouter();
@@ -473,7 +474,7 @@ export default function SalesOrdersPage() {
             <div className="overflow-y-auto flex-1 px-5 py-3 space-y-3">
               {detailLoading ? (
                 <div className="flex items-center justify-center py-12">
-                  <div className="animate-spin w-10 h-10 border-4 border-blue-500 border-t-transparent rounded-full" />
+                  <Spinner size="md" />
                 </div>
               ) : (
                 <>

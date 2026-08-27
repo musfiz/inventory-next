@@ -19,7 +19,10 @@ export const useStorefrontCategoriesStore = create<StorefrontCategoriesStore>()(
   _fetchPromise: null,
 
   fetch: async () => {
-    const { _fetchPromise } = get();
+    const { ready, categories, _fetchPromise } = get();
+    // Already loaded successfully — reuse the cached categories instead of
+    // refetching on every dropdown open or navigation.
+    if (ready && categories.length > 0) return;
     if (_fetchPromise) return _fetchPromise;
 
     set({ loading: true });

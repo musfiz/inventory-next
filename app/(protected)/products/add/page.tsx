@@ -12,6 +12,7 @@ import commonService from '@/services/commonService';
 import { useAuthStore } from '@/stores/auth-store';
 import { usePermissions } from '@/hooks/use-permissions';
 import { GiSave } from 'react-icons/gi';
+import PageLoader from '@/components/ui/page-loader';
 
 interface ProductFormData {
   name: string;
@@ -37,7 +38,7 @@ interface ProductFormData {
 
 export default function AddProductPageWrapper() {
   return (
-    <Suspense fallback={<div className="p-4 text-sm">Loading…</div>}>
+    <Suspense fallback={<PageLoader />}>
       <ProductFormPage />
     </Suspense>
   );

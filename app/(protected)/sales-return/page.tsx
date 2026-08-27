@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import Spinner from '@/components/ui/spinner';
 import { Plus, X, CheckCircle, Check, Ban, AlertTriangle, Undo2, FileText, Receipt, ListChecks, Info, Eye } from 'lucide-react';
 import { GiSave } from 'react-icons/gi';
 import { ColumnDef } from '@tanstack/react-table';
@@ -1027,7 +1028,7 @@ export default function SalesReturnsPage() {
             <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
               <div className="bg-white dark:bg-gray-800 rounded-xl shadow-2xl w-full max-w-md p-6">
                 <div className="flex items-center gap-3 text-gray-700 dark:text-gray-200">
-                  <div className="animate-spin w-5 h-5 border-2 border-emerald-500 border-t-transparent rounded-full" />
+                  <Spinner size="sm" />
                   <span className="text-sm font-medium">Loading settlement details...</span>
                 </div>
               </div>

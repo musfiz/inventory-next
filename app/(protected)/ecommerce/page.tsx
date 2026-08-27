@@ -2,13 +2,10 @@
 
 import { useEffect } from 'react';
 import { useRouter } from 'next/navigation';
+import PageLoader from '@/components/ui/page-loader';
 
 export default function EcommerceRootPage() {
   const router = useRouter();
   useEffect(() => { router.replace('/ecommerce/settings/status'); }, [router]);
-  return (
-    <div className="flex items-center justify-center h-64">
-      <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-600" />
-    </div>
-  );
+  return <PageLoader />;
 }

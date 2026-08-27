@@ -3,6 +3,7 @@
 import { Suspense } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { ProductFormPage } from '@/app/(protected)/products/add/page';
+import PageLoader from '@/components/ui/page-loader';
 
 function EditProductContent() {
   const searchParams = useSearchParams();
@@ -12,7 +13,7 @@ function EditProductContent() {
 
 export default function EditProductPage() {
   return (
-    <Suspense fallback={<div className="p-4 text-sm">Loading…</div>}>
+    <Suspense fallback={<PageLoader />}>
       <EditProductContent />
     </Suspense>
   );

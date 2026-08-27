@@ -12,6 +12,7 @@ import {
   Home as HomeIcon,
   UserPlus,
 } from 'lucide-react';
+import PageLoader from '@/components/ui/page-loader';
 
 function SuccessContent() {
   const params = useSearchParams();
@@ -118,7 +119,7 @@ function SuccessContent() {
 
 export default function CheckoutSuccessPage() {
   return (
-    <Suspense fallback={<div className="px-4 py-20 text-center text-sm text-gray-500">Loading…</div>}>
+    <Suspense fallback={<PageLoader />}>
       <SuccessContent />
     </Suspense>
   );
