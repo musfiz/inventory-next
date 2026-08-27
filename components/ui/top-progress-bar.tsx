@@ -32,9 +32,14 @@ export default function TopProgressBar() {
   const prevPath = useRef(pathname);
 
   const visibleRef = useRef(false);
-  visibleRef.current = visible;
   const activeRef = useRef(activeRequests);
-  activeRef.current = activeRequests;
+
+  // Keep refs in sync after each render so timers can read the latest values.
+  useEffect(() => {
+    visibleRef.current = visible;
+    activeRef.current = activeRequests;
+    // Intentionally runs after every render to mirror latest state into refs.
+  });
 
   const startTrickle = () => {
     if (trickleRef.current) return;
@@ -81,8 +86,11 @@ export default function TopProgressBar() {
 
   // API request activity
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     if (activeRequests > 0) activate();
     else finish();
+    // activate/finish are recreated each render and intentionally excluded.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeRequests]);
 
   // Client-side route transitions
@@ -92,6 +100,8 @@ export default function TopProgressBar() {
     activate();
     if (navRef.current) clearTimeout(navRef.current);
     navRef.current = setTimeout(finish, NAV_WINDOW);
+    // activate/finish are recreated each render and intentionally excluded.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [pathname]);
 
   // Cleanup timers on unmount
