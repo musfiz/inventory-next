@@ -128,7 +128,7 @@ function RateManagerModal({
               <button
                 onClick={() => handleDeleteRate(rate.id)}
                 className="p-1 text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 rounded cursor-pointer"
-              >
+               aria-label="Delete" title="Delete">
                 <Trash2 className="w-3 h-3" />
               </button>
             </div>
@@ -405,14 +405,14 @@ export default function ShippingZonesPage() {
             onClick={() => handleEdit(row.original)}
             className="p-1 text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded cursor-pointer"
             title="Edit"
-          >
+           aria-label="Edit">
             <Edit className="w-3.5 h-3.5" />
           </button>
           <button
             onClick={() => handleDelete(row.original)}
             className="p-1 text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 rounded cursor-pointer"
             title="Delete"
-          >
+           aria-label="Delete">
             <Trash2 className="w-3.5 h-3.5" />
           </button>
         </div>

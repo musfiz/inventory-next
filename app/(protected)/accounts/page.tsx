@@ -349,7 +349,7 @@ export default function AccountsPage() {
                                   disabled={account.is_system}
                                   className="inline-flex h-8 w-8 items-center justify-center rounded-md border border-transparent text-gray-400 transition hover:border-blue-200 hover:bg-blue-50 hover:text-blue-600 disabled:cursor-not-allowed disabled:opacity-30 dark:hover:border-blue-900 dark:hover:bg-blue-950/40"
                                   title="Edit"
-                                >
+                                 aria-label="Edit">
                                   <Pencil size={14} />
                                 </button>
                               )}
@@ -359,7 +359,7 @@ export default function AccountsPage() {
                                   disabled={account.is_system}
                                   className="inline-flex h-8 w-8 items-center justify-center rounded-md border border-transparent text-gray-400 transition hover:border-red-200 hover:bg-red-50 hover:text-red-600 disabled:cursor-not-allowed disabled:opacity-30 dark:hover:border-red-900 dark:hover:bg-red-950/40"
                                   title="Delete"
-                                >
+                                 aria-label="Delete">
                                   <Trash2 size={14} />
                                 </button>
                               )}

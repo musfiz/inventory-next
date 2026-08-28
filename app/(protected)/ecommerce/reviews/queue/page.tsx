@@ -36,8 +36,8 @@ export default function ReviewQueuePage() {
     { accessorKey:'created_at', header:'Date', meta:{width:'10%'}, cell:({row})=><span className="text-xs">{row.original.created_at?formatDate(row.original.created_at):'N/A'}</span> },
     { id:'actions', header:'Actions', meta:{width:'16%'}, cell:({row})=><div className="flex gap-1">
       {!row.original.is_approved?<button className="p-1 text-green-600 hover:bg-green-50 dark:hover:bg-green-900/20 rounded cursor-pointer" title="Approve" onClick={()=>handleApprove(row.original)}><Check className="w-3.5 h-3.5"/></button>:<button className="p-1 text-yellow-600 hover:bg-yellow-50 dark:hover:bg-yellow-900/20 rounded cursor-pointer" title="Reject" onClick={()=>handleReject(row.original)}><X className="w-3.5 h-3.5"/></button>}
-      <button className="p-1 text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded cursor-pointer" title="Respond" onClick={()=>handleRespond(row.original)}><Edit className="w-3.5 h-3.5"/></button>
-      <button className="p-1 text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 rounded cursor-pointer" title="Delete" onClick={()=>handleDelete(row.original)}><Trash2 className="w-3.5 h-3.5"/></button>
+      <button className="p-1 text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded cursor-pointer" title="Respond" onClick={()=>handleRespond(row.original)} aria-label="Respond"><Edit className="w-3.5 h-3.5"/></button>
+      <button className="p-1 text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 rounded cursor-pointer" title="Delete" onClick={()=>handleDelete(row.original)} aria-label="Delete"><Trash2 className="w-3.5 h-3.5"/></button>
     </div> },
   ];
 

@@ -60,6 +60,13 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
 
   return (
     <div>
+      <a
+        href="#main-content"
+        className="sr-only focus:not-sr-only focus:absolute focus:left-4 focus:top-4 focus:z-50 focus:rounded-md focus:bg-indigo-600 focus:px-4 focus:py-2 focus:text-sm focus:font-medium focus:text-white focus:shadow-lg focus:outline-none focus:ring-2 focus:ring-indigo-400"
+      >
+        Skip to content
+      </a>
+
       {/* Superadmin Debug Alert - Fixed at top */}
       {isSwitchedUser && originalSuperAdmin && (
         <div className="fixed top-0 left-0 right-0 bg-orange-600 text-white px-4 py-0 shadow-lg z-50 border-b border-orange-700">
@@ -119,7 +126,11 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
           />
 
           {/* Page Content - Scrollable */}
-          <main className="flex-1 overflow-y-auto py-2 px-2 sm:px-4 lg:px-4">
+          <main
+            id="main-content"
+            tabIndex={-1}
+            className="flex-1 overflow-y-auto py-2 px-2 sm:px-4 lg:px-4 focus:outline-none"
+          >
             <Suspense fallback={<PageLoader />}>{children}</Suspense>
           </main>
         </div>

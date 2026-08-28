@@ -148,7 +148,7 @@ export default function TenantsPage() {
             className="p-1 text-indigo-600 hover:text-indigo-900 dark:text-indigo-400 dark:hover:text-indigo-300 hover:bg-indigo-50 dark:hover:bg-indigo-900/20 rounded"
             title="View Details"
             onClick={() => openDetails(row.original.id)}
-          >
+           aria-label="View Details">
             <Eye className="w-3.5 h-3.5" />
           </button>
           {hasPermission('update-tenants') && (
@@ -156,7 +156,7 @@ export default function TenantsPage() {
               className="p-1 text-blue-600 hover:text-blue-900 dark:text-blue-400 dark:hover:text-blue-300 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded"
               title="Edit"
               onClick={() => router.push(`/tenants/edit?id=${row.original.id}`)}
-            >
+             aria-label="Edit">
               <Edit className="w-3.5 h-3.5" />
             </button>
           )}
@@ -174,7 +174,7 @@ export default function TenantsPage() {
               className="p-1 text-red-600 hover:text-red-900 dark:text-red-400 dark:hover:text-red-300 hover:bg-red-50 dark:bg-red-900/20 rounded"
               title="Delete"
               onClick={() => console.log('Delete', row.original.id)}
-            >
+             aria-label="Delete">
               <Trash2 className="w-3.5 h-3.5" />
             </button>
           )}

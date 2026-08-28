@@ -302,14 +302,14 @@ export default function CategoriesPage() {
             onClick={() => handleEditCategory(row.original)}
             className="p-1 text-green-600 hover:text-green-800 dark:text-green-400 dark:hover:text-green-300"
             title="Edit"
-          >
+           aria-label="Edit">
             <Edit className="w-4 h-4" />
           </button>
           <button
             onClick={() => handleDelete(row.original)}
             className="p-1 text-red-600 hover:text-red-800 dark:text-red-400 dark:hover:text-red-300"
             title="Delete"
-          >
+           aria-label="Delete">
             <Trash2 className="w-4 h-4" />
           </button>
         </div>

@@ -119,7 +119,7 @@ export function createProductImageColumns(
           className="p-1 text-red-600 hover:text-red-800 dark:text-red-400 dark:hover:text-red-300 cursor-pointer"
           title="Delete"
           type="button"
-        >
+         aria-label="Delete">
           <Trash2 className="w-4 h-4" />
         </button>
       ) : (

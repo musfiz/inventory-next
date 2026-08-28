@@ -408,7 +408,7 @@ function MegaMenuItemCard({
         <button
           onClick={() => onRemove(item.id)}
           className="cursor-pointer rounded-lg p-1.5 text-gray-400 transition-colors hover:bg-red-50 hover:text-red-500 dark:hover:bg-red-950/30"
-        >
+         aria-label="Delete" title="Delete">
           <Trash2 className="h-4 w-4" />
         </button>
       </div>

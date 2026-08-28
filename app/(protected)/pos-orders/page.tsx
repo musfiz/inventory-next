@@ -272,7 +272,7 @@ export default function PosOrdersPage() {
             title="View Details"
             onClick={() => openDetails(row.original.uuid)}
             className="p-1 text-blue-600 hover:text-blue-800 cursor-pointer"
-          >
+           aria-label="View Details">
             <Eye className="w-4 h-4" />
           </button>
           <PosOrderPrintMenu order={row.original} />

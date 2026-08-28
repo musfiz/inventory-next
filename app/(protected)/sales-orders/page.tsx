@@ -372,7 +372,7 @@ export default function SalesOrdersPage() {
               title="Details"
               onClick={() => loadItems(row.original.uuid)}
               className="p-1 text-blue-600 hover:text-blue-800 cursor-pointer"
-            >
+             aria-label="Details">
               <Eye className="w-4 h-4" />
             </button>
             {hasPermission('print-sales-orders') && (
@@ -383,7 +383,7 @@ export default function SalesOrdersPage() {
                 title="Edit"
                 onClick={() => handleEdit(row.original)}
                 className="p-1 text-green-600 hover:text-green-800 cursor-pointer"
-              >
+               aria-label="Edit">
                 <Edit className="w-4 h-4" />
               </button>
             )}
@@ -392,7 +392,7 @@ export default function SalesOrdersPage() {
                 title="Delete"
                 onClick={() => handleDelete(row.original)}
                 className="p-1 text-red-600 hover:text-red-800 cursor-pointer"
-              >
+               aria-label="Delete">
                 <Trash2 className="w-4 h-4" />
               </button>
             )}

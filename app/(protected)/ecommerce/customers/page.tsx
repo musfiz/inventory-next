@@ -434,7 +434,7 @@ export default function EcommerceCustomersPage() {
           onClick={() => handleView(row.original)}
           className="p-1 text-indigo-600 hover:bg-indigo-50 dark:hover:bg-indigo-900/20 rounded cursor-pointer"
           title="View details"
-        >
+         aria-label="View details">
           <Eye className="w-3.5 h-3.5" />
         </button>
       ),

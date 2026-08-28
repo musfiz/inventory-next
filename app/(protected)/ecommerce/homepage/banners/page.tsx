@@ -533,10 +533,10 @@ export default function BannersPage() {
                     </button>
                   </div>
                   <div className="flex items-center gap-1">
-                    <button onClick={() => openEditForm(offer)} className="p-1.5 rounded text-indigo-600 hover:bg-indigo-50 dark:hover:bg-indigo-900/20 transition-colors cursor-pointer" title="Edit">
+                    <button onClick={() => openEditForm(offer)} className="p-1.5 rounded text-indigo-600 hover:bg-indigo-50 dark:hover:bg-indigo-900/20 transition-colors cursor-pointer" title="Edit" aria-label="Edit">
                       <Pencil className="w-3.5 h-3.5" />
                     </button>
-                    <button onClick={() => handleDelete(offer)} disabled={deletingId === offer.id} className="p-1.5 rounded text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer" title="Delete">
+                    <button onClick={() => handleDelete(offer)} disabled={deletingId === offer.id} className="p-1.5 rounded text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer" title="Delete" aria-label="Delete">
                       {deletingId === offer.id ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Trash2 className="w-3.5 h-3.5" />}
                     </button>
                   </div>

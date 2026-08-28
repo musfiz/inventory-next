@@ -282,14 +282,14 @@ export default function BrandsPage() {
             className="p-1 text-blue-600 hover:text-blue-900 dark:text-blue-400 dark:hover:text-blue-300 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded cursor-pointer"
             title="Edit"
             onClick={() => handleEditBrand(row.original)}
-          >
+           aria-label="Edit">
             <Edit className="w-3.5 h-3.5" />
           </button>
           <button
             className="p-1 text-red-600 hover:text-red-900 dark:text-red-400 dark:hover:text-red-300 hover:bg-red-50 dark:hover:bg-red-900/20 rounded cursor-pointer"
             title="Delete"
             onClick={() => handleDeleteBrand(row.original)}
-          >
+           aria-label="Delete">
             <Trash2 className="w-3.5 h-3.5" />
           </button>
         </div>

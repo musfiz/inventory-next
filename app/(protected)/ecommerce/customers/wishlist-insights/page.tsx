@@ -383,7 +383,7 @@ export default function WishlistInsightsPage() {
       header: '',
       meta: { width: '4%' },
       cell: () => (
-        <button className="p-1 text-indigo-600 hover:bg-indigo-50 dark:hover:bg-indigo-900/20 rounded cursor-pointer" title="View product">
+        <button className="p-1 text-indigo-600 hover:bg-indigo-50 dark:hover:bg-indigo-900/20 rounded cursor-pointer" title="View product" aria-label="View product">
           <Eye className="w-3.5 h-3.5" />
         </button>
       ),

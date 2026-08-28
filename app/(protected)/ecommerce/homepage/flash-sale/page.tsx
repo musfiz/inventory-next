@@ -1049,7 +1049,7 @@ export default function HomepageFlashSalePage() {
                             disabled={savingProducts}
                             title="Remove"
                             className="p-1 text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 rounded cursor-pointer disabled:opacity-50 shrink-0"
-                          >
+                           aria-label="Remove">
                             <Trash2 className="w-3.5 h-3.5" />
                           </button>
                         </li>
@@ -1393,7 +1393,7 @@ function CampaignCard({
             onClick={onDelete}
             title="Delete"
             className="flex items-center justify-center p-1.5 text-red-600 hover:bg-red-50 dark:text-red-400 dark:hover:bg-red-900/20 rounded-sm transition-colors cursor-pointer"
-          >
+           aria-label="Delete">
             <Trash2 className="w-3.5 h-3.5" />
           </button>
         </div>

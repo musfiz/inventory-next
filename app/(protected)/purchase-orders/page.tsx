@@ -260,7 +260,7 @@ export default function PurchaseOrdersPage() {
               title="Details"
               onClick={() => loadItems(row.original.id)}
               className="p-1 text-blue-600 hover:text-blue-800 cursor-pointer"
-            >
+             aria-label="Details">
               <Eye className="w-4 h-4" />
             </button>
             {canReceive && hasPermission('receive-purchase-orders') && (
@@ -277,7 +277,7 @@ export default function PurchaseOrdersPage() {
                 title="Print"
                 onClick={() => handlePrint(row.original.id, 'invoice')}
                 className="p-1 text-gray-600 hover:text-gray-800 cursor-pointer"
-              >
+               aria-label="Print">
                 <Printer className="w-4 h-4" />
               </button>
             )}
@@ -286,7 +286,7 @@ export default function PurchaseOrdersPage() {
                 title="POS Print"
                 onClick={() => handlePrint(row.original.id, 'pos')}
                 className="p-1 text-amber-600 hover:text-amber-800 cursor-pointer"
-              >
+               aria-label="POS Print">
                 <ReceiptText className="w-4 h-4" />
               </button>
             )}
@@ -295,7 +295,7 @@ export default function PurchaseOrdersPage() {
                 title="Edit"
                 onClick={() => handleEdit(row.original)}
                 className="p-1 text-green-600 hover:text-green-800 cursor-pointer"
-              >
+               aria-label="Edit">
                 <Edit className="w-4 h-4" />
               </button>
             )}
@@ -304,7 +304,7 @@ export default function PurchaseOrdersPage() {
                 title="Delete"
                 onClick={() => handleDelete(row.original)}
                 className="p-1 text-red-600 hover:text-red-800 cursor-pointer"
-              >
+               aria-label="Delete">
                 <Trash2 className="w-4 h-4" />
               </button>
             )}

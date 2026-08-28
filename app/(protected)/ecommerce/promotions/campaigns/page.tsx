@@ -475,7 +475,7 @@ export default function CampaignsPage() {
             className="p-1 text-red-600 hover:text-red-900 dark:text-red-400 dark:hover:text-red-300 hover:bg-red-50 dark:hover:bg-red-900/20 rounded cursor-pointer"
             title="Delete"
             onClick={() => handleDelete(row.original)}
-          >
+           aria-label="Delete">
             <Trash2 className="w-3.5 h-3.5" />
           </button>
         </div>

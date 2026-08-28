@@ -341,10 +341,10 @@ export default function PosRegisterPage() {
       id: 'actions', header: 'Actions', cell: ({ row }) => (
         <div className="flex items-center gap-2">
           {hasPermission('update-pos-register') && (
-            <button onClick={() => handleEdit(row.original)} className="p-1 text-green-600 hover:text-green-700"><Edit className="w-4 h-4" /></button>
+            <button onClick={() => handleEdit(row.original)} className="p-1 text-green-600 hover:text-green-700" aria-label="Edit" title="Edit"><Edit className="w-4 h-4" /></button>
           )}
           {hasPermission('delete-pos-register') && (
-            <button onClick={() => handleDelete(row.original)} className="p-1 text-red-600 hover:text-red-700"><Trash2 className="w-4 h-4" /></button>
+            <button onClick={() => handleDelete(row.original)} className="p-1 text-red-600 hover:text-red-700" aria-label="Delete" title="Delete"><Trash2 className="w-4 h-4" /></button>
           )}
         </div>
       )

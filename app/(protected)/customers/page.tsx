@@ -356,21 +356,21 @@ export default function CustomersPage() {
           onClick={() => openStatement(row.original)}
           className="p-1 text-blue-600 hover:text-blue-800 cursor-pointer"
           title="Statement"
-        >
+         aria-label="Statement">
           <Eye className="w-4 h-4" />
         </button>
         <button
           onClick={() => handleEditCustomer(row.original)}
           className="p-1 text-green-600 hover:text-green-800 cursor-pointer"
           title="Edit"
-        >
+         aria-label="Edit">
           <Edit className="w-4 h-4" />
         </button>
         <button
           onClick={() => handleDelete(row.original)}
           className="p-1 text-red-600 hover:text-red-800 cursor-pointer"
           title="Delete"
-        >
+         aria-label="Delete">
           <Trash2 className="w-4 h-4" />
         </button>
       </div>

@@ -790,7 +790,7 @@ export default function StorefrontNavigationPage() {
                     }}
                     className={`p-1 rounded cursor-pointer ${item.is_active ? 'text-green-600 hover:text-green-700' : 'text-gray-400 hover:text-gray-600'}`}
                     title={item.is_active ? 'Active' : 'Inactive'}
-                  >
+                   aria-label={item.is_active ? 'Active' : 'Inactive'}>
                     {item.is_active ? <Eye className="w-3.5 h-3.5" /> : <EyeOff className="w-3.5 h-3.5" />}
                   </button>
                   <button

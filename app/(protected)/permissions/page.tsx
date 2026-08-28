@@ -162,7 +162,7 @@ export default function PermissionsPage() {
             className="p-1 text-blue-600 hover:text-blue-900 dark:text-blue-400 dark:hover:text-blue-300 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded cursor-pointer"
             title="Edit"
             onClick={() => handleEditPermission(row.original)}
-          >
+           aria-label="Edit">
             <Edit className="w-3.5 h-3.5" />
           </button>
           <button
@@ -186,7 +186,7 @@ export default function PermissionsPage() {
                 }
               }
             }}
-          >
+           aria-label="Delete">
             <Trash2 className="w-3.5 h-3.5" />
           </button>
         </div>
@@ -265,7 +265,7 @@ export default function PermissionsPage() {
                 type="submit"
                 className="mt-5.5 px-3 py-1 bg-indigo-600 text-white text-sm font-medium rounded-md hover:bg-indigo-700 transition-colors flex items-center gap-2 h-8"
               >
-                <Edit className="w-4 h-4" />
+                 <Edit className="w-4 h-4" />
                 {isEditing ? 'Update Permission' : 'Create Permission'}
               </button>
               <button

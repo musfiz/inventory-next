@@ -658,7 +658,7 @@ export default function ProductMediaPage() {
                             onClick={() => openPreview(index)}
                             className="p-2 bg-white/95 rounded-lg hover:bg-white text-gray-700 shadow"
                             title="Preview"
-                          >
+                           aria-label="Preview">
                             {hasZoom ? <ZoomIn className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                           </button>
                           {!isPrimary && (
@@ -676,7 +676,7 @@ export default function ProductMediaPage() {
                             onClick={() => handleDelete(img)}
                             className="p-2 bg-red-500/95 rounded-lg hover:bg-red-600 text-white shadow"
                             title="Delete"
-                          >
+                           aria-label="Delete">
                             <Trash2 className="w-4 h-4" />
                           </button>
                         </div>
@@ -744,7 +744,7 @@ export default function ProductMediaPage() {
                   }`}
                   title="Toggle source"
                 >
-                  <ZoomIn className="w-3.5 h-3.5" />
+                   <ZoomIn className="w-3.5 h-3.5" />
                   {previewSource === 'zoom' ? '2048' : '1024'}
                 </button>
                 <button

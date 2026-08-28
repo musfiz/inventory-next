@@ -1106,7 +1106,7 @@ export default function POSSalesPage() {
                       <button
                         onClick={() => removeCartItem(item.id)}
                         className="text-red-500 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 p-0.5 rounded shrink-0"
-                      >
+                       aria-label="Delete" title="Delete">
                         <Trash2 className="w-3 h-3" />
                       </button>
                     </div>

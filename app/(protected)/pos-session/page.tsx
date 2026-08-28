@@ -395,7 +395,7 @@ export default function PosSessionPage() {
         const s = row.original;
         return (
           <div className="flex items-center gap-1">
-            <button onClick={() => setDetailSession(s)} title="View details" className="p-1 rounded text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/30 cursor-pointer">
+            <button onClick={() => setDetailSession(s)} title="View details" className="p-1 rounded text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/30 cursor-pointer" aria-label="View details">
               <Eye className="w-4 h-4" />
             </button>
             {s.status === 'open' && hasPermission('close-pos-session') && (

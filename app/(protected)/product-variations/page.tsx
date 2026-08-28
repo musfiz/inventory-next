@@ -145,7 +145,7 @@ export default function ProductVariationsPage() {
               className="p-1 text-blue-600 hover:text-blue-900 dark:text-blue-400 dark:hover:text-blue-300 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded cursor-pointer"
               title="Edit"
               onClick={() => router.push(`/product-variations/${row.original.id}/edit`)}
-            >
+             aria-label="Edit">
               <Edit className="w-3.5 h-3.5" />
             </button>
           )}
@@ -171,7 +171,7 @@ export default function ProductVariationsPage() {
                   }
                 }
               }}
-            >
+             aria-label="Delete">
               <Trash2 className="w-3.5 h-3.5" />
             </button>
           )}

@@ -570,7 +570,7 @@ export default function HeroSliderPage() {
                         : 'text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700'
                         } disabled:opacity-50 disabled:cursor-not-allowed`}
                       title={slide.is_active ? 'Deactivate' : 'Activate'}
-                    >
+                     aria-label={slide.is_active ? 'Deactivate' : 'Activate'}>
                       {togglingId === slide.id ? (
                         <Loader2 className="w-3.5 h-3.5 animate-spin" />
                       ) : slide.is_active ? (
@@ -583,7 +583,7 @@ export default function HeroSliderPage() {
                       onClick={() => openEditForm(slide)}
                       className="p-1.5 rounded text-indigo-600 hover:bg-indigo-50 dark:hover:bg-indigo-900/20 transition-colors cursor-pointer"
                       title="Edit"
-                    >
+                     aria-label="Edit">
                       <Pencil className="w-3.5 h-3.5" />
                     </button>
                     <button
@@ -591,7 +591,7 @@ export default function HeroSliderPage() {
                       disabled={deletingId === slide.id}
                       className="p-1.5 rounded text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
                       title="Delete"
-                    >
+                     aria-label="Delete">
                       {deletingId === slide.id ? (
                         <Loader2 className="w-3.5 h-3.5 animate-spin" />
                       ) : (

@@ -274,7 +274,7 @@ export default function BackupPage() {
                             onClick={() => handleDelete(row)}
                             className="inline-flex items-center gap-1 text-xs text-red-500 hover:text-red-700 dark:text-red-400"
                             title="Delete backup"
-                          >
+                           aria-label="Delete backup">
                             <Trash2 className="w-3 h-3" />
                           </button>
                         </div>

@@ -187,7 +187,7 @@ export default function JournalEntriesPage() {
         const entry = row.original;
         return (
           <div className="flex items-center gap-1">
-            <button onClick={() => viewDetail(entry)} className="p-1 text-gray-400 hover:text-blue-600" title="View">
+            <button onClick={() => viewDetail(entry)} className="p-1 text-gray-400 hover:text-blue-600" title="View" aria-label="View">
               <Eye size={14} />
             </button>
             {hasPermission('post-journal-entries') && entry.status === 'draft' && (

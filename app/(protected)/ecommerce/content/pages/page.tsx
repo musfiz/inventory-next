@@ -480,7 +480,7 @@ export default function CmsPagesPage() {
                               : 'text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700'
                           } disabled:opacity-50 disabled:cursor-not-allowed`}
                           title={page.is_published ? 'Set as Draft' : 'Publish'}
-                        >
+                         aria-label={page.is_published ? 'Set as Draft' : 'Publish'}>
                           {togglingId === page.id ? (
                             <Loader2 className="w-3.5 h-3.5 animate-spin" />
                           ) : page.is_published ? (
@@ -493,7 +493,7 @@ export default function CmsPagesPage() {
                           onClick={() => openEditForm(page)}
                           className="p-1.5 rounded text-indigo-600 hover:bg-indigo-50 dark:hover:bg-indigo-900/20 transition-colors cursor-pointer"
                           title="Edit"
-                        >
+                         aria-label="Edit">
                           <Pencil className="w-3.5 h-3.5" />
                         </button>
                         <button
@@ -501,7 +501,7 @@ export default function CmsPagesPage() {
                           disabled={deletingId === page.id}
                           className="p-1.5 rounded text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
                           title="Delete"
-                        >
+                         aria-label="Delete">
                           {deletingId === page.id ? (
                             <Loader2 className="w-3.5 h-3.5 animate-spin" />
                           ) : (

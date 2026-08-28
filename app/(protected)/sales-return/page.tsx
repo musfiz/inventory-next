@@ -542,7 +542,7 @@ export default function SalesReturnsPage() {
         return (
           <div className="flex items-center gap-1">
             <button onClick={() => { setDetailsTarget(r); setShowDetailsDialog(true); }} title="View Details"
-              className="p-1 rounded text-gray-500 hover:text-gray-700 hover:bg-gray-100 dark:hover:bg-gray-700 cursor-pointer">
+              className="p-1 rounded text-gray-500 hover:text-gray-700 hover:bg-gray-100 dark:hover:bg-gray-700 cursor-pointer" aria-label="View Details">
               <Eye className="w-4 h-4" />
             </button>
             {r.status === 'pending' && hasPermission('approve-sales-returns') && (
