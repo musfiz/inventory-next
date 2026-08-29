@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
 import { useRouter } from 'next/navigation';
@@ -28,6 +28,8 @@ import {
 import { imageUrl } from '@/lib/image-url';
 import type { Address } from '@/types/storefront';
 import { notify } from '@/lib/notifications';
+import checkoutService from '@/services/checkoutService';
+import type { PlaceOrderPayload } from '@/services/checkoutService';
 
 type Step = 'contact' | 'address' | 'shipping' | 'payment';
 
@@ -61,15 +63,33 @@ export default function CheckoutPage() {
   const [email, setEmail] = useState(user?.email || '');
   const [phone, setPhone] = useState(user?.phone || '');
   const [address, setAddress] = useState<Address>(emptyAddress);
-  const [shipping, setShipping] = useState(SHIPPING_METHODS[0].id);
+  const [shipping, setShipping] = useState(SHIPPING_METHODS[0]?.id ?? 'ship-standard');
   const [payment, setPayment] = useState('pm-cod');
+  const [savedAddresses, setSavedAddresses] = useState<Address[]>([]);
+  const [loadingAddresses, setLoadingAddresses] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
 
   const subtotal = getSubtotal();
   const itemCount = getItemCount();
-  const shipMethod = SHIPPING_METHODS.find(s => s.id === shipping)!;
-  const shippingCost = subtotal >= STORE_INFO.freeShippingThreshold ? 0 : shipMethod.rate;
+  const shipMethod = SHIPPING_METHODS.find(s => s.id === shipping);
+  const shippingCost = subtotal >= STORE_INFO.freeShippingThreshold || shipMethod?.isFree
+    ? 0
+    : (shipMethod?.rate ?? 0);
   const tax = subtotal * (STORE_INFO.taxRate / 100);
   const total = subtotal + shippingCost + tax - couponDiscount;
+
+  // Load the customer's saved addresses for quick selection at checkout.
+  useEffect(() => {
+    if (!isAuthenticated) return;
+    setLoadingAddresses(true);
+    checkoutService
+      .getAddresses()
+      .then(setSavedAddresses)
+      .catch(() => setSavedAddresses([]))
+      .finally(() => setLoadingAddresses(false));
+  }, [isAuthenticated]);
+
+  const selectSavedAddress = (a: Address) => setAddress({ ...a });
 
   const toggleStep = (step: Step) => {
     if (completed.has(step)) {
@@ -83,15 +103,71 @@ export default function CheckoutPage() {
     if (next) setOpenStep(next);
   };
 
-  const handlePlaceOrder = () => {
-    if (!email || !address.name || !address.addressLine1 || !address.city) {
-      notify.error('Please complete all required fields');
+  const handlePlaceOrder = async () => {
+    // Checkout form validation (shipping address + payment method)
+    if (!email || !/^\S+@\S+\.\S+$/.test(email)) {
+      notify.error('Please enter a valid email');
       return;
     }
-    const orderId = `ORD-${Date.now().toString().slice(-6)}`;
-    clearCart();
-    notify.success('Order placed successfully!');
-    router.push(`/store/checkout/success?o=${orderId}&email=${encodeURIComponent(email)}`);
+    if (!address.name || !address.addressLine1 || !address.city || !address.phone) {
+      notify.error('Please complete all required address fields');
+      setOpenStep('address');
+      return;
+    }
+    if (!payment) {
+      notify.error('Please select a payment method');
+      setOpenStep('payment');
+      return;
+    }
+
+    setSubmitting(true);
+    try {
+      const payload: PlaceOrderPayload = {
+        email,
+        phone: address.phone || phone,
+        address: {
+          name: address.name,
+          phone: address.phone || phone,
+          address_line1: address.addressLine1,
+          address_line2: address.addressLine2,
+          city: address.city,
+          zip_code: address.zipCode,
+          country: address.country,
+          label: address.label,
+        },
+        shipping_method_id: shipping,
+        payment_method: payment,
+        coupon_code: couponCode || undefined,
+        items: items.map(i => ({
+          variation_id: i.variationId,
+          product_id: i.productId,
+          quantity: i.quantity,
+          unit_price: i.unitPrice,
+        })),
+        customer_id: user?.id ? String(user.id) : undefined,
+      };
+
+      const order = await checkoutService.placeOrder(payload);
+      clearCart();
+      notify.success('Order placed successfully!');
+
+      // Gateway methods (anything except COD) expect a redirect to complete payment.
+      if (order.payment_url) {
+        window.location.href = order.payment_url;
+        return;
+      }
+
+      const ref = order.uuid || order.id || order.invoice_number || '';
+      router.push(
+        `/store/checkout/success?o=${encodeURIComponent(String(ref))}&email=${encodeURIComponent(email)}`,
+      );
+    } catch (err: any) {
+      const msg =
+        err?.response?.data?.message || 'Could not place your order. Please try again.';
+      notify.error(String(msg));
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   if (items.length === 0) {
@@ -203,6 +279,40 @@ export default function CheckoutPage() {
               <StepHeader step="address" label="2. Shipping address" icon={Truck} />
               {openStep === 'address' && (
                 <div className="space-y-3 p-5">
+                  {isAuthenticated && (
+                    <div className="mb-1">
+                      {loadingAddresses ? (
+                        <p className="text-xs text-gray-400">Loading saved addresses…</p>
+                      ) : savedAddresses.length > 0 ? (
+                        <div className="space-y-2">
+                          <p className="text-xs font-semibold text-gray-700 dark:text-gray-300">
+                            Saved addresses
+                          </p>
+                          <div className="grid gap-2 sm:grid-cols-2">
+                            {savedAddresses.map(a => (
+                              <button
+                                type="button"
+                                key={a.id}
+                                onClick={() => selectSavedAddress(a)}
+                                className={`rounded-xl border p-3 text-left text-sm transition-all ${
+                                  address.id === a.id
+                                    ? 'border-brand-500 bg-brand-50 dark:bg-brand-950/30'
+                                    : 'border-gray-200 hover:border-gray-300 dark:border-gray-800'
+                                }`}
+                              >
+                                <p className="font-bold text-gray-900 dark:text-gray-100">
+                                  {a.label || a.name}
+                                </p>
+                                <p className="text-xs text-gray-500">
+                                  {a.addressLine1}, {a.city}
+                                </p>
+                              </button>
+                            ))}
+                          </div>
+                        </div>
+                      ) : null}
+                    </div>
+                  )}
                   <div className="grid gap-3 sm:grid-cols-2">
                     <div>
                       <label className="mb-1.5 block text-xs font-semibold text-gray-700 dark:text-gray-300">Full name</label>
@@ -355,11 +465,19 @@ export default function CheckoutPage() {
                       );
                     })}
                   </div>
+                  {payment !== 'pm-cod' && (
+                    <p className="text-xs text-gray-500">
+                      You'll be securely redirected to complete your{' '}
+                      {PAYMENT_METHODS.find(m => m.id === payment)?.name} payment after
+                      placing the order.
+                    </p>
+                  )}
                   <button
                     onClick={handlePlaceOrder}
-                    className="mt-4 w-full rounded-full bg-brand-600 py-4 text-base font-black text-white transition-colors hover:bg-brand-700"
+                    disabled={submitting}
+                    className="mt-4 w-full rounded-full bg-brand-600 py-4 text-base font-black text-white transition-colors hover:bg-brand-700 disabled:opacity-60"
                   >
-                    Place order · {formatMoneyDecimal(total)}
+                    {submitting ? 'Placing order…' : `Place order · ${formatMoneyDecimal(total)}`}
                   </button>
                   <p className="mt-2 flex items-center justify-center gap-1.5 text-[11px] text-gray-400">
                     <ShieldCheck className="h-3.5 w-3.5" /> 256-bit SSL encrypted. By placing your order you agree to our Terms.
@@ -407,7 +525,7 @@ export default function CheckoutPage() {
                   <dt>Subtotal</dt><dd className="font-semibold text-gray-900 dark:text-gray-100">{formatMoney(subtotal)}</dd>
                 </div>
                 <div className="flex justify-between text-gray-600 dark:text-gray-400">
-                  <dt>Shipping ({shipMethod.name})</dt>
+                  <dt>Shipping ({shipMethod?.name ?? 'Shipping'})</dt>
                   <dd className="font-semibold text-gray-900 dark:text-gray-100">
                     {shippingCost === 0 ? <span className="text-emerald-600">FREE</span> : formatMoney(shippingCost)}
                   </dd>

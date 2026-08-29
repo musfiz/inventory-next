@@ -1,18 +1,16 @@
 'use client';
 
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
+import { useSeo } from '@/lib/utils/use-seo';
 import { Search, X, ArrowRight } from 'lucide-react';
 import ProductCard from '@/components/storefront/ProductCard';
 import ScrollReveal from '@/components/storefront/ScrollReveal';
 import ProductCardSkeleton from '@/components/storefront/ProductCardSkeleton';
-import {
-  PRODUCTS,
-  BRANDS,
-  POPULAR_SEARCHES,
-} from '@/lib/storefront/mock-data';
+import { BRANDS, POPULAR_SEARCHES } from '@/lib/storefront/mock-data';
 import { useStorefrontCategories } from '@/hooks/use-storefront-categories';
+import storefrontService from '@/services/storefrontService';
 import type { Product } from '@/types/storefront';
 
 const SORTS = [
@@ -27,10 +25,19 @@ export default function SearchPage() {
   const params = useSearchParams();
   const q = params.get('q') || '';
   const [query, setQuery] = useState(q);
+
+  useSeo({
+    title: q ? `Search: ${q} | UIMS Store` : 'Search | UIMS Store',
+    description: q
+      ? `Search results for "${q}" at UIMS Store.`
+      : 'Search products at UIMS Store.',
+    url: `/store/search?q=${encodeURIComponent(q)}`,
+  });
   const [sort, setSort] = useState<(typeof SORTS)[number]['id']>('relevance');
   const [selectedBrands, setSelectedBrands] = useState<string[]>([]);
   const [selectedCats, setSelectedCats] = useState<string[]>([]);
-  const [loading] = useState(false);
+  const [results, setResults] = useState<Product[]>([]);
+  const [loading, setLoading] = useState(false);
 
   const toggle = (
     arr: string[],
@@ -38,21 +45,36 @@ export default function SearchPage() {
     id: string
   ) => setArr(arr.includes(id) ? arr.filter(x => x !== id) : [...arr, id]);
 
-  const filtered = useMemo(() => {
+  // Server-driven search via the storefront product API. Brand/category
+  // filtering and sorting remain client-side (the API accepts a single
+  // brand_id/category_id + sort; multi-select is applied here).
+  useEffect(() => {
     const lc = q.toLowerCase().trim();
-    let list: Product[] = [];
     if (!lc) {
-      list = [...PRODUCTS];
-    } else {
-      list = PRODUCTS.filter(
-        p =>
-          p.name.toLowerCase().includes(lc) ||
-          p.shortDescription?.toLowerCase().includes(lc) ||
-          p.variations.some(v => v.sku.toLowerCase().includes(lc)) ||
-          p.brand?.name.toLowerCase().includes(lc) ||
-          p.category.name.toLowerCase().includes(lc)
-      );
+      setResults([]);
+      setLoading(false);
+      return;
     }
+    let cancelled = false;
+    setLoading(true);
+    storefrontService
+      .getProducts({ search: q, per_page: 60 })
+      .then(res => {
+        if (!cancelled) setResults(res.data);
+      })
+      .catch(() => {
+        if (!cancelled) setResults([]);
+      })
+      .finally(() => {
+        if (!cancelled) setLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [q]);
+
+  const displayed = useMemo(() => {
+    let list = results;
     if (selectedBrands.length > 0)
       list = list.filter(p => p.brand && selectedBrands.includes(p.brand.id));
     if (selectedCats.length > 0)
@@ -65,7 +87,7 @@ export default function SearchPage() {
       rating: (a, b) => b.rating - a.rating,
     };
     return [...list].sort(sortFns[sort]);
-  }, [q, sort, selectedBrands, selectedCats]);
+  }, [results, sort, selectedBrands, selectedCats]);
 
   const { categories: parentCats } = useStorefrontCategories();
 
@@ -182,7 +204,7 @@ export default function SearchPage() {
             {/* Toolbar */}
             <div className="mb-5 flex items-center justify-between rounded-2xl border border-gray-200 bg-white p-3 dark:border-gray-800 dark:bg-gray-900">
               <p className="text-sm text-gray-500">
-                <span className="font-bold text-gray-900 dark:text-gray-100">{filtered.length}</span> results
+                <span className="font-bold text-gray-900 dark:text-gray-100">{displayed.length}</span> results
               </p>
               <div className="relative">
                 <select
@@ -203,16 +225,16 @@ export default function SearchPage() {
                   <ProductCardSkeleton key={i} />
                 ))}
               </div>
-            ) : filtered.length === 0 ? (
+            ) : displayed.length === 0 ? (
               <div className="rounded-2xl border border-dashed border-gray-300 bg-white py-16 text-center dark:border-gray-700 dark:bg-gray-900">
                 <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-gray-100 dark:bg-gray-800">
                   <Search className="h-8 w-8 text-gray-400" />
                 </div>
                 <p className="text-base font-bold text-gray-900 dark:text-gray-100">
-                  No products found for &ldquo;{q}&rdquo;
+                  {q ? `No products found for “${q}”` : 'Start typing to search our catalog'}
                 </p>
                 <p className="mt-1 text-sm text-gray-500">
-                  Try a different keyword or browse our catalog.
+                  {q ? 'Try a different keyword or browse our catalog.' : 'Popular searches are listed above.'}
                 </p>
                 <Link
                   href="/store/products"
@@ -223,7 +245,7 @@ export default function SearchPage() {
               </div>
             ) : (
               <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
-                {filtered.map((p, i) => (
+                {displayed.map((p, i) => (
                   <ScrollReveal key={p.id} animation="zoom-in" staggerIndex={i}>
                     <ProductCard product={p} />
                   </ScrollReveal>

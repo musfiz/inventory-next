@@ -12,6 +12,7 @@ import ScrollToTop from '@/components/storefront/ScrollToTop';
 import MobileBottomNav from '@/components/storefront/MobileBottomNav';
 import FaviconSetter from '@/components/storefront/FaviconSetter';
 import PageLoader from '@/components/ui/page-loader';
+import { SeoDefaults } from '@/components/storefront/SeoDefaults';
 export default function StorefrontLayout({
   children,
 }: {
@@ -31,9 +32,10 @@ export default function StorefrontLayout({
   }
 
   return (
-    <CartFlyProvider>
-      <FaviconSetter />
-      <div className="flex min-h-screen flex-col bg-white text-gray-900 dark:bg-gray-950 dark:text-gray-100">
+      <CartFlyProvider>
+        <FaviconSetter />
+        <SeoDefaults />
+        <div className="flex min-h-screen flex-col bg-white text-gray-900 dark:bg-gray-950 dark:text-gray-100">
         <ScrollToTop />
         <StorefrontHeader />
         <main className="flex-1 pb-16 lg:pb-0">{children}</main>

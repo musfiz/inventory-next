@@ -3,6 +3,7 @@
 import { useState, useMemo } from 'react';
 import Link from 'next/link';
 import { useParams, notFound } from 'next/navigation';
+import { useSeo } from '@/lib/utils/use-seo';
 import { ChevronDown, ArrowRight } from 'lucide-react';
 import ProductCard from '@/components/storefront/ProductCard';
 import ScrollReveal from '@/components/storefront/ScrollReveal';
@@ -22,6 +23,14 @@ export default function BrandPage() {
   const { brandSlug } = useParams<{ brandSlug: string }>();
   const brand = BRANDS.find(b => b.slug === brandSlug);
   const [sort, setSort] = useState<(typeof SORTS)[number]['id']>('featured');
+
+  useSeo({
+    title: brand ? `${brand.name} | UIMS Store` : 'Brand | UIMS Store',
+    description: brand
+      ? `Shop ${brand.name} products at UIMS Store.`
+      : 'Browse brands at UIMS Store.',
+    url: `/store/brand/${brandSlug}`,
+  });
 
   const filtered = useMemo(() => {
     if (!brand) return [];

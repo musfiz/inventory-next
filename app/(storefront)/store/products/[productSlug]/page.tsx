@@ -25,6 +25,8 @@ import {
   STORE_INFO,
 } from '@/lib/storefront/mock-data';
 import { formatMoney, formatMoneyDecimal } from '@/lib/utils/format';
+import { useSeo } from '@/lib/utils/use-seo';
+import { productJsonLd } from '@/lib/utils/seo';
 import { useCartStore } from '@/stores/cart-store';
 import { useWishlistStore } from '@/stores/wishlist-store';
 import { useRecentlyViewed } from '@/hooks/use-recently-viewed';
@@ -90,6 +92,28 @@ export default function ProductDetailPage() {
   const [qty, setQty] = useState(1);
   const [tab, setTab] = useState<'description' | 'specs' | 'reviews' | 'shipping'>('description');
   const [showSimilar, setShowSimilar] = useState(true);
+
+  const productImage = product?.images?.[0];
+  const defaultVariation = product?.variations?.[0];
+  useSeo({
+    title: product ? `${product.name} | UIMS Store` : 'Product | UIMS Store',
+    description: product?.shortDescription || product?.description?.slice(0, 160),
+    image: productImage,
+    type: 'product',
+    url: `/store/products/${productSlug}`,
+    jsonLd: product
+      ? productJsonLd({
+          name: product.name,
+          description: product.shortDescription || product.description,
+          image: productImage,
+          url: `/store/products/${productSlug}`,
+          sku: defaultVariation?.sku,
+          price: defaultVariation?.sellingPrice,
+          availability: (defaultVariation?.stock ?? 0) > 0,
+          brand: product.brand?.name,
+        })
+      : undefined,
+  });
 
   useEffect(() => {
     ecommerceSettingsService.get().then(s => setShowSimilar(s.show_similar_products)).catch(() => { });

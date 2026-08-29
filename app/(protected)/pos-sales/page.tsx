@@ -21,6 +21,7 @@ import {
 } from 'lucide-react';
 import { GiSave } from 'react-icons/gi';
 import { notify } from '@/lib/notifications';
+import { playPosBeep } from '@/lib/utils/pos-sound';
 import posService from '@/services/posService';
 import { posSessionService, posRegisterService, commonService } from '@/services';
 import customerService from '@/services/customerService';
@@ -244,6 +245,95 @@ export default function POSSalesPage() {
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [searchQuery]);
+
+  // ── POS Keyboard Shortcuts + Barcode (keyboard-wedge) handling ───────────────
+  // Refs let the global listener always call the latest handler closures
+  // (which read the current cart/session state) without re-binding every render.
+  const actionsRef = useRef<{
+    startNewSale: () => void;
+    holdOrder: () => void;
+    handlePayment: () => void;
+    openCustomerDialog: () => void;
+  }>({ startNewSale: () => {}, holdOrder: () => {}, handlePayment: () => {}, openCustomerDialog: () => {} });
+  const scanHandlerRef = useRef<(code: string) => void>(() => {});
+  const scanBufferRef = useRef('');
+  const lastScanCharTimeRef = useRef(0);
+
+  useEffect(() => {
+    const isEditable = (el: EventTarget | null) => {
+      const t = el as HTMLElement | null;
+      if (!t) return false;
+      const tag = t.tagName;
+      return tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT' || t.isContentEditable;
+    };
+
+    const modalOpen =
+      showPaymentModal || showCustomerDialog || showHeldOrdersDialog || showContextDialog;
+
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (modalOpen) return;
+      if (e.metaKey || e.ctrlKey || e.altKey) return;
+
+      const editable = isEditable(e.target);
+      const isSearchBox = e.target === searchInputRef.current;
+
+      // Function-key shortcuts (only when focus isn't in a text field)
+      if (!editable) {
+        switch (e.key) {
+          case 'F1':
+            e.preventDefault();
+            actionsRef.current.startNewSale();
+            return;
+          case 'F2':
+            e.preventDefault();
+            actionsRef.current.holdOrder();
+            return;
+          case 'F3':
+            e.preventDefault();
+            actionsRef.current.handlePayment();
+            return;
+          case 'F4':
+            e.preventDefault();
+            actionsRef.current.openCustomerDialog();
+            return;
+          default:
+            break;
+        }
+      }
+
+      // Barcode scanner in keyboard-wedge mode types characters rapidly and
+      // ends with Enter. Detect that burst (inter-key gap < 50ms) when focus
+      // is NOT in a text field, then resolve the product and add it to the cart.
+      // The product search box is also a valid scan target (Enter does nothing
+      // there normally) — other text fields are ignored to avoid hijacking input.
+      if (editable && !isSearchBox) {
+        scanBufferRef.current = '';
+        return;
+      }
+      const now = Date.now();
+      if (e.key === 'Enter') {
+        const code = scanBufferRef.current.trim();
+        scanBufferRef.current = '';
+        if (code.length >= 3) {
+          e.preventDefault();
+          if (isSearchBox) {
+            setSearchQuery('');
+            searchInputRef.current?.focus();
+          }
+          scanHandlerRef.current(code);
+        }
+        return;
+      }
+      if (e.key.length === 1) {
+        if (now - lastScanCharTimeRef.current > 50) scanBufferRef.current = '';
+        scanBufferRef.current += e.key;
+        lastScanCharTimeRef.current = now;
+      }
+    };
+
+    window.addEventListener('keydown', onKeyDown);
+    return () => window.removeEventListener('keydown', onKeyDown);
+  }, [showPaymentModal, showCustomerDialog, showHeldOrdersDialog, showContextDialog]);
 
   // ── Data Loading ────────────────────────────────────────────────────────────
 
@@ -582,6 +672,7 @@ export default function POSSalesPage() {
   };
 
   const handlePaymentSuccess = (payment: Payment, order: { id: string; uuid?: string; invoice_number?: string }, printSettings?: PrintSettings) => {
+    playPosBeep('success');
     setShowPaymentModal(false);
     setCart([]);
     setCustomer({ name: 'Walk-in Customer' });
@@ -673,6 +764,51 @@ export default function POSSalesPage() {
     if (printLoading) return;
     notify.info('No recent order to reprint. Complete a payment to print a receipt.');
   };
+
+  // Start a fresh sale. Mirrors the "VOID" action but skips the confirm prompt
+  // when the cart is already empty (F1 shortcut).
+  const startNewSale = () => {
+    if (cart.length === 0) {
+      notify.info('Cart is already empty');
+      searchInputRef.current?.focus();
+      return;
+    }
+    void clearCart();
+  };
+
+  // Resolve a scanned barcode/SKU and add the matching product to the cart.
+  const handleBarcodeScan = async (code: string) => {
+    if (!activeSession?.id) {
+      notify.error('No active session. Please select a session first.');
+      playPosBeep('error');
+      return;
+    }
+    try {
+      const results: any[] = await posService.getProducts({
+        search: code,
+        tenant_id: activeTenant?.id,
+      });
+      if (!results || results.length === 0) {
+        notify.error(`No product found for "${code}"`);
+        playPosBeep('error');
+        return;
+      }
+      const product =
+        results.find((p: any) => p.barcode === code || p.sku === code) || results[0];
+      await addToCart(product);
+      playPosBeep('scan');
+      notify.success(`Added ${product.product_name}`);
+    } catch {
+      notify.error('Scan failed. Please try again.');
+      playPosBeep('error');
+    }
+  };
+
+  // Keep the global listener's refs pointing at the latest closures.
+  useEffect(() => {
+    actionsRef.current = { startNewSale, holdOrder, handlePayment, openCustomerDialog };
+    scanHandlerRef.current = handleBarcodeScan;
+  });
 
   // ─── Render ─────────────────────────────────────────────────────────────────
 
@@ -1315,6 +1451,9 @@ export default function POSSalesPage() {
                 Email
               </button>
             </div>
+            <p className="text-center text-[10px] text-gray-400 dark:text-gray-500 select-none">
+              Shortcuts: <kbd>F1</kbd> New · <kbd>F2</kbd> Hold · <kbd>F3</kbd> Pay · <kbd>F4</kbd> Customer
+            </p>
           </div>
         </div>
       </div>

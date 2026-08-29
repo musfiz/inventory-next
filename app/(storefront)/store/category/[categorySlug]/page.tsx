@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
 import { useParams, notFound } from 'next/navigation';
+import { useSeo } from '@/lib/utils/use-seo';
 import { ChevronDown, ArrowRight } from 'lucide-react';
 import ProductCard from '@/components/storefront/ProductCard';
 import ProductCardSkeleton from '@/components/storefront/ProductCardSkeleton';
@@ -37,6 +38,14 @@ export default function CategoryPage() {
   const [hasMore, setHasMore] = useState(false);
   const [loadingMore, setLoadingMore] = useState(false);
   const [bannerError, setBannerError] = useState(false);
+
+  useSeo({
+    title: category ? `${category.name} | UIMS Store` : 'Category | UIMS Store',
+    description:
+      category?.description ||
+      `Browse products in the ${category?.name || 'category'} category at UIMS Store.`,
+    url: `/store/category/${categorySlug}`,
+  });
 
   // Helpers — image URL resolver
   const resolveImageUrl = (url?: string | null) => {

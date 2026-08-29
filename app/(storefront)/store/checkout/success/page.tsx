@@ -1,8 +1,10 @@
 'use client';
 
-import { useState, Suspense } from 'react';
+import { useState, useEffect, Suspense } from 'react';
 import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
+import checkoutService from '@/services/checkoutService';
+import type { StorefrontOrder } from '@/services/checkoutService';
 import {
   CheckCircle2,
   Package,
@@ -19,6 +21,14 @@ function SuccessContent() {
   const orderId = params.get('o') || 'ORD-000000';
   const email = params.get('email') || '';
   const eta = `Wed, ${new Date(Date.now() + 3 * 86400000).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}`;
+
+  const [order, setOrder] = useState<StorefrontOrder | null>(null);
+  useEffect(() => {
+    if (!orderId || orderId === 'ORD-000000') return;
+    checkoutService.getOrder(orderId).then(setOrder).catch(() => {});
+  }, [orderId]);
+
+  const displayId = order?.invoice_number || order?.order_number || orderId;
 
   const timeline = [
     { icon: CheckCircle2, label: 'Order placed', date: 'Just now', done: true },
@@ -39,7 +49,7 @@ function SuccessContent() {
             Thank you for your order!
           </h1>
           <p className="mt-2 text-sm text-gray-500 dark:text-gray-400">
-            Order <span className="font-bold text-gray-900 dark:text-gray-100">#{orderId}</span> has been placed successfully.
+            Order <span className="font-bold text-gray-900 dark:text-gray-100">#{displayId}</span> has been placed successfully.
           </p>
           {email && (
             <p className="mt-1 text-xs text-gray-400">
