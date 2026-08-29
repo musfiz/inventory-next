@@ -8,6 +8,23 @@ export interface CheckoutItemInput {
   unit_price: number;
 }
 
+export interface ValidateCartItem {
+  variation_id: string;
+  available: number;
+  reserved: number;
+  unit_price: number;
+  line_total: number;
+  in_stock: boolean;
+  message?: string;
+}
+
+export interface ValidateCartResult {
+  valid: boolean;
+  items: ValidateCartItem[];
+  invalidVariationIds: string[];
+  message?: string;
+}
+
 export interface CheckoutAddressInput {
   name: string;
   phone: string;
@@ -72,9 +89,12 @@ export interface StorefrontOrder {
  */
 class CheckoutService {
   /** POST /api/v1/storefront/cart/validate — verify stock, recompute totals. */
-  async validateCart(items: CheckoutItemInput[]) {
-    const res = await apiClient.post('/api/v1/storefront/cart/validate', { items });
-    return res.data;
+  async validateCart(items: CheckoutItemInput[]): Promise<ValidateCartResult> {
+    const res = await apiClient.post<{ success: boolean; data: ValidateCartResult }>(
+      '/api/v1/storefront/cart/validate',
+      { items },
+    );
+    return res.data.data;
   }
 
   /** POST /api/v1/storefront/checkout/quote — totals with shipping + tax. */

@@ -386,16 +386,16 @@ useUnsavedChanges(dirty, { onConfirm: () => setDirty(false) });
 - [x] Add `error.tsx` to `app/(protected)/` — created `app/(protected)/error.tsx` (admin-themed card, "Try again" + "Go to dashboard", `role="alert"`).
 - [x] Add `error.tsx` to `app/(storefront)/` — created `app/(storefront)/error.tsx` (store-themed, `Link` to `/`, `role="alert"`).
 - [ ] Add `error.tsx` to key heavy routes: `/reports/`, `/pos-sales/`, `/ecommerce/` — **DEFERRED** (optional): nested boundaries can be added if those routes need distinct copy; the `(protected)` boundary already covers them.
-- [ ] Wrap individual dashboard widgets (charts, KPIs) in `<ErrorBoundary>` components so one widget crash doesn't take down the whole dashboard — **DEFERRED**: requires a small class-based `ErrorBoundary` (`components/ui/error-boundary.tsx`) and wrapping each widget in `app/(protected)/dashboard`.
+- [x] Wrap individual dashboard widgets (charts, KPIs) in `<ErrorBoundary>` components so one widget crash doesn't take down the whole dashboard — **Done**: created `components/ui/error-boundary.tsx` (class-based, with `Try again` reset). All widgets in `SuperAdminDashboard` and `TenantDashboard` are wrapped — KPI rows, chart grids, chart cards, tables, panels, and activity feed sections each have their own `<ErrorBoundary>`.
 - [ ] Log errors to a monitoring service (Sentry, LogRocket, etc.) — **DEFERRED** (P8 infra item).
 
-**Current behavior:** One global `app/error.tsx` catches everything. A crashing chart widget takes down the entire page with a generic "Something went wrong" message. **Status (2026-08-27):** Route-group error boundaries added for `(protected)` and `(storefront)` so a section crash shows a localized, recoverable UI instead of the bare global fallback. Widget-level boundaries + error logging remain deferred.
+**Current behavior:** One global `app/error.tsx` catches everything. A crashing chart widget takes down the entire page with a generic "Something went wrong" message. **Status (2026-08-27):** Route-group error boundaries added for `(protected)` and `(storefront)` so a section crash shows a localized, recoverable UI instead of the bare global fallback. **Widget-level `<ErrorBoundary>` components added** — each KPI row, chart grid, chart card, table, panel, and activity section in both `SuperAdminDashboard` and `TenantDashboard` is wrapped.
 
 ---
 
 ### 4.4 POS Module UX Gaps
 
-- [ ] `pos-sales/page.tsx` is ~1000+ lines — **DEFERRED** (large refactor, out of scope for this pass): split into sub-components (cart panel, product grid, customer selector, payment section). Functionality preserved; file still ~1600 lines.
+- [x] `pos-sales/page.tsx` split into sub-components — **Done**: extracted into `components/pos/PosProductGrid.tsx` (product grid, search, categories), `components/pos/PosCartPanel.tsx` (customer header + cart items), `components/pos/PosOrderSummary.tsx` (price breakdown, discounts, actions), `components/pos/CustomerSelector.tsx` (customer search dialog). Shared types moved to `components/pos/pos-types.ts`. Functionality preserved; page reduced from ~1,613 to ~984 lines.
 - [ ] Add offline support for POS (service worker + IndexedDB queue) — **DEFERRED**: requires backend sync/queue API; pure-frontend change insufficient. No action taken.
 - [x] Add barcode scanner input handling (keyboard wedge mode) — **Done**: global `keydown` listener detects a rapid key burst (inter-key gap < 50ms) terminated by Enter, resolves the product via `posService.getProducts({ search: code })`, and adds it to the cart. Works when the POS screen (or the product search box) has focus; ignores other text fields so normal typing is unaffected. Plays an error beep on no-match.
 - [x] Add keyboard shortcuts for common POS actions — **Done**: F1 = New Sale, F2 = Hold, F3 = Pay, F4 = Customer. Shortcuts are suppressed while a modal is open or focus is in a text field to avoid conflicts. A visible hint was added under the action buttons.
@@ -418,7 +418,7 @@ These are features where the frontend page exists but uses mock data, or the bac
 - [x] **Frontend:** Add payment gateway integration (SSLCommerz / bKash / Stripe) — Done: non-COD methods expect a `payment_url` from `placeOrder` and redirect to it; a hint is shown in the payment step. Method list still sourced from mock `PAYMENT_METHODS` pending a real methods endpoint.
 - [x] **Frontend:** Build order success page with real order data — Done: `success/page.tsx` fetches the order via `getOrder(uuid)` and shows its invoice/order number (falls back to the query param when the API is unavailable).
 - [x] **Frontend:** Add checkout form validation (shipping address, payment method) — Done: email format, required address fields (name/phone/line1/city), and payment-method checks; invalid state jumps the accordion to the relevant step.
-- [ ] **Frontend:** Handle out-of-stock items at checkout time — **BLOCKED**: needs `cart/validate` backend (service method exists; UI wiring pending once the API returns per-item stock status).
+- [x] **Frontend:** Handle out-of-stock items at checkout time — **Done**: `checkoutService.validateCart()` is called before `placeOrder` in `store/checkout/page.tsx`. Validates per-item stock via `POST /api/v1/storefront/cart/validate`; if items are out of stock or over-reserved, an inline error panel surfaces each invalid item with available quantity, quantity decrement/increment controls, and a remove button. Order placement is blocked until all items pass validation.
 
 ---
 

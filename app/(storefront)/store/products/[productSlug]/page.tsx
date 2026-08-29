@@ -42,6 +42,7 @@ import Rating from '@/components/storefront/Rating';
 import Badge from '@/components/storefront/Badge';
 import ProductCard from '@/components/storefront/ProductCard';
 import ScrollReveal from '@/components/storefront/ScrollReveal';
+import VariantSelector from '@/components/storefront/VariantSelector';
 
 export default function ProductDetailPage() {
   const { productSlug } = useParams<{ productSlug: string }>();
@@ -160,19 +161,6 @@ export default function ProductDetailPage() {
     const def = product.variations.find(v => v.isDefault) || product.variations[0];
     return product.variations.find(v => v.id === selectedVariationId) || def;
   }, [product, selectedVariationId]);
-
-  // For variable products: group variations by attribute to build swatches
-  const variationsByAttr = useMemo(() => {
-    const map: Record<string, Record<string, Product['variations'][0]>> = {};
-    if (!product) return map;
-    product.variations.forEach(v => {
-      Object.entries(v.attributes).forEach(([k, val]) => {
-        if (!map[k]) map[k] = {};
-        if (!map[k][val]) map[k][val] = v;
-      });
-    });
-    return map;
-  }, [product]);
 
   if (is404) notFound();
 
@@ -397,58 +385,11 @@ export default function ProductDetailPage() {
             {/* Variation selectors */}
             {product.variations.length > 1 && (
               <div className="mt-6 space-y-4">
-                {Object.keys(variationsByAttr).map(attrKey => {
-                  const options = variationsByAttr[attrKey];
-                  const values = Object.keys(options);
-                  return (
-                    <div key={attrKey}>
-                      <p className="mb-2 text-xs font-bold uppercase tracking-wider text-gray-700 dark:text-gray-300">
-                        {attrKey}: <span className="text-gray-900 dark:text-gray-100">{variation.attributes[attrKey]}</span>
-                      </p>
-                      {attrKey.toLowerCase().includes('color') ? (
-                        <div className="flex flex-wrap gap-2">
-                          {values.map(val => {
-                            const v = options[val];
-                            const active = variation.id === v.id;
-                            return (
-                              <button
-                                key={val}
-                                onClick={() => setSelectedVariationId(v.id)}
-                                className={`flex items-center gap-2 rounded-lg border px-3 py-2 text-xs font-semibold transition-all ${active
-                                  ? 'border-brand-500 bg-brand-50 ring-1 ring-brand-500/30 dark:bg-brand-950/30'
-                                  : 'border-gray-200 hover:border-gray-300 dark:border-gray-700'
-                                  }`}
-                              >
-                                {val}
-                              </button>
-                            );
-                          })}
-                        </div>
-                      ) : (
-                        <div className="flex flex-wrap gap-2">
-                          {values.map(val => {
-                            const v = options[val];
-                            const active = variation.id === v.id;
-                            const oos = v.stock <= 0;
-                            return (
-                              <button
-                                key={val}
-                                disabled={oos}
-                                onClick={() => setSelectedVariationId(v.id)}
-                                className={`min-w-[44px] rounded-lg border px-3 py-2 text-xs font-semibold transition-all disabled:cursor-not-allowed disabled:opacity-40 ${active
-                                  ? 'border-brand-500 bg-brand-50 ring-1 ring-brand-500/30 dark:bg-brand-950/30'
-                                  : 'border-gray-200 hover:border-gray-300 dark:border-gray-700'
-                                  }`}
-                              >
-                                {val}
-                              </button>
-                            );
-                          })}
-                        </div>
-                      )}
-                    </div>
-                  );
-                })}
+                <VariantSelector
+                  variations={product.variations}
+                  value={variation.id}
+                  onChange={setSelectedVariationId}
+                />
               </div>
             )}
 

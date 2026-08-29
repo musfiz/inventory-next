@@ -16,6 +16,11 @@ interface CartState {
     quantity?: number
   ) => { ok: boolean; message?: string };
   removeItem: (variationId: string) => void;
+  updateItemVariation: (
+    oldVariationId: string,
+    product: Product,
+    newVariationId: string
+  ) => { ok: boolean; message?: string };
   updateQuantity: (variationId: string, quantity: number) => void;
   clearCart: () => void;
   openDrawer: () => void;
@@ -88,6 +93,60 @@ export const useCartStore = create<CartState>()(
         set(state => ({
           items: state.items.filter(i => i.variationId !== variationId),
         }));
+      },
+
+      updateItemVariation: (oldVariationId, product, newVariationId) => {
+        const items = get().items;
+        const oldItem = items.find(i => i.variationId === oldVariationId);
+        if (!oldItem) {
+          return { ok: false, message: 'Item not found in cart' };
+        }
+
+        const variation = product.variations.find(v => v.id === newVariationId);
+        if (!variation) {
+          return { ok: false, message: 'Variation not found' };
+        }
+
+        const qty = Math.min(oldItem.quantity, variation.stock);
+
+        const duplicate = items.find(
+          i => i.variationId === newVariationId && i.variationId !== oldVariationId
+        );
+
+        if (duplicate) {
+          const merged = Math.min(duplicate.quantity + qty, variation.stock);
+          set({
+            items: items
+              .filter(
+                i => i.variationId !== oldVariationId && i.variationId !== newVariationId
+              )
+              .concat({
+                ...duplicate,
+                quantity: merged,
+                lineTotal: duplicate.unitPrice * merged,
+              }),
+          });
+          return { ok: true };
+        }
+
+        set({
+          items: items.map(i =>
+            i.variationId === oldVariationId
+              ? {
+                  ...i,
+                  variationId: variation.id,
+                  image: variation.image || product.images[0],
+                  unitPrice: variation.sellingPrice,
+                  mrp: variation.mrp,
+                  stock: variation.stock,
+                  attributes: variation.attributes,
+                  quantity: qty,
+                  lineTotal: variation.sellingPrice * qty,
+                }
+              : i
+          ),
+        });
+        return { ok: true };
       },
 
       updateQuantity: (variationId, quantity) => {

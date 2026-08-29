@@ -15,6 +15,12 @@ import {
   CreditCard,
   Smartphone,
   Banknote,
+  Loader2,
+  X,
+  AlertTriangle,
+  Trash2,
+  Minus,
+  Plus,
 } from 'lucide-react';
 import { useCartStore } from '@/stores/cart-store';
 import { useCustomerAuthStore } from '@/stores/customer-auth-store';
@@ -26,10 +32,12 @@ import {
   PAYMENT_METHODS,
 } from '@/lib/storefront/mock-data';
 import { imageUrl } from '@/lib/image-url';
-import type { Address } from '@/types/storefront';
+import type { Address, Product } from '@/types/storefront';
 import { notify } from '@/lib/notifications';
-import checkoutService from '@/services/checkoutService';
+import checkoutService, { type ValidateCartResult } from '@/services/checkoutService';
 import type { PlaceOrderPayload } from '@/services/checkoutService';
+import storefrontService from '@/services/storefrontService';
+import VariantSelector from '@/components/storefront/VariantSelector';
 
 type Step = 'contact' | 'address' | 'shipping' | 'payment';
 
@@ -55,7 +63,40 @@ export default function CheckoutPage() {
     couponCode,
     couponDiscount,
     clearCart,
+    updateItemVariation,
   } = useCartStore();
+
+  const [editingItemId, setEditingItemId] = useState<string | null>(null);
+  const [editProduct, setEditProduct] = useState<Product | null>(null);
+  const [editLoading, setEditLoading] = useState(false);
+  const [editSelected, setEditSelected] = useState('');
+
+  const openVariantEditor = async (item: (typeof items)[number]) => {
+    setEditingItemId(item.variationId);
+    setEditSelected(item.variationId);
+    setEditProduct(null);
+    setEditLoading(true);
+    try {
+      const product = await storefrontService.getProductBySlug(item.slug);
+      setEditProduct(product);
+    } catch {
+      notify.error('Failed to load product options');
+      setEditingItemId(null);
+    } finally {
+      setEditLoading(false);
+    }
+  };
+
+  const confirmVariantChange = () => {
+    if (!editProduct || !editingItemId) return;
+    const res = updateItemVariation(editingItemId, editProduct, editSelected);
+    if (res.ok) {
+      notify.success('Variant updated');
+      setEditingItemId(null);
+    } else {
+      notify.error(res.message ?? 'Could not update variant');
+    }
+  };
   const { user, isAuthenticated } = useCustomerAuthStore();
 
   const [openStep, setOpenStep] = useState<Step>('contact');
@@ -68,6 +109,9 @@ export default function CheckoutPage() {
   const [savedAddresses, setSavedAddresses] = useState<Address[]>([]);
   const [loadingAddresses, setLoadingAddresses] = useState(false);
   const [submitting, setSubmitting] = useState(false);
+  const [validating, setValidating] = useState(false);
+  const [validationResult, setValidationResult] = useState<ValidateCartResult | null>(null);
+  const [validationError, setValidationError] = useState<string | null>(null);
 
   const subtotal = getSubtotal();
   const itemCount = getItemCount();
@@ -103,7 +147,56 @@ export default function CheckoutPage() {
     if (next) setOpenStep(next);
   };
 
+  const runValidation = async () => {
+    setValidating(true);
+    setValidationResult(null);
+    setValidationError(null);
+    try {
+      const validationItems = items.map(i => ({
+        variation_id: i.variationId,
+        product_id: i.productId,
+        quantity: i.quantity,
+        unit_price: i.unitPrice,
+      }));
+      const result = await checkoutService.validateCart(validationItems);
+      setValidationResult(result);
+      if (!result.valid) {
+        setValidationError(result.message || 'Some items are out of stock or have insufficient quantity.');
+      }
+    } catch (err: any) {
+      setValidationError(err?.response?.data?.message || 'Validation failed. Please try again.');
+    } finally {
+      setValidating(false);
+    }
+  };
+
+  const removeItem = (variationId: string) => {
+    useCartStore.getState().removeItem(variationId);
+    setValidationResult(null);
+    setValidationError(null);
+    notify.info('Item removed from cart');
+  };
+
+  const updateItemQty = (variationId: string, delta: number) => {
+    const item = useCartStore.getState().items.find(i => i.variationId === variationId);
+    if (!item) return;
+    const newQty = Math.max(1, item.quantity + delta);
+    if (newQty > item.stock) {
+      notify.error(`Only ${item.stock} available`);
+      return;
+    }
+    useCartStore.getState().updateQuantity(variationId, newQty);
+    setValidationResult(null);
+  };
+
   const handlePlaceOrder = async () => {
+    // Validate cart via backend before placing order.
+    await runValidation();
+    if (validationResult && !validationResult.valid) {
+      notify.error(validationError || 'Please fix out-of-stock items before placing the order.');
+      return;
+    }
+
     // Checkout form validation (shipping address + payment method)
     if (!email || !/^\S+@\S+\.\S+$/.test(email)) {
       notify.error('Please enter a valid email');
@@ -493,6 +586,75 @@ export default function CheckoutPage() {
               <h2 className="mb-4 text-base font-black text-gray-900 dark:text-white">
                 Order Summary
               </h2>
+
+              {/* Out-of-stock validation errors */}
+              {validationError && validationResult && (
+                <div className="mb-4 rounded-xl border border-red-200 bg-red-50 p-4 dark:border-red-900/40 dark:bg-red-950/20">
+                  <div className="flex items-center gap-2 mb-2">
+                    <AlertTriangle className="h-4 w-4 text-red-500" />
+                    <p className="text-sm font-bold text-red-700 dark:text-red-400">
+                      Stock validation failed
+                    </p>
+                  </div>
+                  <p className="mb-2 text-xs text-red-600 dark:text-red-400">{validationError}</p>
+                  <div className="space-y-2">
+                    {validationResult.invalidVariationIds.map(vid => {
+                      const item = items.find(i => i.variationId === vid);
+                      const cartItem = validationResult.items.find(v => v.variation_id === vid);
+                      return (
+                        <div key={vid} className="flex items-center justify-between rounded-lg bg-red-100 dark:bg-red-900/30 px-3 py-2">
+                          <div className="min-w-0 flex-1">
+                            <p className="text-xs font-semibold text-red-900 dark:text-red-100 truncate">
+                              {item?.name ?? vid}
+                            </p>
+                            <p className="text-[10px] text-red-600 dark:text-red-400">
+                              {cartItem && !cartItem.in_stock
+                                ? `Out of stock`
+                                : `Only ${cartItem?.available ?? '?'} available`}
+                            </p>
+                          </div>
+                          <div className="flex items-center gap-1.5 shrink-0 ml-2">
+                            {cartItem?.available ? (
+                              <>
+                                <button
+                                  onClick={() => updateItemQty(vid, -1)}
+                                  className="flex h-5 w-5 items-center justify-center rounded bg-red-200 dark:bg-red-800 text-red-700 dark:text-red-300 hover:bg-red-300 dark:hover:bg-red-700"
+                                >
+                                  <Minus className="h-3 w-3" />
+                                </button>
+                                <span className="text-xs font-bold text-red-900 dark:text-red-100 w-5 text-center">
+                                  {item?.quantity ?? '?'}
+                                </span>
+                                <button
+                                  onClick={() => updateItemQty(vid, 1)}
+                                  className="flex h-5 w-5 items-center justify-center rounded bg-red-200 dark:bg-red-800 text-red-700 dark:text-red-300 hover:bg-red-300 dark:hover:bg-red-700"
+                                >
+                                  <Plus className="h-3 w-3" />
+                                </button>
+                              </>
+                            ) : null}
+                            <button
+                              onClick={() => removeItem(vid)}
+                              className="flex h-5 w-5 items-center justify-center rounded bg-red-200 dark:bg-red-800 text-red-700 dark:text-red-300 hover:bg-red-300 dark:hover:bg-red-700"
+                              aria-label="Remove item"
+                            >
+                              <Trash2 className="h-3 w-3" />
+                            </button>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                  <button
+                    onClick={runValidation}
+                    disabled={validating}
+                    className="mt-3 w-full rounded-lg bg-red-600 py-1.5 text-xs font-bold text-white hover:bg-red-700 disabled:opacity-50"
+                  >
+                    {validating ? 'Validating…' : 'Re-validate Cart'}
+                  </button>
+                </div>
+              )}
+
               <ul className="max-h-72 space-y-3 overflow-y-auto scrollbar-thin">
                 {items.map(item => (
                   <li key={item.variationId} className="flex gap-3">
@@ -510,9 +672,28 @@ export default function CheckoutPage() {
                     </div>
                     <div className="flex min-w-0 flex-1 flex-col justify-center">
                       <p className="line-clamp-1 text-xs font-semibold text-gray-900 dark:text-gray-100">{item.name}</p>
+                      {Object.keys(item.attributes).length > 0 && (
+                        <p className="mt-0.5 flex flex-wrap gap-1">
+                          {Object.entries(item.attributes).map(([k, v]) => (
+                            <span
+                              key={k}
+                              className="rounded bg-brand-50 px-1.5 py-0.5 text-[10px] font-medium text-brand-700 dark:bg-brand-950/40 dark:text-brand-300"
+                            >
+                              {k}: <span className="font-semibold">{v}</span>
+                            </span>
+                          ))}
+                        </p>
+                      )}
                       <p className="text-xs text-gray-500">
                         {formatMoney(item.unitPrice)} × {item.quantity}
                       </p>
+                      <button
+                        type="button"
+                        onClick={() => openVariantEditor(item)}
+                        className="mt-1 inline-flex w-fit items-center gap-1 text-[11px] font-semibold text-brand-600 hover:underline dark:text-brand-400"
+                      >
+                        Change variant
+                      </button>
                     </div>
                     <p className="self-center text-sm font-bold text-gray-900 dark:text-gray-100">
                       {formatMoney(item.lineTotal)}
@@ -549,6 +730,68 @@ export default function CheckoutPage() {
           </div>
         </div>
       </div>
+
+      {/* Change-variant modal */}
+      {editingItemId && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4"
+          onClick={() => setEditingItemId(null)}
+        >
+          <div
+            className="w-full max-w-md rounded-2xl border border-gray-200 bg-white p-5 shadow-xl dark:border-gray-800 dark:bg-gray-900"
+            onClick={e => e.stopPropagation()}
+          >
+            <div className="mb-4 flex items-center justify-between">
+              <h3 className="text-sm font-black text-gray-900 dark:text-white">
+                Change variant{editProduct ? ` — ${editProduct.name}` : ''}
+              </h3>
+              <button
+                type="button"
+                onClick={() => setEditingItemId(null)}
+                className="rounded-lg p-1 text-gray-400 hover:bg-gray-100 hover:text-gray-700 dark:hover:bg-gray-800"
+                aria-label="Close"
+              >
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+            {editLoading || !editProduct ? (
+              <div className="flex justify-center py-10">
+                <Loader2 className="h-7 w-7 animate-spin text-brand-500" />
+              </div>
+            ) : (
+              <>
+                {editProduct.variations.length > 1 ? (
+                  <VariantSelector
+                    variations={editProduct.variations}
+                    value={editSelected}
+                    onChange={setEditSelected}
+                  />
+                ) : (
+                  <p className="py-4 text-center text-sm text-gray-500">
+                    This product has only one option.
+                  </p>
+                )}
+                <div className="mt-5 flex gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setEditingItemId(null)}
+                    className="flex-1 rounded-lg border border-gray-200 py-2.5 text-sm font-bold text-gray-700 hover:bg-gray-50 dark:border-gray-700 dark:text-gray-200 dark:hover:bg-gray-800"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="button"
+                    onClick={confirmVariantChange}
+                    className="flex-1 rounded-lg bg-brand-600 py-2.5 text-sm font-bold text-white hover:bg-brand-700"
+                  >
+                    Update
+                  </button>
+                </div>
+              </>
+            )}
+          </div>
+        </div>
+      )}
     </div>
   );
 }
