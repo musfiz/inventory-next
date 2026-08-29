@@ -7,6 +7,7 @@ import { usePermissions } from '@/hooks/use-permissions';
 import {
   LayoutDashboard,
   LayoutGrid,
+  Zap,
   LayoutTemplate,
   LayoutList,
   Users,
@@ -252,6 +253,7 @@ const navigation: NavigationItem[] = [
           { name: 'SEO & Meta Defaults', href: '/ecommerce/settings/seo', icon: Search },
           { name: 'Payment Methods', href: '/ecommerce/settings/payments', icon: MdPayment },
           { name: 'Shipping & Delivery', href: '/ecommerce/settings/shipping', icon: Truck },
+          { name: 'Express Checkout', href: '/ecommerce/settings/express-checkout', icon: Zap },
         ],
       },
       {

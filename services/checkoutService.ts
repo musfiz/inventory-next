@@ -45,6 +45,8 @@ export interface PlaceOrderPayload {
   coupon_code?: string;
   items: CheckoutItemInput[];
   customer_id?: string;
+  /** When true, the backend restricts payment to Cash on Delivery (Express Checkout). */
+  express?: boolean;
 }
 
 export interface PlaceOrderResult {

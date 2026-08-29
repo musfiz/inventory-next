@@ -2,7 +2,8 @@
 
 import Link from 'next/link';
 import Image from 'next/image';
-import { Heart, Star, Plus, ImageIcon } from 'lucide-react';
+import { useRouter } from 'next/navigation';
+import { Heart, Star, Plus, ImageIcon, Zap } from 'lucide-react';
 import { IoCartSharp } from 'react-icons/io5';
 import { useState } from 'react';
 import type { Product } from '@/types/storefront';
@@ -11,6 +12,7 @@ import { useCartStore } from '@/stores/cart-store';
 import { useWishlistStore } from '@/stores/wishlist-store';
 import { useRecentlyViewed } from '@/hooks/use-recently-viewed';
 import { useCartFly } from '@/components/storefront/CartFlyProvider';
+import { useStorefrontStatus } from '@/hooks/use-storefront-status';
 import { notify } from '@/lib/notifications';
 import { imageUrl } from '@/lib/image-url';
 import Badge from './Badge';
@@ -47,6 +49,15 @@ export default function ProductCard({
   const isWished = wishlist.has(product.id);
   const { trackView } = useRecentlyViewed();
   const { flyToCart } = useCartFly();
+  const router = useRouter();
+  const { expressCheckoutEnabled } = useStorefrontStatus();
+  const showExpress = expressCheckoutEnabled && inStock && !!product.slug;
+
+  const handleExpress = (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    router.push(`/store/products/${product.slug}/checkout`);
+  };
 
   const handleAdd = (e: React.MouseEvent, variationId?: string) => {
     e.preventDefault();
@@ -323,14 +334,26 @@ export default function ProductCard({
               </span>
             )}
           </div>
-          <button
-            onClick={handleAdd}
-            disabled={!inStock}
-            className="flex h-9 w-9 items-center justify-center rounded-none bg-brand-600 text-white shadow-sm transition-all hover:bg-brand-700 active:scale-95 disabled:cursor-not-allowed disabled:bg-gray-300"
-            aria-label="Add to cart"
-          >
-            <IoCartSharp className="h-4 w-4" />
-          </button>
+          <div className="flex items-center gap-1.5">
+            {showExpress && (
+              <button
+                onClick={handleExpress}
+                aria-label="Express checkout"
+                title="Express checkout with COD (Cash on Delivery)"
+                className="flex h-9 w-9 items-center justify-center rounded-none bg-emerald-600 text-white shadow-sm transition-all hover:bg-emerald-700 active:scale-95"
+              >
+                <Zap className="h-4 w-4" />
+              </button>
+            )}
+            <button
+              onClick={handleAdd}
+              disabled={!inStock}
+              className="flex h-9 w-9 items-center justify-center rounded-none bg-brand-600 text-white shadow-sm transition-all hover:bg-brand-700 active:scale-95 disabled:cursor-not-allowed disabled:bg-gray-300"
+              aria-label="Add to cart"
+            >
+              <IoCartSharp className="h-4 w-4" />
+            </button>
+          </div>
         </div>
       </div>
     </Link>

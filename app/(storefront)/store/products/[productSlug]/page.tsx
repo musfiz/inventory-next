@@ -29,6 +29,7 @@ import { productJsonLd } from '@/lib/utils/seo';
 import { useCartStore } from '@/stores/cart-store';
 import { useWishlistStore } from '@/stores/wishlist-store';
 import { useRecentlyViewed } from '@/hooks/use-recently-viewed';
+import { useStorefrontStatus } from '@/hooks/use-storefront-status';
 import { useCartFly } from '@/components/storefront/CartFlyProvider';
 import { useRouter } from 'next/navigation';
 import { notify } from '@/lib/notifications';
@@ -63,6 +64,7 @@ export default function ProductDetailPage() {
   const [reviewPendingMsg, setReviewPendingMsg] = useState(false);
 
   const isAuthed = useCustomerAuthStore(s => s.isAuthenticated);
+  const { expressCheckoutEnabled } = useStorefrontStatus();
 
   useEffect(() => {
     if (!productSlug) return;
@@ -189,6 +191,7 @@ export default function ProductDetailPage() {
   const price = variation.sellingPrice;
   const discountPct = mrp && mrp > price ? Math.round(((mrp - price) / mrp) * 100) : 0;
   const inStock = variation.stock > 0;
+  const showExpress = expressCheckoutEnabled && inStock && !!product?.slug;
 
   // Group attributes for selectors
   const attributeKeys = Object.keys(variation.attributes);
@@ -427,17 +430,17 @@ export default function ProductDetailPage() {
               <button
                 onClick={handleAdd}
                 disabled={!inStock}
-                className="inline-flex flex-1 items-center justify-center gap-2 rounded-full bg-gray-900 py-3.5 text-sm font-bold text-white transition-all hover:bg-gray-800 disabled:cursor-not-allowed disabled:opacity-50 dark:bg-white dark:text-gray-900 dark:hover:bg-gray-100"
+                className="inline-flex h-11 flex-1 items-center justify-center gap-2 rounded-full bg-gray-900 text-sm font-bold text-white transition-all hover:bg-gray-800 disabled:cursor-not-allowed disabled:opacity-50 dark:bg-white dark:text-gray-900 dark:hover:bg-gray-100"
               >
-                <IoCartSharp className="h-5 w-5" />
+                <IoCartSharp className="h-4 w-4" />
                 {inStock ? 'Add to Cart' : 'Sold Out'}
               </button>
               <button
                 onClick={handleBuyNow}
                 disabled={!inStock}
-                className="inline-flex flex-1 items-center justify-center gap-2 rounded-full bg-brand-600 py-3.5 text-sm font-bold text-white transition-all hover:bg-brand-700 disabled:cursor-not-allowed disabled:opacity-50"
+                className="inline-flex h-11 flex-1 items-center justify-center gap-2 rounded-full bg-brand-600 text-sm font-bold text-white transition-all hover:bg-brand-700 disabled:cursor-not-allowed disabled:opacity-50"
               >
-                <Zap className="h-5 w-5" />
+                <Zap className="h-4 w-4" />
                 Buy Now
               </button>
               <button
@@ -448,6 +451,24 @@ export default function ProductDetailPage() {
                 <Heart className={`h-5 w-5 ${isWished ? 'fill-accent-500 text-accent-500' : ''}`} />
               </button>
             </div>
+
+            {showExpress && (
+              <div className="mt-3 flex gap-3">
+                <button
+                  onClick={() => router.push(`/store/products/${product?.slug}/checkout`)}
+                  title="Express checkout — pay with Cash on Delivery (COD)"
+                  className="group relative flex h-11 flex-1 items-center justify-center gap-2 overflow-hidden rounded-full bg-gradient-to-r from-emerald-500 to-emerald-600 text-sm font-bold text-white shadow-sm shadow-emerald-600/20 transition-all hover:from-emerald-600 hover:to-emerald-700 hover:shadow-md"
+                >
+                  {/* Shine sweep on hover */}
+                  <span className="pointer-events-none absolute inset-0 -translate-x-full bg-white/25 transition-transform duration-700 ease-out group-hover:translate-x-full" />
+                  <Zap className="h-4 w-4 shrink-0" />
+                  Express Checkout
+                  <span className="rounded-full bg-white/20 px-2 py-0.5 text-[10px] font-semibold">COD</span>
+                </button>
+                {/* Spacer to match the Add to Cart button width */}
+                <div className="flex-1" />
+              </div>
+            )}
 
             {/* Trust row */}
             <div className="mt-6 grid grid-cols-3 gap-3 border-t border-gray-100 pt-5 dark:border-gray-800">

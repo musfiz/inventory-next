@@ -57,6 +57,7 @@ export interface EcommerceSettings {
   meta_title: string;
   meta_description: string;
   show_similar_products: boolean;
+  express_checkout_enabled: boolean;
   created_at: string;
   updated_at: string;
 }

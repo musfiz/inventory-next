@@ -62,6 +62,9 @@ export interface Product {
   estimatedDeliveryDays?: number;
   metaTitle?: string;
   metaDescription?: string;
+  /** Optional product-level stock/price, used when the product has no variations. */
+  stock?: number;
+  sellingPrice?: number;
 }
 
 export interface CartItem {
