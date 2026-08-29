@@ -11,12 +11,16 @@ import {
   ChevronRight,
   Search,
   Filter,
+  Loader2,
 } from 'lucide-react';
-import { useState } from 'react';
-import { SAMPLE_ORDERS } from '@/lib/storefront/mock-data';
+import { useEffect, useState } from 'react';
+import { notify } from '@/lib/notifications';
 import { formatMoney } from '@/lib/utils/format';
+import checkoutService from '@/services/checkoutService';
+import type { Order } from '@/types/storefront';
 
 const STATUS_CONFIG: Record<string, { color: string; bg: string; icon: any; label: string }> = {
+  pending: { color: 'text-gray-700', bg: 'bg-gray-100 dark:bg-gray-800 dark:text-gray-300', icon: Clock, label: 'Pending' },
   placed: { color: 'text-blue-700', bg: 'bg-blue-100 dark:bg-blue-900/30 dark:text-blue-300', icon: Clock, label: 'Placed' },
   confirmed: { color: 'text-cyan-700', bg: 'bg-cyan-100 dark:bg-cyan-900/30 dark:text-cyan-300', icon: CheckCircle2, label: 'Confirmed' },
   packed: { color: 'text-amber-700', bg: 'bg-amber-100 dark:bg-amber-900/30 dark:text-amber-300', icon: Package, label: 'Packed' },
@@ -29,10 +33,31 @@ const STATUS_CONFIG: Record<string, { color: string; bg: string; icon: any; labe
 const FILTERS = ['All', 'In transit', 'Delivered', 'Cancelled'];
 
 export default function OrdersPage() {
+  const [orders, setOrders] = useState<Order[]>([]);
+  const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState('All');
   const [search, setSearch] = useState('');
 
-  const filtered = SAMPLE_ORDERS.filter(o => {
+  useEffect(() => {
+    let active = true;
+    setLoading(true);
+    checkoutService
+      .listOrders()
+      .then(list => {
+        if (active) setOrders(list as Order[]);
+      })
+      .catch(() => {
+        if (active) setOrders([]);
+      })
+      .finally(() => {
+        if (active) setLoading(false);
+      });
+    return () => {
+      active = false;
+    };
+  }, []);
+
+  const filtered = orders.filter(o => {
     if (filter === 'In transit')
       return !['delivered', 'cancelled', 'returned'].includes(o.status);
     if (filter === 'Delivered') return o.status === 'delivered';
@@ -41,11 +66,13 @@ export default function OrdersPage() {
     if (search) {
       return (
         o.orderNumber.toLowerCase().includes(search.toLowerCase()) ||
-        o.items.some(i => i.name.toLowerCase().includes(search.toLowerCase()))
+        o.items.some(i => (i.name ?? '').toLowerCase().includes(search.toLowerCase()))
       );
     }
     return true;
   });
+
+  const statusOf = (o: Order) => STATUS_CONFIG[o.status] ?? STATUS_CONFIG.pending;
 
   return (
     <div className="space-y-5">
@@ -85,7 +112,11 @@ export default function OrdersPage() {
         ))}
       </div>
 
-      {filtered.length === 0 ? (
+      {loading ? (
+        <div className="flex justify-center py-16">
+          <Loader2 className="h-8 w-8 animate-spin text-brand-500" />
+        </div>
+      ) : filtered.length === 0 ? (
         <div className="rounded-2xl border border-gray-200 bg-white py-16 text-center dark:border-gray-800 dark:bg-gray-900">
           <Package className="mx-auto h-12 w-12 text-gray-300" />
           <p className="mt-3 text-lg font-bold text-gray-900 dark:text-white">
@@ -101,7 +132,7 @@ export default function OrdersPage() {
       ) : (
         <ul className="space-y-3">
           {filtered.map(o => {
-            const StatusIcon = STATUS_CONFIG[o.status].icon;
+            const StatusIcon = statusOf(o).icon;
             return (
               <li
                 key={o.id}
@@ -145,10 +176,10 @@ export default function OrdersPage() {
                       </div>
                     </div>
                     <span
-                      className={`inline-flex items-center gap-1 rounded-full px-3 py-1 text-xs font-bold ${STATUS_CONFIG[o.status].bg}`}
+                      className={`inline-flex items-center gap-1 rounded-full px-3 py-1 text-xs font-bold ${statusOf(o).bg}`}
                     >
                       <StatusIcon className="h-3.5 w-3.5" />
-                      {STATUS_CONFIG[o.status].label}
+                      {statusOf(o).label}
                     </span>
                   </div>
                   <div className="flex items-center gap-3 p-5">
@@ -168,7 +199,9 @@ export default function OrdersPage() {
                             />
                           ) : (
                             <div className="flex h-full w-full items-center justify-center">
-                              <span className="text-lg font-bold text-gray-300 dark:text-gray-600">{it.name[0]}</span>
+                              <span className="text-lg font-bold text-gray-300 dark:text-gray-600">
+                                {(it.name ?? '?')[0]}
+                              </span>
                             </div>
                           )}
                         </div>
@@ -181,7 +214,7 @@ export default function OrdersPage() {
                     </div>
                     <div className="min-w-0 flex-1">
                       <p className="line-clamp-1 font-semibold text-gray-900 dark:text-gray-100">
-                        {o.items[0].name}
+                        {o.items[0]?.name}
                         {o.items.length > 1 && ` +${o.items.length - 1} more`}
                       </p>
                       <p className="text-xs text-gray-500">

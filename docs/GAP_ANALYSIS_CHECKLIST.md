@@ -424,8 +424,8 @@ These are features where the frontend page exists but uses mock data, or the bac
 
 ### 5.2 Storefront Search
 
-- [ ] **Backend:** Build `GET /v1/storefront/search` — full-text product search with filters (frontend currently reuses `GET /v1/storefront/products?search=`).
-- [ ] **Backend:** Build `GET /v1/storefront/search/suggest` — autocomplete suggestions (no API yet).
+- [x] **Backend:** Build `GET /v1/storefront/search` — Done: `StorefrontSearchController@search` (reuses `StorefrontCatalogService::visibleProducts`). Richer full-text match on name/slug/description + variation sku/name; supports filters `category_id`, `brand_id`, `min_price`, `max_price`, `in_stock`, `is_featured/is_new/is_bestseller/is_on_sale`, and sort `relevance|price_asc|price_desc|newest|name|featured`. Same product JSON shape as `products`, so the frontend can swap endpoints.
+- [x] **Backend:** Build `GET /v1/storefront/search/suggest` — Done: `StorefrontSearchController@suggest` returns `{ products:[{id,name,slug,image,price,category}], categories:[...], brands:[...] }` (top 8 products + 5 categories + 5 brands) for autocomplete.
 - [x] **Frontend:** Wire `store/search/page.tsx` to real search API — Done: query now goes through `storefrontService.getProducts({ search })`. Brand/category filters + sort remain client-side; "no results" state improved (neutral message when query is empty).
 - [ ] **Frontend:** Wire `SearchBar.tsx` to autocomplete API (currently uses `POPULAR_SEARCHES` mock) — **BLOCKED**: no suggestions endpoint exists.
 - [x] **Frontend:** Add search filters (category, brand, price range, sort order) — Category + Brand checkboxes and a sort dropdown already exist client-side. **Price-range filter not yet implemented** (needs backend range support).
@@ -435,42 +435,44 @@ These are features where the frontend page exists but uses mock data, or the bac
 
 ### 5.3 Product Reviews
 
-- [ ] **Backend:** Create `product_reviews` migration and model
-- [ ] **Backend:** Build `GET /v1/storefront/products/{slug}/reviews` — paginated reviews
-- [ ] **Backend:** Build `POST /v1/storefront/account/reviews` — submit review (auth required)
-- [ ] **Frontend:** Display reviews on product detail page
-- [ ] **Frontend:** Build review submission form (rating stars + text + optional images)
-- [ ] **Frontend:** Wire admin review queue page (`ecommerce/reviews/queue`) to approval API
+- [x] **Backend:** Create `product_reviews` migration and model — Done: `database/migrations/2026_08_05_000001_create_product_reviews_table.php` + `App\Models\ProductReview` (tenant/product/customer fks, rating, status `pending|approved|rejected`, `is_verified_purchase`, `helpful_count`, `images` json, `admin_response`/`admin_notes`).
+- [x] **Backend:** Build `GET /v1/storefront/products/{slug}/reviews` — Done: `StorefrontReviewController@index` returns approved reviews (paginated) + rating summary (average, total, per-star distribution).
+- [x] **Backend:** Build `POST /v1/storefront/account/reviews` — Done: `StorefrontReviewController@store` (auth:customer) creates a `pending` review; auto-detects verified purchase from delivered `EcommerceOrder` items.
+- [x] **Backend:** Build admin review queue API — Done: `EcommerceReviewController` under `auth:sanctum` — `GET /v1/product-reviews` (filter `is_approved`/`rating`/search), `POST /{id}/approve`, `POST /{id}/reject`, `POST /{id}/respond`, `DELETE /{id}`.
+- [x] **Frontend:** Display reviews on product detail page — Done: `store/products/[productSlug]/page.tsx` fetches `storefrontService.getProductReviews(slug)` and renders summary + list (replacing the `REVIEWS` mock).
+- [x] **Frontend:** Build review submission form (rating stars + text + optional images) — Done: "Write a Review" CTA with star selector + title/body; gated to authenticated customers; shows pending-moderation notice on submit.
+- [x] **Frontend:** Wire admin review queue page (`ecommerce/reviews/queue`) to approval API — Done: `services/reviewService.ts` rewritten to call the real API (`list/approve/reject/respond/delete`); queue page unchanged otherwise.
 
 ---
 
 ### 5.4 Coupon System
 
-- [ ] **Backend:** Create `coupons`, `coupon_products`, `coupon_redemptions` migrations
-- [ ] **Backend:** Build `POST /v1/storefront/coupons/validate` — validate code, check limits, return discount
-- [ ] **Frontend:** Wire coupon input in cart/checkout to validation API
-- [ ] **Frontend:** Show applied discount in order summary
-- [ ] **Admin:** Wire `ecommerce/promotions/coupons` page to real CRUD API
+- [x] **Backend:** Create `coupons`, `coupon_products`, `coupon_redemptions` migrations — Done: `2026_08_05_000002_create_coupons_table.php` (+ `coupon_products`, `coupon_redemptions`, and `add_coupon_to_ecommerce_orders_table`). `Coupon`/`CouponRedemption` models; `coupons.applies_to` (`all`|`products`), `per_customer_limit`, `times_used`.
+- [x] **Backend:** Build `POST /v1/storefront/coupons/validate` — Done: `StorefrontCouponController@validateCoupon` (public) + `StorefrontCouponService::computeDiscount` performs active/date-window/usage-limit/per-customer/min-subtotal/applicable-products checks and returns the discount (`percentage` capped by `max_discount_amount`, `fixed` capped by applicable base).
+- [x] **Backend:** Coupon discount applied in checkout `quote` + `place` (`computeTotals` now injects the coupon service); `place` records a `coupon_redemptions` row and increments `times_used`, storing `coupon_id`/`coupon_code` on the order.
+- [x] **Frontend:** Wire coupon input in cart/checkout to validation API — Done: `storefrontService.validateCoupon(code, items)`; cart page `handleApplyCoupon` now calls the real endpoint (replacing the WELCOME10/FREESHIP mock). Checkout sends `coupon_code` to `placeOrder`.
+- [x] **Frontend:** Show applied discount in order summary — Done: cart + checkout summaries already render `couponDiscount`; now sourced from the validated API discount.
+- [x] **Admin:** Wire `ecommerce/promotions/coupons` page to real CRUD API — Done: `services/couponService.ts` rewritten to `GET/POST /api/v1/coupons` and `PUT/DELETE /api/v1/coupons/{id}` (`EcommerceCouponController`). Used `used_count` maps from `times_used`.
 
 ---
 
 ### 5.5 Customer Account Features
 
-- [ ] **Backend:** Build `GET /v1/storefront/account/orders` — customer order history
-- [ ] **Backend:** Build `GET /v1/storefront/account/orders/{uuid}` — order detail
-- [ ] **Backend:** Build address CRUD: `GET/POST/PUT/DELETE /v1/storefront/account/addresses`
-- [ ] **Frontend:** Wire `store/account/orders/page.tsx` to real order API
-- [ ] **Frontend:** Wire `store/account/addresses/page.tsx` to address CRUD API (has TODO comment)
-- [ ] **Frontend:** Wire wishlist to server-side API sync (currently localStorage only)
-- [ ] **Frontend:** Implement order tracking with real status updates
+- [x] **Backend:** Build `GET /v1/storefront/account/orders` — customer order history — Done: `StorefrontAccountController@orders` (scoped to `customer_id` + tenant, returns list with items/thumbnails).
+- [x] **Backend:** Build `GET /v1/storefront/account/orders/{uuid}` — order detail — Done: `StorefrontAccountController@orderDetail` returns full order (items, shipping address, payment, shipping/tax/discount/total, timeline built from status timestamps). `pending` normalized to `placed`; `cancelled`/`returned` get a Cancelled timeline step.
+- [x] **Backend:** Build address CRUD: `GET/POST/PUT/DELETE /v1/storefront/account/addresses` — Done: new `customer_addresses` table + `CustomerAddress` model; `storeAddress`/`updateAddress`/`deleteAddress` (default-address handling via `clearDefaults`).
+- [x] **Frontend:** Wire `store/account/orders/page.tsx` to real order API — Done: fetches `checkoutService.listOrders()`, loading state, status filter (incl. `pending`), search.
+- [x] **Frontend:** Wire `store/account/addresses/page.tsx` to address CRUD API — Done: loads via `checkoutService.getAddresses()`; add/edit (PUT when editing)/delete via `saveAddress`/`updateAddress`/`deleteAddress`; replaced localStorage-only state.
+- [x] **Frontend:** Wire wishlist to server-side API sync (currently localStorage only) — Done: `wishlist-store` now calls `storefrontService.toggleWishlist` on add/remove/toggle (best-effort) and `syncFromServer()` on the wishlist page mount loads server items into the store.
+- [x] **Frontend:** Implement order tracking with real status updates — Done: order detail page renders the API-provided `timeline` (Placed → Confirmed → Packed → Shipped → Delivered, computed from real order timestamps) instead of mock data.
 
 ---
 
 ### 5.6 Storefront Brands
 
-- [ ] **Backend:** Build `GET /v1/storefront/brands` — brand listing
-- [ ] **Backend:** Build `GET /v1/storefront/brands/{slug}` — brand detail with products
-- [ ] **Frontend:** Wire `store/brand/[brandSlug]/page.tsx` to real API
+- [x] **Backend:** Build `GET /v1/storefront/brands` — brand listing — Done: `StorefrontBrandController@index` returns active brands (id, uuid, name, slug=`Str::slug(name)`, logo, description, productCount) with pagination.
+- [x] **Backend:** Build `GET /v1/storefront/brands/{slug}` — brand detail with products — Done: `StorefrontBrandController@show` resolves brand by `uuid` or slugified name, returns brand + products (reusing `StorefrontCatalogService::visibleProducts` with `brand_id` filter + shared `StorefrontProductMapTrait` mapper) with sort (featured/newest/price_asc/price_desc/name) and pagination (`meta`).
+- [x] **Frontend:** Wire `store/brand/[brandSlug]/page.tsx` to real API — Done: fetches `storefrontService.getBrand(slug, {sort,page})`; loading + 404 states; sort dropdown; "Load more" pagination; brand hero (logo/name/description); "Other brands" from `getBrands()`. Fixed brand links on product detail page (`/store/brand/${slug}`).
 
 ---
 

@@ -12,9 +12,11 @@ export interface Category {
 
 export interface Brand {
   id: string;
+  uuid?: string;
   name: string;
   slug: string;
-  logo?: string;
+  logo?: string | null;
+  description?: string | null;
   productCount?: number;
 }
 
@@ -148,8 +150,8 @@ export interface Order {
   tax: Money;
   discount: Money;
   total: Money;
-  status: 'placed' | 'confirmed' | 'packed' | 'shipped' | 'delivered' | 'cancelled' | 'returned';
-  paymentStatus: 'pending' | 'paid' | 'failed' | 'refunded';
+  status: 'placed' | 'confirmed' | 'packed' | 'shipped' | 'delivered' | 'cancelled' | 'returned' | 'pending';
+  paymentStatus: 'pending' | 'paid' | 'failed' | 'refunded' | 'unpaid';
   paymentMethod: string;
   shippingAddress: Address;
   shippingMethod: string;
@@ -179,3 +181,26 @@ export interface StorefrontOfferSlide {
   is_active: boolean;
   sort_order: number;
 }
+
+export interface StoreReview {
+  id: string;
+  customerName: string;
+  rating: number;
+  title: string;
+  body: string;
+  date: string;
+  isVerifiedPurchase: boolean;
+  images: string[];
+}
+
+export interface ReviewSummary {
+  average: number;
+  total: number;
+  distribution: Record<number, number>;
+}
+
+export interface ProductReviewsResponse {
+  items: StoreReview[];
+  summary: ReviewSummary;
+}
+

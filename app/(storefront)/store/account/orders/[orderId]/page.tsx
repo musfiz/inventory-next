@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import Image from 'next/image';
-import { use } from 'react';
+import { use, useEffect, useState } from 'react';
 import { notFound } from 'next/navigation';
 import {
   Package,
@@ -16,14 +16,13 @@ import {
   MapPin,
   CreditCard,
   Phone,
-  Mail,
   ExternalLink,
+  Loader2,
 } from 'lucide-react';
-import { SAMPLE_ORDERS } from '@/lib/storefront/mock-data';
 import { formatMoney, formatMoneyDecimal } from '@/lib/utils/format';
 import { imageUrl } from '@/lib/image-url';
-import { useState } from 'react';
-import Rating from '@/components/storefront/Rating';
+import checkoutService from '@/services/checkoutService';
+import type { Order } from '@/types/storefront';
 
 const STATUS_ICON: Record<string, any> = {
   Placed: Clock,
@@ -31,6 +30,7 @@ const STATUS_ICON: Record<string, any> = {
   Packed: Package,
   Shipped: Truck,
   Delivered: CheckCircle2,
+  Cancelled: XCircle,
 };
 
 export default function OrderDetailPage({
@@ -39,8 +39,36 @@ export default function OrderDetailPage({
   params: Promise<{ orderId: string }>;
 }) {
   const { orderId } = use(params);
-  const order = SAMPLE_ORDERS.find(o => o.uuid === orderId);
+  const [order, setOrder] = useState<Order | null>(null);
+  const [loading, setLoading] = useState(true);
   const [reviewing, setReviewing] = useState<string | null>(null);
+
+  useEffect(() => {
+    let active = true;
+    setLoading(true);
+    checkoutService
+      .getOrderDetail(orderId)
+      .then(o => {
+        if (active) setOrder(o as Order);
+      })
+      .catch(() => {
+        if (active) setOrder(null);
+      })
+      .finally(() => {
+        if (active) setLoading(false);
+      });
+    return () => {
+      active = false;
+    };
+  }, [orderId]);
+
+  if (loading) {
+    return (
+      <div className="flex justify-center py-24">
+        <Loader2 className="h-8 w-8 animate-spin text-brand-500" />
+      </div>
+    );
+  }
 
   if (!order) notFound();
 
@@ -94,7 +122,7 @@ export default function OrderDetailPage({
         <div className="mt-6">
           <h2 className="text-sm font-bold text-gray-900 dark:text-white">Order Status</h2>
           <ol className="mt-4 grid gap-2 sm:grid-cols-5">
-            {order.timeline.map((step, i) => {
+            {(order.timeline ?? []).map((step, i) => {
               const Icon = STATUS_ICON[step.status] || Clock;
               return (
                 <li
@@ -179,7 +207,9 @@ export default function OrderDetailPage({
                     />
                   ) : (
                     <div className="flex h-full w-full items-center justify-center">
-                      <span className="text-2xl font-bold text-gray-300 dark:text-gray-600">{item.name[0]}</span>
+                      <span className="text-2xl font-bold text-gray-300 dark:text-gray-600">
+                        {(item.name ?? '?')[0]}
+                      </span>
                     </div>
                   )}
                 </Link>
@@ -190,7 +220,7 @@ export default function OrderDetailPage({
                   >
                     {item.name}
                   </Link>
-                  {Object.keys(item.attributes).length > 0 && (
+                  {Object.keys(item.attributes ?? {}).length > 0 && (
                     <p className="mt-0.5 text-xs text-gray-500">
                       {Object.entries(item.attributes)
                         .map(([k, v]) => `${k}: ${v}`)
@@ -224,17 +254,17 @@ export default function OrderDetailPage({
               Shipping Address
             </h3>
             <p className="mt-2 text-sm text-gray-700 dark:text-gray-300">
-              {order.shippingAddress.name}
+              {order.shippingAddress?.name}
             </p>
             <p className="text-sm text-gray-700 dark:text-gray-300">
-              {order.shippingAddress.addressLine1}
-              {order.shippingAddress.addressLine2 ? `, ${order.shippingAddress.addressLine2}` : ''}
+              {order.shippingAddress?.addressLine1}
+              {order.shippingAddress?.addressLine2 ? `, ${order.shippingAddress.addressLine2}` : ''}
             </p>
             <p className="text-sm text-gray-700 dark:text-gray-300">
-              {order.shippingAddress.city}, {order.shippingAddress.zipCode}
+              {order.shippingAddress?.city}, {order.shippingAddress?.zipCode}
             </p>
             <p className="mt-2 flex items-center gap-1.5 text-sm text-gray-700 dark:text-gray-300">
-              <Phone className="h-3.5 w-3.5" /> {order.shippingAddress.phone}
+              <Phone className="h-3.5 w-3.5" /> {order.shippingAddress?.phone}
             </p>
           </div>
 
@@ -248,7 +278,7 @@ export default function OrderDetailPage({
             </p>
             <p className="mt-1 inline-flex items-center gap-1 rounded-full bg-emerald-100 px-2 py-0.5 text-[10px] font-bold text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400">
               <CheckCircle2 className="h-3 w-3" />
-              {order.paymentStatus === 'paid' ? 'Paid' : 'Pending'}
+              {order.paymentStatus === 'paid' ? 'Paid' : order.paymentStatus === 'unpaid' ? 'Pending' : order.paymentStatus}
             </p>
           </div>
 

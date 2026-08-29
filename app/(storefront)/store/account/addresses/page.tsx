@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import {
   MapPin,
   Plus,
@@ -10,9 +10,11 @@ import {
   Home,
   Briefcase,
   X,
+  Loader2,
 } from 'lucide-react';
 import type { Address } from '@/types/storefront';
 import { notify } from '@/lib/notifications';
+import checkoutService from '@/services/checkoutService';
 
 const EMPTY: Omit<Address, 'id'> = {
   label: 'Home',
@@ -29,31 +31,88 @@ const EMPTY: Omit<Address, 'id'> = {
 
 export default function AddressesPage() {
   const [addresses, setAddresses] = useState<Address[]>([]);
-
-  const addAddress = (addr: Omit<Address, 'id'>) => {
-    setAddresses(prev => [...prev, { ...addr, id: `a-${Date.now()}` }]);
-  };
-
-  const removeAddress = (id: string) => {
-    setAddresses(prev => prev.filter(a => a.id !== id));
-  };
-
-  const setDefault = (id: string) => {
-    setAddresses(prev =>
-      prev.map(a => ({ ...a, isDefault: a.id === id }))
-    );
-  };
-
+  const [loading, setLoading] = useState(true);
   const [modal, setModal] = useState<Omit<Address, 'id'> | null>(null);
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [saving, setSaving] = useState(false);
 
-  const handleSave = () => {
-    if (!modal?.name || !modal?.phone || !modal?.addressLine1) {
+  useEffect(() => {
+    let active = true;
+    setLoading(true);
+    checkoutService
+      .getAddresses()
+      .then(list => {
+        if (active) setAddresses(list);
+      })
+      .catch(() => {
+        if (active) setAddresses([]);
+      })
+      .finally(() => {
+        if (active) setLoading(false);
+      });
+    return () => {
+      active = false;
+    };
+  }, []);
+
+  const openAdd = () => {
+    setEditingId(null);
+    setModal({ ...EMPTY });
+  };
+
+  const openEdit = (a: Address) => {
+    setEditingId(a.id);
+    const { id, ...rest } = a;
+    setModal(rest);
+  };
+
+  const handleSave = async () => {
+    if (!modal) return;
+    if (!modal.name || !modal.phone || !modal.addressLine1) {
       notify.error('Please fill in all required fields');
       return;
     }
-    addAddress(modal);
-    notify.success('Address added');
-    setModal(null);
+    setSaving(true);
+    try {
+      if (editingId) {
+        const updated = await checkoutService.updateAddress(editingId, modal);
+        setAddresses(prev => prev.map(a => (a.id === editingId ? updated : a)));
+        notify.success('Address updated');
+      } else {
+        const created = await checkoutService.saveAddress(modal);
+        setAddresses(prev => [...prev, created]);
+        notify.success('Address added');
+      }
+      setModal(null);
+      setEditingId(null);
+    } catch {
+      notify.error('Failed to save address');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const removeAddress = async (id: string) => {
+    if (!window.confirm('Delete this address?')) return;
+    try {
+      await checkoutService.deleteAddress(id);
+      setAddresses(prev => prev.filter(a => a.id !== id));
+      notify.success('Address deleted');
+    } catch {
+      notify.error('Failed to delete address');
+    }
+  };
+
+  const setDefault = async (id: string) => {
+    const target = addresses.find(a => a.id === id);
+    if (!target) return;
+    try {
+      const updated = await checkoutService.updateAddress(id, { ...target, isDefault: true });
+      setAddresses(prev => prev.map(a => ({ ...a, isDefault: a.id === id ? updated.isDefault : false })));
+      notify.success('Default address updated');
+    } catch {
+      notify.error('Failed to update default address');
+    }
   };
 
   return (
@@ -68,7 +127,7 @@ export default function AddressesPage() {
           </p>
         </div>
         <button
-          onClick={() => setModal({ ...EMPTY })}
+          onClick={openAdd}
           className="inline-flex items-center gap-1.5 rounded-lg bg-brand-600 px-4 py-2.5 text-sm font-bold text-white hover:bg-brand-700"
         >
           <Plus className="h-4 w-4" />
@@ -76,7 +135,11 @@ export default function AddressesPage() {
         </button>
       </div>
 
-      {addresses.length === 0 ? (
+      {loading ? (
+        <div className="flex justify-center py-16">
+          <Loader2 className="h-8 w-8 animate-spin text-brand-500" />
+        </div>
+      ) : addresses.length === 0 ? (
         <div className="rounded-2xl border border-gray-200 bg-white py-16 text-center dark:border-gray-800 dark:bg-gray-900">
           <MapPin className="mx-auto h-12 w-12 text-gray-300" />
           <p className="mt-3 text-lg font-bold text-gray-900 dark:text-white">
@@ -112,17 +175,20 @@ export default function AddressesPage() {
                       )}
                     </div>
                   </div>
-                  <button
-                    onClick={() => {
-                      if (window.confirm('Delete this address?')) {
-                        removeAddress(a.id);
-                        notify.success('Address deleted');
-                      }
-                    }}
-                    className="rounded-md p-1.5 text-gray-400 hover:bg-red-50 hover:text-red-600 dark:hover:bg-red-950/30"
-                  >
-                    <Trash2 className="h-4 w-4" />
-                  </button>
+                  <div className="flex items-center gap-1">
+                    <button
+                      onClick={() => openEdit(a)}
+                      className="rounded-md p-1.5 text-gray-400 hover:bg-gray-100 hover:text-brand-600 dark:hover:bg-gray-800"
+                    >
+                      <Edit2 className="h-4 w-4" />
+                    </button>
+                    <button
+                      onClick={() => removeAddress(a.id)}
+                      className="rounded-md p-1.5 text-gray-400 hover:bg-red-50 hover:text-red-600 dark:hover:bg-red-950/30"
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </button>
+                  </div>
                 </div>
                 <p className="mt-3 text-sm text-gray-700 dark:text-gray-300">
                   {a.name}
@@ -139,10 +205,7 @@ export default function AddressesPage() {
                 </p>
                 {!a.isDefault && (
                   <button
-                    onClick={() => {
-                      setDefault(a.id);
-                      notify.success('Default address updated');
-                    }}
+                    onClick={() => setDefault(a.id)}
                     className="mt-3 text-xs font-semibold text-brand-600 hover:text-brand-700"
                   >
                     Set as default
@@ -159,15 +222,15 @@ export default function AddressesPage() {
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
           <div
             className="absolute inset-0 bg-black/50"
-            onClick={() => setModal(null)}
+            onClick={() => !saving && setModal(null)}
           />
           <div className="relative max-h-[90vh] w-full max-w-md overflow-y-auto rounded-2xl bg-white p-6 shadow-2xl dark:bg-gray-950 sf-fade-in-zoom">
             <div className="mb-4 flex items-center justify-between">
               <h3 className="text-lg font-black text-gray-900 dark:text-white">
-                Add new address
+                {editingId ? 'Edit address' : 'Add new address'}
               </h3>
               <button
-                onClick={() => setModal(null)}
+                onClick={() => !saving && setModal(null)}
                 className="rounded-full p-1.5 text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-800"
               >
                 <X className="h-5 w-5" />
@@ -247,15 +310,17 @@ export default function AddressesPage() {
             <div className="mt-5 flex gap-2">
               <button
                 onClick={() => setModal(null)}
+                disabled={saving}
                 className="flex-1 rounded-lg border border-gray-300 py-2.5 text-sm font-semibold text-gray-700 hover:bg-gray-50 dark:border-gray-700 dark:text-gray-300"
               >
                 Cancel
               </button>
               <button
                 onClick={handleSave}
-                className="flex-1 rounded-lg bg-brand-600 py-2.5 text-sm font-bold text-white hover:bg-brand-700"
+                disabled={saving}
+                className="flex-1 rounded-lg bg-brand-600 py-2.5 text-sm font-bold text-white hover:bg-brand-700 disabled:opacity-60"
               >
-                Save Address
+                {saving ? 'Saving…' : 'Save Address'}
               </button>
             </div>
           </div>

@@ -21,7 +21,6 @@ import {
 import { IoCartSharp } from 'react-icons/io5';
 import ProductMagnifier from '@/components/storefront/ProductMagnifier';
 import {
-  REVIEWS,
   STORE_INFO,
 } from '@/lib/storefront/mock-data';
 import { formatMoney, formatMoneyDecimal } from '@/lib/utils/format';
@@ -37,7 +36,8 @@ import { imageUrl } from '@/lib/image-url';
 import SafeHTML from '@/components/ui/safe-html';
 import ecommerceSettingsService from '@/services/ecommerceSettingsService';
 import storefrontService from '@/services/storefrontService';
-import type { Product } from '@/types/storefront';
+import { useCustomerAuthStore } from '@/stores/customer-auth-store';
+import type { Product, StoreReview, ReviewSummary } from '@/types/storefront';
 import Rating from '@/components/storefront/Rating';
 import Badge from '@/components/storefront/Badge';
 import ProductCard from '@/components/storefront/ProductCard';
@@ -52,6 +52,16 @@ export default function ProductDetailPage() {
   const [loading, setLoading] = useState(true);
   const [is404, setIs404] = useState(false);
   const [related, setRelated] = useState<Product[]>([]);
+
+  const [reviews, setReviews] = useState<StoreReview[]>([]);
+  const [reviewSummary, setReviewSummary] = useState<ReviewSummary | null>(null);
+  const [reviewsLoading, setReviewsLoading] = useState(false);
+  const [showReviewForm, setShowReviewForm] = useState(false);
+  const [reviewDraft, setReviewDraft] = useState({ rating: 5, title: '', body: '' });
+  const [reviewSubmitting, setReviewSubmitting] = useState(false);
+  const [reviewPendingMsg, setReviewPendingMsg] = useState(false);
+
+  const isAuthed = useCustomerAuthStore(s => s.isAuthenticated);
 
   useEffect(() => {
     if (!productSlug) return;
@@ -86,6 +96,26 @@ export default function ProductDetailPage() {
       .then(res => setRelated(res.data.filter(p => p.id !== product.id).slice(0, 5)))
       .catch(() => setRelated([]));
   }, [product?.category?.id, product?.id]);
+
+  useEffect(() => {
+    if (!product?.slug) return;
+    let cancelled = false;
+    setReviewsLoading(true);
+    storefrontService
+      .getProductReviews(product.slug, { per_page: 10 })
+      .then(res => {
+        if (cancelled) return;
+        setReviews(res.items);
+        setReviewSummary(res.summary);
+      })
+      .catch(() => {})
+      .finally(() => {
+        if (!cancelled) setReviewsLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [product?.slug]);
 
   const [activeImg, setActiveImg] = useState(0);
   const [selectedVariationId, setSelectedVariationId] = useState<string>('');
@@ -175,10 +205,11 @@ export default function ProductDetailPage() {
   // Group attributes for selectors
   const attributeKeys = Object.keys(variation.attributes);
 
-  const reviews = REVIEWS.filter(r => r.productId === product.id);
+  const totalReviews = reviewSummary?.total ?? reviews.length;
+  const avgRating = reviewSummary?.average ?? product?.rating ?? 0;
   const ratingDist = [5, 4, 3, 2, 1].map(stars => ({
     stars,
-    count: reviews.filter(r => Math.round(r.rating) === stars).length,
+    count: reviewSummary ? (reviewSummary.distribution[stars] ?? 0) : reviews.filter(r => Math.round(r.rating) === stars).length,
   }));
 
   const handleAdd = (e: React.MouseEvent) => {
@@ -196,6 +227,28 @@ export default function ProductDetailPage() {
   const handleWish = () => {
     wishlist.toggle(product.id);
     notify.success(isWished ? 'Removed from wishlist' : 'Added to wishlist');
+  };
+
+  const handleReviewSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!product) return;
+    setReviewSubmitting(true);
+    try {
+      await storefrontService.submitReview({
+        product_slug: product.slug,
+        rating: reviewDraft.rating,
+        title: reviewDraft.title,
+        review: reviewDraft.body,
+      });
+      notify.success('Review submitted! It will appear after moderation.');
+      setShowReviewForm(false);
+      setReviewDraft({ rating: 5, title: '', body: '' });
+      setReviewPendingMsg(true);
+    } catch {
+      notify.error('Failed to submit review.');
+    } finally {
+      setReviewSubmitting(false);
+    }
   };
 
   return (
@@ -281,7 +334,7 @@ export default function ProductDetailPage() {
           <ScrollReveal animation="slide-right" duration="normal" as="div" className="lg:py-2">
             {product.brand && (
               <Link
-                href={`/brand/${product.brand.slug}`}
+                href={`/store/brand/${product.brand.slug}`}
                 className="text-xs font-bold uppercase tracking-wider text-brand-600 hover:underline dark:text-brand-400"
               >
                 {product.brand.name}
@@ -296,9 +349,9 @@ export default function ProductDetailPage() {
                 onClick={() => setTab('reviews')}
                 className="inline-flex items-center gap-2"
               >
-                <Rating value={product.rating} size="md" showValue showCount={false} />
+                <Rating value={avgRating} size="md" showValue showCount={false} />
                 <span className="text-sm text-gray-500 underline-offset-2 hover:underline">
-                  {product.reviewCount} reviews
+                  {totalReviews} reviews
                 </span>
               </button>
               <span className="text-gray-300">|</span>
@@ -488,7 +541,7 @@ export default function ProductDetailPage() {
             {([
               ['description', 'Description'],
               ['specs', 'Specifications'],
-              ['reviews', `Reviews (${reviews.length})`],
+              ['reviews', `Reviews (${totalReviews})`],
               ['shipping', 'Shipping & Returns'],
             ] as const).map(([id, label]) => (
               <button
@@ -545,13 +598,13 @@ export default function ProductDetailPage() {
               <div className="grid gap-6 sm:grid-cols-[260px_1fr]">
                 <div className="text-center">
                   <p className="text-5xl font-black text-gray-900 dark:text-white">
-                    {product.rating.toFixed(1)}
+                    {avgRating.toFixed(1)}
                   </p>
                   <div className="mt-2 flex justify-center">
-                    <Rating value={product.rating} size="md" showValue={false} showCount={false} />
+                    <Rating value={avgRating} size="md" showValue={false} showCount={false} />
                   </div>
                   <p className="mt-1 text-xs text-gray-500">
-                    Based on {product.reviewCount} reviews
+                    Based on {totalReviews} reviews
                   </p>
                 </div>
                 <div className="space-y-1.5">
@@ -561,7 +614,7 @@ export default function ProductDetailPage() {
                       <div className="h-2 flex-1 overflow-hidden rounded-full bg-gray-100 dark:bg-gray-800">
                         <div
                           className="h-full bg-amber-400"
-                          style={{ width: `${reviews.length > 0 ? (r.count / reviews.length) * 100 : 0}%` }}
+                          style={{ width: `${totalReviews > 0 ? (r.count / totalReviews) * 100 : 0}%` }}
                         />
                       </div>
                       <span className="w-8 text-gray-500">{r.count}</span>
@@ -570,9 +623,88 @@ export default function ProductDetailPage() {
                 </div>
               </div>
 
+              {/* Write a review */}
+              <div className="mt-8 border-t border-gray-100 pt-6 dark:border-gray-800">
+                {reviewPendingMsg && (
+                  <div className="mb-3 rounded-md border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm text-emerald-700 dark:border-emerald-900/40 dark:bg-emerald-950/30 dark:text-emerald-300">
+                    Thanks! Your review is awaiting moderation and will be published shortly.
+                  </div>
+                )}
+                {!showReviewForm && (
+                  <button
+                    type="button"
+                    onClick={() => setShowReviewForm(true)}
+                    className="inline-flex items-center gap-2 rounded-md bg-brand-600 px-4 py-2 text-sm font-semibold text-white hover:bg-brand-700"
+                  >
+                    <Star className="h-4 w-4" /> Write a Review
+                  </button>
+                )}
+                {showReviewForm && !isAuthed && (
+                  <p className="text-sm text-gray-600 dark:text-gray-300">
+                    Please{' '}
+                    <Link href="/store/account/login" className="font-semibold text-brand-600 underline">
+                      log in
+                    </Link>{' '}
+                    to write a review.
+                  </p>
+                )}
+                {showReviewForm && isAuthed && (
+                  <form onSubmit={handleReviewSubmit} className="space-y-3">
+                    <div className="flex items-center gap-1">
+                      {[1, 2, 3, 4, 5].map(s => (
+                        <button
+                          type="button"
+                          key={s}
+                          onClick={() => setReviewDraft(d => ({ ...d, rating: s }))}
+                          aria-label={`${s} star`}
+                          className="cursor-pointer"
+                        >
+                          <Star
+                            className={`h-6 w-6 ${s <= reviewDraft.rating ? 'fill-amber-400 text-amber-400' : 'text-gray-300 dark:text-gray-600'}`}
+                          />
+                        </button>
+                      ))}
+                    </div>
+                    <input
+                      type="text"
+                      value={reviewDraft.title}
+                      onChange={e => setReviewDraft(d => ({ ...d, title: e.target.value }))}
+                      placeholder="Review title"
+                      className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm dark:border-gray-600 dark:bg-gray-800 dark:text-gray-100"
+                    />
+                    <textarea
+                      value={reviewDraft.body}
+                      onChange={e => setReviewDraft(d => ({ ...d, body: e.target.value }))}
+                      placeholder="Share your experience with this product..."
+                      rows={4}
+                      className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm dark:border-gray-600 dark:bg-gray-800 dark:text-gray-100"
+                    />
+                    <div className="flex gap-2">
+                      <button
+                        type="submit"
+                        disabled={reviewSubmitting}
+                        className="rounded-md bg-brand-600 px-4 py-2 text-sm font-semibold text-white hover:bg-brand-700 disabled:opacity-60"
+                      >
+                        {reviewSubmitting ? 'Submitting...' : 'Submit Review'}
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setShowReviewForm(false)}
+                        className="rounded-md bg-gray-200 px-4 py-2 text-sm font-semibold text-gray-700 hover:bg-gray-300 dark:bg-gray-700 dark:text-gray-200"
+                      >
+                        Cancel
+                      </button>
+                    </div>
+                  </form>
+                )}
+              </div>
+
               {/* List */}
               <ul className="mt-8 space-y-6">
-                {reviews.length === 0 && (
+                {reviewsLoading && (
+                  <li className="py-10 text-center text-sm text-gray-400">Loading reviews...</li>
+                )}
+                {!reviewsLoading && reviews.length === 0 && (
                   <li className="rounded-xl border border-dashed border-gray-200 py-10 text-center text-sm text-gray-500 dark:border-gray-700">
                     No reviews yet. Be the first to review this product.
                   </li>

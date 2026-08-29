@@ -1,6 +1,6 @@
 import apiClient from '@/lib/api/axios';
 import type { ApiResponse } from '@/types/api.types';
-import type { Product, Category } from '@/types/storefront';
+import type { Product, Category, Brand, StoreReview, ReviewSummary } from '@/types/storefront';
 
 export interface StorefrontHeroSlider {
   id: string;
@@ -134,6 +134,124 @@ class StorefrontService {
       `/api/v1/storefront/products/${slug}`
     );
     return response.data.data;
+  }
+
+  async getBrands(params?: { per_page?: number }): Promise<{
+    data: Brand[];
+    meta: ProductsResponse['meta'];
+  }> {
+    const response = await apiClient.get<{
+      success: boolean;
+      data: Brand[];
+      meta: ProductsResponse['meta'];
+    }>('/api/v1/storefront/brands', { params });
+    return { data: response.data.data, meta: response.data.meta };
+  }
+
+  async getBrand(
+    slug: string,
+    params?: { sort?: string; page?: number; per_page?: number; search?: string }
+  ): Promise<{ brand: Brand; products: Product[]; meta: ProductsResponse['meta'] }> {
+    const response = await apiClient.get<{
+      success: boolean;
+      data: { brand: Brand; products: Product[] };
+      meta: ProductsResponse['meta'];
+    }>(`/api/v1/storefront/brands/${slug}`, { params });
+    return {
+      brand: response.data.data.brand,
+      products: response.data.data.products,
+      meta: response.data.meta,
+    };
+  }
+
+  async getProductReviews(
+    slug: string,
+    params?: { page?: number; per_page?: number }
+  ): Promise<{ items: StoreReview[]; summary: ReviewSummary }> {
+    const response = await apiClient.get<{
+      success: boolean;
+      data: StoreReview[];
+      meta: { current_page: number; last_page: number; per_page: number; total: number; summary: ReviewSummary };
+    }>(`/api/v1/storefront/products/${slug}/reviews`, { params });
+    return {
+      items: response.data.data ?? [],
+      summary: response.data.meta?.summary ?? { average: 0, total: 0, distribution: {} },
+    };
+  }
+
+  async submitReview(payload: {
+    product_slug: string;
+    rating: number;
+    title?: string;
+    review?: string;
+    images?: string[];
+  }): Promise<{ id: string; status: string }> {
+    const response = await apiClient.post<ApiResponse<{ id: string; status: string }>>(
+      '/api/v1/storefront/account/reviews',
+      payload
+    );
+    return response.data.data;
+  }
+
+  async validateCoupon(
+    code: string,
+    items: { variation_id: string | number; quantity: number }[]
+  ): Promise<{
+    valid: boolean;
+    code: string;
+    type: 'percentage' | 'fixed';
+    value: number;
+    discount: number;
+    min_order_amount: number;
+    message?: string;
+  }> {
+    const response = await apiClient.post<ApiResponse<{
+      valid: boolean;
+      code: string;
+      type: 'percentage' | 'fixed';
+      value: number;
+      discount: number;
+      min_order_amount: number;
+      message?: string;
+    }>>('/api/v1/storefront/coupons/validate', { code, items });
+    return response.data.data;
+  }
+
+  async getWishlist(): Promise<{
+    customer_id: string;
+    items: {
+      id: string;
+      product_id: string;
+      product_name: string;
+      product_image: string | null;
+      sku: string;
+      price: number;
+      stock_status: string;
+      added_at: string;
+    }[];
+    total_items: number;
+  }> {
+    const response = await apiClient.get<ApiResponse<{
+      customer_id: string;
+      items: {
+        id: string;
+        product_id: string;
+        product_name: string;
+        product_image: string | null;
+        sku: string;
+        price: number;
+        stock_status: string;
+        added_at: string;
+      }[];
+      total_items: number;
+    }>>('/api/v1/storefront/account/wishlist');
+    return response.data.data;
+  }
+
+  async toggleWishlist(productId: string | number): Promise<void> {
+    await apiClient.post('/api/v1/storefront/wishlist/toggle', {
+      product_id: productId,
+    });
   }
 }
 

@@ -1,6 +1,7 @@
 'use client';
 
 import Link from 'next/link';
+import { useEffect } from 'react';
 import { Heart, ShoppingBag, ArrowRight, Trash2 } from 'lucide-react';
 import { useWishlistStore } from '@/stores/wishlist-store';
 import { PRODUCTS } from '@/lib/storefront/mock-data';
@@ -12,6 +13,12 @@ import { notify } from '@/lib/notifications';
 export default function WishlistPage() {
   const items = useWishlistStore(s => s.items);
   const clear = useWishlistStore(s => s.clear);
+  const syncFromServer = useWishlistStore(s => s.syncFromServer);
+
+  useEffect(() => {
+    syncFromServer();
+  }, [syncFromServer]);
+
   const products = PRODUCTS.filter(p => items.includes(p.id));
 
   return (

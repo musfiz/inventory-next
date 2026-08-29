@@ -105,6 +105,47 @@ class CheckoutService {
     return res.data.data || [];
   }
 
+  /** GET /api/v1/storefront/account/orders — customer order history. */
+  async listOrders(): Promise<any[]> {
+    const res = await apiClient.get<{ success: boolean; data: any[] }>(
+      '/api/v1/storefront/account/orders',
+    );
+    return res.data.data || [];
+  }
+
+  /** GET /api/v1/storefront/account/orders/{uuid} — order detail. */
+  async getOrderDetail(uuid: string): Promise<any> {
+    const res = await apiClient.get<{ success: boolean; data: any }>(
+      `/api/v1/storefront/account/orders/${uuid}`,
+    );
+    return res.data.data;
+  }
+
+  /** POST /api/v1/storefront/account/addresses — create address. */
+  async saveAddress(addr: Omit<Address, 'id'>): Promise<Address> {
+    const res = await apiClient.post<{ success: boolean; data: Address }>(
+      '/api/v1/storefront/account/addresses',
+      addr,
+    );
+    return res.data.data;
+  }
+
+  /** PUT /api/v1/storefront/account/addresses/{id} — update address. */
+  async updateAddress(id: string, addr: Omit<Address, 'id'>): Promise<Address> {
+    const res = await apiClient.put<{ success: boolean; data: Address }>(
+      `/api/v1/storefront/account/addresses/${id}`,
+      addr,
+    );
+    return res.data.data;
+  }
+
+  /** DELETE /api/v1/storefront/account/addresses/{id} — delete address. */
+  async deleteAddress(id: string): Promise<void> {
+    await apiClient.delete<{ success: boolean }>(
+      `/api/v1/storefront/account/addresses/${id}`,
+    );
+  }
+
   /** GET /api/v1/storefront/orders/{uuid} — order detail for success page. */
   async getOrder(uuid: string): Promise<StorefrontOrder> {
     const res = await apiClient.get<{ success: boolean; data: StorefrontOrder }>(

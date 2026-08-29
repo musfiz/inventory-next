@@ -20,6 +20,7 @@ import {
 } from '@/lib/storefront/mock-data';
 import { imageUrl } from '@/lib/image-url';
 import { notify } from '@/lib/notifications';
+import storefrontService from '@/services/storefrontService';
 
 export default function CartPage() {
   const {
@@ -44,17 +45,21 @@ export default function CartPage() {
   const tax = subtotal * (STORE_INFO.taxRate / 100);
   const total = subtotal + shipping + tax - couponDiscount;
 
-  const handleApplyCoupon = () => {
+  const handleApplyCoupon = async () => {
     const code = couponInput.toUpperCase().trim();
     if (!code) return;
-    if (code === 'WELCOME10') {
-      applyCoupon('WELCOME10', subtotal * 0.1);
-      notify.success('Coupon applied! 10% off');
-    } else if (code === 'FREESHIP') {
-      applyCoupon('FREESHIP', shipping);
-      notify.success('Free shipping applied!');
-    } else {
-      notify.error('Invalid coupon code');
+    const itemsForValidation = items.map(i => ({
+      variation_id: i.variationId,
+      quantity: i.quantity,
+    }));
+    try {
+      const res = await storefrontService.validateCoupon(code, itemsForValidation);
+      applyCoupon(res.code, res.discount);
+      notify.success(res.message || `Coupon ${res.code} applied!`);
+    } catch (e: any) {
+      const msg =
+        e?.response?.data?.message || 'Invalid or expired coupon code';
+      notify.error(String(msg));
     }
     setCouponInput('');
   };
@@ -250,7 +255,7 @@ export default function CartPage() {
                   </div>
                 )}
                 <p className="mt-1.5 text-[10px] text-gray-400">
-                  Try WELCOME10 (10% off) or FREESHIP (free shipping)
+                  Enter a coupon code and click Apply
                 </p>
               </div>
 
