@@ -17,10 +17,10 @@ const emptyForm = {
   description: '',
   cities: '',
   countries: '',
-  base_rate: 0,
+  base_rate: '',
   free_shipping_threshold: '',
-  estimated_days_min: 3,
-  estimated_days_max: 7,
+  estimated_days_min: '',
+  estimated_days_max: '',
   is_active: true,
 };
 
@@ -215,10 +215,10 @@ export default function ShippingZonesPage() {
       description: zone.description || '',
       cities: zone.cities.join(', '),
       countries: zone.countries.join(', '),
-      base_rate: zone.base_rate,
+      base_rate: String(zone.base_rate),
       free_shipping_threshold: zone.free_shipping_threshold?.toString() || '',
-      estimated_days_min: zone.estimated_days_min,
-      estimated_days_max: zone.estimated_days_max,
+      estimated_days_min: String(zone.estimated_days_min),
+      estimated_days_max: String(zone.estimated_days_max),
       is_active: zone.is_active,
     });
     setFormErrors({});
@@ -228,7 +228,7 @@ export default function ShippingZonesPage() {
   const validate = () => {
     const errors: { [key: string]: string } = {};
     if (!formData.name.trim()) errors.name = 'Zone name is required';
-    if (formData.base_rate < 0) errors.base_rate = 'Rate cannot be negative';
+    if (formData.base_rate !== '' && Number(formData.base_rate) < 0) errors.base_rate = 'Rate cannot be negative';
     if (!formData.cities.trim() && !formData.countries.trim()) {
       errors.cities = 'At least one city or country is required';
     }
@@ -248,10 +248,10 @@ export default function ShippingZonesPage() {
         description: formData.description,
         cities: formData.cities.split(',').map(c => c.trim()).filter(Boolean),
         countries: formData.countries.split(',').map(c => c.trim()).filter(Boolean),
-        base_rate: formData.base_rate,
+        base_rate: formData.base_rate === '' ? undefined : Number(formData.base_rate),
         free_shipping_threshold: formData.free_shipping_threshold ? Number(formData.free_shipping_threshold) : null,
-        estimated_days_min: formData.estimated_days_min,
-        estimated_days_max: formData.estimated_days_max,
+        estimated_days_min: formData.estimated_days_min === '' ? undefined : Number(formData.estimated_days_min),
+        estimated_days_max: formData.estimated_days_max === '' ? undefined : Number(formData.estimated_days_max),
         is_active: formData.is_active,
       });
       notify.success(isEditing ? 'Zone updated' : 'Zone created');
@@ -449,12 +449,12 @@ export default function ShippingZonesPage() {
             <div className="grid grid-cols-1 md:grid-cols-3 gap-1.5">
               <div>
                 <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-0.5">Zone Name <span className="text-red-500">*</span></label>
-                <input type="text" placeholder="e.g., Dhaka Metro" value={formData.name} onChange={e => setFormData({...formData, name: e.target.value})} className={`w-full px-2 py-1.5 text-xs border rounded-sm focus:outline-none focus:ring-1 focus:ring-indigo-500 dark:focus:ring-indigo-400 dark:bg-gray-700 dark:text-gray-100 ${formErrors.name ? 'border-red-500' : 'border-gray-300 dark:border-gray-600'}`} />
+                <input type="text" placeholder="e.g., Dhaka Metro" value={formData.name} onChange={e => setFormData({...formData, name: e.target.value})} autoFocus className={`w-full px-2 py-1.5 text-xs border rounded-sm focus:outline-none focus:ring-1 focus:ring-indigo-500 dark:focus:ring-indigo-400 dark:bg-gray-700 dark:text-gray-100 ${formErrors.name ? 'border-red-500' : 'border-gray-300 dark:border-gray-600'}`} />
                 {formErrors.name && <p className="text-red-500 text-[10px] mt-0.5">{formErrors.name}</p>}
               </div>
               <div>
                 <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-0.5">Base Rate (৳)</label>
-                <input type="number" value={formData.base_rate} onChange={e => setFormData({...formData, base_rate: Number(e.target.value)})} className="w-full px-2 py-1.5 text-xs border border-gray-300 dark:border-gray-600 rounded-sm focus:outline-none focus:ring-1 focus:ring-indigo-500 dark:focus:ring-indigo-400 dark:bg-gray-700 dark:text-gray-100" min="0" />
+                <input type="number" value={formData.base_rate} onChange={e => setFormData({...formData, base_rate: e.target.value})} className="w-full px-2 py-1.5 text-xs border border-gray-300 dark:border-gray-600 rounded-sm focus:outline-none focus:ring-1 focus:ring-indigo-500 dark:focus:ring-indigo-400 dark:bg-gray-700 dark:text-gray-100" min="0" />
               </div>
               <div>
                 <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-0.5">Free Shipping Over (optional)</label>
@@ -484,11 +484,11 @@ export default function ShippingZonesPage() {
               <div className="grid grid-cols-2 gap-1.5">
                 <div>
                   <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-0.5">Est. Min (days)</label>
-                  <input type="number" value={formData.estimated_days_min} onChange={e => setFormData({...formData, estimated_days_min: Number(e.target.value)})} className="w-full px-2 py-1.5 text-xs border border-gray-300 dark:border-gray-600 rounded-sm focus:outline-none focus:ring-1 focus:ring-indigo-500 dark:focus:ring-indigo-400 dark:bg-gray-700 dark:text-gray-100" min="1" />
+                  <input type="number" value={formData.estimated_days_min} onChange={e => setFormData({...formData, estimated_days_min: e.target.value})} className="w-full px-2 py-1.5 text-xs border border-gray-300 dark:border-gray-600 rounded-sm focus:outline-none focus:ring-1 focus:ring-indigo-500 dark:focus:ring-indigo-400 dark:bg-gray-700 dark:text-gray-100" min="1" />
                 </div>
                 <div>
                   <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-0.5">Est. Max (days)</label>
-                  <input type="number" value={formData.estimated_days_max} onChange={e => setFormData({...formData, estimated_days_max: Number(e.target.value)})} className="w-full px-2 py-1.5 text-xs border border-gray-300 dark:border-gray-600 rounded-sm focus:outline-none focus:ring-1 focus:ring-indigo-500 dark:focus:ring-indigo-400 dark:bg-gray-700 dark:text-gray-100" min="1" />
+                  <input type="number" value={formData.estimated_days_max} onChange={e => setFormData({...formData, estimated_days_max: e.target.value})} className="w-full px-2 py-1.5 text-xs border border-gray-300 dark:border-gray-600 rounded-sm focus:outline-none focus:ring-1 focus:ring-indigo-500 dark:focus:ring-indigo-400 dark:bg-gray-700 dark:text-gray-100" min="1" />
                 </div>
               </div>
               <div className="flex items-center gap-2 pt-5">

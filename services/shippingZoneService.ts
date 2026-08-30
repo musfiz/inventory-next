@@ -141,6 +141,7 @@ class ShippingZoneService {
       const response = await apiClient.post(API_BASE, data);
       return response.data?.data?.zone;
     } catch (error) {
+      if (process.env.NEXT_PUBLIC_USE_MOCK !== 'true') throw error;
       console.warn('ShippingZone store API unavailable, using mock:', error);
       return this.fallbackStore(data);
     }

@@ -170,7 +170,7 @@ export default function FooterBuilderPage() {
       { id: generateId(), platform: 'twitter', url: '', is_active: true },
       { id: generateId(), platform: 'youtube', url: '', is_active: true },
     ],
-    copyright_text: '\u00A9 {year} UIMS Store. All rights reserved.',
+    copyright_text: '{year} UIMS Store. All rights reserved.',
     show_payment_badges: true,
     payment_badges: [
       { id: generateId(), name: 'Visa', is_active: true },
