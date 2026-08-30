@@ -227,7 +227,7 @@ function computePayments(order: typeof mockOrders[0]): OrderPayment[] {
     id: `pay-${order.id}`,
     method: order.payment_method,
     transaction_id: order.payment_status === 'paid' ? `TXN-${order.id}-2025` : undefined,
-    amount: order.total,
+    amount: order.total ?? 0,
     status: statusMap[order.status] || 'pending',
     paid_at: order.payment_status === 'paid' ? daysAgo(25) : undefined,
   }];
@@ -275,6 +275,11 @@ class EcommerceOrderService {
           ...o,
           id: String(o.id),
           customer_id: o.customer_id ? String(o.customer_id) : undefined,
+          total: o.grand_total ?? o.total ?? 0,
+          subtotal: o.sub_total ?? o.subtotal ?? 0,
+          shipping: o.shipping_charge ?? o.shipping ?? 0,
+          tax: o.tax_amount ?? o.tax ?? 0,
+          discount: o.discount_amount ?? o.discount ?? 0,
         }));
         if (result.pagination) {
           return {
@@ -304,6 +309,11 @@ class EcommerceOrderService {
       return {
         ...order,
         id: String(order.id),
+        total: order.grand_total ?? order.total ?? 0,
+        subtotal: order.sub_total ?? order.subtotal ?? 0,
+        shipping: order.shipping_charge ?? order.shipping ?? 0,
+        tax: order.tax_amount ?? order.tax ?? 0,
+        discount: order.discount_amount ?? order.discount ?? 0,
         items: (order.items || []).map((i: any) => ({ ...i, id: String(i.id) })),
         payments: order.payments || computePayments(order),
         status_history: order.status_history || [],
@@ -339,6 +349,11 @@ class EcommerceOrderService {
         return {
           ...order,
           id: String(order.id),
+          total: order.grand_total ?? order.total ?? 0,
+          subtotal: order.sub_total ?? order.subtotal ?? 0,
+          shipping: order.shipping_charge ?? order.shipping ?? 0,
+          tax: order.tax_amount ?? order.tax ?? 0,
+          discount: order.discount_amount ?? order.discount ?? 0,
           items: (order.items || []).map((i: any) => ({ ...i, id: String(i.id) })),
           payments: order.payments || [],
           status_history: order.status_history || [],

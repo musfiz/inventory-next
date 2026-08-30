@@ -215,7 +215,7 @@ export default function OrdersPage() {
       meta: { width: '8%' },
       cell: ({ row }) => (
         <span className="text-xs font-medium text-gray-900 dark:text-gray-100">
-          ৳{row.original.total.toLocaleString('en-IN')}
+          ৳{Number(row.original.total ?? 0).toLocaleString('en-IN')}
         </span>
       ),
     },

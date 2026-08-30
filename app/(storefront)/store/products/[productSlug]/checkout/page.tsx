@@ -88,7 +88,7 @@ export default function ExpressCheckoutPage() {
   const [email, setEmail] = useState(user?.email || '');
   const [phone, setPhone] = useState(user?.phone || '');
   const [address, setAddress] = useState<Address>(emptyAddress);
-  const [shipping, setShipping] = useState(SHIPPING_METHODS[0]?.id ?? 'ship-standard');
+  const [shipping] = useState(SHIPPING_METHODS[0]?.id ?? 'ship-standard');
   const [payment] = useState(COD_METHOD);
 
   const [savedAddresses, setSavedAddresses] = useState<Address[]>([]);
@@ -220,7 +220,8 @@ export default function ExpressCheckoutPage() {
     subtotal >= STORE_INFO.freeShippingThreshold || shipMethod?.isFree
       ? 0
       : (shipMethod?.rate ?? 0);
-  const tax = subtotal * (STORE_INFO.taxRate / 100);
+  // Tax is not configured in ecommerce settings yet — leave at 0 (disabled).
+  const tax = 0;
   const total = subtotal + shippingCost + tax;
 
   if (loading) {
@@ -455,14 +456,6 @@ export default function ExpressCheckoutPage() {
               <StepHeader step="contact" label="1. Contact information" icon={Wallet} />
               {openStep === 'contact' && (
                 <div className="space-y-3 p-5">
-                  {!isAuthenticated && (
-                    <p className="rounded-lg bg-brand-50 px-3 py-2 text-xs font-semibold text-brand-700 dark:bg-brand-950/30 dark:text-brand-400">
-                      Have an account?{' '}
-                      <Link href={`/store/account/login?redirect=/store/products/${product.slug}/checkout`} className="underline">
-                        Sign in for faster checkout
-                      </Link>
-                    </p>
-                  )}
                   <div className="grid gap-3 sm:grid-cols-2">
                     <div>
                       <label className="mb-1.5 block text-xs font-semibold text-gray-700 dark:text-gray-300">Email</label>
@@ -564,40 +557,13 @@ export default function ExpressCheckoutPage() {
                     />
                   </div>
                   <div>
-                    <label className="mb-1.5 block text-xs font-semibold text-gray-700 dark:text-gray-300">Address line 2 (optional)</label>
+                    <label className="mb-1.5 block text-xs font-semibold text-gray-700 dark:text-gray-300">City</label>
                     <input
-                      value={address.addressLine2 || ''}
-                      onChange={e => setAddress({ ...address, addressLine2: e.target.value })}
-                      placeholder="Apartment, suite, area"
+                      required
+                      value={address.city}
+                      onChange={e => setAddress({ ...address, city: e.target.value })}
                       className="w-full rounded-lg border border-gray-300 px-3 py-2.5 text-sm focus:border-brand-500 focus:outline-none dark:border-gray-700 dark:bg-gray-950 dark:text-gray-100"
                     />
-                  </div>
-                  <div className="grid gap-3 sm:grid-cols-3">
-                    <div>
-                      <label className="mb-1.5 block text-xs font-semibold text-gray-700 dark:text-gray-300">City</label>
-                      <input
-                        required
-                        value={address.city}
-                        onChange={e => setAddress({ ...address, city: e.target.value })}
-                        className="w-full rounded-lg border border-gray-300 px-3 py-2.5 text-sm focus:border-brand-500 focus:outline-none dark:border-gray-700 dark:bg-gray-950 dark:text-gray-100"
-                      />
-                    </div>
-                    <div>
-                      <label className="mb-1.5 block text-xs font-semibold text-gray-700 dark:text-gray-300">ZIP</label>
-                      <input
-                        value={address.zipCode}
-                        onChange={e => setAddress({ ...address, zipCode: e.target.value })}
-                        className="w-full rounded-lg border border-gray-300 px-3 py-2.5 text-sm focus:border-brand-500 focus:outline-none dark:border-gray-700 dark:bg-gray-950 dark:text-gray-100"
-                      />
-                    </div>
-                    <div>
-                      <label className="mb-1.5 block text-xs font-semibold text-gray-700 dark:text-gray-300">Country</label>
-                      <input
-                        value={address.country}
-                        onChange={e => setAddress({ ...address, country: e.target.value })}
-                        className="w-full rounded-lg border border-gray-300 px-3 py-2.5 text-sm focus:border-brand-500 focus:outline-none dark:border-gray-700 dark:bg-gray-950 dark:text-gray-100"
-                      />
-                    </div>
                   </div>
                   <button
                     onClick={() => completeStep('address', 'shipping')}
@@ -614,27 +580,17 @@ export default function ExpressCheckoutPage() {
             <div className="overflow-hidden rounded-2xl border border-gray-200 bg-white dark:border-gray-800 dark:bg-gray-900">
               <StepHeader step="shipping" label="3. Shipping method" icon={Truck} />
               {openStep === 'shipping' && (
-                <div className="space-y-2 p-5">
-                  {SHIPPING_METHODS.map(m => (
-                    <button
-                      key={m.id}
-                      type="button"
-                      onClick={() => setShipping(m.id)}
-                      className={`flex w-full items-center justify-between rounded-xl border p-4 text-left transition-all ${
-                        shipping === m.id
-                          ? 'border-brand-500 bg-brand-50 dark:bg-brand-950/30'
-                          : 'border-gray-200 hover:border-gray-300 dark:border-gray-800'
-                      }`}
-                    >
-                      <div>
-                        <p className="text-sm font-bold text-gray-900 dark:text-gray-100">{m.name}</p>
-                        <p className="text-xs text-gray-500">{m.estimatedDays}</p>
-                      </div>
-                      <span className="text-sm font-semibold text-gray-700 dark:text-gray-300">
-                        {m.isFree ? 'Free' : formatMoney(m.rate)}
-                      </span>
-                    </button>
-                  ))}
+                <div className="space-y-3 p-5">
+                  {/* Express checkout uses a single default shipping method. */}
+                  <div className="flex w-full items-center justify-between rounded-xl border border-brand-500 bg-brand-50 p-4 dark:bg-brand-950/30">
+                    <div>
+                      <p className="text-sm font-bold text-gray-900 dark:text-gray-100">{shipMethod?.name}</p>
+                      <p className="text-xs text-gray-500">{shipMethod?.estimatedDays}</p>
+                    </div>
+                    <span className="text-sm font-semibold text-gray-700 dark:text-gray-300">
+                      {shipMethod?.isFree ? 'Free' : formatMoney(shipMethod?.rate ?? 0)}
+                    </span>
+                  </div>
                   <button
                     onClick={() => completeStep('shipping', 'payment')}
                     className="w-full rounded-lg bg-brand-600 py-3 text-sm font-bold text-white sm:w-auto sm:px-8"
@@ -703,10 +659,12 @@ export default function ExpressCheckoutPage() {
                     {shippingCost === 0 ? 'Free' : formatMoney(shippingCost)}
                   </span>
                 </div>
-                <div className="flex justify-between text-gray-600 dark:text-gray-400">
-                  <span>Tax ({STORE_INFO.taxRate}%)</span>
-                  <span className="font-semibold text-gray-900 dark:text-gray-100">{formatMoney(tax)}</span>
-                </div>
+                {tax > 0 && (
+                  <div className="flex justify-between text-gray-600 dark:text-gray-400">
+                    <span>Tax ({STORE_INFO.taxRate}%)</span>
+                    <span className="font-semibold text-gray-900 dark:text-gray-100">{formatMoney(tax)}</span>
+                  </div>
+                )}
                 <div className="mt-3 flex justify-between border-t border-gray-100 pt-3 dark:border-gray-800">
                   <span className="text-base font-bold text-gray-900 dark:text-gray-100">Total</span>
                   <span className="text-base font-bold text-gray-900 dark:text-gray-100">{formatMoney(total)}</span>
