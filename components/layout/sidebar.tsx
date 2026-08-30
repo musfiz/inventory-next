@@ -247,8 +247,7 @@ const navigation: NavigationItem[] = [
         name: 'Storefront Settings',
         icon: Settings,
         children: [
-          { name: 'Status & Activation', href: '/ecommerce/settings/status', icon: Power },
-          { name: 'Store Information', href: '/ecommerce/settings/company', icon: Building2 },
+          { name: 'Store Settings', href: '/ecommerce/settings/status', icon: Power },
           { name: 'Locale & Currency', href: '/ecommerce/settings/localization', icon: Globe },
           { name: 'SEO & Meta Defaults', href: '/ecommerce/settings/seo', icon: Search },
           { name: 'Payment Methods', href: '/ecommerce/settings/payments', icon: MdPayment },

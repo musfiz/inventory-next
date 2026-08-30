@@ -202,3 +202,54 @@ export function normalizeServerErrors(
   }
   return out;
 }
+
+// ── Express checkout (storefront) ─────────────────────────────────
+// Express Checkout is intentionally restricted: Dhaka-only delivery,
+// Bangladesh-only country, fixed Express shipping and Cash on Delivery.
+// These constants mirror both the checkout page and the Laravel rules
+// (StorefrontCheckoutController::place).
+
+export const EXPRESS_CITY = 'Dhaka' as const;
+export const EXPRESS_COUNTRY = 'Bangladesh' as const;
+export const EXPRESS_SHIPPING_METHOD = 'ship-express' as const;
+export const EXPRESS_PAYMENT_METHOD = 'pm-cod' as const;
+
+export const expressAddressSchema = z.object({
+  name: requiredString('Full name', { min: 2 }),
+  phone: phone('Phone'),
+  address_line1: requiredString('Address', { min: 5 }),
+  address_line2: optionalString(),
+  city: z.enum([EXPRESS_CITY], { error: 'City must be Dhaka for express delivery' }),
+  zip_code: optionalString(),
+  country: z.enum([EXPRESS_COUNTRY], { error: 'Country must be Bangladesh' }),
+  label: optionalString(),
+});
+
+export const expressCheckoutItemSchema = z.object({
+  variation_id: requiredString('Variation'),
+  product_id: requiredString('Product'),
+  quantity: numberField({ label: 'Quantity', required: true, min: 1, max: 99, integer: true }),
+  unit_price: numberField({ label: 'Unit price', required: true, min: 0 }),
+});
+
+/** Full express-checkout `PlaceOrderPayload` (mirrors backend validation). */
+export const expressCheckoutPayloadSchema = z.object({
+  email: email('Email'),
+  phone: phone('Phone'),
+  address: expressAddressSchema,
+  shipping_method_id: z.enum(
+    [EXPRESS_SHIPPING_METHOD],
+    { error: 'Express checkout only supports Express Delivery' },
+  ),
+  payment_method: z.enum(
+    [EXPRESS_PAYMENT_METHOD],
+    { error: 'Express checkout only supports Cash on Delivery' },
+  ),
+  coupon_code: optionalString(),
+  items: z.array(expressCheckoutItemSchema).min(1, 'Add at least one item'),
+  customer_id: optionalString(),
+  express: z.boolean().optional(),
+});
+
+/** Derive an inferred payload type from the schema. */
+export type ExpressCheckoutPayload = z.infer<typeof expressCheckoutPayloadSchema>;

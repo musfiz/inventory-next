@@ -13,6 +13,12 @@ import {
   withPasswordConfirmation,
   flattenFieldErrors,
   normalizeServerErrors,
+  expressAddressSchema,
+  expressCheckoutPayloadSchema,
+  EXPRESS_CITY,
+  EXPRESS_COUNTRY,
+  EXPRESS_SHIPPING_METHOD,
+  EXPRESS_PAYMENT_METHOD,
 } from './validation';
 import { z } from 'zod';
 
@@ -180,5 +186,78 @@ describe('normalizeServerErrors', () => {
   });
   it('returns empty for undefined', () => {
     expect(normalizeServerErrors(undefined)).toEqual({});
+  });
+});
+
+describe('expressAddressSchema', () => {
+  const base = {
+    name: 'John Doe',
+    phone: '01712345678',
+    address_line1: 'House 12, Road 5, Dhanmondi',
+    city: 'Dhaka',
+    country: 'Bangladesh',
+  };
+  it('accepts a valid express address', () => {
+    const r = expressAddressSchema.safeParse(base);
+    expect(r.success).toBe(true);
+  });
+  it('accepts +880 phone variants', () => {
+    expect(expressAddressSchema.safeParse({ ...base, phone: '+8801712345678' }).success).toBe(true);
+    expect(expressAddressSchema.safeParse({ ...base, phone: '8801712345678' }).success).toBe(true);
+  });
+  it('rejects invalid phone', () => {
+    expect(expressAddressSchema.safeParse({ ...base, phone: '12345' }).success).toBe(false);
+  });
+  it('rejects empty name / short address', () => {
+    expect(expressAddressSchema.safeParse({ ...base, name: '' }).success).toBe(false);
+    expect(expressAddressSchema.safeParse({ ...base, name: 'A' }).success).toBe(false);
+    expect(expressAddressSchema.safeParse({ ...base, address_line1: '12A' }).success).toBe(false);
+  });
+  it('rejects cities other than Dhaka', () => {
+    const r = expressAddressSchema.safeParse({ ...base, city: 'Chittagong' });
+    expect(r.success).toBe(false);
+  });
+  it('rejects countries other than Bangladesh', () => {
+    const r = expressAddressSchema.safeParse({ ...base, country: 'India' });
+    expect(r.success).toBe(false);
+  });
+});
+
+describe('expressCheckoutPayloadSchema', () => {
+  const payload = {
+    email: 'buyer@example.com',
+    phone: '01712345678',
+    address: {
+      name: 'John Doe',
+      phone: '01712345678',
+      address_line1: 'House 12, Road 5, Dhanmondi',
+      city: EXPRESS_CITY,
+      country: EXPRESS_COUNTRY,
+    },
+    shipping_method_id: EXPRESS_SHIPPING_METHOD,
+    payment_method: EXPRESS_PAYMENT_METHOD,
+    items: [{ variation_id: 'v1', product_id: 'p1', quantity: 1, unit_price: 499 }],
+    express: true,
+  };
+  it('accepts a valid express payload', () => {
+    expect(expressCheckoutPayloadSchema.safeParse(payload).success).toBe(true);
+  });
+  it('rejects non-COD payment', () => {
+    expect(expressCheckoutPayloadSchema.safeParse({ ...payload, payment_method: 'bkash' }).success).toBe(false);
+  });
+  it('rejects non-express shipping', () => {
+    expect(expressCheckoutPayloadSchema.safeParse({ ...payload, shipping_method_id: 'ship-standard' }).success).toBe(false);
+  });
+  it('rejects missing items', () => {
+    expect(expressCheckoutPayloadSchema.safeParse({ ...payload, items: [] }).success).toBe(false);
+  });
+  it('rejects invalid email', () => {
+    expect(expressCheckoutPayloadSchema.safeParse({ ...payload, email: 'nope' }).success).toBe(false);
+  });
+  it('enforces quantity bounds', () => {
+    const withQty = (quantity: number) => ({ ...payload, items: [{ ...payload.items[0], quantity }] });
+    expect(expressCheckoutPayloadSchema.safeParse(withQty(0)).success).toBe(false);
+    expect(expressCheckoutPayloadSchema.safeParse(withQty(100)).success).toBe(false);
+    expect(expressCheckoutPayloadSchema.safeParse(withQty(5)).success).toBe(true);
   });
 });

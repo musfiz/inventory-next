@@ -111,7 +111,7 @@ function TimelineStep({
         >
           {label}
           {isCurrent && !isCancelled && (
-            <span className="ml-2 inline-flex items-center gap-1 rounded-full bg-brand-100 px-2 py-0.5 text-[10px] font-bold text-brand-700 dark:bg-brand-900/30 dark:text-brand-300">
+            <span className="ml-2 inline-flex items-center gap-1 rounded-md bg-brand-100 px-2 py-0.5 text-[10px] font-bold text-brand-700 dark:bg-brand-900/30 dark:text-brand-300">
               <Clock className="h-3 w-3" /> In Progress
             </span>
           )}
@@ -142,7 +142,7 @@ function TimelineStep({
 function InfoRow({ icon: Icon, label, value }: { icon: any; label: string; value: string }) {
   return (
     <div className="flex items-start gap-3">
-      <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-gray-100 text-gray-500 dark:bg-gray-800">
+      <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md bg-gray-100 text-gray-500 dark:bg-gray-800">
         <Icon className="h-4 w-4" />
       </div>
       <div className="min-w-0">
@@ -211,7 +211,7 @@ export default function TrackOrderPage() {
       <div className="mx-auto max-w-3xl">
         {/* ──── Header ──── */}
         <div className="mb-8 text-center">
-          <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-2xl bg-linear-to-br from-brand-600 to-purple-600 text-white shadow-lg shadow-brand-600/20">
+          <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-md bg-linear-to-br from-brand-600 to-purple-600 text-white shadow-lg shadow-brand-600/20">
             <Truck className="h-8 w-8" />
           </div>
           <h1 className="text-3xl font-black tracking-tight text-gray-900 dark:text-white">
@@ -224,7 +224,7 @@ export default function TrackOrderPage() {
 
         {/* ──── Search Form ──── */}
         {!order && (
-          <div className="rounded-2xl border border-gray-200 bg-white p-6 shadow-lg shadow-gray-200/60 dark:border-gray-800 dark:bg-gray-950 dark:shadow-gray-950">
+          <div className="rounded-md border border-gray-200 bg-white p-6 shadow-lg shadow-gray-200/60 dark:border-gray-800 dark:bg-gray-950 dark:shadow-gray-950">
             <form onSubmit={handleSubmit} className="space-y-4">
               <div>
                 <label htmlFor="order-number" className="mb-1.5 block text-xs font-bold uppercase tracking-wider text-gray-500">
@@ -238,7 +238,7 @@ export default function TrackOrderPage() {
                     value={orderNumber}
                     onChange={e => { setOrderNumber(e.target.value); setError(null); }}
                     placeholder="e.g. ORD-2025-001"
-                    className={`w-full rounded-xl border-2 bg-white py-3.5 pl-11 pr-4 text-sm text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-4 dark:bg-gray-900 dark:text-gray-100 dark:placeholder:text-gray-500 ${error
+                    className={`w-full rounded-md border-2 bg-white py-3.5 pl-11 pr-4 text-sm text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-4 dark:bg-gray-900 dark:text-gray-100 dark:placeholder:text-gray-500 ${error
                         ? 'border-red-300 focus:border-red-500 focus:ring-red-500/10 dark:border-red-800'
                         : 'border-gray-200 focus:border-brand-500 focus:ring-brand-500/10 dark:border-gray-700'
                       }`}
@@ -256,7 +256,7 @@ export default function TrackOrderPage() {
               <button
                 type="submit"
                 disabled={loading}
-                className="flex w-full items-center justify-center gap-2.5 rounded-xl bg-linear-to-r from-brand-600 to-purple-600 py-3.5 text-sm font-bold text-white shadow-lg shadow-brand-600/20 transition-all hover:shadow-xl hover:shadow-brand-600/30 disabled:opacity-60"
+                className="flex w-full items-center justify-center gap-2.5 rounded-md bg-linear-to-r from-brand-600 to-purple-600 py-3.5 text-sm font-bold text-white shadow-lg shadow-brand-600/20 transition-all hover:shadow-xl hover:shadow-brand-600/30 disabled:opacity-60"
               >
                 {loading ? (
                   <>
@@ -273,7 +273,7 @@ export default function TrackOrderPage() {
             </form>
 
             {/* Quick tips */}
-            <div className="mt-6 rounded-xl bg-gray-50 p-4 dark:bg-gray-900">
+            <div className="mt-6 rounded-md bg-gray-50 p-4 dark:bg-gray-900">
               <p className="mb-2 text-xs font-bold uppercase tracking-wider text-gray-500">Where to find your order number</p>
               <ul className="space-y-1.5 text-sm text-gray-600 dark:text-gray-400">
                 <li className="flex items-start gap-2">
@@ -306,14 +306,14 @@ export default function TrackOrderPage() {
             </button>
 
             {/* Order Header Card */}
-            <div className="overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-lg shadow-gray-200/60 dark:border-gray-800 dark:bg-gray-950 dark:shadow-gray-950">
+            <div className="overflow-hidden rounded-md border border-gray-200 bg-white shadow-lg shadow-gray-200/60 dark:border-gray-800 dark:bg-gray-950 dark:shadow-gray-950">
               <div className="bg-linear-to-r from-brand-600 to-purple-700 px-6 py-5 text-white">
                 <div className="flex flex-wrap items-start justify-between gap-3">
                   <div>
                     <p className="text-xs font-medium uppercase tracking-wider text-white/70">Order Number</p>
                     <p className="text-xl font-black tracking-tight">{order.order_number}</p>
                   </div>
-                  <span className={`rounded-full px-3.5 py-1.5 text-xs font-bold ${STATUS_BADGE[order.status] || 'bg-gray-100 text-gray-700'}`}>
+                  <span className={`rounded-md px-3.5 py-1.5 text-xs font-bold ${STATUS_BADGE[order.status] || 'bg-gray-100 text-gray-700'}`}>
                     {STATUS_LABELS[order.status] || order.status}
                   </span>
                 </div>
@@ -328,7 +328,7 @@ export default function TrackOrderPage() {
             </div>
 
             {/* Timeline Card */}
-            <div className="rounded-2xl border border-gray-200 bg-white p-6 shadow-lg shadow-gray-200/60 dark:border-gray-800 dark:bg-gray-950 dark:shadow-gray-950">
+            <div className="rounded-md border border-gray-200 bg-white p-6 shadow-lg shadow-gray-200/60 dark:border-gray-800 dark:bg-gray-950 dark:shadow-gray-950">
               <h2 className="mb-6 flex items-center gap-2 text-sm font-bold uppercase tracking-wider text-gray-500">
                 <Clock className="h-4 w-4" />
                 Order Timeline
@@ -358,7 +358,7 @@ export default function TrackOrderPage() {
             </div>
 
             {/* Order Summary Card */}
-            <div className="rounded-2xl border border-gray-200 bg-white p-6 shadow-lg shadow-gray-200/60 dark:border-gray-800 dark:bg-gray-950 dark:shadow-gray-950">
+            <div className="rounded-md border border-gray-200 bg-white p-6 shadow-lg shadow-gray-200/60 dark:border-gray-800 dark:bg-gray-950 dark:shadow-gray-950">
               <h2 className="mb-4 flex items-center gap-2 text-sm font-bold uppercase tracking-wider text-gray-500">
                 <Package className="h-4 w-4" />
                 Order Summary

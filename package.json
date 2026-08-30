@@ -46,6 +46,7 @@
     "react-image-magnifiers": "^1.4.0",
     "react-is": "^19.2.8",
     "react-select": "^5.10.2",
+    "react-simple-captcha": "^9.3.1",
     "recharts": "^3.8.1",
     "sweetalert2": "^11.26.17",
     "swr": "^2.4.0",
