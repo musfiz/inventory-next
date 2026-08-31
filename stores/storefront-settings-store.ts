@@ -5,6 +5,7 @@ import storefrontSettingsService from '@/services/storefrontSettingsService';
 
 interface StorefrontSettingsStore {
   expressCheckoutEnabled: boolean;
+  storeName: string | null;
   loading: boolean;
   _fetchPromise: Promise<void> | null;
   fetch: () => Promise<void>;
@@ -13,6 +14,7 @@ interface StorefrontSettingsStore {
 export const useStorefrontSettingsStore = create<StorefrontSettingsStore>()(
   (set, get) => ({
     expressCheckoutEnabled: false,
+    storeName: null,
     loading: true,
     _fetchPromise: null,
 
@@ -23,7 +25,11 @@ export const useStorefrontSettingsStore = create<StorefrontSettingsStore>()(
       const promise = (async () => {
         try {
           const res = await storefrontSettingsService.get();
-          set({ expressCheckoutEnabled: res.express_checkout_enabled ?? false, loading: false });
+          set({
+            expressCheckoutEnabled: res.express_checkout_enabled ?? false,
+            storeName: res.store_name ?? null,
+            loading: false,
+          });
         } catch {
           set({ expressCheckoutEnabled: false, loading: false });
         } finally {

@@ -37,6 +37,7 @@ import { notify } from '@/lib/notifications';
 import checkoutService, { type ValidateCartResult } from '@/services/checkoutService';
 import type { PlaceOrderPayload } from '@/services/checkoutService';
 import storefrontService from '@/services/storefrontService';
+import { useStorefrontStatus } from '@/hooks/use-storefront-status';
 import VariantSelector from '@/components/storefront/VariantSelector';
 
 type Step = 'contact' | 'address' | 'shipping' | 'payment';
@@ -98,6 +99,7 @@ export default function CheckoutPage() {
     }
   };
   const { user, isAuthenticated } = useCustomerAuthStore();
+  const { storeName } = useStorefrontStatus();
 
   const [openStep, setOpenStep] = useState<Step>('contact');
   const [completed, setCompleted] = useState<Set<Step>>(new Set());
@@ -303,7 +305,7 @@ export default function CheckoutPage() {
       <div className="border-b border-gray-200 bg-white dark:border-gray-800 dark:bg-gray-900">
         <div className="mx-auto flex max-w-6xl items-center justify-between px-4 py-4">
           <Link href="/" className="text-xl font-black text-gray-900 dark:text-white">
-            UIMS<span className="text-brand-600">.</span>
+            {storeName || 'Store'}<span className="text-brand-600">.</span>
           </Link>
           <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-50 px-3 py-1.5 text-xs font-bold text-emerald-700 dark:bg-emerald-950/30 dark:text-emerald-400">
             <Lock className="h-3.5 w-3.5" /> Secure Checkout

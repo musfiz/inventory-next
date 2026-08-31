@@ -5,6 +5,7 @@ import Image from 'next/image';
 import { useState, useEffect } from 'react';
 import { useBranding } from '@/hooks/use-branding';
 import { useStorefrontCategories } from '@/hooks/use-storefront-categories';
+import { useStorefrontStatus } from '@/hooks/use-storefront-status';
 import ScrollReveal from '@/components/storefront/ScrollReveal';
 import footerService from '@/services/footerService';
 import storefrontService from '@/services/storefrontService';
@@ -110,12 +111,12 @@ const FALLBACK_CONFIG: FooterConfig = {
       ],
     },
     {
-      id: 'c3', title: 'About UIMS', sort_order: 2,
+      id: 'c3', title: 'About Us', sort_order: 2,
       links: [
         { id: 'l11', label: 'Our Story', url: '/about', sort_order: 0, open_in_new_tab: false, is_active: true },
         { id: 'l12', label: 'Careers', url: '/careers', sort_order: 1, open_in_new_tab: false, is_active: true },
         { id: 'l13', label: 'Press', url: '/press', sort_order: 2, open_in_new_tab: false, is_active: true },
-        { id: 'l14', label: 'Sell on UIMS', url: '/sell', sort_order: 3, open_in_new_tab: false, is_active: true },
+        { id: 'l14', label: 'Sell With Us', url: '/sell', sort_order: 3, open_in_new_tab: false, is_active: true },
         { id: 'l15', label: 'Affiliates', url: '/affiliates', sort_order: 4, open_in_new_tab: false, is_active: true },
       ],
     },
@@ -131,7 +132,7 @@ const FALLBACK_CONFIG: FooterConfig = {
   ],
   contact_address: 'House 12, Road 5, Dhanmondi, Dhaka 1205, Bangladesh',
   contact_phone: '+880 1700-000000',
-  contact_email: 'support@uims.shop',
+  contact_email: 'support@example.com',
   about_text: 'Your one-stop online shop for quality products across electronics, fashion, home & living, and more.',
   social_links: [
     { id: 's1', platform: 'facebook', url: 'https://facebook.com', is_active: true },
@@ -139,7 +140,7 @@ const FALLBACK_CONFIG: FooterConfig = {
     { id: 's3', platform: 'twitter', url: 'https://x.com', is_active: true },
     { id: 's4', platform: 'youtube', url: 'https://youtube.com', is_active: true },
   ],
-  copyright_text: '{year} UIMS Store. All rights reserved.',
+  copyright_text: '{year} {store}. All rights reserved.',
   show_payment_badges: true,
   payment_badges: [
     { id: 'p1', name: 'Visa', is_active: true },
@@ -154,6 +155,8 @@ const FALLBACK_CONFIG: FooterConfig = {
 export default function StorefrontFooter() {
   const [email, setEmail] = useState('');
   const { footerLogo, ready } = useBranding();
+  const { storeName } = useStorefrontStatus();
+  const siteName = storeName || 'Our Store';
   const [subscribed, setSubscribed] = useState(false);
   const [config, setConfig] = useState<FooterConfig | null>(null);
   const [storeStats, setStoreStats] = useState<{ productCount: number; categoryCount: number } | null>(null);
@@ -208,8 +211,10 @@ export default function StorefrontFooter() {
   const activeSocialLinks = social_links.filter((s: SocialLink) => s.is_active);
   const activeBadges = payment_badges.filter(b => b.is_active);
   const displayColumns = columns.filter(c => c.links.some(l => l.is_active));
-  const rawCopyright = (copyright_text || '').trim() || '{year} UIMS Store. All rights reserved.';
-  const copyrightDisplay = rawCopyright.replace('{year}', String(new Date().getFullYear()));
+  const rawCopyright = (copyright_text || '').trim() || '{year} {store}. All rights reserved.';
+  const copyrightDisplay = rawCopyright
+    .replace('{year}', String(new Date().getFullYear()))
+    .replace('{store}', siteName);
 
   const handleSubscribe = (e: React.FormEvent) => {
     e.preventDefault();
@@ -280,11 +285,11 @@ export default function StorefrontFooter() {
       <div className="mx-auto max-w-7xl px-4 py-12">
         <div className="grid gap-10 md:grid-cols-2 lg:grid-cols-6">
           <div className="lg:col-span-2">
-            <Link href="/" className="inline-flex items-center" aria-label="UIMS Store">
+            <Link href="/" className="inline-flex items-center" aria-label={siteName}>
               {footerLogo ? (
                 <Image
                   src={footerLogo}
-                  alt="UIMS Store"
+                  alt={siteName}
                   width={144}
                   height={36}
                   className="h-9 w-auto object-contain"
@@ -292,7 +297,7 @@ export default function StorefrontFooter() {
                 />
               ) : ready ? (
                 <span className="text-2xl font-black text-gray-900 dark:text-white">
-                  UIMS<span className="text-brand-600">.</span>
+                  {siteName}<span className="text-brand-600">.</span>
                 </span>
               ) : (
                 <div className="h-9 w-24 rounded bg-gray-100 dark:bg-gray-800" />

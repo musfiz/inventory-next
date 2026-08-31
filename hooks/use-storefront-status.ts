@@ -11,6 +11,7 @@ export function useStorefrontStatus() {
   const fetch = useStorefrontStatusStore((s) => s.fetch);
 
   const expressCheckoutEnabled = useStorefrontSettingsStore((s) => s.expressCheckoutEnabled);
+  const storeName = useStorefrontSettingsStore((s) => s.storeName);
   const fetchSettings = useStorefrontSettingsStore((s) => s.fetch);
 
   useEffect(() => {
@@ -18,5 +19,5 @@ export function useStorefrontStatus() {
     fetchSettings();
   }, [fetch, fetchSettings]);
 
-  return { active, activeTenantId, loading, expressCheckoutEnabled, fetch };
+  return { active, activeTenantId, loading, expressCheckoutEnabled, storeName, fetch };
 }

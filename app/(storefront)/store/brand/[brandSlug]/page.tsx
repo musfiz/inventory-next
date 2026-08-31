@@ -10,6 +10,7 @@ import ScrollReveal from '@/components/storefront/ScrollReveal';
 import { formatMoney } from '@/lib/utils/format';
 import storefrontService from '@/services/storefrontService';
 import { notify } from '@/lib/notifications';
+import { useStorefrontStatus } from '@/hooks/use-storefront-status';
 import type { Brand, Product } from '@/types/storefront';
 
 const SORTS = [
@@ -22,6 +23,8 @@ const SORTS = [
 
 export default function BrandPage() {
   const { brandSlug } = useParams<{ brandSlug: string }>();
+  const { storeName } = useStorefrontStatus();
+  const siteName = storeName || 'Our Store';
   const [brand, setBrand] = useState<Brand | null>(null);
   const [products, setProducts] = useState<Product[]>([]);
   const [allBrands, setAllBrands] = useState<Brand[]>([]);
@@ -35,10 +38,10 @@ export default function BrandPage() {
   });
 
   useSeo({
-    title: brand ? `${brand.name} | UIMS Store` : 'Brand | UIMS Store',
+    title: brand ? `${brand.name} | ${siteName}` : `Brand | ${siteName}`,
     description: brand
-      ? `Shop ${brand.name} products at UIMS Store. ${brand.description ?? ''}`.trim()
-      : 'Browse brands at UIMS Store.',
+      ? `Shop ${brand.name} products at ${siteName}. ${brand.description ?? ''}`.trim()
+      : `Browse brands at ${siteName}.`,
     url: `/store/brand/${brandSlug}`,
   });
 

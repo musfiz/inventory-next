@@ -74,6 +74,35 @@ export interface ProductsResponse {
   };
 }
 
+export interface SearchSuggestProduct {
+  id: string;
+  name: string;
+  slug: string;
+  image: string | null;
+  price: number | null;
+  category: { id: string; name: string; slug: string; image: string | null } | null;
+}
+
+export interface SearchSuggestCategory {
+  id: string;
+  name: string;
+  slug: string;
+  image: string | null;
+}
+
+export interface SearchSuggestBrand {
+  id: string;
+  name: string;
+  slug: string;
+  logo: string | null;
+}
+
+export interface SearchSuggestions {
+  products: SearchSuggestProduct[];
+  categories: SearchSuggestCategory[];
+  brands: SearchSuggestBrand[];
+}
+
 class StorefrontService {
   async getHeroSliders(): Promise<StorefrontHeroSlider[]> {
     const response = await apiClient.get<ApiResponse<StorefrontHeroSlider[]>>(
@@ -111,8 +140,8 @@ class StorefrontService {
   }
 
   async getProducts(params: {
-    category_id?: number;
-    brand_id?: number;
+    category_id?: number | string;
+    brand_id?: number | string;
     sort?: string;
     page?: number;
     per_page?: number;
@@ -121,6 +150,10 @@ class StorefrontService {
     is_bestseller?: boolean;
     is_on_sale?: boolean;
     search?: string;
+    min_price?: number;
+    max_price?: number;
+    in_stock?: boolean;
+    min_rating?: number;
   }): Promise<ProductsResponse> {
     const response = await apiClient.get<{ success: boolean; data: Product[]; meta: ProductsResponse['meta'] }>(
       '/api/v1/storefront/products',
@@ -134,6 +167,47 @@ class StorefrontService {
       `/api/v1/storefront/products/${slug}`
     );
     return response.data.data;
+  }
+
+  async searchSuggest(query: string, options?: { limit?: number; signal?: AbortSignal }): Promise<SearchSuggestions> {
+    const response = await apiClient.get<{ success: boolean; data: SearchSuggestions }>(
+      '/api/v1/storefront/search/suggest',
+      { params: { q: query, limit: options?.limit }, signal: options?.signal }
+    );
+    return response.data.data ?? { products: [], categories: [], brands: [] };
+  }
+
+  /** Most-searched terms for the active storefront (last 30 days), for the "Trending" search suggestions. */
+  async getTrendingSearches(limit = 8): Promise<string[]> {
+    const response = await apiClient.get<{ success: boolean; data: string[] }>(
+      '/api/v1/storefront/search/trending',
+      { params: { limit } }
+    );
+    return response.data.data ?? [];
+  }
+
+  /** Full-text product search (relevance-ranked) — powers the /store/search results page. */
+  async search(params: {
+    q: string;
+    category_id?: number | string;
+    brand_id?: number | string;
+    sort?: string;
+    page?: number;
+    per_page?: number;
+    min_price?: number;
+    max_price?: number;
+    in_stock?: boolean;
+    min_rating?: number;
+    is_featured?: boolean;
+    is_new?: boolean;
+    is_bestseller?: boolean;
+    is_on_sale?: boolean;
+  }): Promise<ProductsResponse> {
+    const response = await apiClient.get<{ success: boolean; data: Product[]; meta: ProductsResponse['meta'] }>(
+      '/api/v1/storefront/search',
+      { params }
+    );
+    return { data: response.data.data, meta: response.data.meta };
   }
 
   async getBrands(params?: { per_page?: number }): Promise<{

@@ -4,6 +4,7 @@ import type { ApiResponse } from '@/types/api.types';
 export interface StorefrontSettings {
   storefront_active: boolean;
   express_checkout_enabled: boolean;
+  store_name?: string | null;
 }
 
 class StorefrontSettingsService {

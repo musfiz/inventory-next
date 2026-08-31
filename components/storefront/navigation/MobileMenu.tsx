@@ -8,7 +8,7 @@ import { useHeaderMenu } from '@/hooks/use-header-menu';
 import { useStorefrontCategories } from '@/hooks/use-storefront-categories';
 import type { StorefrontNavigationItem } from '@/types/api.types';
 
-export const MobileMenu = ({ open, onClose, headerLogo, ready }: { open: boolean; onClose: () => void; headerLogo: string | null; ready: boolean }) => {
+export const MobileMenu = ({ open, onClose, headerLogo, ready, storeName }: { open: boolean; onClose: () => void; headerLogo: string | null; ready: boolean; storeName?: string | null }) => {
   const [expanded, setExpanded] = useState<string | null>(null);
   const { config: menu, ready: menuReady } = useHeaderMenu();
   const { categories } = useStorefrontCategories();
@@ -37,7 +37,7 @@ export const MobileMenu = ({ open, onClose, headerLogo, ready }: { open: boolean
             ) : ready ? (
               <>
                 <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-linear-to-br from-brand-600 to-purple-600 text-white"><Sparkles className="h-4 w-4" /></div>
-                <span className="text-lg font-black text-gray-900 dark:text-white">UIMS<span className="text-brand-600">.</span></span>
+                <span className="text-lg font-black text-gray-900 dark:text-white">{storeName || 'Store'}<span className="text-brand-600">.</span></span>
               </>
             ) : (
               <div className="h-8 w-8 rounded-lg bg-gray-100 dark:bg-gray-800" />

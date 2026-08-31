@@ -17,14 +17,25 @@ export function absoluteUrl(path: string): string {
   return `${getSiteUrl()}${path.startsWith('/') ? '' : '/'}${path}`;
 }
 
-const SITE_NAME = 'UIMS Store';
+const DEFAULT_SITE_NAME = 'Online Store';
+
+/** Set once the real store name loads from the backend (see `SeoDefaults`). */
+let currentSiteName = DEFAULT_SITE_NAME;
+
+export function setSiteName(name?: string | null) {
+  currentSiteName = name?.trim() || DEFAULT_SITE_NAME;
+}
+
+export function getSiteName(): string {
+  return currentSiteName;
+}
 
 export function organizationJsonLd() {
   const url = getSiteUrl();
   return {
     '@context': 'https://schema.org',
     '@type': 'Organization',
-    name: SITE_NAME,
+    name: getSiteName(),
     url,
     logo: `${url}/logo.png`,
   };
@@ -35,7 +46,7 @@ export function websiteJsonLd() {
   return {
     '@context': 'https://schema.org',
     '@type': 'WebSite',
-    name: SITE_NAME,
+    name: getSiteName(),
     url,
   };
 }

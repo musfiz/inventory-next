@@ -5,10 +5,13 @@ import Link from 'next/link';
 import Image from 'next/image';
 import { useParams, notFound } from 'next/navigation';
 import { useSeo } from '@/lib/utils/use-seo';
-import { ChevronDown, ArrowRight } from 'lucide-react';
+import { ChevronDown, ArrowRight, SlidersHorizontal } from 'lucide-react';
 import ProductCard from '@/components/storefront/ProductCard';
 import ProductCardSkeleton from '@/components/storefront/ProductCardSkeleton';
 import ScrollReveal from '@/components/storefront/ScrollReveal';
+import { FilterSidebar, FilterDrawer, PRICE_STEPS } from '@/components/storefront/ProductFilterSidebar';
+import { useStorefrontBrands } from '@/hooks/use-storefront-brands';
+import { useStorefrontStatus } from '@/hooks/use-storefront-status';
 import type { Product } from '@/types/storefront';
 import storefrontService from '@/services/storefrontService';
 import type { CategoryPageData } from '@/services/storefrontService';
@@ -18,6 +21,7 @@ const SORTS = [
   { id: 'newest', label: 'Newest' },
   { id: 'price_asc', label: 'Price: Low to High' },
   { id: 'price_desc', label: 'Price: High to Low' },
+  { id: 'rating', label: 'Top Rated' },
 ] as const;
 
 const ITEMS_PER_PAGE = 8;
@@ -31,6 +35,16 @@ export default function CategoryPage() {
   const [categoryLoading, setCategoryLoading] = useState(true);
   const [is404, setIs404] = useState(false);
 
+  // Filter state
+  const [filterOpen, setFilterOpen] = useState(false);
+  const [selectedBrands, setSelectedBrands] = useState<string[]>([]);
+  const [priceStep, setPriceStep] = useState('all');
+  const [minRating, setMinRating] = useState(0);
+  const [inStockOnly, setInStockOnly] = useState(false);
+  const { brands } = useStorefrontBrands();
+  const { storeName } = useStorefrontStatus();
+  const siteName = storeName || 'Our Store';
+
   // Products state
   const [products, setProducts] = useState<Product[]>([]);
   const [productsLoading, setProductsLoading] = useState(true);
@@ -40,10 +54,10 @@ export default function CategoryPage() {
   const [bannerError, setBannerError] = useState(false);
 
   useSeo({
-    title: category ? `${category.name} | UIMS Store` : 'Category | UIMS Store',
+    title: category ? `${category.name} | ${siteName}` : `Category | ${siteName}`,
     description:
       category?.description ||
-      `Browse products in the ${category?.name || 'category'} category at UIMS Store.`,
+      `Browse products in the ${category?.name || 'category'} category at ${siteName}.`,
     url: `/store/category/${categorySlug}`,
   });
 
@@ -64,7 +78,42 @@ export default function CategoryPage() {
     if (s === 'price_desc') {
       return [...data].sort((a, b) => (b.variations[0]?.sellingPrice ?? 0) - (a.variations[0]?.sellingPrice ?? 0));
     }
+    if (s === 'rating') {
+      return [...data].sort((a, b) => b.rating - a.rating);
+    }
     return data;
+  };
+
+  const toggle = (arr: string[], setArr: (v: string[]) => void, id: string) =>
+    setArr(arr.includes(id) ? arr.filter(x => x !== id) : [...arr, id]);
+
+  const clearAll = () => {
+    setSelectedBrands([]);
+    setPriceStep('all');
+    setMinRating(0);
+    setInStockOnly(false);
+  };
+
+  const activeFilterCount =
+    selectedBrands.length +
+    (priceStep !== 'all' ? 1 : 0) +
+    (minRating > 0 ? 1 : 0) +
+    (inStockOnly ? 1 : 0);
+
+  const priceRange = PRICE_STEPS.find(s => s.id === priceStep) ?? PRICE_STEPS[0];
+
+  const filterProps = {
+    brands,
+    selectedBrandIds: selectedBrands,
+    onToggleBrand: (id: string) => toggle(selectedBrands, setSelectedBrands, id),
+    priceStep,
+    onPriceStepChange: setPriceStep,
+    minRating,
+    onMinRatingChange: setMinRating,
+    inStockOnly,
+    onInStockChange: setInStockOnly,
+    activeFilterCount,
+    onClearAll: clearAll,
   };
 
   // Fetch category by slug
@@ -84,7 +133,7 @@ export default function CategoryPage() {
       });
   }, [categorySlug]);
 
-  // Fetch products when category loads or sort changes
+  // Fetch products when category, sort, or any filter changes
   useEffect(() => {
     if (!category?.id) return;
     setProductsLoading(true);
@@ -94,6 +143,11 @@ export default function CategoryPage() {
         sort: apiSortParam(sort),
         page: 1,
         per_page: ITEMS_PER_PAGE,
+        brand_id: selectedBrands.length > 0 ? selectedBrands.join(',') : undefined,
+        min_price: priceRange.min > 0 ? priceRange.min : undefined,
+        max_price: Number.isFinite(priceRange.max) ? priceRange.max : undefined,
+        in_stock: inStockOnly || undefined,
+        min_rating: minRating > 0 ? minRating : undefined,
       })
       .then(res => {
         setProducts(sortClientSide(res.data, sort));
@@ -105,7 +159,8 @@ export default function CategoryPage() {
         setProducts([]);
         setProductsLoading(false);
       });
-  }, [category?.id, sort]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [category?.id, sort, selectedBrands, priceStep, minRating, inStockOnly]);
 
   // Load more pagination
   const loadMore = () => {
@@ -118,6 +173,11 @@ export default function CategoryPage() {
         sort: apiSortParam(sort),
         page: nextPage,
         per_page: ITEMS_PER_PAGE,
+        brand_id: selectedBrands.length > 0 ? selectedBrands.join(',') : undefined,
+        min_price: priceRange.min > 0 ? priceRange.min : undefined,
+        max_price: Number.isFinite(priceRange.max) ? priceRange.max : undefined,
+        in_stock: inStockOnly || undefined,
+        min_rating: minRating > 0 ? minRating : undefined,
       })
       .then(res => {
         setProducts(prev => [...prev, ...sortClientSide(res.data, sort)]);
@@ -209,6 +269,11 @@ export default function CategoryPage() {
       </ScrollReveal>
 
       <div className="mx-auto max-w-7xl px-4 py-6">
+        <div className="lg:grid lg:grid-cols-[260px_1fr] lg:gap-8">
+          {/* Sidebar (desktop) */}
+          <FilterSidebar {...filterProps} />
+
+          <div>
         {/* Subcategory chips */}
         {category!.children.length > 0 && (
           <div className="mb-6 flex flex-wrap gap-2">
@@ -227,11 +292,25 @@ export default function CategoryPage() {
         )}
 
         {/* Toolbar */}
-        <div className="mb-5 flex items-center justify-between gap-3 rounded-2xl border border-gray-200 bg-white p-3 dark:border-gray-800 dark:bg-gray-900">
-          <p className="text-sm text-gray-500">
-            <span className="font-bold text-gray-900 dark:text-gray-100">{products.length}</span> product{products.length !== 1 ? 's' : ''}
-            {meta.total > products.length && <span className="text-gray-400"> · {meta.total} total</span>}
-          </p>
+        <div className="mb-5 flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-gray-200 bg-white p-3 dark:border-gray-800 dark:bg-gray-900">
+          <div className="flex items-center gap-3">
+            <button
+              onClick={() => setFilterOpen(true)}
+              className="inline-flex items-center gap-2 rounded-full border border-gray-300 px-4 py-2 text-sm font-semibold text-gray-700 transition-colors hover:bg-gray-50 lg:hidden dark:border-gray-700 dark:text-gray-300"
+            >
+              <SlidersHorizontal className="h-4 w-4" />
+              Filters
+              {activeFilterCount > 0 && (
+                <span className="flex h-5 min-w-[20px] items-center justify-center rounded-full bg-brand-600 px-1 text-[10px] font-bold text-white">
+                  {activeFilterCount}
+                </span>
+              )}
+            </button>
+            <p className="text-sm text-gray-500">
+              <span className="font-bold text-gray-900 dark:text-gray-100">{products.length}</span> product{products.length !== 1 ? 's' : ''}
+              {meta.total > products.length && <span className="text-gray-400"> · {meta.total} total</span>}
+            </p>
+          </div>
           <div className="relative">
             <select
               value={sort}
@@ -289,7 +368,17 @@ export default function CategoryPage() {
               )}
             </>
           )}
+          </div>
+        </div>
       </div>
+
+      {/* Mobile drawer */}
+      <FilterDrawer
+        {...filterProps}
+        open={filterOpen}
+        onClose={() => setFilterOpen(false)}
+        resultCount={products.length}
+      />
     </div>
   );
 }

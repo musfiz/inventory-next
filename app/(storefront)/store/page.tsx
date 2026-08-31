@@ -25,6 +25,7 @@ import {
   accentOverlayStyle,
 } from '@/lib/utils/offer-accent';
 import { useStorefrontCategories } from '@/hooks/use-storefront-categories';
+import { useStorefrontStatus } from '@/hooks/use-storefront-status';
 import { useSeo } from '@/lib/utils/use-seo';
 
 const resolveImageUrl = (url?: string | null) => {
@@ -606,11 +607,13 @@ export default function HomePage() {
   const [heroSliders, setHeroSliders] = useState<StorefrontHeroSlider[]>([]);
   const [heroLoading, setHeroLoading] = useState(true);
   const [offerSlides, setOfferSlides] = useState<StorefrontOfferSlide[]>([]);
+  const { storeName } = useStorefrontStatus();
+  const siteName = storeName || 'Our Store';
 
   useSeo({
-    title: 'Online Store | UIMS Store',
+    title: `Online Store | ${siteName}`,
     description:
-      'Shop the latest products, best sellers, and exclusive offers at UIMS Store.',
+      `Shop the latest products, best sellers, and exclusive offers at ${siteName}.`,
     url: '/store',
   });
 

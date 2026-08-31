@@ -29,6 +29,7 @@ import { useCustomerAuthStore } from '@/stores/customer-auth-store';
 import { formatMoney } from '@/lib/utils/format';
 import { useBranding } from '@/hooks/use-branding';
 import { useHeaderMenu } from '@/hooks/use-header-menu';
+import { useStorefrontStatus } from '@/hooks/use-storefront-status';
 import type { StorefrontNavigationItem } from '@/types/api.types';
 import { CategoryDropdown } from '@/components/storefront/navigation/CategoryDropdown';
 import { CustomDropdown } from '@/components/storefront/navigation/CustomDropdown';
@@ -64,6 +65,7 @@ export default function StorefrontHeader() {
   const { headerLogo, ready } = useBranding();
   const { config: menu, ready: menuReady } = useHeaderMenu();
   const { categories } = useStorefrontCategories();
+  const { storeName } = useStorefrontStatus();
   const user = useCustomerAuthStore(s => s.user);
   const router = useRouter();
 
@@ -278,7 +280,7 @@ export default function StorefrontHeader() {
                   </div>
                   <div className="hidden sm:block">
                     <p className="text-xl font-black leading-none tracking-tight text-gray-900 dark:text-white">
-                      UIMS<span className="text-brand-600">.</span>
+                      {storeName || 'Store'}<span className="text-brand-600">.</span>
                     </p>
                     <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-gray-500">E‑Store</p>
                   </div>
@@ -463,7 +465,7 @@ export default function StorefrontHeader() {
         </nav>
       </header>
 
-      <MobileMenu open={mobileOpen} onClose={() => setMobileOpen(false)} headerLogo={headerLogo} ready={ready} />
+      <MobileMenu open={mobileOpen} onClose={() => setMobileOpen(false)} headerLogo={headerLogo} ready={ready} storeName={storeName} />
     </>
   );
 }

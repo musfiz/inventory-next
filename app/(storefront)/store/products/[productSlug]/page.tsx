@@ -64,7 +64,8 @@ export default function ProductDetailPage() {
   const [reviewPendingMsg, setReviewPendingMsg] = useState(false);
 
   const isAuthed = useCustomerAuthStore(s => s.isAuthenticated);
-  const { expressCheckoutEnabled } = useStorefrontStatus();
+  const { expressCheckoutEnabled, storeName } = useStorefrontStatus();
+  const siteName = storeName || 'Our Store';
 
   useEffect(() => {
     if (!productSlug) return;
@@ -129,7 +130,7 @@ export default function ProductDetailPage() {
   const productImage = product?.images?.[0];
   const defaultVariation = product?.variations?.[0];
   useSeo({
-    title: product ? `${product.name} | UIMS Store` : 'Product | UIMS Store',
+    title: product ? `${product.name} | ${siteName}` : `Product | ${siteName}`,
     description: product?.shortDescription || product?.description?.slice(0, 160),
     image: productImage,
     type: 'product',

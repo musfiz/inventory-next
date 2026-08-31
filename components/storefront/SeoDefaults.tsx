@@ -1,7 +1,8 @@
 'use client';
 
 import { useSeo } from '@/lib/utils/use-seo';
-import { organizationJsonLd, websiteJsonLd } from '@/lib/utils/seo';
+import { organizationJsonLd, websiteJsonLd, setSiteName } from '@/lib/utils/seo';
+import { useStorefrontStatus } from '@/hooks/use-storefront-status';
 
 /**
  * Injects site-wide structured data (Organization + WebSite) into <head>.
@@ -10,6 +11,9 @@ import { organizationJsonLd, websiteJsonLd } from '@/lib/utils/seo';
  * never overrides a page's own title/OG values.
  */
 export function SeoDefaults() {
+  const { storeName } = useStorefrontStatus();
+  setSiteName(storeName);
+
   useSeo({
     jsonLd: [websiteJsonLd(), organizationJsonLd()],
     siteJsonLd: true,

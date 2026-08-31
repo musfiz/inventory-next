@@ -6,7 +6,6 @@ import {
   SlidersHorizontal,
   X,
   ChevronDown,
-  ArrowRight,
 } from 'lucide-react';
 import { FiGrid } from 'react-icons/fi';
 import { IoListSharp } from 'react-icons/io5';
@@ -15,25 +14,28 @@ import ScrollReveal from '@/components/storefront/ScrollReveal';
 import ProductCardSkeleton from '@/components/storefront/ProductCardSkeleton';
 import storefrontService from '@/services/storefrontService';
 import { useStorefrontCategories } from '@/hooks/use-storefront-categories';
-import type { Product, Brand } from '@/types/storefront';
+import { useStorefrontBrands } from '@/hooks/use-storefront-brands';
+import { FilterSidebar, FilterDrawer, PRICE_STEPS } from '@/components/storefront/ProductFilterSidebar';
+import type { Product } from '@/types/storefront';
 
 const SORTS = [
-  { id: 'featured', label: 'Featured', fn: (a: Product, b: Product) => Number(b.isFeatured) - Number(a.isFeatured) },
-  { id: 'newest', label: 'Newest', fn: (a: Product, b: Product) => Number(b.isNew) - Number(a.isNew) },
-  { id: 'price_asc', label: 'Price: Low to High', fn: (a: Product, b: Product) => a.variations[0].sellingPrice - b.variations[0].sellingPrice },
-  { id: 'price_desc', label: 'Price: High to Low', fn: (a: Product, b: Product) => b.variations[0].sellingPrice - a.variations[0].sellingPrice },
-  { id: 'rating', label: 'Top Rated', fn: (a: Product, b: Product) => b.rating - a.rating },
+  { id: 'featured', label: 'Featured' },
+  { id: 'newest', label: 'Newest' },
+  { id: 'price_asc', label: 'Price: Low to High' },
+  { id: 'price_desc', label: 'Price: High to Low' },
+  { id: 'rating', label: 'Top Rated' },
 ] as const;
 
 const ITEMS_PER_PAGE = 8;
 
-const PRICE_STEPS = [
-  { id: 'all', label: 'All prices', min: 0, max: Infinity },
-  { id: 'under-50', label: 'Under ৳50', min: 0, max: 50 },
-  { id: '50-200', label: '৳50 – ৳200', min: 50, max: 200 },
-  { id: '200-1000', label: '৳200 – ৳1,000', min: 200, max: 1000 },
-  { id: 'over-1000', label: 'Over ৳1,000', min: 1000, max: Infinity },
-];
+const apiSortParam = (s: string) => (['featured', 'newest'].includes(s) ? s : 'featured');
+
+const sortClientSide = (data: Product[], s: string) => {
+  if (s === 'price_asc') return [...data].sort((a, b) => (a.variations[0]?.sellingPrice ?? 0) - (b.variations[0]?.sellingPrice ?? 0));
+  if (s === 'price_desc') return [...data].sort((a, b) => (b.variations[0]?.sellingPrice ?? 0) - (a.variations[0]?.sellingPrice ?? 0));
+  if (s === 'rating') return [...data].sort((a, b) => b.rating - a.rating);
+  return data;
+};
 
 export default function AllProductsPage() {
   const [sort, setSort] = useState<(typeof SORTS)[number]['id']>('featured');
@@ -42,6 +44,7 @@ export default function AllProductsPage() {
   const [selectedCats, setSelectedCats] = useState<string[]>([]);
   const [selectedBrands, setSelectedBrands] = useState<string[]>([]);
   const [priceStep, setPriceStep] = useState('all');
+  const [minRating, setMinRating] = useState(0);
   const [inStockOnly, setInStockOnly] = useState(false);
   const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
@@ -51,73 +54,7 @@ export default function AllProductsPage() {
   const [hasMorePages, setHasMorePages] = useState(false);
 
   const { categories: parentCats } = useStorefrontCategories();
-
-  useEffect(() => {
-    let cancelled = false;
-
-    const loadFirstPage = async () => {
-      setLoading(true);
-      try {
-        const res = await storefrontService.getProducts({ page: 1, per_page: ITEMS_PER_PAGE, sort: 'featured' });
-        if (cancelled) return;
-        setProducts(res.data);
-        setPage(1);
-        setTotalProducts(res.meta.total);
-        setHasMorePages(res.meta.current_page < res.meta.last_page);
-      } catch {
-        if (!cancelled) setProducts([]);
-      } finally {
-        if (!cancelled) setLoading(false);
-      }
-    };
-
-    loadFirstPage();
-    return () => {
-      cancelled = true;
-    };
-  }, []);
-
-  const loadMore = async () => {
-    if (!hasMorePages || loadingMore) return;
-    setLoadingMore(true);
-    try {
-      const nextPage = page + 1;
-      const res = await storefrontService.getProducts({ page: nextPage, per_page: ITEMS_PER_PAGE, sort: 'featured' });
-      setProducts(prev => prev.concat(res.data));
-      setPage(nextPage);
-      setTotalProducts(res.meta.total);
-      setHasMorePages(res.meta.current_page < res.meta.last_page);
-    } finally {
-      setLoadingMore(false);
-    }
-  };
-
-  const brands = useMemo(() => {
-    const map = new Map<string, Brand>();
-    for (const p of products) {
-      if (p.brand && !map.has(p.brand.id)) map.set(p.brand.id, { ...p.brand, productCount: 0 });
-    }
-    for (const p of products) {
-      if (p.brand) {
-        const b = map.get(p.brand.id)!;
-        b.productCount = (b.productCount ?? 0) + 1;
-      }
-    }
-    return Array.from(map.values());
-  }, [products]);
-
-  // Flatten all category tree items into a single array for quick lookup
-  const allCategories = useMemo(() => {
-    const flat: import('@/services/storefrontService').CategoryTreeItem[] = [];
-    const walk = (items: import('@/services/storefrontService').CategoryTreeItem[]) => {
-      for (const item of items) {
-        flat.push(item);
-        if (item.children?.length) walk(item.children);
-      }
-    };
-    walk(parentCats);
-    return flat;
-  }, [parentCats]);
+  const { brands } = useStorefrontBrands();
 
   // Build: for each parent category ID, collect all descendant (child) category IDs
   const childrenOf = useMemo(() => {
@@ -139,27 +76,69 @@ export default function AllProductsPage() {
     return map;
   }, [parentCats]);
 
-  const allFiltered = useMemo(() => {
-    const step = PRICE_STEPS.find(s => s.id === priceStep)!;
-    let list = products.filter(p => {
-      if (selectedCats.length > 0) {
-        const match =
-          selectedCats.includes(p.category.id) ||
-          selectedCats.some(cid => childrenOf[cid]?.has(p.category.id));
-        if (!match) return false;
-      }
-      if (selectedBrands.length > 0 && (!p.brand || !selectedBrands.includes(p.brand.id))) return false;
-      const price = p.variations[0].sellingPrice;
-      if (price < step.min || price > step.max) return false;
-      if (inStockOnly && !p.variations.some(v => v.stock > 0)) return false;
-      return true;
-    });
-    const sortCfg = SORTS.find(s => s.id === sort)!;
-    list = [...list].sort(sortCfg.fn);
-    return list;
-  }, [sort, selectedCats, selectedBrands, priceStep, inStockOnly, childrenOf, products]);
+  // Expand any selected parent category into itself + all its descendant IDs
+  const categoryIdsForApi = useMemo(() => {
+    if (selectedCats.length === 0) return undefined;
+    const ids = new Set<string>();
+    for (const id of selectedCats) {
+      ids.add(id);
+      childrenOf[id]?.forEach(cid => ids.add(cid));
+    }
+    return Array.from(ids).join(',');
+  }, [selectedCats, childrenOf]);
 
-  const filtered = allFiltered;
+  const priceRange = PRICE_STEPS.find(s => s.id === priceStep) ?? PRICE_STEPS[0];
+
+  const fetchProducts = async (pageNum: number, append: boolean) => {
+    if (append) setLoadingMore(true); else setLoading(true);
+    try {
+      const res = await storefrontService.getProducts({
+        page: pageNum,
+        per_page: ITEMS_PER_PAGE,
+        sort: apiSortParam(sort),
+        category_id: categoryIdsForApi,
+        brand_id: selectedBrands.length > 0 ? selectedBrands.join(',') : undefined,
+        min_price: priceRange.min > 0 ? priceRange.min : undefined,
+        max_price: Number.isFinite(priceRange.max) ? priceRange.max : undefined,
+        in_stock: inStockOnly || undefined,
+        min_rating: minRating > 0 ? minRating : undefined,
+      });
+      const sorted = sortClientSide(res.data, sort);
+      setProducts(prev => (append ? prev.concat(sorted) : sorted));
+      setPage(pageNum);
+      setTotalProducts(res.meta.total);
+      setHasMorePages(res.meta.current_page < res.meta.last_page);
+    } catch {
+      if (!append) setProducts([]);
+    } finally {
+      if (append) setLoadingMore(false); else setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchProducts(1, false);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [sort, categoryIdsForApi, selectedBrands, priceStep, minRating, inStockOnly]);
+
+  const loadMore = () => {
+    if (!hasMorePages || loadingMore) return;
+    fetchProducts(page + 1, true);
+  };
+
+  // Flatten all category tree items into a single array for quick lookup
+  const allCategories = useMemo(() => {
+    const flat: import('@/services/storefrontService').CategoryTreeItem[] = [];
+    const walk = (items: import('@/services/storefrontService').CategoryTreeItem[]) => {
+      for (const item of items) {
+        flat.push(item);
+        if (item.children?.length) walk(item.children);
+      }
+    };
+    walk(parentCats);
+    return flat;
+  }, [parentCats]);
+
+  const filtered = products;
 
   const toggle = (
     arr: string[],
@@ -171,6 +150,7 @@ export default function AllProductsPage() {
     setSelectedCats([]);
     setSelectedBrands([]);
     setPriceStep('all');
+    setMinRating(0);
     setInStockOnly(false);
   };
 
@@ -178,125 +158,25 @@ export default function AllProductsPage() {
     selectedCats.length +
     selectedBrands.length +
     (priceStep !== 'all' ? 1 : 0) +
+    (minRating > 0 ? 1 : 0) +
     (inStockOnly ? 1 : 0);
 
-  const FilterContent = () => (
-    <div className="space-y-7">
-      <div>
-        <p className="mb-3 text-xs font-bold uppercase tracking-wider text-gray-500">
-          Category
-        </p>
-        <ul className="space-y-2">
-          {parentCats.map(c => {
-            const childCats = c.children ?? [];
-            return (
-              <li key={c.id}>
-                <label className="flex items-center gap-2 text-sm text-gray-700 dark:text-gray-300">
-                  <input
-                    type="checkbox"
-                    className="sf-check"
-                    checked={selectedCats.includes(c.id)}
-                    onChange={() => toggle(selectedCats, setSelectedCats, c.id)}
-                  />
-                  {c.name}
-                  <span className="text-xs text-gray-400">
-                    ({c.productCount ?? 0})
-                  </span>
-                </label>
-                {childCats.length > 0 && selectedCats.includes(c.id) && (
-                  <ul className="ml-6 mt-2 space-y-2">
-                    {childCats.map(cc => (
-                      <li key={cc.id}>
-                        <label className="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-400">
-                          <input
-                            type="checkbox"
-                            className="sf-check"
-                            checked={selectedCats.includes(cc.id)}
-                            onChange={() =>
-                              toggle(selectedCats, setSelectedCats, cc.id)
-                            }
-                          />
-                          {cc.name}
-                        </label>
-                      </li>
-                    ))}
-                  </ul>
-                )}
-              </li>
-            );
-          })}
-        </ul>
-      </div>
-
-      <div>
-        <p className="mb-3 text-xs font-bold uppercase tracking-wider text-gray-500">
-          Price
-        </p>
-        <ul className="space-y-2">
-          {PRICE_STEPS.map(s => (
-            <li key={s.id}>
-              <label className="flex items-center gap-2 text-sm text-gray-700 dark:text-gray-300">
-                <input
-                  type="radio"
-                  name="price"
-                  className="sf-check"
-                  checked={priceStep === s.id}
-                  onChange={() => setPriceStep(s.id)}
-                />
-                {s.label}
-              </label>
-            </li>
-          ))}
-        </ul>
-      </div>
-
-      <div>
-        <p className="mb-3 text-xs font-bold uppercase tracking-wider text-gray-500">
-          Brand
-        </p>
-        <ul className="max-h-60 space-y-2 overflow-auto scrollbar-thin">
-          {brands.map(b => (
-            <li key={b.id}>
-              <label className="flex items-center gap-2 text-sm text-gray-700 dark:text-gray-300">
-                <input
-                  type="checkbox"
-                  className="sf-check"
-                  checked={selectedBrands.includes(b.id)}
-                  onChange={() => toggle(selectedBrands, setSelectedBrands, b.id)}
-                />
-                {b.name}
-                <span className="text-xs text-gray-400">({b.productCount ?? 0})</span>
-              </label>
-            </li>
-          ))}
-        </ul>
-      </div>
-
-      <div>
-        <p className="mb-3 text-xs font-bold uppercase tracking-wider text-gray-500">
-          Availability
-        </p>
-        <label className="flex items-center gap-2 text-sm text-gray-700 dark:text-gray-300">
-          <input
-            type="checkbox"
-            className="sf-check"
-            checked={inStockOnly}
-            onChange={() => setInStockOnly(v => !v)}
-          />
-          In stock only
-        </label>
-      </div>
-
-      {activeFilterCount > 0 && (
-        <button
-          onClick={clearAll}
-          className="w-full rounded-lg border border-gray-300 py-2.5 text-sm font-semibold text-gray-700 transition-colors hover:bg-gray-50 dark:border-gray-700 dark:text-gray-300 dark:hover:bg-gray-800"
-        >
-          Clear all filters ({activeFilterCount})
-        </button>
-      )}
-    </div>
-  );
+  const filterProps = {
+    categories: parentCats,
+    selectedCategoryIds: selectedCats,
+    onToggleCategory: (id: string) => toggle(selectedCats, setSelectedCats, id),
+    brands,
+    selectedBrandIds: selectedBrands,
+    onToggleBrand: (id: string) => toggle(selectedBrands, setSelectedBrands, id),
+    priceStep,
+    onPriceStepChange: setPriceStep,
+    minRating,
+    onMinRatingChange: setMinRating,
+    inStockOnly,
+    onInStockChange: setInStockOnly,
+    activeFilterCount,
+    onClearAll: clearAll,
+  };
 
   return (
     <div className="bg-gray-50 dark:bg-gray-950">
@@ -343,15 +223,7 @@ export default function AllProductsPage() {
       <div className="mx-auto max-w-7xl px-4 py-6">
         <div className="lg:grid lg:grid-cols-[260px_1fr] lg:gap-8">
           {/* Sidebar (desktop) */}
-          <aside className="hidden lg:block">
-            <ScrollReveal animation="slide-right" duration="normal" as="div" className="sticky top-32 rounded-2xl border border-gray-200 bg-white p-5 dark:border-gray-800 dark:bg-gray-900">
-              <h2 className="mb-4 flex items-center gap-2 text-sm font-bold uppercase tracking-wider text-gray-900 dark:text-gray-100">
-                <SlidersHorizontal className="h-4 w-4" />
-                Filters
-              </h2>
-              <FilterContent />
-            </ScrollReveal>
-          </aside>
+          <FilterSidebar {...filterProps} />
 
           {/* Main */}
           <div>
@@ -445,6 +317,15 @@ export default function AllProductsPage() {
                     <X className="h-3 w-3" />
                   </button>
                 )}
+                {minRating > 0 && (
+                  <button
+                    onClick={() => setMinRating(0)}
+                    className="inline-flex items-center gap-1 rounded-full bg-brand-50 px-3 py-1.5 text-xs font-semibold text-brand-700 dark:bg-brand-950/40 dark:text-brand-300"
+                  >
+                    {minRating}★ & up
+                    <X className="h-3 w-3" />
+                  </button>
+                )}
                 {inStockOnly && (
                   <button
                     onClick={() => setInStockOnly(false)}
@@ -509,35 +390,12 @@ export default function AllProductsPage() {
       </div>
 
       {/* Mobile drawer */}
-      {filterOpen && (
-        <div className="fixed inset-0 z-50 lg:hidden">
-          <div
-            className="absolute inset-0 bg-black/50"
-            onClick={() => setFilterOpen(false)}
-          />
-          <div className="absolute left-0 top-0 h-full w-[88%] max-w-sm overflow-y-auto bg-white p-5 sf-slide-in-left dark:bg-gray-950">
-            <div className="mb-4 flex items-center justify-between">
-              <h2 className="flex items-center gap-2 text-base font-bold text-gray-900 dark:text-white">
-                <SlidersHorizontal className="h-4 w-4" />
-                Filters
-              </h2>
-              <button
-                onClick={() => setFilterOpen(false)}
-                className="rounded-full p-2 text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-800"
-              >
-                <X className="h-5 w-5" />
-              </button>
-            </div>
-            <FilterContent />
-            <button
-              onClick={() => setFilterOpen(false)}
-              className="mt-6 w-full rounded-lg bg-brand-600 py-3 text-sm font-bold text-white hover:bg-brand-700"
-            >
-              Show {filtered.length} results
-            </button>
-          </div>
-        </div>
-      )}
+      <FilterDrawer
+        {...filterProps}
+        open={filterOpen}
+        onClose={() => setFilterOpen(false)}
+        resultCount={filtered.length}
+      />
     </div>
   );
 }

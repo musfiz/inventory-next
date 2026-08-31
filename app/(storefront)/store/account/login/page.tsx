@@ -2,15 +2,23 @@
 
 import { useEffect, useState, useCallback } from 'react';
 import Link from 'next/link';
+import dynamic from 'next/dynamic';
 import { useRouter, useSearchParams } from 'next/navigation';
 import {
-  Mail, Lock, Eye, EyeOff, Sparkles, User, Phone, Check,
+  Mail, Lock, Eye, EyeOff, Sparkles, User, Phone, Check, ShieldCheck,
 } from 'lucide-react';
 import { useCustomerAuthStore } from '@/stores/customer-auth-store';
 import Spinner from '@/components/ui/spinner';
+import ScrollReveal from '@/components/storefront/ScrollReveal';
 import { notify } from '@/lib/notifications';
 
 type Tab = 'login' | 'register';
+
+/** Client-only captcha (canvas + reload) to block bots on account creation. */
+const CaptchaBox = dynamic(() => import('@/components/storefront/CaptchaBox'), {
+  ssr: false,
+  loading: () => <div className="h-10 w-40 animate-pulse rounded-sm bg-gray-200 dark:bg-gray-800" />,
+});
 
 /* ───────────────────────────── shared UI primitives ─────────────────────── */
 
@@ -114,7 +122,7 @@ function LoginForm() {
         Remember me
       </label>
 
-      <button type="submit" disabled={loading} className="flex w-full items-center justify-center gap-2 rounded-lg bg-brand-600 py-3 text-sm font-bold text-white shadow-lg shadow-brand-600/20 transition-all hover:bg-brand-700 hover:shadow-xl hover:shadow-brand-600/30 disabled:opacity-50">
+      <button type="submit" disabled={loading} className="flex w-full items-center justify-center gap-2 rounded-lg bg-linear-to-r from-brand-600 to-purple-600 py-3 text-sm font-bold text-white shadow-lg shadow-brand-600/25 transition-all hover:shadow-xl hover:shadow-brand-600/30 disabled:opacity-50">
         {loading ? (
           <><Spinner size="sm" tone="white" /> Signing in...</>
         ) : 'Sign in'}
@@ -132,6 +140,7 @@ function RegisterForm() {
   const [showPw, setShowPw] = useState(false);
   const [loading, setLoading] = useState(false);
   const [errors, setErrors] = useState<Record<string, string[]>>({});
+  const [captchaInput, setCaptchaInput] = useState('');
 
   const set = (k: keyof typeof form) => (e: React.ChangeEvent<HTMLInputElement>) =>
     setForm(p => ({ ...p, [k]: e.target.type === 'checkbox' ? e.target.checked : e.target.value }));
@@ -141,6 +150,16 @@ function RegisterForm() {
     setErrors({});
     if (form.password !== form.confirm) { notify.error('Passwords do not match'); return; }
     if (!form.agree) { notify.error('Please accept the terms & conditions'); return; }
+    if (!captchaInput.trim()) {
+      notify.error('Please enter the captcha code');
+      return;
+    }
+    const { validateCaptcha } = await import('react-simple-captcha');
+    if (!validateCaptcha(captchaInput.trim())) {
+      notify.error('Captcha does not match. Please try again.');
+      setCaptchaInput('');
+      return;
+    }
     setLoading(true);
     const res = await register(form.name, form.email, form.phone, form.password, form.confirm);
     setLoading(false);
@@ -214,7 +233,23 @@ function RegisterForm() {
         </span>
       </label>
 
-      <button type="submit" disabled={loading} className="flex w-full items-center justify-center gap-2 rounded-lg bg-brand-600 py-3 text-sm font-bold text-white shadow-lg shadow-brand-600/20 transition-all hover:bg-brand-700 hover:shadow-xl hover:shadow-brand-600/30 disabled:opacity-50">
+      <div className="rounded-lg border border-gray-200 p-3 dark:border-gray-700">
+        <FieldLabel icon={ShieldCheck}>Security check</FieldLabel>
+        <div className="flex flex-wrap items-center gap-3">
+          <CaptchaBox />
+          <Input
+            value={captchaInput}
+            onChange={e => setCaptchaInput(e.target.value.toUpperCase())}
+            placeholder="Enter the code above"
+            maxLength={6}
+            autoComplete="off"
+            className="min-w-40 flex-1"
+          />
+        </div>
+        <p className="mt-2 text-xs text-gray-500">Type the characters shown above. Click the link to reload a new code.</p>
+      </div>
+
+      <button type="submit" disabled={loading} className="flex w-full items-center justify-center gap-2 rounded-lg bg-linear-to-r from-brand-600 to-purple-600 py-3 text-sm font-bold text-white shadow-lg shadow-brand-600/25 transition-all hover:shadow-xl hover:shadow-brand-600/30 disabled:opacity-50">
         {loading ? (
           <><Spinner size="sm" tone="white" /> Creating account...</>
         ) : 'Create account'}
@@ -245,97 +280,76 @@ export default function AuthPage() {
   const toggle = useCallback(() => setTab(t => (t === 'login' ? 'register' : 'login')), []);
 
   return (
-    <div className="flex min-h-[calc(100vh-200px)] items-center justify-center bg-linear-to-br from-gray-50 via-white to-gray-50 px-4 py-10 dark:from-gray-950 dark:via-gray-950 dark:to-gray-900">
-      <div className="grid w-full max-w-5xl gap-0 overflow-hidden rounded-3xl bg-white shadow-2xl shadow-gray-200/60 dark:bg-gray-950 dark:shadow-gray-950 lg:grid-cols-5">
+    <div className="relative flex min-h-[calc(100vh-200px)] items-center justify-center overflow-hidden bg-linear-to-br from-gray-50 via-white to-gray-50 px-4 py-10 dark:from-gray-950 dark:via-gray-950 dark:to-gray-900">
+      {/* decorative ambient background — matches the blurred-orb + dot-grid language used across storefront hero sections */}
+      <div
+        className="pointer-events-none absolute inset-0 opacity-[0.4]"
+        style={{
+          backgroundImage: 'radial-gradient(circle, currentColor 1px, transparent 1px)',
+          backgroundSize: '32px 32px',
+          color: 'rgb(0 0 0 / 0.04)',
+        }}
+      />
+      <div className="pointer-events-none absolute -left-32 -top-32 h-96 w-96 rounded-full bg-brand-400/20 blur-3xl dark:bg-brand-600/10" />
+      <div className="pointer-events-none absolute -bottom-32 -right-32 h-96 w-96 rounded-full bg-purple-400/20 blur-3xl dark:bg-purple-600/10" />
 
-        {/* ──── brand / value panel ──── */}
-        <div className="relative flex flex-col justify-between bg-linear-to-br from-brand-700 via-brand-600 to-purple-700 p-8 text-white lg:col-span-2">
-          {/* subtle pattern overlay */}
-          <div className="pointer-events-none absolute inset-0 opacity-[0.04]" style={{ backgroundImage: 'radial-gradient(circle at 25px 25px, white 2px, transparent 0)', backgroundSize: '40px 40px' }} />
-
-          <div>
-            <div className="relative flex h-12 w-12 items-center justify-center rounded-2xl bg-white/20 text-white shadow-lg backdrop-blur-sm">
-              <Sparkles className="h-6 w-6" />
-            </div>
-            <h2 className="relative mt-6 text-3xl font-black leading-tight tracking-tight">
-              {tab === 'login' ? 'Welcome back' : 'Create your account'}
-            </h2>
-            <p className="relative mt-2 text-sm leading-relaxed text-white/80">
-              {tab === 'login'
-                ? 'Sign in to track orders, manage your wishlist, and enjoy a faster checkout.'
-                : 'Create an account and unlock exclusive perks tailored just for you.'}
-            </p>
-
-            <ul className="relative mt-6 space-y-3">
-              {[
-                'Track all your orders in one place',
-                'Save favourites to your wishlist',
-                'Faster checkout with saved addresses',
-                'Exclusive member-only deals',
-              ].map(b => (
-                <li key={b} className="flex items-center gap-2.5 text-sm font-medium text-white/90">
-                  <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-white/20 text-[11px]">✓</span>
-                  {b}
-                </li>
-              ))}
-            </ul>
+      <ScrollReveal animation="zoom-in" duration="normal" as="div" className="relative z-10 w-full max-w-md overflow-hidden rounded-3xl bg-white p-8 shadow-2xl shadow-brand-900/10 ring-1 ring-black/5 dark:bg-gray-950 dark:shadow-black/40 dark:ring-white/10 sm:p-10">
+        {/* header */}
+        <div className="mb-7 flex flex-col items-center text-center">
+          <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-linear-to-br from-brand-600 to-purple-600 text-white shadow-lg shadow-brand-600/30">
+            <Sparkles className="h-7 w-7" />
           </div>
-
-          <div className="relative mt-8 grid grid-cols-2 gap-3">
-            {[
-              { stat: '50K+', label: 'Active members' },
-              { stat: '৳5,000+', label: 'Min free shipping' },
-              { stat: '7-day', label: 'Return policy' },
-              { stat: '24/7', label: 'Customer support' },
-            ].map(s => (
-              <div key={s.label} className="rounded-xl border border-white/10 bg-white/5 p-3 backdrop-blur-sm">
-                <p className="text-xl font-black">{s.stat}</p>
-                <p className="text-[11px] font-medium text-white/70">{s.label}</p>
-              </div>
-            ))}
-          </div>
+          <h1 className="mt-4 text-2xl font-black tracking-tight text-gray-900 dark:text-white">
+            {tab === 'login' ? 'Welcome back' : 'Create your account'}
+          </h1>
+          <p className="mt-1.5 text-sm text-gray-500 dark:text-gray-400">
+            {tab === 'login'
+              ? 'Sign in to track orders, manage your wishlist, and check out faster.'
+              : 'Join to unlock faster checkout, order tracking, and member perks.'}
+          </p>
         </div>
 
-        {/* ──── form panel ──── */}
-        <div className="flex flex-col justify-center p-8 lg:col-span-3">
-          {/* tab switcher */}
-          <div className="mb-8 flex gap-1 rounded-2xl bg-gray-100 p-1 dark:bg-gray-800">
-            <button
-              onClick={() => setTab('login')}
-              className={`flex-1 rounded-xl py-2.5 text-sm font-bold transition-all ${tab === 'login'
-                  ? 'bg-white text-gray-900 shadow-sm dark:bg-gray-950 dark:text-white'
-                  : 'text-gray-500 hover:text-gray-700 dark:text-gray-400'
-                }`}
-            >
-              Sign in
-            </button>
-            <button
-              onClick={() => setTab('register')}
-              className={`flex-1 rounded-xl py-2.5 text-sm font-bold transition-all ${tab === 'register'
-                  ? 'bg-white text-gray-900 shadow-sm dark:bg-gray-950 dark:text-white'
-                  : 'text-gray-500 hover:text-gray-700 dark:text-gray-400'
-                }`}
-            >
-              Create account
-            </button>
-          </div>
-
-          {/* dynamic heading */}
-          {tab === 'login' ? (
-            <p className="mb-6 text-sm text-gray-500">
-              New to UIMS?{' '}
-              <button type="button" onClick={toggle} className="font-semibold text-brand-600 hover:underline">Create an account</button>
-            </p>
-          ) : (
-            <p className="mb-6 text-sm text-gray-500">
-              Already a member?{' '}
-              <button type="button" onClick={toggle} className="font-semibold text-brand-600 hover:underline">Sign in</button>
-            </p>
-          )}
-
-          {tab === 'login' ? <LoginForm /> : <RegisterForm />}
+        {/* tab switcher with an animated sliding pill */}
+        <div className="relative mb-7 flex gap-1 rounded-2xl bg-gray-100 p-1 dark:bg-gray-800">
+          <div
+            className={`absolute inset-y-1 w-[calc(50%-4px)] rounded-xl bg-white shadow-sm transition-transform duration-300 ease-out dark:bg-gray-950 ${tab === 'register' ? 'translate-x-[calc(100%+8px)]' : 'translate-x-0'
+              }`}
+          />
+          <button
+            onClick={() => setTab('login')}
+            className={`relative z-10 flex-1 rounded-xl py-2.5 text-sm font-bold transition-colors ${tab === 'login'
+                ? 'text-gray-900 dark:text-white'
+                : 'text-gray-500 hover:text-gray-700 dark:text-gray-400'
+              }`}
+          >
+            Sign in
+          </button>
+          <button
+            onClick={() => setTab('register')}
+            className={`relative z-10 flex-1 rounded-xl py-2.5 text-sm font-bold transition-colors ${tab === 'register'
+                ? 'text-gray-900 dark:text-white'
+                : 'text-gray-500 hover:text-gray-700 dark:text-gray-400'
+              }`}
+          >
+            Create account
+          </button>
         </div>
-      </div>
+
+        {tab === 'login' ? <LoginForm /> : <RegisterForm />}
+
+        {/* dynamic footer link */}
+        {tab === 'login' ? (
+          <p className="mt-6 text-center text-sm text-gray-500">
+            New to UIMS?{' '}
+            <button type="button" onClick={toggle} className="font-semibold text-brand-600 hover:underline">Create an account</button>
+          </p>
+        ) : (
+          <p className="mt-6 text-center text-sm text-gray-500">
+            Already a member?{' '}
+            <button type="button" onClick={toggle} className="font-semibold text-brand-600 hover:underline">Sign in</button>
+          </p>
+        )}
+      </ScrollReveal>
     </div>
   );
 }

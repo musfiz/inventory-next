@@ -1,16 +1,19 @@
 'use client';
 
-import { useState, useMemo, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
 import { useSeo } from '@/lib/utils/use-seo';
-import { Search, X, ArrowRight } from 'lucide-react';
+import { Search, X, ArrowRight, ChevronDown, SlidersHorizontal } from 'lucide-react';
 import ProductCard from '@/components/storefront/ProductCard';
 import ScrollReveal from '@/components/storefront/ScrollReveal';
 import ProductCardSkeleton from '@/components/storefront/ProductCardSkeleton';
-import { BRANDS, POPULAR_SEARCHES } from '@/lib/storefront/mock-data';
+import { POPULAR_SEARCHES } from '@/lib/storefront/mock-data';
 import { useStorefrontCategories } from '@/hooks/use-storefront-categories';
+import { useStorefrontBrands } from '@/hooks/use-storefront-brands';
+import { FilterSidebar, FilterDrawer, PRICE_STEPS } from '@/components/storefront/ProductFilterSidebar';
 import storefrontService from '@/services/storefrontService';
+import { useStorefrontStatus } from '@/hooks/use-storefront-status';
 import type { Product } from '@/types/storefront';
 
 const SORTS = [
@@ -21,23 +24,38 @@ const SORTS = [
   { id: 'rating', label: 'Top Rated' },
 ] as const;
 
+const ITEMS_PER_PAGE = 12;
+
 export default function SearchPage() {
   const params = useSearchParams();
   const q = params.get('q') || '';
   const [query, setQuery] = useState(q);
+  const { storeName } = useStorefrontStatus();
+  const siteName = storeName || 'Our Store';
 
   useSeo({
-    title: q ? `Search: ${q} | UIMS Store` : 'Search | UIMS Store',
+    title: q ? `Search: ${q} | ${siteName}` : `Search | ${siteName}`,
     description: q
-      ? `Search results for "${q}" at UIMS Store.`
-      : 'Search products at UIMS Store.',
+      ? `Search results for "${q}" at ${siteName}.`
+      : `Search products at ${siteName}.`,
     url: `/store/search?q=${encodeURIComponent(q)}`,
   });
   const [sort, setSort] = useState<(typeof SORTS)[number]['id']>('relevance');
+  const [filterOpen, setFilterOpen] = useState(false);
   const [selectedBrands, setSelectedBrands] = useState<string[]>([]);
   const [selectedCats, setSelectedCats] = useState<string[]>([]);
+  const [priceStep, setPriceStep] = useState('all');
+  const [minRating, setMinRating] = useState(0);
+  const [inStockOnly, setInStockOnly] = useState(false);
   const [results, setResults] = useState<Product[]>([]);
   const [loading, setLoading] = useState(false);
+  const [loadingMore, setLoadingMore] = useState(false);
+  const [page, setPage] = useState(1);
+  const [meta, setMeta] = useState({ current_page: 1, last_page: 1, total: 0 });
+  const [hasMore, setHasMore] = useState(false);
+
+  const { categories: parentCats } = useStorefrontCategories();
+  const { brands } = useStorefrontBrands();
 
   const toggle = (
     arr: string[],
@@ -45,51 +63,84 @@ export default function SearchPage() {
     id: string
   ) => setArr(arr.includes(id) ? arr.filter(x => x !== id) : [...arr, id]);
 
-  // Server-driven search via the storefront product API. Brand/category
-  // filtering and sorting remain client-side (the API accepts a single
-  // brand_id/category_id + sort; multi-select is applied here).
-  useEffect(() => {
+  const clearAll = () => {
+    setSelectedBrands([]);
+    setSelectedCats([]);
+    setPriceStep('all');
+    setMinRating(0);
+    setInStockOnly(false);
+  };
+
+  const activeFilterCount =
+    selectedBrands.length +
+    selectedCats.length +
+    (priceStep !== 'all' ? 1 : 0) +
+    (minRating > 0 ? 1 : 0) +
+    (inStockOnly ? 1 : 0);
+
+  const priceRange = PRICE_STEPS.find(s => s.id === priceStep) ?? PRICE_STEPS[0];
+
+  const filterProps = {
+    categories: parentCats,
+    selectedCategoryIds: selectedCats,
+    onToggleCategory: (id: string) => toggle(selectedCats, setSelectedCats, id),
+    brands,
+    selectedBrandIds: selectedBrands,
+    onToggleBrand: (id: string) => toggle(selectedBrands, setSelectedBrands, id),
+    priceStep,
+    onPriceStepChange: setPriceStep,
+    minRating,
+    onMinRatingChange: setMinRating,
+    inStockOnly,
+    onInStockChange: setInStockOnly,
+    activeFilterCount,
+    onClearAll: clearAll,
+  };
+
+  // Server-driven search + filters via the storefront product API.
+  const fetchResults = async (pageNum: number, append: boolean) => {
     const lc = q.toLowerCase().trim();
     if (!lc) {
       setResults([]);
       setLoading(false);
       return;
     }
-    let cancelled = false;
-    setLoading(true);
-    storefrontService
-      .getProducts({ search: q, per_page: 60 })
-      .then(res => {
-        if (!cancelled) setResults(res.data);
-      })
-      .catch(() => {
-        if (!cancelled) setResults([]);
-      })
-      .finally(() => {
-        if (!cancelled) setLoading(false);
+    if (append) setLoadingMore(true); else setLoading(true);
+    try {
+      const res = await storefrontService.search({
+        q,
+        page: pageNum,
+        per_page: ITEMS_PER_PAGE,
+        sort,
+        category_id: selectedCats.length > 0 ? selectedCats.join(',') : undefined,
+        brand_id: selectedBrands.length > 0 ? selectedBrands.join(',') : undefined,
+        min_price: priceRange.min > 0 ? priceRange.min : undefined,
+        max_price: Number.isFinite(priceRange.max) ? priceRange.max : undefined,
+        in_stock: inStockOnly || undefined,
+        min_rating: minRating > 0 ? minRating : undefined,
       });
-    return () => {
-      cancelled = true;
-    };
-  }, [q]);
+      setResults(prev => (append ? prev.concat(res.data) : res.data));
+      setPage(pageNum);
+      setMeta(res.meta);
+      setHasMore(res.meta.current_page < res.meta.last_page);
+    } catch {
+      if (!append) setResults([]);
+    } finally {
+      if (append) setLoadingMore(false); else setLoading(false);
+    }
+  };
 
-  const displayed = useMemo(() => {
-    let list = results;
-    if (selectedBrands.length > 0)
-      list = list.filter(p => p.brand && selectedBrands.includes(p.brand.id));
-    if (selectedCats.length > 0)
-      list = list.filter(p => selectedCats.includes(p.category.id));
-    const sortFns: Record<string, (a: Product, b: Product) => number> = {
-      relevance: (a, b) => b.rating - a.rating,
-      newest: (a, b) => Number(b.isNew) - Number(a.isNew),
-      price_asc: (a, b) => a.variations[0].sellingPrice - b.variations[0].sellingPrice,
-      price_desc: (a, b) => b.variations[0].sellingPrice - a.variations[0].sellingPrice,
-      rating: (a, b) => b.rating - a.rating,
-    };
-    return [...list].sort(sortFns[sort]);
-  }, [results, sort, selectedBrands, selectedCats]);
+  useEffect(() => {
+    fetchResults(1, false);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [q, sort, selectedCats, selectedBrands, priceStep, minRating, inStockOnly]);
 
-  const { categories: parentCats } = useStorefrontCategories();
+  const loadMore = () => {
+    if (!hasMore || loadingMore) return;
+    fetchResults(page + 1, true);
+  };
+
+  const displayed = results;
 
   return (
     <div className="bg-gray-50 dark:bg-gray-950">
@@ -159,53 +210,28 @@ export default function SearchPage() {
       <div className="mx-auto max-w-7xl px-4 py-6">
         <div className="lg:grid lg:grid-cols-[260px_1fr] lg:gap-8">
           {/* Sidebar */}
-          <aside className="hidden lg:block">
-            <div className="sticky top-32 space-y-6 rounded-2xl border border-gray-200 bg-white p-5 dark:border-gray-800 dark:bg-gray-900">
-              <div>
-                <p className="mb-3 text-xs font-bold uppercase tracking-wider text-gray-500">Category</p>
-                <ul className="space-y-2">
-                  {parentCats.map(c => (
-                    <li key={c.id}>
-                      <label className="flex items-center gap-2 text-sm text-gray-700 dark:text-gray-300">
-                        <input
-                          type="checkbox"
-                          className="sf-check"
-                          checked={selectedCats.includes(c.id)}
-                          onChange={() => toggle(selectedCats, setSelectedCats, c.id)}
-                        />
-                        {c.name}
-                      </label>
-                    </li>
-                  ))}
-                </ul>
-              </div>
-              <div>
-                <p className="mb-3 text-xs font-bold uppercase tracking-wider text-gray-500">Brand</p>
-                <ul className="max-h-60 space-y-2 overflow-auto scrollbar-thin">
-                  {BRANDS.map(b => (
-                    <li key={b.id}>
-                      <label className="flex items-center gap-2 text-sm text-gray-700 dark:text-gray-300">
-                        <input
-                          type="checkbox"
-                          className="sf-check"
-                          checked={selectedBrands.includes(b.id)}
-                          onChange={() => toggle(selectedBrands, setSelectedBrands, b.id)}
-                        />
-                        {b.name}
-                      </label>
-                    </li>
-                  ))}
-                </ul>
-              </div>
-            </div>
-          </aside>
+          <FilterSidebar {...filterProps} />
 
           <div>
             {/* Toolbar */}
-            <div className="mb-5 flex items-center justify-between rounded-2xl border border-gray-200 bg-white p-3 dark:border-gray-800 dark:bg-gray-900">
-              <p className="text-sm text-gray-500">
-                <span className="font-bold text-gray-900 dark:text-gray-100">{displayed.length}</span> results
-              </p>
+            <div className="mb-5 flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-gray-200 bg-white p-3 dark:border-gray-800 dark:bg-gray-900">
+              <div className="flex items-center gap-3">
+                <button
+                  onClick={() => setFilterOpen(true)}
+                  className="inline-flex items-center gap-2 rounded-full border border-gray-300 px-4 py-2 text-sm font-semibold text-gray-700 transition-colors hover:bg-gray-50 lg:hidden dark:border-gray-700 dark:text-gray-300"
+                >
+                  <SlidersHorizontal className="h-4 w-4" />
+                  Filters
+                  {activeFilterCount > 0 && (
+                    <span className="flex h-5 min-w-[20px] items-center justify-center rounded-full bg-brand-600 px-1 text-[10px] font-bold text-white">
+                      {activeFilterCount}
+                    </span>
+                  )}
+                </button>
+                <p className="text-sm text-gray-500">
+                  <span className="font-bold text-gray-900 dark:text-gray-100">{displayed.length}</span> of {meta.total} results
+                </p>
+              </div>
               <div className="relative">
                 <select
                   value={sort}
@@ -244,17 +270,39 @@ export default function SearchPage() {
                 </Link>
               </div>
             ) : (
-              <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
-                {displayed.map((p, i) => (
-                  <ScrollReveal key={p.id} animation="zoom-in" staggerIndex={i}>
-                    <ProductCard product={p} />
-                  </ScrollReveal>
-                ))}
-              </div>
+              <>
+                <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
+                  {displayed.map((p, i) => (
+                    <ScrollReveal key={p.id} animation="zoom-in" staggerIndex={i}>
+                      <ProductCard product={p} />
+                    </ScrollReveal>
+                  ))}
+                </div>
+                {hasMore && (
+                  <div className="mt-8 text-center">
+                    <button
+                      onClick={loadMore}
+                      disabled={loadingMore}
+                      className="inline-flex items-center gap-2 rounded-full border border-gray-300 bg-white px-8 py-3 text-sm font-bold text-gray-700 transition-all hover:border-brand-400 hover:text-brand-600 disabled:cursor-not-allowed disabled:opacity-60 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-300"
+                    >
+                      {loadingMore ? 'Loading…' : `Load more (${meta.total - displayed.length} remaining)`}
+                      <ChevronDown className="h-4 w-4" />
+                    </button>
+                  </div>
+                )}
+              </>
             )}
           </div>
         </div>
       </div>
+
+      {/* Mobile drawer */}
+      <FilterDrawer
+        {...filterProps}
+        open={filterOpen}
+        onClose={() => setFilterOpen(false)}
+        resultCount={displayed.length}
+      />
     </div>
   );
 }
