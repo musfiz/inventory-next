@@ -9,14 +9,13 @@ import { GiSave } from 'react-icons/gi';
 import { z } from 'zod';
 import BusinessTypeSelect from '@/components/ui/business-type-select';
 import CustomDatePicker from '@/components/ui/date-picker';
-import { useApplyServerErrors } from '@/components/ui/form/apply-server-errors';
+import { normalizeServerErrors } from '@/lib/utils/validation';
 import {
   TextField,
   TextareaField,
   SelectField,
   CheckboxField,
   Field,
-  useFieldError,
 } from '@/components/ui/form/fields';
 import Spinner from '@/components/ui/spinner';
 import { usePermissions } from '@/hooks/use-permissions';
@@ -105,6 +104,7 @@ export default function TenantForm({ editRef }: { editRef?: string }) {
     handleSubmit,
     reset,
     control,
+    setError,
     formState: { isSubmitting },
   } = methods;
 
@@ -160,8 +160,6 @@ export default function TenantForm({ editRef }: { editRef?: string }) {
     };
   }, [editRef, router, reset]);
 
-  const applyServerErrors = useApplyServerErrors();
-
   const onValid = async (values: TenantFormOutput) => {
     try {
       const payload = { ...values };
@@ -174,17 +172,22 @@ export default function TenantForm({ editRef }: { editRef?: string }) {
       }
       router.push('/tenants');
     } catch (error: any) {
-      const applied = applyServerErrors(error.response?.data?.errors);
-      if (!applied) {
+      const errors = error.response?.data?.errors;
+      const normalized = normalizeServerErrors(errors);
+      if (Object.keys(normalized).length > 0) {
+        for (const [field, msg] of Object.entries(normalized)) {
+          setError(field as keyof TenantFormOutput, { type: 'server', message: msg });
+        }
+      } else {
         notify.error(
           error.response?.data?.message ||
-            (isEditMode ? 'Failed to update tenant' : 'Failed to create tenant'),
+          (isEditMode ? 'Failed to update tenant' : 'Failed to create tenant'),
         );
       }
     }
   };
 
-  const storefrontError = useFieldError('storefront_active');
+  const storefrontError = methods.formState.errors.storefront_active?.message as string | undefined;
 
   if (isEditMode && !isHydrated) {
     return (
@@ -348,16 +351,14 @@ export default function TenantForm({ editRef }: { editRef?: string }) {
                       role="switch"
                       aria-checked={Boolean(field.value)}
                       onClick={() => field.onChange(!field.value)}
-                      className={`relative inline-flex h-5 w-9 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 ${
-                        field.value
+                      className={`relative inline-flex h-5 w-9 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 ${field.value
                           ? 'bg-indigo-600 focus:ring-indigo-500'
                           : 'bg-gray-300 dark:bg-gray-600 focus:ring-indigo-500'
-                      } ${storefrontError ? 'ring-2 ring-red-500' : ''}`}
+                        } ${storefrontError ? 'ring-2 ring-red-500' : ''}`}
                     >
                       <span
-                        className={`inline-block h-3.5 w-3.5 transform rounded-full bg-white transition-transform ${
-                          field.value ? 'translate-x-[18px]' : 'translate-x-[3px]'
-                        }`}
+                        className={`inline-block h-3.5 w-3.5 transform rounded-full bg-white transition-transform ${field.value ? 'translate-x-[18px]' : 'translate-x-[3px]'
+                          }`}
                       />
                     </button>
                     <div>
