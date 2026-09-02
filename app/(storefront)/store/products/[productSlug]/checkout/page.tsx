@@ -120,6 +120,7 @@ export default function ExpressCheckoutPage() {
   const router = useRouter();
   const { productSlug } = useParams<{ productSlug: string }>();
   const { user } = useCustomerAuthStore();
+  const { storeName } = useStorefrontStatus();
 
   const [product, setProduct] = useState<Product | null>(null);
   const [loading, setLoading] = useState(true);

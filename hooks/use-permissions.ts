@@ -98,6 +98,11 @@ export const usePermissions = () => {
    */
   const isTenantUser = useMemo(() => user?.user_type === 'tenant_user', [user?.user_type]);
 
+  /**
+   * Check if the user's tenant has storefront active
+   */
+  const storefrontActive = useMemo(() => user?.tenant?.storefront_active ?? false, [user?.tenant?.storefront_active]);
+
   return {
     hasPermission,
     hasAnyPermission,
@@ -105,6 +110,7 @@ export const usePermissions = () => {
     isSuperAdmin,
     isTenantAdmin,
     isTenantUser,
+    storefrontActive,
     permissions: user?.permissions ?? [],
     userType: user?.user_type,
     isAuthenticated: !!user,

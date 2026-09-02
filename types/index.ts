@@ -31,6 +31,7 @@ export interface Tenant {
   max_products?: number;
   max_warehouses?: number;
   is_active?: boolean;
+  storefront_active?: boolean;
   is_verified?: boolean;
   created_at?: string;
   updated_at?: string;

@@ -16,7 +16,7 @@ const csp = [
   `script-src 'self' 'unsafe-inline'${isDev ? " 'unsafe-eval'" : ''}`,
   "style-src 'self' 'unsafe-inline'",
   `img-src 'self' data: blob: https:${backendHost ? ` http://${backendHost} https://${backendHost}` : ''}`,
-  "font-src 'self' data:",
+  "font-src 'self' data: https://fonts.gstatic.com",
   backendHost ? `connect-src 'self' https://${backendHost} http://${backendHost}` : "connect-src 'self'",
   "frame-ancestors 'none'",
   "base-uri 'self'",

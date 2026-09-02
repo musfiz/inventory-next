@@ -67,6 +67,7 @@ import {
   Ticket,
   Power,
   Menu as MenuIcon,
+  ShoppingCart,
 } from 'lucide-react';
 import { MdOutlineAssignmentReturn, MdOutlinePointOfSale, MdOutlinePostAdd, MdPayment, MdSupervisedUserCircle } from 'react-icons/md';
 import { BsDatabaseFillDown, BsDatabaseFillGear, BsDatabaseFillUp, BsFilePost, BsReceiptCutoff } from 'react-icons/bs';
@@ -91,6 +92,7 @@ interface NavigationItem {
   permission?: string;
   permissions?: string[];
   superAdminOnly?: boolean;
+  storefrontRequired?: boolean;
 }
 
 const navigation: NavigationItem[] = [
@@ -119,6 +121,7 @@ const navigation: NavigationItem[] = [
     children: [
       { name: 'All Permissions', href: '/permissions', icon: Key, superAdminOnly: true },
       { name: 'User Permissions', href: '/user-permissions', icon: Shield, permissions: ['view-user-permission', 'create-user-permission'] },
+      { name: 'Ecommerce Permissions', href: '/user-permissions/ecommerce', icon: ShoppingCart, permissions: ['view-user-permission', 'create-user-permission'] },
     ],
   },
   {
@@ -240,7 +243,7 @@ const navigation: NavigationItem[] = [
   {
     name: 'Ecommerce Management',
     icon: GiShop,
-    superAdminOnly: true,
+    storefrontRequired: true,
     children: [
       {
         name: 'Storefront Settings',
@@ -503,12 +506,18 @@ function NavItem({
   openItems: Set<string>;
   setOpenItems: (items: Set<string>) => void;
 }) {
-  const { hasPermission, hasAnyPermission, isSuperAdmin } = usePermissions();
+  const { hasPermission, hasAnyPermission, isSuperAdmin, isTenantAdmin, storefrontActive } = usePermissions();
 
   // Check if user has permission for this item
   const hasAccess = () => {
     // Check super admin only access first
     if (item.superAdminOnly && !isSuperAdmin) {
+      return false;
+    }
+
+    // Check storefront required (Ecommerce Management)
+    // Visible for super_admin always, or tenant_admin when storefront is active
+    if (item.storefrontRequired && !isSuperAdmin && !(isTenantAdmin && storefrontActive)) {
       return false;
     }
 
@@ -666,7 +675,7 @@ export default function Sidebar({ sidebarOpen, mobileMenuOpen, setMobileMenuOpen
   const pathname = usePathname();
   const [openItems, setOpenItems] = useState<Set<string>>(new Set());
   const lastAutoExpandedPath = useRef<string | null>(null);
-  const { hasPermission, hasAnyPermission, isSuperAdmin } = usePermissions();
+  const { hasPermission, hasAnyPermission, isSuperAdmin, isTenantAdmin, storefrontActive } = usePermissions();
 
   // Recursive function to filter navigation based on permissions
   const filterNavigationRecursive = (items: NavigationItem[]): NavigationItem[] => {
@@ -676,6 +685,11 @@ export default function Sidebar({ sidebarOpen, mobileMenuOpen, setMobileMenuOpen
 
         // Check super admin only access
         if (clonedItem.superAdminOnly && !isSuperAdmin) {
+          return null;
+        }
+
+        // Check storefront required (Ecommerce Management)
+        if (clonedItem.storefrontRequired && !isSuperAdmin && !(isTenantAdmin && storefrontActive)) {
           return null;
         }
 
