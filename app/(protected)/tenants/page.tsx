@@ -7,6 +7,9 @@ import { ColumnDef } from '@tanstack/react-table';
 import DataTable from '@/components/ui/datatable';
 import Spinner from '@/components/ui/spinner';
 import tenantService from '@/services/tenantService';
+import apiClient from '@/lib/api/axios';
+import { notify } from '@/lib/notifications';
+import { useStorefrontStatusStore } from '@/stores/storefront-status-store';
 import { usePermissions } from '@/hooks/use-permissions';
 import type { BusinessType, Tenant as TenantDetail } from '@/types/api.types';
 
@@ -17,6 +20,7 @@ interface TenantRow {
   email: string;
   phone: string;
   is_active: boolean;
+  storefront_active: boolean;
   users_count: number;
   created_at: string;
 }
@@ -34,6 +38,8 @@ export default function TenantsPage() {
   const [detailsOpen, setDetailsOpen] = useState(false);
   const [detailsTenant, setDetailsTenant] = useState<TenantDetail | null>(null);
   const [detailsLoading, setDetailsLoading] = useState(false);
+  const [togglingStorefrontId, setTogglingStorefrontId] = useState<number | null>(null);
+  const [refreshKey, setRefreshKey] = useState(0);
 
   const openDetails = async (id: number) => {
     setDetailsOpen(true);
@@ -66,6 +72,56 @@ export default function TenantsPage() {
         Inactive
       </span>
     );
+  };
+
+  const handleStorefrontToggle = async (row: TenantRow) => {
+    if (togglingStorefrontId !== null) return;
+    const next = !row.storefront_active;
+
+    // Activating: only one storefront may be active at a time.
+    if (next) {
+      try {
+        const res = await apiClient.get('/api/v1/storefront/status');
+        const activeTenantId = res.data?.data?.active_tenant_id;
+        if (
+          res.data?.data?.storefront_active &&
+          activeTenantId !== null &&
+          activeTenantId !== undefined &&
+          Number(activeTenantId) !== row.id
+        ) {
+          notify.error(
+            'A storefront is already active',
+            'Only one storefront can be active at a time. Please deactivate the current store first, then try again.'
+          );
+          return;
+        }
+      } catch {
+        // Status check failed — fall through; the backend enforces single-active anyway.
+      }
+    }
+
+    setTogglingStorefrontId(row.id);
+    try {
+      // Tenant update requires business_name + email, so load full details first.
+      const data = await tenantService.getTenantById(String(row.id));
+      const tenant = ((data as any).tenant ?? (data as any)) as TenantDetail;
+      await tenantService.updateTenant(String(row.id), {
+        business_name: tenant.business_name,
+        email: tenant.email,
+        storefront_active: next,
+      });
+      notify.success(next ? 'Storefront activated' : 'Storefront deactivated');
+      setRefreshKey(k => k + 1);
+      useStorefrontStatusStore.getState().fetch();
+    } catch (error: any) {
+      const message =
+        error?.response?.data?.message ||
+        error?.response?.data?.errors?.storefront_active?.[0] ||
+        'Failed to update storefront status';
+      notify.error('Storefront update failed', message);
+    } finally {
+      setTogglingStorefrontId(null);
+    }
   };
 
   const columns: ColumnDef<TenantRow>[] = [
@@ -138,6 +194,48 @@ export default function TenantsPage() {
       accessorKey: 'is_active',
       header: 'Status',
       cell: ({ row }) => getStatusBadge(row.original.is_active),
+    },
+    {
+      accessorKey: 'storefront_active',
+      header: () => <div className="text-center">Storefront</div>,
+      cell: ({ row }) => {
+        const tenant = row.original;
+        const isOn = !!tenant.storefront_active;
+        const isBusy = togglingStorefrontId === tenant.id;
+        if (!hasPermission('update-tenants')) {
+          return (
+            <div className="text-center">
+              <span
+                className={`px-1.5 py-0.5 text-xs font-medium rounded ${isOn ? 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400' : 'bg-gray-100 text-gray-600 dark:bg-gray-700 dark:text-gray-300'}`}
+              >
+                {isOn ? 'On' : 'Off'}
+              </span>
+            </div>
+          );
+        }
+        return (
+          <div className="flex justify-center">
+            <button
+              type="button"
+              role="switch"
+              aria-checked={isOn}
+              aria-label={`Storefront for ${tenant.business_name}`}
+              title={isOn ? 'Deactivate storefront' : 'Activate storefront'}
+              disabled={isBusy}
+              onClick={() => handleStorefrontToggle(tenant)}
+              className={`relative inline-flex h-5 w-9 shrink-0 cursor-pointer items-center rounded-full border-2 border-transparent transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 disabled:opacity-60 disabled:cursor-not-allowed ${
+                isOn ? 'bg-indigo-600' : 'bg-gray-300 dark:bg-gray-600'
+              }`}
+            >
+              <span
+                className={`inline-block h-4 w-4 transform rounded-full bg-white shadow-sm transition-transform duration-200 ${
+                  isOn ? 'translate-x-4' : 'translate-x-0'
+                }`}
+              />
+            </button>
+          </div>
+        );
+      },
     },
     {
       id: 'actions',
@@ -224,6 +322,7 @@ export default function TenantsPage() {
         pageSize={15}
         enableSearch={true}
         searchPlaceholder="Search by business name, email, or slug..."
+        refreshKey={refreshKey}
       />
 
       {/* Details Modal */}

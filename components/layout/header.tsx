@@ -16,9 +16,11 @@ import {
   Sun,
   Moon,
   ArrowLeftRight,
+  Store,
 } from 'lucide-react';
 import { useTheme } from '@/contexts/ThemeContext';
 import { useAuth } from '@/hooks/use-auth';
+import { useStorefrontStatus } from '@/hooks/use-storefront-status';
 import { useAuthStore } from '@/stores/auth-store';
 import { useRouter } from 'next/navigation';
 import { notify } from '@/lib/notifications';
@@ -50,6 +52,7 @@ export default function Header({
   const router = useRouter();
   const { theme, toggleTheme } = useTheme();
   const { logout } = useAuth();
+  const { active: storefrontActive } = useStorefrontStatus();
   const isSwitchedUser = useAuthStore(state => state.isSwitchedUser);
   const originalSuperAdmin = useAuthStore(state => state.originalSuperAdmin);
   const switchBack = useAuthStore(state => state.switchBack);
@@ -139,6 +142,18 @@ export default function Header({
 
         {/* Notifications & User Dropdown */}
         <div className="flex items-center gap-2">
+          {/* Storefront Shortcut — visible only when storefront is active */}
+          {storefrontActive && (
+            <button
+              onClick={() => window.open('/store', '_blank', 'noopener,noreferrer')}
+              className="p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors cursor-pointer"
+              aria-label="View storefront"
+              title="View storefront"
+            >
+              <Store className="h-5 w-5 text-gray-600 dark:text-gray-400" />
+            </button>
+          )}
+
           {/* Theme Switcher */}
           <button
             onClick={toggleTheme}
