@@ -281,9 +281,11 @@ const navigation: NavigationItem[] = [
         name: 'Product Display',
         icon: Package,
         children: [
+          { name: 'Brands', href: '/ecommerce/products/brands', icon: Building2 },
+          { name: 'Categories', href: '/ecommerce/products/categories', icon: ListTodo },
+          { name: 'Category Content', href: '/ecommerce/products/category-content', icon: FileText },
           { name: 'Display Rules', href: '/ecommerce/products/display', icon: List },
           { name: 'Product Rules', href: '/ecommerce/products/flags', icon: Tag },
-          { name: 'Category Page', href: '/ecommerce/products/category-content', icon: FileText },
           { name: 'Product Media', href: '/ecommerce/products/product-media', icon: Image },
           // { name: 'Related / Cross-sell / Up-sell', href: '/ecommerce/products/relations', icon: GitBranch },
         ],
@@ -506,7 +508,7 @@ function NavItem({
   openItems: Set<string>;
   setOpenItems: (items: Set<string>) => void;
 }) {
-  const { hasPermission, hasAnyPermission, isSuperAdmin, isTenantAdmin, storefrontActive } = usePermissions();
+  const { hasPermission, hasAnyPermission, isSuperAdmin, isTenantAdmin, isTenantUser, storefrontActive } = usePermissions();
 
   // Check if user has permission for this item
   const hasAccess = () => {
@@ -516,8 +518,8 @@ function NavItem({
     }
 
     // Check storefront required (Ecommerce Management)
-    // Visible for super_admin always, or tenant_admin when storefront is active
-    if (item.storefrontRequired && !isSuperAdmin && !(isTenantAdmin && storefrontActive)) {
+    // Visible for super_admin always, or tenant_admin/tenant_user when storefront is active
+    if (item.storefrontRequired && !isSuperAdmin && !(isTenantAdmin && storefrontActive) && !(isTenantUser && storefrontActive)) {
       return false;
     }
 
@@ -675,7 +677,7 @@ export default function Sidebar({ sidebarOpen, mobileMenuOpen, setMobileMenuOpen
   const pathname = usePathname();
   const [openItems, setOpenItems] = useState<Set<string>>(new Set());
   const lastAutoExpandedPath = useRef<string | null>(null);
-  const { hasPermission, hasAnyPermission, isSuperAdmin, isTenantAdmin, storefrontActive } = usePermissions();
+  const { hasPermission, hasAnyPermission, isSuperAdmin, isTenantAdmin, isTenantUser, storefrontActive } = usePermissions();
 
   // Recursive function to filter navigation based on permissions
   const filterNavigationRecursive = (items: NavigationItem[]): NavigationItem[] => {
@@ -689,7 +691,7 @@ export default function Sidebar({ sidebarOpen, mobileMenuOpen, setMobileMenuOpen
         }
 
         // Check storefront required (Ecommerce Management)
-        if (clonedItem.storefrontRequired && !isSuperAdmin && !(isTenantAdmin && storefrontActive)) {
+        if (clonedItem.storefrontRequired && !isSuperAdmin && !(isTenantAdmin && storefrontActive) && !(isTenantUser && storefrontActive)) {
           return null;
         }
 

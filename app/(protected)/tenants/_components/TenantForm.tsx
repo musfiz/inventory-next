@@ -9,7 +9,6 @@ import { GiSave } from 'react-icons/gi';
 import { z } from 'zod';
 import BusinessTypeSelect from '@/components/ui/business-type-select';
 import CustomDatePicker from '@/components/ui/date-picker';
-import { normalizeServerErrors } from '@/lib/utils/validation';
 import {
   TextField,
   TextareaField,
@@ -29,6 +28,7 @@ import {
   optionalId,
   numberField,
   booleanField,
+  normalizeServerErrors,
 } from '@/lib/utils/validation';
 import { tenantService } from '@/services/tenantService';
 
