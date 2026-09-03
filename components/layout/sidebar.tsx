@@ -91,6 +91,9 @@ interface NavigationItem {
   children?: NavigationItem[];
   permission?: string;
   permissions?: string[];
+  /** Ecommerce leaf permission — enforced only for tenant_user.
+   *  Super admin and tenant admin always pass; tenant_user needs it. */
+  ecommercePermission?: string;
   superAdminOnly?: boolean;
   storefrontRequired?: boolean;
 }
@@ -249,44 +252,44 @@ const navigation: NavigationItem[] = [
         name: 'Storefront Settings',
         icon: Settings,
         children: [
-          { name: 'Store Settings', href: '/ecommerce/settings/status', icon: Power },
-          { name: 'Locale & Currency', href: '/ecommerce/settings/localization', icon: Globe },
-          { name: 'SEO & Meta Defaults', href: '/ecommerce/settings/seo', icon: Search },
-          { name: 'Payment Methods', href: '/ecommerce/settings/payments', icon: MdPayment },
-          { name: 'Shipping & Delivery', href: '/ecommerce/settings/shipping', icon: Truck },
+          { name: 'Store Settings', href: '/ecommerce/settings/status', icon: Power, ecommercePermission: 'view-ecommerce-store-setting' },
+          { name: 'Locale & Currency', href: '/ecommerce/settings/localization', icon: Globe, ecommercePermission: 'view-ecommerce-locale-currency' },
+          { name: 'SEO & Meta Defaults', href: '/ecommerce/settings/seo', icon: Search, ecommercePermission: 'view-ecommerce-seo-meta' },
+          { name: 'Payment Methods', href: '/ecommerce/settings/payments', icon: MdPayment, ecommercePermission: 'view-ecommerce-payment-method' },
+          { name: 'Shipping & Delivery', href: '/ecommerce/settings/shipping', icon: Truck, ecommercePermission: 'view-ecommerce-shipping-delivery' },
         ],
       },
       {
         name: 'Branding',
         icon: LayoutTemplate,
         children: [
-          { name: 'Theme & Colors', href: '/ecommerce/appearance/theme', icon: Palette },
-          { name: 'Logo & Favicon', href: '/ecommerce/appearance/logo', icon: Image },
-          { name: 'Header & Info ', href: '/ecommerce/appearance/header-menu', icon: MenuIcon },
-          { name: 'Mega Menu', href: '/ecommerce/appearance/mega-menu', icon: LayoutGrid },
-          { name: 'Navigation Menu', href: '/ecommerce/appearance/storefront-navigation', icon: LayoutList },
-          { name: 'Footer Builder', href: '/ecommerce/appearance/footer', icon: PanelBottom },
+          { name: 'Theme & Colors', href: '/ecommerce/appearance/theme', icon: Palette, ecommercePermission: 'view-ecommerce-theme' },
+          { name: 'Logo & Favicon', href: '/ecommerce/appearance/logo', icon: Image, ecommercePermission: 'view-ecommerce-logo-favicon' },
+          { name: 'Header & Info ', href: '/ecommerce/appearance/header-menu', icon: MenuIcon, ecommercePermission: 'view-ecommerce-header-info' },
+          { name: 'Mega Menu', href: '/ecommerce/appearance/mega-menu', icon: LayoutGrid, ecommercePermission: 'view-ecommerce-mega-menu' },
+          { name: 'Navigation Menu', href: '/ecommerce/appearance/storefront-navigation', icon: LayoutList, ecommercePermission: 'view-ecommerce-navigation-menu' },
+          { name: 'Footer Builder', href: '/ecommerce/appearance/footer', icon: PanelBottom, ecommercePermission: 'view-ecommerce-footer-builder' },
         ],
       },
       {
         name: 'Homepage',
         icon: LayoutDashboard,
         children: [
-          { name: 'Hero Slider', href: '/ecommerce/homepage/hero-slider', icon: SlidersVertical },
-          { name: 'Top Offer', href: '/ecommerce/homepage/banners', icon: Megaphone },
-          { name: 'Flash Sale', href: '/ecommerce/homepage/flash-sale', icon: Timer },
+          { name: 'Hero Slider', href: '/ecommerce/homepage/hero-slider', icon: SlidersVertical, ecommercePermission: 'view-ecommerce-hero-slider' },
+          { name: 'Top Offer', href: '/ecommerce/homepage/banners', icon: Megaphone, ecommercePermission: 'view-ecommerce-top-offer' },
+          { name: 'Flash Sale', href: '/ecommerce/homepage/flash-sale', icon: Timer, ecommercePermission: 'view-ecommerce-flash-sale' },
         ],
       },
       {
         name: 'Product Display',
         icon: Package,
         children: [
-          { name: 'Brands', href: '/ecommerce/products/brands', icon: Building2 },
-          { name: 'Categories', href: '/ecommerce/products/categories', icon: ListTodo },
-          { name: 'Category Content', href: '/ecommerce/products/category-content', icon: FileText },
-          { name: 'Display Rules', href: '/ecommerce/products/display', icon: List },
-          { name: 'Product Rules', href: '/ecommerce/products/flags', icon: Tag },
-          { name: 'Product Media', href: '/ecommerce/products/product-media', icon: Image },
+          { name: 'Brands', href: '/ecommerce/products/brands', icon: Building2, ecommercePermission: 'view-ecommerce-brands' },
+          { name: 'Categories', href: '/ecommerce/products/categories', icon: ListTodo, ecommercePermission: 'view-ecommerce-categories' },
+          { name: 'Category Content', href: '/ecommerce/products/category-content', icon: FileText, ecommercePermission: 'view-ecommerce-category-content' },
+          { name: 'Display Rules', href: '/ecommerce/products/display', icon: List, ecommercePermission: 'view-ecommerce-display-rules' },
+          { name: 'Product Rules', href: '/ecommerce/products/flags', icon: Tag, ecommercePermission: 'view-ecommerce-product-rules' },
+          { name: 'Product Media', href: '/ecommerce/products/product-media', icon: Image, ecommercePermission: 'view-ecommerce-product-media' },
           // { name: 'Related / Cross-sell / Up-sell', href: '/ecommerce/products/relations', icon: GitBranch },
         ],
       },
@@ -294,9 +297,9 @@ const navigation: NavigationItem[] = [
         name: 'Content & Pages',
         icon: BsFilePost,
         children: [
-          { name: 'Static Pages (CMS)', href: '/ecommerce/content/pages', icon: FileText },
+          { name: 'Static Pages (CMS)', href: '/ecommerce/content/pages', icon: FileText, ecommercePermission: 'view-ecommerce-static-pages' },
           // { name: 'Announcement Bar', href: '/ecommerce/content/announcement', icon: MessageSquareText },
-          { name: 'Blog / News', href: '/ecommerce/content/blog', icon: MdOutlinePostAdd },
+          { name: 'Blog / News', href: '/ecommerce/content/blog', icon: MdOutlinePostAdd, ecommercePermission: 'view-ecommerce-blog' },
           // { name: 'Media Library', href: '/ecommerce/content/media', icon: Images },
         ],
       },
@@ -304,8 +307,8 @@ const navigation: NavigationItem[] = [
         name: 'Promo & Coupons',
         icon: Percent,
         children: [
-          { name: 'Coupons', href: '/ecommerce/promotions/coupons', icon: Ticket },
-          { name: 'Flash Sale Campaigns', href: '/ecommerce/promotions/campaigns', icon: Timer },
+          { name: 'Coupons', href: '/ecommerce/promotions/coupons', icon: Ticket, ecommercePermission: 'view-ecommerce-coupons' },
+          { name: 'Flash Sale Campaigns', href: '/ecommerce/promotions/campaigns', icon: Timer, ecommercePermission: 'view-ecommerce-flashsale-campaign' },
           // { name: 'Customer Group Pricing', href: '/ecommerce/promotions/group-pricing', icon: Users },
         ],
       },
@@ -313,19 +316,19 @@ const navigation: NavigationItem[] = [
         name: 'Storefront Orders',
         icon: MdOutlinePointOfSale,
         children: [
-          { name: 'All Orders', href: '/ecommerce/orders', icon: ClipboardList },
-          { name: 'Order Status', href: '/ecommerce/orders/status', icon: ListTodo },
-          { name: 'Returns & Refunds', href: '/ecommerce/orders/returns', icon: RotateCcw },
-          { name: 'Shipping', href: '/ecommerce/orders/shipping-zones', icon: Truck },
+          { name: 'All Orders', href: '/ecommerce/orders', icon: ClipboardList, ecommercePermission: 'view-ecommerce-orders' },
+          { name: 'Order Status', href: '/ecommerce/orders/status', icon: ListTodo, ecommercePermission: 'view-ecommerce-order-status' },
+          { name: 'Returns & Refunds', href: '/ecommerce/orders/returns', icon: RotateCcw, ecommercePermission: 'view-ecommerce-return-refund' },
+          { name: 'Shipping', href: '/ecommerce/orders/shipping-zones', icon: Truck, ecommercePermission: 'view-ecommerce-shipping' },
         ],
       },
       {
         name: 'Store Customers',
         icon: Users,
         children: [
-          { name: 'Customer List', href: '/ecommerce/customers', icon: Users },
-          { name: 'Customer Groups', href: '/ecommerce/customers/groups', icon: Users },
-          { name: 'Wishlist Insights', href: '/ecommerce/customers/wishlist-insights', icon: Heart },
+          { name: 'Customer List', href: '/ecommerce/customers', icon: Users, ecommercePermission: 'view-ecommerce-customers' },
+          { name: 'Customer Groups', href: '/ecommerce/customers/groups', icon: Users, ecommercePermission: 'view-ecommerce-customer-groups' },
+          { name: 'Wishlist Insights', href: '/ecommerce/customers/wishlist-insights', icon: Heart, ecommercePermission: 'view-ecommerce-wishlist' },
         ],
       },
       // {
@@ -340,18 +343,18 @@ const navigation: NavigationItem[] = [
         name: 'Storefront Analytics',
         icon: BarChart3,
         children: [
-          { name: 'Sales & Conversion', href: '/ecommerce/analytics/sales', icon: TrendingUp },
-          { name: 'Traffic & Search Terms', href: '/ecommerce/analytics/traffic', icon: Search },
-          { name: 'Top Products', href: '/ecommerce/analytics/top-products', icon: PieChart },
+          { name: 'Sales & Conversion', href: '/ecommerce/analytics/sales', icon: TrendingUp, ecommercePermission: 'view-ecommerce-sales-conversion' },
+          { name: 'Traffic & Search Terms', href: '/ecommerce/analytics/traffic', icon: Search, ecommercePermission: 'view-ecommerce-traffic' },
+          { name: 'Top Products', href: '/ecommerce/analytics/top-products', icon: PieChart, ecommercePermission: 'view-ecommerce-top-products' },
         ],
       },
       {
         name: 'Notifications',
         icon: MessageSquare,
         children: [
-          { name: 'Email Templates', href: '/ecommerce/integrations/email-templates', icon: Mail },
-          { name: 'Tracking Codes (GA/FB Pixel)', href: '/ecommerce/integrations/tracking', icon: Code2 },
-          { name: 'Chat / Support Widget', href: '/ecommerce/integrations/support-widget', icon: MessageSquare },
+          { name: 'Email Templates', href: '/ecommerce/integrations/email-templates', icon: Mail, ecommercePermission: 'view-ecommerce-email-template' },
+          { name: 'Tracking Codes (GA/FB Pixel)', href: '/ecommerce/integrations/tracking', icon: Code2, ecommercePermission: 'view-ecommerce-tracking-code' },
+          { name: 'Chat / Support Widget', href: '/ecommerce/integrations/support-widget', icon: MessageSquare, ecommercePermission: 'view-ecommerce-chat-support' },
         ],
       },
     ],
@@ -521,6 +524,14 @@ function NavItem({
     // Visible for super_admin always, or tenant_admin/tenant_user when storefront is active
     if (item.storefrontRequired && !isSuperAdmin && !(isTenantAdmin && storefrontActive) && !(isTenantUser && storefrontActive)) {
       return false;
+    }
+
+    // Ecommerce leaf permission — gated only for tenant_user
+    if (item.ecommercePermission) {
+      if (isSuperAdmin || isTenantAdmin) {
+        return true;
+      }
+      return hasPermission(item.ecommercePermission);
     }
 
     if (item.permission) {
@@ -693,6 +704,13 @@ export default function Sidebar({ sidebarOpen, mobileMenuOpen, setMobileMenuOpen
         // Check storefront required (Ecommerce Management)
         if (clonedItem.storefrontRequired && !isSuperAdmin && !(isTenantAdmin && storefrontActive) && !(isTenantUser && storefrontActive)) {
           return null;
+        }
+
+        // Ecommerce leaf permission — gated only for tenant_user
+        if (clonedItem.ecommercePermission && !isSuperAdmin && !isTenantAdmin) {
+          if (!hasPermission(clonedItem.ecommercePermission)) {
+            return null;
+          }
         }
 
         // Filter children recursively first

@@ -162,7 +162,7 @@ export const useAuth = ({ middleware, redirectIfAuthenticated }: UseAuthOptions 
       await axios.post('/api/v1/logout').then(() => mutate());
     }
     clearAuth();
-    window.location.href = '/';
+    window.location.href = '/login';
   };
 
   useEffect(() => {

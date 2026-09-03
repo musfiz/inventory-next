@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { Eye, Edit, Trash2, Rows4, UserCheck, Plus, X } from 'lucide-react';
+import { Eye, EyeOff, Edit, Trash2, Rows4, UserCheck, Plus, X } from 'lucide-react';
 import { GiSave } from 'react-icons/gi';
 import { ColumnDef } from '@tanstack/react-table';
 import DataTable from '@/components/ui/datatable';
@@ -38,6 +38,8 @@ export default function UsersPage() {
   const [refreshKey, setRefreshKey] = useState(0);
   const [submitting, setSubmitting] = useState(false);
   const [formErrors, setFormErrors] = useState<{ [key: string]: string }>({});
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
   const [form, setForm] = useState<UserForm>({
     name: '',
@@ -50,6 +52,11 @@ export default function UsersPage() {
   });
 
   const canViewUser = isHydrated && hasPermission('view-user');
+
+  // Tenant admins can only manage tenant users — lock the user type field
+  // for them. The disabled select still submits via React state (not a
+  // native form post), and handleSubmit forces 'tenant_user' regardless.
+  const isTenantAdmin = currentUser?.user_type === 'tenant_admin';
 
   // Redirect if no access to view users
   useEffect(() => {
@@ -71,6 +78,8 @@ export default function UsersPage() {
     setFormErrors({});
     setEditingId(null);
     setMode('add');
+    setShowPassword(false);
+    setShowConfirmPassword(false);
   };
 
   const handleAdd = () => {
@@ -132,14 +141,20 @@ export default function UsersPage() {
     setSubmitting(true);
     try {
       if (mode === 'add') {
-        await userService.createUser(form as any);
+        await userService.createUser({
+          ...(form as any),
+          // Tenant admin can only create tenant users — enforce backend value
+          user_type: isTenantAdmin ? 'tenant_user' : form.user_type,
+        });
         notify.success('User created successfully');
       } else if (editingId) {
         const updateData: any = {
           name: form.name,
           email: form.email,
           phone: form.phone,
-          user_type: form.user_type,
+          // Keep own type when a tenant admin edits self; otherwise force tenant_user
+          user_type:
+            isTenantAdmin && editingId !== currentUser?.id ? 'tenant_user' : form.user_type,
           is_active: form.is_active,
         };
         // Only include password if it was changed
@@ -226,6 +241,28 @@ export default function UsersPage() {
     return false;
   };
 
+  // Edit access rules (mirrors delete rules, plus own profile):
+  // - Super admin can edit anyone.
+  // - Tenant admin can edit tenant_user accounts from the same tenant, plus self.
+  // - Others need the edit-user (or legacy update-users) permission.
+  const canEditUser = (targetUser: User) => {
+    if (isSuperAdmin) {
+      return true;
+    }
+
+    if (currentUser?.user_type === 'tenant_admin') {
+      if (targetUser.id === currentUser.id) {
+        return true;
+      }
+      return (
+        targetUser.user_type === 'tenant_user' &&
+        targetUser.tenant_id === currentUser.tenant_id
+      );
+    }
+
+    return hasPermission('edit-user') || hasPermission('update-users');
+  };
+
   const columns: ColumnDef<User>[] = [
     {
       id: 'serial',
@@ -289,7 +326,7 @@ export default function UsersPage() {
       meta: { width: '14%' },
       cell: ({ row }) => (
         <div className="flex items-center gap-1">
-          {(isSuperAdmin || hasPermission('update-users')) && (
+          {(canEditUser(row.original)) && (
             <button
               className="p-1 text-blue-600 hover:text-blue-900 dark:text-blue-400 dark:hover:text-blue-300 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded cursor-pointer"
               title="Edit"
@@ -457,34 +494,49 @@ export default function UsersPage() {
                   User Type <span className="text-red-500">*</span>
                 </label>
                 <select
-                  value={form.user_type}
+                  value={isTenantAdmin && mode === 'add' ? 'tenant_user' : form.user_type}
                   onChange={(e) => setForm({ ...form, user_type: e.target.value as 'tenant_admin' | 'tenant_user' })}
-                  className={inputCls}
+                  disabled={isTenantAdmin}
+                  className={`${inputCls} ${isTenantAdmin ? 'opacity-60 cursor-not-allowed' : ''}`}
                 >
                   <option value="tenant_user">Tenant User</option>
                   <option value="tenant_admin">Tenant Admin</option>
                 </select>
+                {isTenantAdmin && (
+                  <p className="text-gray-400 text-[11px] mt-0.5">Fixed to Tenant User</p>
+                )}
               </div>
 
               <div>
                 <label className={labelCls}>
                   Password {mode === 'add' && <span className="text-red-500">*</span>}
                 </label>
-                <input
-                  type="password"
-                  value={form.password}
-                  onChange={(e) => {
-                    setForm({ ...form, password: e.target.value });
-                    // Clear error when user types
-                    if (e.target.value && formErrors.password) {
-                      const { password, ...rest } = formErrors;
-                      setFormErrors(rest);
-                    }
-                  }}
-                  className={`w-full px-2 py-1.25 text-sm border rounded-sm focus:outline-none focus:ring-1 focus:ring-blue-500 dark:focus:ring-blue-400 focus:border-transparent dark:bg-gray-700 dark:text-gray-100 ${formErrors.password ? 'border-red-500' : 'border-gray-300 dark:border-gray-600'
-                    }`}
-                  placeholder={mode === 'edit' ? 'Leave blank to keep current' : 'Minimum 6 characters'}
-                />
+                <div className="relative">
+                  <input
+                    type={showPassword ? 'text' : 'password'}
+                    value={form.password}
+                    onChange={(e) => {
+                      setForm({ ...form, password: e.target.value });
+                      // Clear error when user types
+                      if (e.target.value && formErrors.password) {
+                        const { password, ...rest } = formErrors;
+                        setFormErrors(rest);
+                      }
+                    }}
+                    className={`w-full px-2 py-1.25 pr-9 text-sm border rounded-sm focus:outline-none focus:ring-1 focus:ring-blue-500 dark:focus:ring-blue-400 focus:border-transparent dark:bg-gray-700 dark:text-gray-100 ${formErrors.password ? 'border-red-500' : 'border-gray-300 dark:border-gray-600'
+                      }`}
+                    placeholder={mode === 'edit' ? 'Leave blank to keep current' : 'Minimum 6 characters'}
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword(prev => !prev)}
+                    className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 cursor-pointer"
+                    title={showPassword ? 'Hide password' : 'Show password'}
+                    aria-label={showPassword ? 'Hide password' : 'Show password'}
+                  >
+                    {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                  </button>
+                </div>
                 {formErrors.password && <p className="text-red-600 text-xs mt-1">{formErrors.password}</p>}
               </div>
 
@@ -492,21 +544,32 @@ export default function UsersPage() {
                 <label className={labelCls}>
                   Confirm Password {mode === 'add' && <span className="text-red-500">*</span>}
                 </label>
-                <input
-                  type="password"
-                  value={form.password_confirmation}
-                  onChange={(e) => {
-                    setForm({ ...form, password_confirmation: e.target.value });
-                    // Clear error when user types
-                    if (e.target.value && formErrors.password_confirmation) {
-                      const { password_confirmation, ...rest } = formErrors;
-                      setFormErrors(rest);
-                    }
-                  }}
-                  className={`w-full px-2 py-1.25 text-sm border rounded-sm focus:outline-none focus:ring-1 focus:ring-blue-500 dark:focus:ring-blue-400 focus:border-transparent dark:bg-gray-700 dark:text-gray-100 ${formErrors.password_confirmation ? 'border-red-500' : 'border-gray-300 dark:border-gray-600'
-                    }`}
-                  placeholder="Re-enter password"
-                />
+                <div className="relative">
+                  <input
+                    type={showConfirmPassword ? 'text' : 'password'}
+                    value={form.password_confirmation}
+                    onChange={(e) => {
+                      setForm({ ...form, password_confirmation: e.target.value });
+                      // Clear error when user types
+                      if (e.target.value && formErrors.password_confirmation) {
+                        const { password_confirmation, ...rest } = formErrors;
+                        setFormErrors(rest);
+                      }
+                    }}
+                    className={`w-full px-2 py-1.25 pr-9 text-sm border rounded-sm focus:outline-none focus:ring-1 focus:ring-blue-500 dark:focus:ring-blue-400 focus:border-transparent dark:bg-gray-700 dark:text-gray-100 ${formErrors.password_confirmation ? 'border-red-500' : 'border-gray-300 dark:border-gray-600'
+                      }`}
+                    placeholder="Re-enter password"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowConfirmPassword(prev => !prev)}
+                    className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 cursor-pointer"
+                    title={showConfirmPassword ? 'Hide password' : 'Show password'}
+                    aria-label={showConfirmPassword ? 'Hide password' : 'Show password'}
+                  >
+                    {showConfirmPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                  </button>
+                </div>
                 {formErrors.password_confirmation && <p className="text-red-600 text-xs mt-1">{formErrors.password_confirmation}</p>}
               </div>
 

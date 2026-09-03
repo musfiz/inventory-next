@@ -13,83 +13,134 @@ import ecommerceMenuPermissionService, {
 import { usePermissions } from '@/hooks/use-permissions';
 import { GiSave } from 'react-icons/gi';
 
-// Friendly labels for each ecommerce permission
+// Friendly labels for each ecommerce permission (matches EcommerceManagementPermissionSeeder)
 const permissionLabels: Record<string, string> = {
-  'view-ecommerce-dashboard': 'Ecommerce Dashboard',
-  'view-ecommerce-orders': 'Orders Management',
-  'view-ecommerce-returns': 'Returns & Refunds',
-  'view-ecommerce-customers': 'Customer Management',
-  'view-ecommerce-customer-groups': 'Customer Groups',
-  'view-ecommerce-products': 'Product Media & Flags',
-  'view-ecommerce-shipping': 'Shipping Zones',
-  'view-ecommerce-coupons': 'Coupons',
-  'view-ecommerce-reviews': 'Product Reviews',
-  'view-ecommerce-wishlists': 'Wishlist Insights',
+  'view-ecommerce-store-setting': 'Store Settings',
+  'view-ecommerce-locale-currency': 'Locale & Currency',
+  'view-ecommerce-seo-meta': 'SEO & Meta Defaults',
+  'view-ecommerce-payment-method': 'Payment Methods',
+  'view-ecommerce-shipping-delivery': 'Shipping & Delivery',
+  'view-ecommerce-theme': 'Theme & Colors',
+  'view-ecommerce-logo-favicon': 'Logo & Favicon',
+  'view-ecommerce-header-info': 'Header & Info',
+  'view-ecommerce-mega-menu': 'Mega Menu',
+  'view-ecommerce-navigation-menu': 'Navigation Menu',
+  'view-ecommerce-footer-builder': 'Footer Builder',
   'view-ecommerce-hero-slider': 'Hero Slider',
-  'view-ecommerce-flash-sale': 'Flash Sale Campaigns',
-  'view-ecommerce-offer-slides': 'Offer Slides',
-  'view-ecommerce-header-menu': 'Header Menu Config',
-  'view-ecommerce-footer': 'Footer Config',
-  'view-ecommerce-branding': 'Branding',
-  'view-ecommerce-display-settings': 'Display Settings',
+  'view-ecommerce-top-offer': 'Top Offer',
+  'view-ecommerce-flash-sale': 'Flash Sale',
+  'view-ecommerce-brands': 'Brands',
+  'view-ecommerce-categories': 'Categories',
+  'view-ecommerce-category-content': 'Category Content',
+  'view-ecommerce-display-rules': 'Display Rules',
+  'view-ecommerce-product-rules': 'Product Rules',
+  'view-ecommerce-product-media': 'Product Media',
   'view-ecommerce-static-pages': 'Static Pages (CMS)',
-  'view-ecommerce-blog-posts': 'Blog / News',
+  'view-ecommerce-blog': 'Blog / News',
+  'view-ecommerce-coupons': 'Coupons',
+  'view-ecommerce-flashsale-campaign': 'Flash Sale Campaigns',
+  'view-ecommerce-orders': 'All Orders',
+  'view-ecommerce-order-status': 'Order Status',
+  'view-ecommerce-return-refund': 'Returns & Refunds',
+  'view-ecommerce-shipping': 'Shipping Zones',
+  'view-ecommerce-customers': 'Customer List',
+  'view-ecommerce-customer-groups': 'Customer Groups',
+  'view-ecommerce-wishlist': 'Wishlist Insights',
+  'view-ecommerce-sales-conversion': 'Sales & Conversion',
+  'view-ecommerce-traffic': 'Traffic & Search Terms',
+  'view-ecommerce-top-products': 'Top Products',
+  'view-ecommerce-email-template': 'Email Templates',
+  'view-ecommerce-tracking-code': 'Tracking Codes (GA/FB Pixel)',
+  'view-ecommerce-chat-support': 'Chat / Support Widget',
 };
 
-// Group permissions by category for better UX
+// Group permissions by sidebar section for better UX
 const permissionGroups = [
   {
-    title: 'Orders & Fulfillment',
+    title: 'Storefront Settings',
+    permissions: [
+      'view-ecommerce-store-setting',
+      'view-ecommerce-locale-currency',
+      'view-ecommerce-seo-meta',
+      'view-ecommerce-payment-method',
+      'view-ecommerce-shipping-delivery',
+    ],
+  },
+  {
+    title: 'Branding',
+    permissions: [
+      'view-ecommerce-theme',
+      'view-ecommerce-logo-favicon',
+      'view-ecommerce-header-info',
+      'view-ecommerce-mega-menu',
+      'view-ecommerce-navigation-menu',
+      'view-ecommerce-footer-builder',
+    ],
+  },
+  {
+    title: 'Homepage',
+    permissions: [
+      'view-ecommerce-hero-slider',
+      'view-ecommerce-top-offer',
+      'view-ecommerce-flash-sale',
+    ],
+  },
+  {
+    title: 'Product Display',
+    permissions: [
+      'view-ecommerce-brands',
+      'view-ecommerce-categories',
+      'view-ecommerce-category-content',
+      'view-ecommerce-display-rules',
+      'view-ecommerce-product-rules',
+      'view-ecommerce-product-media',
+    ],
+  },
+  {
+    title: 'Content & Pages',
+    permissions: [
+      'view-ecommerce-static-pages',
+      'view-ecommerce-blog',
+    ],
+  },
+  {
+    title: 'Promo & Coupons',
+    permissions: [
+      'view-ecommerce-coupons',
+      'view-ecommerce-flashsale-campaign',
+    ],
+  },
+  {
+    title: 'Storefront Orders',
     permissions: [
       'view-ecommerce-orders',
-      'view-ecommerce-returns',
+      'view-ecommerce-order-status',
+      'view-ecommerce-return-refund',
       'view-ecommerce-shipping',
     ],
   },
   {
-    title: 'Customers',
+    title: 'Store Customers',
     permissions: [
       'view-ecommerce-customers',
       'view-ecommerce-customer-groups',
-      'view-ecommerce-wishlists',
+      'view-ecommerce-wishlist',
     ],
   },
   {
-    title: 'Products & Display',
+    title: 'Storefront Analytics',
     permissions: [
-      'view-ecommerce-products',
-      'view-ecommerce-reviews',
-      'view-ecommerce-display-settings',
+      'view-ecommerce-sales-conversion',
+      'view-ecommerce-traffic',
+      'view-ecommerce-top-products',
     ],
   },
   {
-    title: 'Homepage & Promotions',
+    title: 'Notifications',
     permissions: [
-      'view-ecommerce-hero-slider',
-      'view-ecommerce-flash-sale',
-      'view-ecommerce-offer-slides',
-      'view-ecommerce-coupons',
-    ],
-  },
-  {
-    title: 'Branding & Layout',
-    permissions: [
-      'view-ecommerce-branding',
-      'view-ecommerce-header-menu',
-      'view-ecommerce-footer',
-    ],
-  },
-  {
-    title: 'Content',
-    permissions: [
-      'view-ecommerce-static-pages',
-      'view-ecommerce-blog-posts',
-    ],
-  },
-  {
-    title: 'Overview',
-    permissions: [
-      'view-ecommerce-dashboard',
+      'view-ecommerce-email-template',
+      'view-ecommerce-tracking-code',
+      'view-ecommerce-chat-support',
     ],
   },
 ];

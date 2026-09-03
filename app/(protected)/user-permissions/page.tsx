@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useMemo, Fragment } from 'react';
 import { useRouter } from 'next/navigation';
+import Link from 'next/link';
 import { Shield, Search, UserCheck, Check, X } from 'lucide-react';
 import CustomSelect from '@/components/ui/custom-select';
 import Spinner from '@/components/ui/spinner';
@@ -77,11 +78,25 @@ export default function UserPermissionsPage() {
     }
   };
 
+  // Ecommerce permissions are managed on the separate Ecommerce Permissions
+  // page (/user-permissions/ecommerce), so they are hidden here. Matching is
+  // name-based to stay robust against backend module naming.
+  const isEcommerceModule = (moduleName: string) =>
+    moduleName.toLowerCase().includes('ecommerce');
+  const isEcommercePermission = (permissionName: string) =>
+    permissionName.toLowerCase().includes('ecommerce');
+
   const fetchModules = async () => {
     try {
       const data = await userPermissionService.getPermissionsByModule();
-      setModules(data);
-      setFilteredModules(data);
+      const nonEcommerce = data
+        .map(m => ({
+          ...m,
+          permissions: m.permissions.filter(p => !isEcommercePermission(p.name)),
+        }))
+        .filter(m => !isEcommerceModule(m.module) && m.permissions.length > 0);
+      setModules(nonEcommerce);
+      setFilteredModules(nonEcommerce);
     } catch (error) {
       notify.error('Failed to load permissions');
     }
@@ -259,6 +274,16 @@ export default function UserPermissionsPage() {
             <Shield className="w-5 h-5 text-indigo-600 dark:text-indigo-400" />
             User Permissions
           </h1>
+          <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+            Ecommerce permissions are managed separately on the{' '}
+            <Link
+              href="/user-permissions/ecommerce"
+              className="text-indigo-600 dark:text-indigo-400 hover:underline font-medium"
+            >
+              Ecommerce Permissions
+            </Link>{' '}
+            page.
+          </p>
         </div>
       </div>
 
