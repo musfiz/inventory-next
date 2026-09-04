@@ -10,6 +10,9 @@ import {
   Trash2,
   ArrowRight,
   Tag,
+  Clock,
+  Truck,
+  MessageSquare,
 } from 'lucide-react';
 import { GiPaperBagOpen } from 'react-icons/gi';
 import { useCartStore } from '@/stores/cart-store';
@@ -20,13 +23,16 @@ import {
 } from '@/lib/storefront/mock-data';
 import { imageUrl } from '@/lib/image-url';
 import { notify } from '@/lib/notifications';
-import { useStorefrontTheme } from '@/contexts/storefront-theme-context';
-import GroceryCartDrawer from '@/components/storefront/grocery/GroceryCartDrawer';
 
-export default function CartDrawer() {
-  const { isGrocery } = useStorefrontTheme();
-  if (isGrocery) return <GroceryCartDrawer />;
+const DELIVERY_SLOTS = [
+  { id: 'today-2pm', label: 'Today, 2PM - 5PM', available: true },
+  { id: 'today-6pm', label: 'Today, 6PM - 9PM', available: true },
+  { id: 'tomorrow-9am', label: 'Tomorrow, 9AM - 12PM', available: true },
+  { id: 'tomorrow-2pm', label: 'Tomorrow, 2PM - 5PM', available: true },
+  { id: 'tomorrow-6pm', label: 'Tomorrow, 6PM - 9PM', available: true },
+];
 
+export default function GroceryCartDrawer() {
   const {
     items,
     drawerOpen,
@@ -46,6 +52,9 @@ export default function CartDrawer() {
   const [couponInput, setCouponInput] = useState('');
   const [couponError, setCouponError] = useState<string | null>(null);
   const [applyingCoupon, setApplyingCoupon] = useState(false);
+  const [selectedSlot, setSelectedSlot] = useState<string>('today-2pm');
+  const [allowSubstitutions, setAllowSubstitutions] = useState(false);
+  const [deliveryNote, setDeliveryNote] = useState('');
 
   const closeDrawer = () => {
     if (isClosing) return;
@@ -93,7 +102,6 @@ export default function CartDrawer() {
     }
     setApplyingCoupon(true);
     setCouponError(null);
-    // Simulate a brief lookup so the UI doesn't feel instantaneous/fake
     setTimeout(() => {
       if (c === 'WELCOME10') {
         applyCoupon('WELCOME10', subtotal * 0.1);
@@ -129,12 +137,12 @@ export default function CartDrawer() {
         {/* Header */}
         <div className="flex shrink-0 items-center justify-between border-b border-gray-200 px-4 py-2.5 dark:border-gray-800">
           <div className="flex items-center gap-2">
-            <div className="flex h-7 w-7 items-center justify-center rounded-md bg-brand-50 text-brand-600 dark:bg-brand-950/50">
+            <div className="flex h-7 w-7 items-center justify-center rounded-md bg-green-50 text-green-600 dark:bg-green-950/50">
               <GiPaperBagOpen className="h-4 w-4" />
             </div>
             <div>
               <p className="text-sm font-bold text-gray-900 dark:text-gray-100">
-                Shopping Bag
+                Your Cart
               </p>
               <p className="text-[11px] text-gray-500">
                 {itemCount} {itemCount === 1 ? 'item' : 'items'}
@@ -150,16 +158,44 @@ export default function CartDrawer() {
           </button>
         </div>
 
+        {/* Delivery time slot */}
+        {items.length > 0 && (
+          <div className="shrink-0 border-b border-gray-200 bg-green-50 px-4 py-3 dark:border-gray-800 dark:bg-green-950/20">
+            <div className="flex items-center gap-2 mb-2">
+              <Clock className="h-4 w-4 text-green-600" />
+              <span className="text-xs font-bold text-green-800 dark:text-green-300">
+                Delivery Time
+              </span>
+            </div>
+            <div className="flex flex-wrap gap-2">
+              {DELIVERY_SLOTS.map((slot) => (
+                <button
+                  key={slot.id}
+                  onClick={() => setSelectedSlot(slot.id)}
+                  disabled={!slot.available}
+                  className={`rounded-lg border px-3 py-1.5 text-xs font-semibold transition-all ${
+                    selectedSlot === slot.id
+                      ? 'border-green-500 bg-green-600 text-white'
+                      : 'border-gray-200 bg-white text-gray-700 hover:border-green-300 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-300'
+                  } disabled:cursor-not-allowed disabled:opacity-40`}
+                >
+                  {slot.label}
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
+
         {/* Free shipping progress */}
         {!qualifiesFreeShip && items.length > 0 && (
-          <div className="shrink-0 border-b border-gray-200 bg-amber-50 px-4 py-1.5 dark:border-gray-800 dark:bg-amber-950/20">
-            <p className="text-xs font-semibold text-amber-900 dark:text-amber-300">
+          <div className="shrink-0 border-b border-gray-200 bg-orange-50 px-4 py-1.5 dark:border-gray-800 dark:bg-orange-950/20">
+            <p className="text-xs font-semibold text-orange-900 dark:text-orange-300">
               Add {formatMoney(STORE_INFO.freeShippingThreshold - subtotal)}{' '}
-              more for FREE shipping 🚚
+              more for FREE delivery 🚚
             </p>
-            <div className="mt-1 h-1 overflow-hidden rounded-full bg-amber-200 dark:bg-amber-900/40">
+            <div className="mt-1 h-1 overflow-hidden rounded-full bg-orange-200 dark:bg-orange-900/40">
               <div
-                className="h-full rounded-full bg-amber-500 transition-all duration-500"
+                className="h-full rounded-full bg-orange-500 transition-all duration-500"
                 style={{
                   width: `${Math.min(
                     100,
@@ -179,15 +215,15 @@ export default function CartDrawer() {
                 <GiPaperBagOpen className="h-10 w-10 text-gray-400" />
               </div>
               <h3 className="text-lg font-bold text-gray-900 dark:text-gray-100">
-                Your bag is empty
+                Your cart is empty
               </h3>
               <p className="mt-1 text-sm text-gray-500">
-                Add items you love to your bag
+                Add fresh groceries to your cart
               </p>
               <Link
                 href="/store/products"
                 onClick={closeDrawer}
-                className="mt-6 inline-flex items-center gap-2 rounded-full bg-brand-600 px-6 py-3 text-sm font-bold text-white transition-colors hover:bg-brand-700"
+                className="mt-6 inline-flex items-center gap-2 rounded-lg bg-green-600 px-6 py-3 text-sm font-bold text-white transition-colors hover:bg-green-700"
               >
                 Start shopping
                 <ArrowRight className="h-4 w-4" />
@@ -203,7 +239,7 @@ export default function CartDrawer() {
                   <Link
                     href={`/store/products/${item.slug}`}
                     onClick={closeDrawer}
-                    className="relative h-12 w-12 shrink-0 overflow-hidden rounded-md bg-gray-100 dark:bg-gray-800"
+                    className="relative h-12 w-12 shrink-0 overflow-hidden rounded-lg bg-gray-100 dark:bg-gray-800"
                   >
                     {item.image ? (
                       <Image
@@ -226,7 +262,7 @@ export default function CartDrawer() {
                         onClick={closeDrawer}
                         className="min-w-0 flex-1"
                       >
-                        <p className="line-clamp-1 text-xs font-semibold text-gray-900 hover:text-brand-600 dark:text-gray-100">
+                        <p className="line-clamp-1 text-xs font-semibold text-gray-900 hover:text-green-600 dark:text-gray-100">
                           {item.name}
                         </p>
                         {Object.keys(item.attributes).length > 0 && (
@@ -234,7 +270,7 @@ export default function CartDrawer() {
                             {Object.entries(item.attributes).map(([k, v], ai) => (
                               <span
                                 key={ai}
-                                className="rounded bg-brand-50 px-1.5 py-0.5 text-[10px] font-medium text-brand-700 dark:bg-brand-950/40 dark:text-brand-300"
+                                className="rounded bg-green-50 px-1.5 py-0.5 text-[10px] font-medium text-green-700 dark:bg-green-950/40 dark:text-green-300"
                               >
                                 {k}: <span className="font-semibold">{v}</span>
                               </span>
@@ -270,14 +306,14 @@ export default function CartDrawer() {
                             updateQuantity(item.variationId, item.quantity + 1)
                           }
                           disabled={item.quantity >= item.stock}
-                          className="flex h-5 w-5 items-center justify-center bg-brand-50 text-brand-600 hover:bg-brand-100 disabled:cursor-not-allowed disabled:opacity-40 dark:bg-brand-950/40 dark:text-brand-300 dark:hover:bg-brand-900/60"
+                          className="flex h-5 w-5 items-center justify-center bg-green-50 text-green-600 hover:bg-green-100 disabled:cursor-not-allowed disabled:opacity-40 dark:bg-green-950/40 dark:text-green-300 dark:hover:bg-green-900/60"
                           aria-label="Increase"
                         >
                           <Plus className="h-3 w-3" />
                         </button>
                       </div>
                       <div className="text-right">
-                        <p className="text-sm font-extrabold tracking-tight text-brand-600 dark:text-brand-400">
+                        <p className="text-sm font-extrabold tracking-tight text-green-600 dark:text-green-400">
                           {formatMoney(item.lineTotal)}
                         </p>
                       </div>
@@ -294,14 +330,14 @@ export default function CartDrawer() {
           <div className="shrink-0 border-t border-gray-200 bg-gray-50 px-4 py-2.5 dark:border-gray-800 dark:bg-gray-900/50">
             {/* Coupon */}
             {couponCode ? (
-              <div className="mb-2 flex items-center justify-between rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2 dark:border-emerald-800 dark:bg-emerald-950/30">
-                <span className="flex items-center gap-2 text-sm font-semibold text-emerald-700 dark:text-emerald-400">
+              <div className="mb-2 flex items-center justify-between rounded-lg border border-green-200 bg-green-50 px-3 py-2 dark:border-green-800 dark:bg-green-950/30">
+                <span className="flex items-center gap-2 text-sm font-semibold text-green-700 dark:text-green-400">
                   <Tag className="h-4 w-4" />
                   {couponCode} applied · −{formatMoney(couponDiscount)}
                 </span>
                 <button
                   onClick={removeCoupon}
-                  className="text-xs font-medium text-emerald-700 underline-offset-2 hover:underline dark:text-emerald-400"
+                  className="text-xs font-medium text-green-700 underline-offset-2 hover:underline dark:text-green-400"
                 >
                   Remove
                 </button>
@@ -324,10 +360,11 @@ export default function CartDrawer() {
                         if (e.key === 'Escape') cancelCouponInput();
                       }}
                       placeholder="Enter coupon code"
-                      className={`w-full rounded-lg border bg-white py-2 pl-9 pr-3 text-sm font-medium uppercase tracking-wide text-gray-900 placeholder:normal-case placeholder:tracking-normal placeholder:text-gray-400 focus:outline-none focus:ring-2 dark:bg-gray-900 dark:text-gray-100 ${couponError
+                      className={`w-full rounded-lg border bg-white py-2 pl-9 pr-3 text-sm font-medium uppercase tracking-wide text-gray-900 placeholder:normal-case placeholder:tracking-normal placeholder:text-gray-400 focus:outline-none focus:ring-2 dark:bg-gray-900 dark:text-gray-100 ${
+                        couponError
                           ? 'border-red-300 focus:border-red-400 focus:ring-red-500/20'
-                          : 'border-gray-300 focus:border-brand-400 focus:ring-brand-500/20 dark:border-gray-700'
-                        }`}
+                          : 'border-gray-300 focus:border-green-400 focus:ring-green-500/20 dark:border-gray-700'
+                      }`}
                     />
                   </div>
                   <button
@@ -354,25 +391,54 @@ export default function CartDrawer() {
             ) : (
               <button
                 onClick={() => setShowCouponInput(true)}
-                className="mb-2 flex w-full items-center justify-center gap-1.5 rounded-lg border border-dashed border-gray-300 py-1 text-sm font-medium text-gray-600 transition-colors hover:border-brand-400 hover:text-brand-600 dark:border-gray-700 dark:text-gray-400"
+                className="mb-2 flex w-full items-center justify-center gap-1.5 rounded-lg border border-dashed border-gray-300 py-1 text-sm font-medium text-gray-600 transition-colors hover:border-green-400 hover:text-green-600 dark:border-gray-700 dark:text-gray-400"
               >
                 <Tag className="h-4 w-4" />
                 Have a coupon code?
               </button>
             )}
 
+            {/* Delivery notes */}
+            <div className="mb-2">
+              <div className="flex items-center gap-2 mb-1">
+                <MessageSquare className="h-3.5 w-3.5 text-gray-500" />
+                <span className="text-xs font-semibold text-gray-600 dark:text-gray-400">Delivery Note</span>
+              </div>
+              <input
+                type="text"
+                value={deliveryNote}
+                onChange={e => setDeliveryNote(e.target.value)}
+                placeholder="e.g., Leave at door, ring bell"
+                className="w-full rounded-lg border border-gray-200 bg-white px-3 py-1.5 text-xs text-gray-900 placeholder:text-gray-400 focus:border-green-400 focus:outline-none focus:ring-2 focus:ring-green-500/20 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100"
+              />
+            </div>
+
+            {/* Substitution preference */}
+            <div className="mb-2 flex items-center gap-2">
+              <input
+                type="checkbox"
+                id="substitutions"
+                checked={allowSubstitutions}
+                onChange={e => setAllowSubstitutions(e.target.checked)}
+                className="h-4 w-4 rounded border-gray-300 text-green-600 focus:ring-green-500"
+              />
+              <label htmlFor="substitutions" className="text-xs text-gray-600 dark:text-gray-400">
+                Allow substitutions if out of stock
+              </label>
+            </div>
+
             <dl className="space-y-1 text-sm">
               <div className="flex justify-between text-gray-500 dark:text-gray-400">
                 <dt>Subtotal</dt>
-                <dd className="font-semibold text-indigo-600 dark:text-indigo-400">
+                <dd className="font-semibold text-green-600 dark:text-green-400">
                   {formatMoney(subtotal)}
                 </dd>
               </div>
               <div className="flex justify-between text-gray-500 dark:text-gray-400">
-                <dt>Shipping</dt>
+                <dt>Delivery</dt>
                 <dd className="font-semibold text-sky-600 dark:text-sky-400">
                   {qualifiesFreeShip ? (
-                    <span className="font-bold text-emerald-600 dark:text-emerald-400">FREE</span>
+                    <span className="font-bold text-green-600 dark:text-green-400">FREE</span>
                   ) : (
                     formatMoneyDecimal(shipping)
                   )}
@@ -385,7 +451,7 @@ export default function CartDrawer() {
                 </dd>
               </div>
               {couponDiscount > 0 && (
-                <div className="flex justify-between text-emerald-600 dark:text-emerald-400">
+                <div className="flex justify-between text-green-600 dark:text-green-400">
                   <dt>Discount</dt>
                   <dd className="font-bold">
                     −{formatMoney(couponDiscount)}
@@ -393,11 +459,11 @@ export default function CartDrawer() {
                 </div>
               )}
             </dl>
-            <div className="mt-2 flex items-center justify-between rounded-lg bg-brand-50 px-3 py-2 ring-1 ring-brand-100 dark:bg-brand-950/40 dark:ring-brand-900/50">
-              <span className="text-sm font-bold text-brand-700 dark:text-brand-300">
+            <div className="mt-2 flex items-center justify-between rounded-lg bg-green-50 px-3 py-2 ring-1 ring-green-100 dark:bg-green-950/40 dark:ring-green-900/50">
+              <span className="text-sm font-bold text-green-700 dark:text-green-300">
                 Total
               </span>
-              <span className="text-lg font-black tracking-tight text-brand-700 dark:text-brand-300">
+              <span className="text-lg font-black tracking-tight text-green-700 dark:text-green-300">
                 {formatMoneyDecimal(total)}
               </span>
             </div>
@@ -413,7 +479,7 @@ export default function CartDrawer() {
               <Link
                 href="/store/checkout"
                 onClick={closeDrawer}
-                className="inline-flex items-center justify-center gap-1.5 rounded-lg bg-brand-600 px-4 py-2 text-sm font-bold text-white transition-colors hover:bg-brand-700"
+                className="inline-flex items-center justify-center gap-1.5 rounded-lg bg-green-600 px-4 py-2 text-sm font-bold text-white transition-colors hover:bg-green-700"
               >
                 Checkout
                 <ArrowRight className="h-4 w-4" />

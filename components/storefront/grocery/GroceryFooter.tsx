@@ -27,9 +27,9 @@ import {
   Clock,
   BadgePercent,
   Copyright,
+  Leaf,
+  CreditCard,
 } from 'lucide-react';
-import { useStorefrontTheme } from '@/contexts/storefront-theme-context';
-import GroceryFooter from '@/components/storefront/grocery/GroceryFooter';
 import {
   FaFacebook,
   FaInstagram,
@@ -38,11 +38,6 @@ import {
   FaTiktok,
   FaXTwitter,
 } from 'react-icons/fa6';
-
-const VALUE_PROP_ICONS: Record<string, any> = {
-  Truck, RotateCcw, ShieldCheck, Headphones, Gift, Sparkles,
-  Star, Zap, HeartHandshake, Package, Clock, BadgePercent,
-};
 
 const SOCIAL_PLATFORMS: Record<string, any> = {
   facebook: FaFacebook,
@@ -65,41 +60,26 @@ function getSocialColor(platform: string) {
   return map[platform] || 'hover:bg-gray-600 hover:border-gray-600';
 }
 
-function getBadgeColor(name: string) {
-  const map: Record<string, string> = {
-    Visa: 'text-blue-700 bg-blue-50 border-blue-200 dark:bg-blue-950/40 dark:text-blue-400 dark:border-blue-800',
-    Mastercard: 'text-orange-700 bg-orange-50 border-orange-200 dark:bg-orange-950/40 dark:text-orange-400 dark:border-orange-800',
-    Amex: 'text-sky-700 bg-sky-50 border-sky-200 dark:bg-sky-950/40 dark:text-sky-400 dark:border-sky-800',
-    PayPal: 'text-blue-800 bg-blue-50 border-blue-200 dark:bg-blue-950/40 dark:text-blue-400 dark:border-blue-800',
-    Stripe: 'text-indigo-700 bg-indigo-50 border-indigo-200 dark:bg-indigo-950/40 dark:text-indigo-400 dark:border-indigo-800',
-    bKash: 'text-red-700 bg-red-50 border-red-200 dark:bg-red-950/40 dark:text-red-400 dark:border-red-800',
-    Nagad: 'text-emerald-700 bg-emerald-50 border-emerald-200 dark:bg-emerald-950/40 dark:text-emerald-400 dark:border-emerald-800',
-    Rocket: 'text-purple-700 bg-purple-50 border-purple-200 dark:bg-purple-950/40 dark:text-purple-400 dark:border-purple-800',
-    COD: 'text-gray-700 bg-gray-50 border-gray-200 dark:bg-gray-800 dark:text-gray-300 dark:border-gray-700',
-  };
-  return map[name] || 'text-gray-700 bg-gray-50 border-gray-200 dark:bg-gray-800 dark:text-gray-300 dark:border-gray-700';
-}
-
 const FALLBACK_CONFIG: FooterConfig = {
   value_props_enabled: true,
   value_props: [
-    { id: '1', icon: 'Truck', title: 'Free Shipping', description: 'On orders over \u09F75,000', is_active: true, sort_order: 0 },
-    { id: '2', icon: 'RotateCcw', title: 'Easy Returns', description: '7-day return policy', is_active: true, sort_order: 1 },
-    { id: '3', icon: 'ShieldCheck', title: 'Secure Payment', description: '100% protected checkout', is_active: true, sort_order: 2 },
+    { id: '1', icon: 'Truck', title: 'Free Delivery', description: 'On orders over ₹500', is_active: true, sort_order: 0 },
+    { id: '2', icon: 'Clock', title: 'Same Day Delivery', description: 'Order before 2PM', is_active: true, sort_order: 1 },
+    { id: '3', icon: 'ShieldCheck', title: 'Fresh Guarantee', description: '100% Fresh or Money Back', is_active: true, sort_order: 2 },
     { id: '4', icon: 'Headphones', title: '24/7 Support', description: 'Dedicated customer care', is_active: true, sort_order: 3 },
   ],
   newsletter_enabled: true,
-  newsletter_title: 'Subscribe to our newsletter',
-  newsletter_subtitle: 'Be the first to get exclusive deals, new arrivals & insider updates.',
+  newsletter_title: 'Subscribe for fresh deals',
+  newsletter_subtitle: 'Get weekly offers on fresh produce & groceries.',
   columns: [
     {
       id: 'c1', title: 'Shop', sort_order: 1,
       links: [
-        { id: 'l1', label: 'All Categories', url: '/store/products', sort_order: 1, open_in_new_tab: false, is_active: true },
-        { id: 'l2', label: 'New Arrivals', url: '/store/products?filter=new', sort_order: 1, open_in_new_tab: false, is_active: true },
-        { id: 'l3', label: 'Best Sellers', url: '/store/products?filter=bestseller', sort_order: 2, open_in_new_tab: false, is_active: true },
-        { id: 'l4', label: 'Featured Products', url: '/store/products?filter=featured', sort_order: 3, open_in_new_tab: false, is_active: true },
-        { id: 'l5', label: 'Flash Sale', url: '/store/products?filter=sale', sort_order: 4, open_in_new_tab: false, is_active: true },
+        { id: 'l1', label: 'Fresh Vegetables', url: '/store/category/vegetables', sort_order: 1, open_in_new_tab: false, is_active: true },
+        { id: 'l2', label: 'Fruits', url: '/store/category/fruits', sort_order: 1, open_in_new_tab: false, is_active: true },
+        { id: 'l3', label: 'Meat & Fish', url: '/store/category/meat-fish', sort_order: 2, open_in_new_tab: false, is_active: true },
+        { id: 'l4', label: 'Dairy & Eggs', url: '/store/category/dairy-eggs', sort_order: 3, open_in_new_tab: false, is_active: true },
+        { id: 'l5', label: 'Daily Essentials', url: '/store/products?filter=essential', sort_order: 4, open_in_new_tab: false, is_active: true },
       ],
     },
     {
@@ -108,18 +88,16 @@ const FALLBACK_CONFIG: FooterConfig = {
         { id: 'l6', label: 'Contact Us', url: '/help', sort_order: 0, open_in_new_tab: false, is_active: true },
         { id: 'l7', label: 'Track Order', url: '/order/track', sort_order: 1, open_in_new_tab: false, is_active: true },
         { id: 'l8', label: 'Returns & Refunds', url: '/help/returns', sort_order: 2, open_in_new_tab: false, is_active: true },
-        { id: 'l9', label: 'Shipping Policy', url: '/help/shipping', sort_order: 3, open_in_new_tab: false, is_active: true },
+        { id: 'l9', label: 'Delivery Policy', url: '/help/shipping', sort_order: 3, open_in_new_tab: false, is_active: true },
         { id: 'l10', label: 'FAQs', url: '/help/faq', sort_order: 4, open_in_new_tab: false, is_active: true },
       ],
     },
     {
-      id: 'c3', title: 'About Us', sort_order: 2,
+      id: 'c3', title: 'About', sort_order: 2,
       links: [
         { id: 'l11', label: 'Our Story', url: '/about', sort_order: 0, open_in_new_tab: false, is_active: true },
         { id: 'l12', label: 'Careers', url: '/careers', sort_order: 1, open_in_new_tab: false, is_active: true },
-        { id: 'l13', label: 'Press', url: '/press', sort_order: 2, open_in_new_tab: false, is_active: true },
-        { id: 'l14', label: 'Sell With Us', url: '/sell', sort_order: 3, open_in_new_tab: false, is_active: true },
-        { id: 'l15', label: 'Affiliates', url: '/affiliates', sort_order: 4, open_in_new_tab: false, is_active: true },
+        { id: 'l13', label: 'Sell With Us', url: '/sell', sort_order: 2, open_in_new_tab: false, is_active: true },
       ],
     },
     {
@@ -128,19 +106,16 @@ const FALLBACK_CONFIG: FooterConfig = {
         { id: 'l16', label: 'Terms & Conditions', url: '/terms', sort_order: 0, open_in_new_tab: false, is_active: true },
         { id: 'l17', label: 'Privacy Policy', url: '/privacy', sort_order: 1, open_in_new_tab: false, is_active: true },
         { id: 'l18', label: 'Cookie Policy', url: '/cookies', sort_order: 2, open_in_new_tab: false, is_active: true },
-        { id: 'l19', label: 'Accessibility', url: '/accessibility', sort_order: 3, open_in_new_tab: false, is_active: true },
       ],
     },
   ],
   contact_address: 'House 12, Road 5, Dhanmondi, Dhaka 1205, Bangladesh',
   contact_phone: '+880 1700-000000',
   contact_email: 'support@example.com',
-  about_text: 'Your one-stop online shop for quality products across electronics, fashion, home & living, and more.',
+  about_text: 'Your trusted online grocery store for fresh produce, meat, dairy, and daily essentials. Delivered to your doorstep.',
   social_links: [
     { id: 's1', platform: 'facebook', url: 'https://facebook.com', is_active: true },
     { id: 's2', platform: 'instagram', url: 'https://instagram.com', is_active: true },
-    { id: 's3', platform: 'twitter', url: 'https://x.com', is_active: true },
-    { id: 's4', platform: 'youtube', url: 'https://youtube.com', is_active: true },
   ],
   copyright_text: '{year} {store}. All rights reserved.',
   show_payment_badges: true,
@@ -149,48 +124,36 @@ const FALLBACK_CONFIG: FooterConfig = {
     { id: 'p2', name: 'Mastercard', is_active: true },
     { id: 'p3', name: 'bKash', is_active: true },
     { id: 'p4', name: 'Nagad', is_active: true },
-    { id: 'p5', name: 'Rocket', is_active: true },
-    { id: 'p6', name: 'COD', is_active: true },
+    { id: 'p5', name: 'COD', is_active: true },
   ],
 };
 
-export default function StorefrontFooter() {
-  const { isGrocery } = useStorefrontTheme();
-  if (isGrocery) return <GroceryFooter />;
+const VALUE_PROP_ICONS: Record<string, any> = {
+  Truck, RotateCcw, ShieldCheck, Headphones, Gift, Sparkles,
+  Star, Zap, HeartHandshake, Package, Clock, BadgePercent,
+};
+
+export default function GroceryFooter() {
   const [email, setEmail] = useState('');
   const { footerLogo, ready } = useBranding();
   const { storeName } = useStorefrontStatus();
-  const siteName = storeName || 'Our Store';
+  const siteName = storeName || 'Grocery Store';
   const [subscribed, setSubscribed] = useState(false);
   const [config, setConfig] = useState<FooterConfig | null>(null);
-  const [storeStats, setStoreStats] = useState<{ productCount: number; categoryCount: number } | null>(null);
+  const [productCount, setProductCount] = useState(0);
 
-  // Category data is shared via the storefront categories store (fetched once),
-  // so we reuse it here instead of firing a second /storefront/categories call.
-  const { categories, ready: catsReady } = useStorefrontCategories();
+  const { categories } = useStorefrontCategories();
 
   useEffect(() => {
     footerService.get().then(setConfig).catch(() => setConfig(FALLBACK_CONFIG));
   }, []);
 
-  // Live product & category counts (from dashboard-managed catalog).
-  const [productCount, setProductCount] = useState(0);
   useEffect(() => {
-    let cancelled = false;
     storefrontService
       .getProducts({ per_page: 1 })
-      .then((res) => { if (!cancelled) setProductCount(res?.meta?.total ?? 0); })
+      .then((res) => setProductCount(res?.meta?.total ?? 0))
       .catch(() => {});
-    return () => { cancelled = true; };
   }, []);
-
-  useEffect(() => {
-    if (!catsReady) return;
-    const categoryCount = categories.length;
-    if (productCount > 0 || categoryCount > 0) {
-      setStoreStats({ productCount, categoryCount });
-    }
-  }, [catsReady, categories, productCount]);
 
   if (!config) return null;
 
@@ -229,21 +192,21 @@ export default function StorefrontFooter() {
   };
 
   return (
-    <ScrollReveal animation="fade-up" duration="normal" as="footer" className="mt-16 bg-linear-to-b from-gray-50 via-white to-gray-50 dark:from-gray-950 dark:via-gray-900 dark:to-gray-950">
+    <ScrollReveal animation="fade-up" duration="normal" as="footer" className="mt-16 bg-linear-to-b from-green-50 via-white to-green-50 dark:from-gray-950 dark:via-gray-900 dark:to-gray-950">
       {/* Value props strip */}
       {value_props_enabled && activeValueProps.length > 0 && (
-        <div className="bg-linear-to-r from-brand-50 via-purple-50 to-pink-50 dark:from-brand-950/30 dark:via-purple-950/30 dark:to-pink-950/30 border-y border-brand-100 dark:border-gray-800">
-          <div className="mx-auto grid max-w-screen-2xl grid-cols-2 gap-6 px-4 py-8 md:grid-cols-4">
+        <div className="bg-green-600 border-y border-green-700">
+          <div className="mx-auto grid max-w-7xl grid-cols-2 gap-6 px-4 py-6 md:grid-cols-4">
             {activeValueProps.map(({ icon, title, description }) => {
               const Icon = VALUE_PROP_ICONS[icon] || Truck;
               return (
                 <div key={title} className="flex items-center gap-3">
-                  <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-brand-50 text-brand-600 dark:bg-brand-950/50 dark:text-brand-400">
+                  <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-white/20 text-white">
                     <Icon className="h-5 w-5" />
                   </div>
                   <div>
-                    <p className="font-bold text-gray-900 dark:text-gray-100">{title}</p>
-                    <p className="text-xs text-gray-500 dark:text-gray-400">{description}</p>
+                    <p className="font-bold text-white">{title}</p>
+                    <p className="text-xs text-green-100">{description}</p>
                   </div>
                 </div>
               );
@@ -252,10 +215,20 @@ export default function StorefrontFooter() {
         </div>
       )}
 
+      {/* Freshness guarantee banner */}
+      <div className="bg-green-50 border-b border-green-100 dark:bg-green-950/20 dark:border-green-900/30">
+        <div className="mx-auto flex max-w-7xl items-center justify-center gap-3 px-4 py-4 text-green-800 dark:text-green-300">
+          <Leaf className="h-5 w-5" />
+          <span className="text-sm font-bold">100% Fresh or Money Back</span>
+          <span className="text-green-400">•</span>
+          <span className="text-sm">Free delivery on orders over ₹500</span>
+        </div>
+      </div>
+
       {/* Newsletter */}
       {newsletter_enabled && (
-        <div className="bg-linear-to-r from-brand-100 via-purple-100 to-pink-100 dark:from-brand-950/40 dark:via-purple-950/40 dark:to-pink-950/40 border-y border-brand-200 dark:border-gray-800">
-          <div className="mx-auto max-w-screen-2xl px-4 py-10">
+        <div className="bg-linear-to-r from-green-100 via-green-50 to-orange-50 dark:from-green-950/40 dark:via-green-950/20 dark:to-orange-950/20 border-y border-green-200 dark:border-green-900/30">
+          <div className="mx-auto max-w-7xl px-4 py-10">
             <div className="grid items-center gap-6 lg:grid-cols-2">
               <div>
                 <h3 className="text-2xl font-black text-gray-900 dark:text-white">{newsletter_title}</h3>
@@ -270,14 +243,14 @@ export default function StorefrontFooter() {
                     onChange={e => setEmail(e.target.value)}
                     required
                     placeholder="Your email address"
-                    className="w-full rounded-full border border-gray-300 bg-white py-3 pl-11 pr-4 text-sm text-gray-900 placeholder:text-gray-400 focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-500/20 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100"
+                    className="w-full rounded-full border border-gray-300 bg-white py-3 pl-11 pr-4 text-sm text-gray-900 placeholder:text-gray-400 focus:border-green-500 focus:outline-none focus:ring-2 focus:ring-green-500/20 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100"
                   />
                 </div>
                 <button
                   type="submit"
-                  className="rounded-full bg-brand-600 px-6 py-3 text-sm font-bold text-white transition-colors hover:bg-brand-700"
+                  className="rounded-full bg-green-600 px-6 py-3 text-sm font-bold text-white transition-colors hover:bg-green-700"
                 >
-                  {subscribed ? '\u2713 Subscribed' : 'Subscribe'}
+                  {subscribed ? '✓ Subscribed' : 'Subscribe'}
                 </button>
               </form>
             </div>
@@ -286,7 +259,7 @@ export default function StorefrontFooter() {
       )}
 
       {/* Main links */}
-      <div className="mx-auto max-w-screen-2xl px-4 py-12">
+      <div className="mx-auto max-w-7xl px-4 py-12">
         <div className="grid gap-10 md:grid-cols-2 lg:grid-cols-6">
           <div className="lg:col-span-2">
             <Link href="/" className="inline-flex items-center" aria-label={siteName}>
@@ -301,7 +274,7 @@ export default function StorefrontFooter() {
                 />
               ) : ready ? (
                 <span className="text-2xl font-black text-gray-900 dark:text-white">
-                  {siteName}<span className="text-brand-600">.</span>
+                  {siteName}<span className="text-green-600">.</span>
                 </span>
               ) : (
                 <div className="h-9 w-24 rounded bg-gray-100 dark:bg-gray-800" />
@@ -311,19 +284,19 @@ export default function StorefrontFooter() {
             <ul className="mt-5 space-y-2 text-sm text-gray-600 dark:text-gray-400">
               {contact_address && (
                 <li className="flex items-start gap-2">
-                  <MapPin className="mt-0.5 h-4 w-4 shrink-0 text-brand-600" />
+                  <MapPin className="mt-0.5 h-4 w-4 shrink-0 text-green-600" />
                   {contact_address}
                 </li>
               )}
               {contact_phone && (
                 <li className="flex items-center gap-2">
-                  <Phone className="h-4 w-4 text-brand-600" />
+                  <Phone className="h-4 w-4 text-green-600" />
                   {contact_phone}
                 </li>
               )}
               {contact_email && (
                 <li className="flex items-center gap-2">
-                  <Mail className="h-4 w-4 text-brand-600" />
+                  <Mail className="h-4 w-4 text-green-600" />
                   {contact_email}
                 </li>
               )}
@@ -351,7 +324,7 @@ export default function StorefrontFooter() {
 
           {displayColumns.map(col => (
             <div key={col.id}>
-              <p className="text-sm font-bold uppercase tracking-wider text-brand-600 dark:text-brand-400">
+              <p className="text-sm font-bold uppercase tracking-wider text-green-600 dark:text-green-400">
                 {col.title}
               </p>
               <ul className="mt-4 space-y-2.5 text-sm">
@@ -361,7 +334,7 @@ export default function StorefrontFooter() {
                       href={link.url}
                       target={link.open_in_new_tab ? '_blank' : undefined}
                       rel={link.open_in_new_tab ? 'noopener noreferrer' : undefined}
-                      className="text-gray-600 transition-colors hover:text-brand-600 dark:text-gray-400"
+                      className="text-gray-600 transition-colors hover:text-green-600 dark:text-gray-400"
                     >
                       {link.label}
                     </Link>
@@ -373,27 +346,9 @@ export default function StorefrontFooter() {
         </div>
       </div>
 
-      {/* Dynamic storefront stats — live dashboard data (products/categories) */}
-      {storeStats && (storeStats.productCount > 0 || storeStats.categoryCount > 0) && (
-        <div className="border-t border-gray-200 bg-white dark:border-gray-800 dark:bg-gray-900">
-          <div className="mx-auto flex max-w-screen-2xl flex-wrap items-center justify-center gap-6 px-4 py-3 text-xs text-gray-600 dark:text-gray-400">
-            <span className="inline-flex items-center gap-1.5">
-              <Package className="h-3.5 w-3.5 text-brand-600" />
-              <span className="font-bold text-gray-900 dark:text-gray-100">{storeStats.productCount.toLocaleString()}</span> products live
-            </span>
-            <span className="hidden h-3 w-px bg-gray-300 dark:bg-gray-700 sm:block" aria-hidden />
-            <span className="inline-flex items-center gap-1.5">
-              <Sparkles className="h-3.5 w-3.5 text-brand-600" />
-              <span className="font-bold text-gray-900 dark:text-gray-100">{storeStats.categoryCount}</span> categories
-            </span>
-            <span className="text-gray-500">— catalog synced from dashboard</span>
-          </div>
-        </div>
-      )}
-
       {/* Bottom bar */}
-      <div className="border-t border-brand-200 bg-linear-to-r from-brand-50 via-purple-50 to-pink-50 dark:border-gray-800 dark:from-gray-900 dark:via-gray-900 dark:to-gray-900">
-        <div className="mx-auto flex max-w-screen-2xl flex-col items-center justify-between gap-4 px-4 py-5 text-xs text-gray-600 sm:flex-row dark:text-gray-400">
+      <div className="border-t border-green-200 bg-green-50 dark:border-gray-800 dark:bg-gray-900">
+        <div className="mx-auto flex max-w-7xl flex-col items-center justify-between gap-4 px-4 py-5 text-xs text-gray-600 sm:flex-row dark:text-gray-400">
           <p className="inline-flex items-center gap-1.5">
             <Copyright className="h-3.5 w-3.5 shrink-0 text-gray-500 dark:text-gray-400" />
             <span>{copyrightDisplay}</span>
@@ -405,7 +360,7 @@ export default function StorefrontFooter() {
                 {activeBadges.map(b => (
                   <span
                     key={b.id}
-                    className={`rounded border px-2 py-1 text-[10px] font-bold ${getBadgeColor(b.name)}`}
+                    className="rounded border border-gray-200 bg-white px-2 py-1 text-[10px] font-bold text-gray-700 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-300"
                   >
                     {b.name}
                   </span>

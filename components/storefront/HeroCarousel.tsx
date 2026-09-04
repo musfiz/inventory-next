@@ -77,7 +77,7 @@ export default function HeroCarousel({ slides }: { slides: StorefrontHeroSlider[
           )}
           <div className="absolute inset-0 bg-linear-to-r from-gray-900/80 to-gray-800/60" aria-hidden />
           <div className="absolute inset-0 flex items-center">
-            <div className="mx-auto w-full max-w-7xl px-6 lg:px-12">
+            <div className="mx-auto w-full max-w-screen-2xl px-6 lg:px-12">
               <div className="max-w-xl text-white sf-fade-in">
                 <span className="inline-flex items-center gap-1.5 rounded-full bg-white/15 px-3 py-1 text-xs font-bold uppercase tracking-wider backdrop-blur-sm">
                   <Sparkles className="h-3.5 w-3.5" />
