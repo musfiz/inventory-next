@@ -196,7 +196,7 @@ export default function GroceryFooter() {
       {/* Value props strip */}
       {value_props_enabled && activeValueProps.length > 0 && (
         <div className="bg-green-600 border-y border-green-700">
-          <div className="mx-auto grid max-w-7xl grid-cols-2 gap-6 px-4 py-6 md:grid-cols-4">
+          <div className="mx-auto grid max-w-screen-2xl grid-cols-2 gap-6 px-4 py-6 md:grid-cols-4">
             {activeValueProps.map(({ icon, title, description }) => {
               const Icon = VALUE_PROP_ICONS[icon] || Truck;
               return (
@@ -217,7 +217,7 @@ export default function GroceryFooter() {
 
       {/* Freshness guarantee banner */}
       <div className="bg-green-50 border-b border-green-100 dark:bg-green-950/20 dark:border-green-900/30">
-        <div className="mx-auto flex max-w-7xl items-center justify-center gap-3 px-4 py-4 text-green-800 dark:text-green-300">
+        <div className="mx-auto flex max-w-screen-2xl items-center justify-center gap-3 px-4 py-4 text-green-800 dark:text-green-300">
           <Leaf className="h-5 w-5" />
           <span className="text-sm font-bold">100% Fresh or Money Back</span>
           <span className="text-green-400">•</span>
@@ -228,7 +228,7 @@ export default function GroceryFooter() {
       {/* Newsletter */}
       {newsletter_enabled && (
         <div className="bg-linear-to-r from-green-100 via-green-50 to-orange-50 dark:from-green-950/40 dark:via-green-950/20 dark:to-orange-950/20 border-y border-green-200 dark:border-green-900/30">
-          <div className="mx-auto max-w-7xl px-4 py-10">
+          <div className="mx-auto max-w-screen-2xl px-4 py-10">
             <div className="grid items-center gap-6 lg:grid-cols-2">
               <div>
                 <h3 className="text-2xl font-black text-gray-900 dark:text-white">{newsletter_title}</h3>
@@ -259,7 +259,7 @@ export default function GroceryFooter() {
       )}
 
       {/* Main links */}
-      <div className="mx-auto max-w-7xl px-4 py-12">
+      <div className="mx-auto max-w-screen-2xl px-4 py-12">
         <div className="grid gap-10 md:grid-cols-2 lg:grid-cols-6">
           <div className="lg:col-span-2">
             <Link href="/" className="inline-flex items-center" aria-label={siteName}>
@@ -348,7 +348,7 @@ export default function GroceryFooter() {
 
       {/* Bottom bar */}
       <div className="border-t border-green-200 bg-green-50 dark:border-gray-800 dark:bg-gray-900">
-        <div className="mx-auto flex max-w-7xl flex-col items-center justify-between gap-4 px-4 py-5 text-xs text-gray-600 sm:flex-row dark:text-gray-400">
+        <div className="mx-auto flex max-w-screen-2xl flex-col items-center justify-between gap-4 px-4 py-5 text-xs text-gray-600 sm:flex-row dark:text-gray-400">
           <p className="inline-flex items-center gap-1.5">
             <Copyright className="h-3.5 w-3.5 shrink-0 text-gray-500 dark:text-gray-400" />
             <span>{copyrightDisplay}</span>

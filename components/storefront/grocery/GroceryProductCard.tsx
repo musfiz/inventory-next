@@ -149,7 +149,7 @@ export default function GroceryProductCard({
             <div className="min-w-0">
               {hasValidBrand(product.brand?.name) && (
                 <p className="text-xs font-medium uppercase tracking-wide text-green-600 dark:text-green-400">
-                  {product.brand.name}
+                  {product.brand?.name}
                 </p>
               )}
               <h3 title={product.name} className="mt-1 truncate text-sm font-semibold text-gray-900 dark:text-gray-100 group-hover:text-green-600">
@@ -303,7 +303,7 @@ export default function GroceryProductCard({
       <div className="flex flex-1 flex-col p-4">
         {hasValidBrand(product.brand?.name) && (
           <p className="text-xs font-medium uppercase tracking-wider text-green-600 dark:text-green-400">
-            {product.brand.name}
+            {product.brand?.name}
           </p>
         )}
         <h3 title={product.name} className="mt-1 truncate text-[13px] font-semibold text-gray-900 dark:text-gray-100 group-hover:text-green-600 dark:group-hover:text-green-400 transition-colors">

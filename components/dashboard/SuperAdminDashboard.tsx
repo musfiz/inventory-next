@@ -74,9 +74,10 @@ export default function SuperAdminDashboard() {
   useEffect(() => { loadData(); }, [loadData]);
 
   const formatCurrency = (val: number) => {
-    if (val >= 1_000_000) return `৳${(val / 1_000_000).toFixed(1)}M`;
-    if (val >= 1_000) return `৳${(val / 1_000).toFixed(1)}K`;
-    return `৳${val.toFixed(0)}`;
+    const num = Number(val) || 0;
+    if (num >= 1_000_000) return `৳${(num / 1_000_000).toFixed(1)}M`;
+    if (num >= 1_000) return `৳${(num / 1_000).toFixed(1)}K`;
+    return `৳${num.toFixed(0)}`;
   };
 
   return (

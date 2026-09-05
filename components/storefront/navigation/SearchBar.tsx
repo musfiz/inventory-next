@@ -158,7 +158,7 @@ export const SearchBar = ({ onClose }: { onClose?: () => void }) => {
   const hasResults = flatItems.length > 0;
 
   return (
-    <div ref={ref} className="relative w-full max-w-2xl">
+    <div ref={ref} className="relative w-full max-w-4xl">
       <form onSubmit={e => { e.preventDefault(); submit(query); }}>
         <div className="relative flex items-center">
           <Search className="pointer-events-none absolute left-4 h-4 w-4 text-gray-400" />
@@ -168,20 +168,20 @@ export const SearchBar = ({ onClose }: { onClose?: () => void }) => {
             onFocus={() => setOpen(true)}
             onKeyDown={handleKeyDown}
             placeholder="Search products, brands, categories..."
-            className="w-full rounded-full border-2 border-gray-100 bg-gray-50 py-3 pl-11 pr-24 text-sm text-gray-900 placeholder:text-gray-400 focus:border-brand-400 focus:bg-white focus:outline-none focus:ring-4 focus:ring-brand-500/10 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100 dark:placeholder:text-gray-500 dark:focus:bg-gray-950"
+            className="w-full rounded-xl border-2 border-gray-100 bg-gray-50 py-3 pl-11 pr-24 text-sm text-gray-900 placeholder:text-gray-400 focus:border-brand-400 focus:bg-white focus:outline-none focus:ring-4 focus:ring-brand-500/10 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100 dark:placeholder:text-gray-500 dark:focus:bg-gray-950"
           />
           {query && (
             <button
               type="button"
               onClick={() => setQuery('')}
-              className="absolute right-16 rounded-full p-1 text-gray-400 hover:text-gray-600"
+              className="absolute right-16 rounded-lg p-1 text-gray-400 hover:text-gray-600"
             >
               <X className="h-4 w-4" />
             </button>
           )}
           <button
             type="submit"
-            className="absolute right-1.5 rounded-full bg-linear-to-r from-brand-600 to-purple-600 px-5 py-2 text-sm font-bold text-white shadow-lg shadow-brand-600/25 transition-all hover:shadow-xl hover:shadow-brand-600/30"
+            className="absolute right-1.5 rounded-lg bg-linear-to-r from-brand-600 to-purple-600 px-5 py-2 text-sm font-bold text-white shadow-lg shadow-brand-600/25 transition-all hover:shadow-xl hover:shadow-brand-600/30"
           >
             Search
           </button>

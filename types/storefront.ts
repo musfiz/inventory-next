@@ -37,6 +37,8 @@ export interface ProductVariation {
   attributes: Record<string, string>;
   image?: string;
   isDefault?: boolean;
+  weight?: number;
+  unit?: string;
 }
 
 export interface Product {

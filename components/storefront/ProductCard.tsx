@@ -133,7 +133,7 @@ export default function ProductCard({
             <div className="min-w-0">
               {hasValidBrand(product.brand?.name) && (
                 <p className="text-xs font-medium uppercase tracking-wide text-brand-600 dark:text-brand-400">
-                  {product.brand.name}
+                  {product.brand?.name}
                 </p>
               )}
               <h3 title={product.name} className="mt-1 truncate text-sm font-semibold text-gray-900 dark:text-gray-100 group-hover:text-brand-600">
@@ -302,7 +302,7 @@ export default function ProductCard({
       <div className="flex flex-1 flex-col p-4">
         {hasValidBrand(product.brand?.name) && (
           <p className="text-xs font-medium uppercase tracking-wider text-brand-600 dark:text-brand-400">
-            {product.brand.name}
+            {product.brand?.name}
           </p>
         )}
         <h3 title={product.name} className="mt-1 truncate text-[13px] font-semibold text-gray-900 dark:text-gray-100 group-hover:text-brand-600 dark:group-hover:text-brand-400 transition-colors">
