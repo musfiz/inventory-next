@@ -1,8 +1,11 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useRef } from 'react';
 import { Edit, Trash2, Building2, Plus, X, Store } from 'lucide-react';
 import { GiSave } from 'react-icons/gi';
+import { ImDownload } from 'react-icons/im';
+import { RiFileExcel2Line } from 'react-icons/ri';
+import { TiUploadOutline } from 'react-icons/ti';
 import { ColumnDef } from '@tanstack/react-table';
 import DataTable from '@/components/ui/datatable';
 import BusinessTypeSelect from '@/components/ui/business-type-select';
@@ -40,6 +43,12 @@ export default function TenantBrandsPage() {
   });
   const [formErrors, setFormErrors] = useState<{ [key: string]: string }>({});
   const [refreshKey, setRefreshKey] = useState(0);
+
+  // Bulk upload state
+  const [showBulkUpload, setShowBulkUpload] = useState(false);
+  const [uploading, setUploading] = useState(false);
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
 
   const handleAddBrand = () => {
     setIsEditing(false);
@@ -152,22 +161,82 @@ export default function TenantBrandsPage() {
     }
   };
 
+  // Bulk upload handlers
+  const handleDownloadSampleExcel = async () => {
+    try {
+      await brandService.downloadBrandSampleExcel();
+      notify.success('Sample Excel downloaded successfully');
+    } catch (err) {
+      notify.error('Failed to download sample file');
+    }
+  };
+
+  const handleFileSelect = (file: File) => {
+    const allowedExt = ['.xls', '.xlsx'];
+    const fileName = file.name.toLowerCase();
+    const isValidExt = allowedExt.some(ext => fileName.endsWith(ext));
+
+    if (!isValidExt) {
+      notify.error('Invalid file type. Please upload an Excel file (.xls, .xlsx).');
+      return;
+    }
+
+    if (file.size > 10 * 1024 * 1024) {
+      notify.error('File size exceeds 10MB limit.');
+      return;
+    }
+
+    setSelectedFile(file);
+  };
+
+  const handleBulkUpload = async (e: React.FormEvent) => {
+    e.preventDefault();
+
+    if (!selectedFile) {
+      notify.error('Please select a file to upload');
+      return;
+    }
+
+    try {
+      setUploading(true);
+
+      const result = await brandService.brandBulkImport(selectedFile);
+
+      if (result.success) {
+        notify.success(result.message);
+        setShowBulkUpload(false);
+        setSelectedFile(null);
+        setRefreshKey(prev => prev + 1);
+      } else {
+        notify.error(result.message);
+      }
+    } catch (err: any) {
+      const errorMessage = err?.response?.data?.message || 'Bulk upload failed';
+      notify.error(errorMessage);
+    } finally {
+      setUploading(false);
+    }
+  };
+
+  const clearFile = () => {
+    setSelectedFile(null);
+    if (fileInputRef.current) {
+      fileInputRef.current.value = '';
+    }
+  };
+
   const columns: ColumnDef<Brand>[] = [
     {
-      id: 'serial',
-      header: '#',
-      meta: { width: '4%' },
-      cell: ({ row, table }) => {
-        const page = table.getState().pagination?.pageIndex ?? 0;
-        const pageSize = table.getState().pagination?.pageSize ?? 15;
-        return (
-          <div className="flex items-center">
-            <span className="text-xs text-gray-600 dark:text-gray-400">
-              {page * pageSize + row.index + 1}
-            </span>
-          </div>
-        );
-      },
+      accessorKey: 'id',
+      header: 'ID',
+      meta: { width: '5%' },
+      cell: ({ row }) => (
+        <div className="flex items-center">
+          <span className="text-xs text-gray-600 dark:text-gray-400">
+            {row.original.id}
+          </span>
+        </div>
+      ),
     },
     {
       accessorKey: 'logo_url',
@@ -285,6 +354,8 @@ export default function TenantBrandsPage() {
   const buildApiEndpoint = () => {
     const params = new URLSearchParams();
     if (tenantBusinessTypeId) params.append('business_type_id', String(tenantBusinessTypeId));
+    params.append('sortBy', 'id');
+    params.append('sortOrder', 'asc');
     const queryString = params.toString();
     return `brand${queryString ? `?${queryString}` : ''}`;
   };
@@ -306,20 +377,116 @@ export default function TenantBrandsPage() {
             </p>
           )}
         </div>
-        <button
-          onClick={handleAddBrand}
-          disabled={!tenantBusinessTypeId}
-          className="flex items-center gap-2 px-3 py-1.5 bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50 text-white text-sm font-medium rounded-sm transition-colors duration-200 cursor-pointer"
-        >
-          <Plus className="w-4 h-4" />
-          Add Brand
-        </button>
+        <div className="flex items-center gap-2">
+          <button
+            onClick={handleDownloadSampleExcel}
+            className="flex items-center gap-2 px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-medium rounded-sm transition-colors duration-200 cursor-pointer"
+          >
+            <ImDownload className="w-4 h-4" />
+            Brand Sample (Excel)
+          </button>
+          <button
+            onClick={() => setShowBulkUpload(!showBulkUpload)}
+            disabled={!tenantBusinessTypeId}
+            className="flex items-center gap-2 px-3 py-1.5 bg-green-600 hover:bg-green-700 disabled:opacity-50 text-white text-sm font-medium rounded-sm transition-colors duration-200 cursor-pointer"
+          >
+            <RiFileExcel2Line className="w-4 h-4" />
+            Brand Upload (Bulk)
+          </button>
+          <button
+            onClick={handleAddBrand}
+            disabled={!tenantBusinessTypeId}
+            className="flex items-center gap-2 px-3 py-1.5 bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50 text-white text-sm font-medium rounded-sm transition-colors duration-200 cursor-pointer"
+          >
+            <Plus className="w-4 h-4" />
+            Add Brand
+          </button>
+        </div>
       </div>
 
       {!tenantBusinessTypeId && (
         <div className="bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 text-amber-800 dark:text-amber-300 text-sm rounded-md px-3 py-2">
           No business type is linked to your store. Brands cannot be created until a business type
           is assigned to your tenant.
+        </div>
+      )}
+
+      {/* Bulk Upload Form */}
+      {showBulkUpload && (
+        <div className="bg-white dark:bg-gray-800 rounded-md shadow-sm border border-gray-200 dark:border-gray-700 p-4 mb-1">
+          <h2 className="text-lg font-semibold mb-3 text-gray-900 dark:text-gray-100">Bulk Brand Upload</h2>
+          <form onSubmit={handleBulkUpload} className="space-y-3">
+            {/* File Upload Field */}
+            <div className="w-1/3">
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                Select File <span className="text-red-500">*</span>
+              </label>
+              <div
+                className="border-2 border-dashed border-gray-300 dark:border-gray-600 rounded-sm p-4 text-center cursor-pointer hover:border-indigo-500 transition-colors bg-gray-50 dark:bg-gray-700"
+                onClick={() => !uploading && fileInputRef.current?.click()}
+              >
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  accept=".xls,.xlsx"
+                  onChange={e => {
+                    const f = e.target.files?.[0];
+                    if (f) handleFileSelect(f);
+                  }}
+                  className="hidden"
+                  disabled={uploading}
+                />
+
+                {selectedFile ? (
+                  <div className="flex items-center justify-center gap-2">
+                    <RiFileExcel2Line className="w-5 h-5 text-green-600" />
+                    <span className="text-sm text-gray-700 dark:text-gray-300">{selectedFile.name}</span>
+                    <button
+                      type="button"
+                      onClick={e => {
+                        e.stopPropagation();
+                        clearFile();
+                      }}
+                      className="ml-2 text-red-500 hover:text-red-700"
+                    >
+                      <X className="w-4 h-4" />
+                    </button>
+                  </div>
+                ) : (
+                  <div>
+                    <div className="font-medium">Click or drop Excel file here</div>
+                    <div className="text-xs text-gray-500">.xls, .xlsx — max 10MB</div>
+                  </div>
+                )}
+              </div>
+              <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">Accepted file types: .xls, .xlsx (Excel files only)</p>
+            </div>
+
+            {/* Action Buttons */}
+            <div className="flex gap-2 mt-2">
+              <button
+                type="submit"
+                disabled={uploading || !selectedFile}
+                className="px-3 py-1.5 bg-rose-500 text-white text-sm font-medium rounded-sm hover:bg-rose-700 transition-colors flex items-center gap-2 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                <TiUploadOutline className="w-4 h-4" />
+                {uploading ? 'Uploading...' : 'Upload Excel'}
+              </button>
+
+              <button
+                type="button"
+                onClick={() => {
+                  setShowBulkUpload(false);
+                  clearFile();
+                }}
+                disabled={uploading}
+                className="px-3 py-1.5 bg-gray-600 text-white text-sm font-medium rounded-sm hover:bg-gray-700 transition-colors flex items-center gap-2 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                <X className="w-4 h-4" />
+                Cancel
+              </button>
+            </div>
+          </form>
         </div>
       )}
 

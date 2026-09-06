@@ -14,7 +14,6 @@ import {
   Phone,
 } from 'lucide-react';
 import { ImCart } from 'react-icons/im';
-import { useStorefrontCategories } from '@/hooks/use-storefront-categories';
 import { useCartStore } from '@/stores/cart-store';
 import { useWishlistStore } from '@/stores/wishlist-store';
 import { useCustomerAuthStore } from '@/stores/customer-auth-store';
@@ -36,7 +35,6 @@ export default function GroceryHeader() {
   const wishlistCount = useWishlistStore(s => s.items.length);
   const openCart = useCartStore(s => s.openDrawer);
   const { headerLogo, ready } = useBranding();
-  const { categories } = useStorefrontCategories();
   const { storeName } = useStorefrontStatus();
   const user = useCustomerAuthStore(s => s.user);
   const router = useRouter();
