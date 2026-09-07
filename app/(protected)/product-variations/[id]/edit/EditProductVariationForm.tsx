@@ -22,6 +22,7 @@ import type {
 interface VariationFormData {
   product_id: string;
   sku: string;
+  product_code: string;
   name: string;
   cost_price: string;
   selling_price: string;
@@ -41,6 +42,7 @@ interface SelectedAttribute {
 const EMPTY_FORM: VariationFormData = {
   product_id: '',
   sku: '',
+  product_code: '',
   name: '',
   cost_price: '',
   selling_price: '',
@@ -208,6 +210,7 @@ export default function EditProductVariationPage() {
         setFormData({
           product_id: variation.product_id ?? '',
           sku: variation.sku ?? '',
+          product_code: (variation as any).product_code ?? '',
           name: variation.name ?? '',
           cost_price: variation.cost_price != null ? String(variation.cost_price) : '',
           selling_price: variation.selling_price != null ? String(variation.selling_price) : '',
@@ -400,6 +403,7 @@ export default function EditProductVariationPage() {
         id: variationId,
         product_id: formData.product_id,
         sku: formData.sku,
+        product_code: (formData.product_code?.trim() || null) as any,
         name: formData.name,
         cost_price: parseFloat(formData.cost_price) || 0,
         selling_price: parseFloat(formData.selling_price) || 0,
@@ -608,9 +612,9 @@ export default function EditProductVariationPage() {
         <div className="bg-white dark:bg-gray-800 rounded-md shadow-sm border border-gray-200 dark:border-gray-700 p-3">
           <div className="mb-2">
             <h3 className="text-base font-semibold text-gray-900 dark:text-gray-100 mb-2">
-              SKU Information
+              Codes
             </h3>
-            <div className="grid grid-cols-1 gap-3">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
               <div>
                 <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-2">
                   SKU <span className="text-red-500">*</span>
@@ -642,6 +646,26 @@ export default function EditProductVariationPage() {
                 </div>
                 {hasFieldError('sku') && (
                   <p className="mt-1 text-xs text-red-600 dark:text-red-400">{getFieldError('sku')}</p>
+                )}
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-2">
+                  Product Code
+                  <span className="ml-1 text-[11px] font-normal text-gray-400">(company barcode)</span>
+                </label>
+                <input
+                  type="text"
+                  name="product_code"
+                  value={formData.product_code}
+                  onChange={handleInputChange}
+                  className={`w-full px-2.5 py-1 text-sm bg-white dark:bg-gray-700 border font-mono ${hasFieldError('product_code')
+                      ? 'border-red-500 focus:border-red-500'
+                      : 'border-gray-300 dark:border-gray-600 focus:border-indigo-500 dark:focus:border-indigo-400'
+                    } rounded-sm text-gray-900 dark:text-gray-100 focus:outline-none`}
+                  placeholder="Scan or enter company barcode"
+                />
+                {hasFieldError('product_code') && (
+                  <p className="mt-1 text-xs text-red-600 dark:text-red-400">{getFieldError('product_code')}</p>
                 )}
               </div>
             </div>

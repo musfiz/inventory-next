@@ -142,6 +142,7 @@ export interface ProductVariation {
   id: string;
   product_id: string;
   sku: string;
+  product_code?: string | null;
   name?: string;
   cost_price: number;
   selling_price: number;
@@ -529,6 +530,7 @@ export interface PaginatedResponse<T> {
 export interface CreateProductVariationRequest {
   product_id: string;
   sku: string;
+  product_code?: string | null;
   name?: string;
   cost_price: number;
   selling_price: number;
