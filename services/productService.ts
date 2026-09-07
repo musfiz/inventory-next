@@ -22,6 +22,7 @@ class ProductService {
     search?: string;
     category_id?: string;
     brand_id?: string;
+    business_type_id?: number | string;
     is_active?: boolean;
     sort_by?: string;
     sort_order?: 'asc' | 'desc';

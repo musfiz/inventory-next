@@ -2,8 +2,66 @@
 
 Route: `/products/manage` (new, separate from existing `/products/add`, `/products/edit/[id]`, `/product-variations/*` which remain unchanged for now).
 
-This document keeps both the original draft proposal (with open questions) and
-the finalized plan after user confirmation, for full history/reference.
+This document keeps both the original draft proposal (with open questions),
+the finalized plan after user confirmation, and a note on the actual
+implementation and its revision, for full history/reference.
+
+---
+
+# Part C — Implementation Note (actual build vs. plan)
+
+The first implementation of `/products/manage` used a **Category tree** on
+the left (instead of a Product tree) and a right panel that only *browsed*
+products/variations in read-only lists, routing to the separate
+`/products/add`, `/products/edit`, `/product-variations/add`, and
+`/product-variations/[id]/edit` pages for actual data entry. That broke the
+core "one page, no navigation, desktop-style" requirement from Part A/B.
+
+**Fix applied:** `components/product-manage/product-detail-panel.tsx` was
+refactored to add an inline **form mode**:
+- Left panel stays as the Category tree (`CategoryTreePanel`) — used as a
+  category filter/browser, not a full product+variation tree. Adopting the
+  original react-arborist product/variation tree remains a possible future
+  iteration (see Part B open items) but was not part of this revision.
+- Right panel now has two modes:
+  - **List mode** — search/browse products within the selected category
+    (unchanged from before).
+  - **Form mode** — inline product form (Name*, Category*, Brand*, Unit,
+    Type, Status) + an inline variations table with an inline add/edit row
+    (Name, SKU with auto-generate via `productVariationService.generateSku`,
+    Product Code, Selling Price, Active toggle). Both product and variation
+    CRUD now happen via API calls from this same panel — no route changes,
+    matching the "add/update product and variation in one place" goal.
+  - "+ Add Variation" is disabled until the product is saved (per confirmed
+    decision A.5 #1).
+  - Delete (product/variation) still triggers a confirm dialog and refetches
+    the list/table in place.
+  - Images/Barcodes/Bulk-add still link to their existing dedicated pages
+    (out of scope for inline editing).
+
+This satisfies the core UX goal (single-page product + variation entry,
+desktop-style) while keeping category-based navigation on the left instead of
+a full product/variation tree.
+
+## C.1 Follow-up: dense "Label: [Input]" field layout
+
+Feedback: the stacked "label above input" layout (even in a 2-column grid)
+still reads like a mobile/web form, not a desktop app (e.g. .NET WinForms).
+Fields such as Category/Brand/Unit/Type/Status took too much vertical space
+per field for what should be a tight data-entry form.
+
+**Fix applied:** Introduced a `FormRow` helper in `product-detail-panel.tsx`
+that renders each field as a single horizontal row: a fixed-width,
+right-aligned label followed by a colon, then the input/select immediately
+to its right (`Label: [Input]`), matching classic desktop form conventions.
+- Two `FormRow`s per line on wider screens (`grid-cols-2`), Name spans both
+  columns since it's the primary field.
+- Label width is fixed (`w-16`) so all colons/inputs align vertically like a
+  real desktop form.
+- Validation error text is indented to align under the input, not the label.
+- Same pattern is reusable for any future fields added to this form.
+
+This is a layout/density change only — no new fields, no data model changes.
 
 ---
 

@@ -4,13 +4,11 @@ import { useEffect, useState, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { LayoutGrid, List } from 'lucide-react';
 import apiClient from '@/lib/api/axios';
-import { categoryService } from '@/services';
-import { notify, confirm } from '@/lib/notifications';
+import { notify } from '@/lib/notifications';
 import { usePermissions } from '@/hooks/use-permissions';
 import { useAuthStore } from '@/stores/auth-store';
-import type { Category } from '@/types/api.types';
-import { CategoryTreePanel } from '@/components/product-manage/category-tree';
-import { CategoryFormDialog } from '@/components/product-manage/category-form-dialog';
+import type { Category, Product } from '@/types/api.types';
+import { ProductTreePanel } from '@/components/product-manage/product-tree';
 import { ProductDetailPanel } from '@/components/product-manage/product-detail-panel';
 
 export default function ProductManageTreePage() {
@@ -21,13 +19,14 @@ export default function ProductManageTreePage() {
   const tenantBusinessTypeId = (user as any)?.tenant?.business_type?.id ?? null;
   const [businessTypeId, setBusinessTypeId] = useState<number | null>(isSuperAdmin ? null : tenantBusinessTypeId);
 
+  // Categories still needed for the product form dropdown
   const [categories, setCategories] = useState<Category[]>([]);
-  const [loadingCategories, setLoadingCategories] = useState(false);
-  const [selectedCategoryId, setSelectedCategoryId] = useState<string | null>(null);
+  const [, setLoadingCategories] = useState(false);
 
-  const [dialogOpen, setDialogOpen] = useState(false);
-  const [editingCategory, setEditingCategory] = useState<Category | null>(null);
-  const [defaultParentId, setDefaultParentId] = useState<string | null>(null);
+  // Left tree selection (business_type_id-wise product nodes)
+  const [selectedProductId, setSelectedProductId] = useState<string | null>(null);
+  const [createTrigger, setCreateTrigger] = useState(0);
+  const [treeRefreshKey, setTreeRefreshKey] = useState(0);
 
   useEffect(() => {
     if (!isSuperAdmin && tenantBusinessTypeId) setBusinessTypeId(tenantBusinessTypeId);
@@ -58,7 +57,6 @@ export default function ProductManageTreePage() {
         parent: r.parent,
       } as Category));
       setCategories(normalized);
-      setSelectedCategoryId(prev => (prev && !normalized.some(c => String(c.id) === prev) ? null : prev));
     } catch (e: any) {
       notify.error(e?.response?.data?.message || 'Failed to load categories');
     } finally { setLoadingCategories(false); }
@@ -66,33 +64,33 @@ export default function ProductManageTreePage() {
 
   useEffect(() => { fetchCategories(); }, [fetchCategories]);
 
-  const handleAdd = (parentId?: string) => {
-    setEditingCategory(null);
-    setDefaultParentId(parentId ?? null);
-    setDialogOpen(true);
-  };
-  const handleEdit = (c: Category) => {
-    setEditingCategory(c);
-    setDefaultParentId(null);
-    setDialogOpen(true);
-  };
-  const handleDelete = async (c: Category) => {
-    const r = await confirm({ title: 'Delete category', html: `Delete <b>${c.name}</b>?`, confirmButtonText: 'Delete', cancelButtonText: 'Cancel' });
-    if (!r.isConfirmed) return;
-    try {
-      await categoryService.deleteCategory(String(c.id));
-      notify.success('Category deleted');
-      if (selectedCategoryId === String(c.id)) setSelectedCategoryId(null);
-      fetchCategories();
-    } catch (e: any) {
-      notify.error(e?.response?.data?.message || 'Delete failed');
-    }
+  // When business type changes, clear selection and refresh tree
+  const handleBusinessTypeChange = (id: number | null) => {
+    setBusinessTypeId(id);
+    setSelectedProductId(null);
   };
 
-  const canCreateCategory = hasPermission('create-product') || isSuperAdmin;
-  // Categories are managed under Settings in sidebar (superAdminOnly), but allow product managers to manage within tree if they have product create.
-  const canUpdateCategory = hasPermission('update-product') || hasPermission('edit-product') || isSuperAdmin;
-  const canDeleteCategory = hasPermission('delete-product') || hasPermission('delete-products') || isSuperAdmin;
+  const handleAddProduct = () => {
+    setSelectedProductId(null);
+    setCreateTrigger(v => v + 1);
+  };
+
+  const handleSelectProduct = (id: string | null) => {
+    setSelectedProductId(id);
+  };
+
+  const handleProductSaved = (p: Product) => {
+    setSelectedProductId(String(p.id));
+    setTreeRefreshKey(v => v + 1);
+  };
+
+  const handleProductDeleted = () => {
+    setTreeRefreshKey(v => v + 1);
+  };
+
+  const canCreateProduct = hasPermission('create-product') || isSuperAdmin;
+  const canUpdateProduct = hasPermission('update-product') || hasPermission('edit-product') || isSuperAdmin;
+  const canDeleteProduct = hasPermission('delete-product') || hasPermission('delete-products') || isSuperAdmin;
 
   return (
     <div className="space-y-2">
@@ -100,7 +98,7 @@ export default function ProductManageTreePage() {
         <h1 className="text-xl font-bold text-gray-900 dark:text-gray-100 flex items-center gap-2">
           <LayoutGrid className="w-5 h-5 text-indigo-600 dark:text-indigo-400" />
           Product Management
-          <span className="text-xs font-normal text-gray-500 dark:text-gray-400 ml-1 hidden sm:inline">Tree view · Categories → Products → Variations</span>
+          <span className="text-xs font-normal text-gray-500 dark:text-gray-400 ml-1 hidden sm:inline">Tree view · Business type → Products → Variations</span>
         </h1>
         <div className="flex items-center gap-1.5">
           <button onClick={() => router.push('/products')} className="inline-flex items-center gap-1.5 px-2.5 py-1.5 text-xs bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 rounded hover:bg-gray-50">
@@ -109,41 +107,36 @@ export default function ProductManageTreePage() {
         </div>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-[340px_1fr] gap-2 items-start">
-        <div className="lg:sticky lg:top-2 lg:h-[calc(100vh-120px)] lg:overflow-hidden h-[420px] lg:h-[calc(100vh-120px)]">
-          <CategoryTreePanel
+      <div className="grid grid-cols-1 lg:grid-cols-[380px_1fr] gap-2 items-start">
+        {/* Left: Business type selector ABOVE + business_type_id-wise product tree (products → variations) */}
+        <div className="lg:sticky lg:top-2 lg:h-[calc(100vh-120px)] lg:overflow-hidden h-[520px] lg:h-[calc(100vh-120px)]">
+          <ProductTreePanel
+            businessTypeId={businessTypeId}
+            onBusinessTypeChange={handleBusinessTypeChange}
+            selectedProductId={selectedProductId}
+            onSelectProduct={handleSelectProduct}
+            onAddProduct={handleAddProduct}
+            onEditProduct={(p) => setSelectedProductId(String(p.id))}
+            onRefresh={() => setTreeRefreshKey(v => v + 1)}
+            canCreate={canCreateProduct}
+            canUpdate={canUpdateProduct}
+            canDelete={canDeleteProduct}
+            refreshKey={treeRefreshKey}
             categories={categories}
-            loading={loadingCategories}
-            selectedId={selectedCategoryId}
-            onSelect={setSelectedCategoryId}
-            onAdd={handleAdd}
-            onEdit={handleEdit}
-            onDelete={handleDelete}
-            onRefresh={fetchCategories}
-            canCreate={canCreateCategory}
-            canUpdate={canUpdateCategory}
-            canDelete={canDeleteCategory}
           />
         </div>
 
         <div className="min-h-[420px] lg:h-[calc(100vh-120px)] lg:overflow-hidden flex flex-col">
           <ProductDetailPanel
-            selectedCategoryId={selectedCategoryId}
+            selectedProductId={selectedProductId}
             categories={categories}
             businessTypeId={businessTypeId}
-            onBusinessTypeChange={setBusinessTypeId}
+            createTrigger={createTrigger}
+            onProductSaved={handleProductSaved}
+            onProductDeleted={handleProductDeleted}
           />
         </div>
       </div>
-
-      <CategoryFormDialog
-        open={dialogOpen}
-        onClose={() => setDialogOpen(false)}
-        onSaved={fetchCategories}
-        editingCategory={editingCategory}
-        defaultParentId={defaultParentId}
-        allCategories={categories}
-      />
     </div>
   );
 }
