@@ -1,0 +1,83 @@
+/* Grocery Theme CSS Variables */
+:root[data-theme="grocery"] {
+  --color-primary: #16a34a;
+  --color-primary-hover: #15803d;
+  --color-primary-light: #dcfce7;
+  --color-secondary: #f97316;
+  --color-secondary-hover: #ea580c;
+  --color-secondary-light: #fff7ed;
+  --color-background: #f0fdf4;
+  --color-surface: #ffffff;
+  --color-text: #1a2e1a;
+  --color-text-muted: #4a7c4a;
+  --color-border: #bbf7d0;
+  --color-badge-bg: #dcfce7;
+  --color-badge-text: #166534;
+}
+
+:root[data-theme="grocery"] body {
+  background-color: var(--color-background);
+}
+
+:root[data-theme="grocery"] .bg-brand-50 {
+  background-color: var(--color-primary-light) !important;
+}
+
+:root[data-theme="grocery"] .bg-brand-600,
+:root[data-theme="grocery"] .bg-brand-700 {
+  background-color: var(--color-primary) !important;
+}
+
+:root[data-theme="grocery"] .text-brand-600,
+:root[data-theme="grocery"] .text-brand-700 {
+  color: var(--color-primary) !important;
+}
+
+:root[data-theme="grocery"] .border-brand-200,
+:root[data-theme="grocery"] .border-brand-300 {
+  border-color: var(--color-border) !important;
+}
+
+:root[data-theme="grocery"] .hover\:bg-brand-700:hover {
+  background-color: var(--color-primary-hover) !important;
+}
+
+:root[data-theme="grocery"] .from-brand-600 {
+  --tw-gradient-from: var(--color-primary) !important;
+}
+
+:root[data-theme="grocery"] .to-purple-700 {
+  --tw-gradient-to: #059669 !important;
+}
+
+:root[data-theme="grocery"] .from-brand-50 {
+  --tw-gradient-from: var(--color-primary-light) !important;
+}
+
+:root[data-theme="grocery"] .via-purple-50 {
+  --tw-gradient-via: #ecfdf5 !important;
+}
+
+:root[data-theme="grocery"] .to-pink-50 {
+  --tw-gradient-to: #fff7ed !important;
+}
+
+:root[data-theme="grocery"] .from-brand-100 {
+  --tw-gradient-from: #bbf7d0 !important;
+}
+
+:root[data-theme="grocery"] .via-purple-100 {
+  --tw-gradient-via: #d1fae5 !important;
+}
+
+:root[data-theme="grocery"] .to-pink-100 {
+  --tw-gradient-to: #ffedd5 !important;
+}
+
+:root[data-theme="grocery"] .focus\:border-brand-500:focus {
+  border-color: var(--color-primary) !important;
+}
+
+:root[data-theme="grocery"] .focus\:ring-brand-500\/20:focus {
+  --tw-ring-color: rgb(22 163 74 / 0.2) !important;
+}

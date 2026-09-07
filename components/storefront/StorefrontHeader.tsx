@@ -38,6 +38,8 @@ import { CascadingMenu } from '@/components/storefront/navigation/CascadingMenu'
 import { SearchBar } from '@/components/storefront/navigation/SearchBar';
 import { AccountMenu } from '@/components/storefront/navigation/AccountMenu';
 import { MobileMenu } from '@/components/storefront/navigation/MobileMenu';
+import { useStorefrontTheme } from '@/contexts/storefront-theme-context';
+import GroceryHeader from '@/components/storefront/grocery/GroceryHeader';
 
 function Truck(props: React.SVGProps<SVGSVGElement>) {
   return (
@@ -48,6 +50,8 @@ function Truck(props: React.SVGProps<SVGSVGElement>) {
 }
 
 export default function StorefrontHeader() {
+  const { isGrocery } = useStorefrontTheme();
+  if (isGrocery) return <GroceryHeader />;
   const [activeMenu, setActiveMenu] = useState<string | null>(null);
   const [accountOpen, setAccountOpen] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
@@ -215,7 +219,7 @@ export default function StorefrontHeader() {
           className="hidden text-xs lg:block"
           style={{ backgroundColor: menu.utility_bar_bg_color, color: menu.utility_bar_text_color }}
         >
-          <div className="mx-auto flex max-w-7xl items-center justify-between px-4 py-2">
+          <div className="mx-auto flex max-w-screen-2xl items-center justify-between px-4 py-2">
             <div className="flex items-center gap-6">
               {menu.utility_bar_phone && (
                 <span className="flex items-center gap-1.5 font-medium">
@@ -257,7 +261,7 @@ export default function StorefrontHeader() {
         ? 'bg-white/90 shadow-lg shadow-black/5 backdrop-blur-xl dark:bg-gray-950/90'
         : 'bg-white shadow-sm dark:bg-gray-950'
         }`}>
-        <div className={`mx-auto max-w-7xl px-4 transition-all duration-300 ${scrolled ? 'py-2' : 'py-3 lg:py-4'}`}>
+        <div className={`mx-auto max-w-screen-2xl px-4 transition-all duration-300 ${scrolled ? 'py-2' : 'py-3 lg:py-4'}`}>
           <div className="flex items-center gap-4 lg:gap-8">
             <button onClick={() => setMobileOpen(true)} className="p-2.5 text-gray-700 hover:bg-gray-100 lg:hidden dark:text-gray-200 dark:hover:bg-gray-800">
               <Menu className="h-5 w-5" />
@@ -357,7 +361,7 @@ export default function StorefrontHeader() {
 
         {/* Category nav */}
         <nav className={`relative hidden border-t border-gray-100 bg-white/50 backdrop-blur-sm lg:block dark:border-gray-800 dark:bg-gray-950/50 ${scrolled ? 'hidden' : ''}`} onMouseLeave={() => setMenuWithDelay(null)}>
-          <div className="mx-auto flex max-w-7xl items-center gap-1 px-4">
+          <div className="mx-auto flex max-w-screen-2xl items-center gap-1 px-4">
             {menuReady ? (
               <>
                 {/* All Categories button */}

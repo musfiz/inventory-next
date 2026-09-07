@@ -6,6 +6,7 @@ import storefrontSettingsService from '@/services/storefrontSettingsService';
 interface StorefrontSettingsStore {
   expressCheckoutEnabled: boolean;
   storeName: string | null;
+  storefrontTheme: 'default' | 'grocery';
   loading: boolean;
   _fetchPromise: Promise<void> | null;
   fetch: () => Promise<void>;
@@ -15,6 +16,7 @@ export const useStorefrontSettingsStore = create<StorefrontSettingsStore>()(
   (set, get) => ({
     expressCheckoutEnabled: false,
     storeName: null,
+    storefrontTheme: 'default',
     loading: true,
     _fetchPromise: null,
 
@@ -28,6 +30,7 @@ export const useStorefrontSettingsStore = create<StorefrontSettingsStore>()(
           set({
             expressCheckoutEnabled: res.express_checkout_enabled ?? false,
             storeName: res.store_name ?? null,
+            storefrontTheme: (res.storefront_theme as 'default' | 'grocery') ?? 'default',
             loading: false,
           });
         } catch {

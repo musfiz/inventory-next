@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useRef, Suspense } from 'react';
-import { useSearchParams, useRouter } from 'next/navigation';
+import { useSearchParams } from 'next/navigation';
 import {
   useReactTable,
   getCoreRowModel,
@@ -67,7 +67,6 @@ function DataTableInner<T extends Record<string, any>>({
   refreshKey,
 }: ServerDataTableProps<T>) {
   const searchParams = useSearchParams();
-  const router = useRouter();
 
   const urlPage = Math.max(1, parseInt(searchParams.get('page') || '1', 10) || 1);
   const urlSearch = searchParams.get('search') || '';
@@ -106,7 +105,12 @@ function DataTableInner<T extends Record<string, any>>({
       }
     }
     const qs = params.toString();
-    router.replace(qs ? `?${qs}` : window.location.pathname, { scroll: false });
+    const newUrl = qs ? `${window.location.pathname}?${qs}` : window.location.pathname;
+    // Use native history so we don't trigger Next.js RSC fetch
+    // (router.replace causes a background ?_rsc= request per pagination/sort change).
+    if (typeof window !== 'undefined' && window.history.replaceState) {
+      window.history.replaceState(null, '', newUrl);
+    }
   };
 
   const handleRefresh = () => {

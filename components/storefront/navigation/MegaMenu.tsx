@@ -3,12 +3,14 @@
 import Link from 'next/link';
 import { useMemo } from 'react';
 import { IoCartSharp } from 'react-icons/io5';
-import { useStorefrontCategories } from '@/hooks/use-storefront-categories';
+import { useStorefrontCategoriesStore } from '@/stores/storefront-categories-store';
 import { useHeaderMenu } from '@/hooks/use-header-menu';
 import type { CategoryTreeItem } from '@/services/storefrontService';
 
 export const MegaMenu = ({ onClose, onKeepOpen }: { onClose: () => void; onKeepOpen: () => void }) => {
-  const { categories, loading } = useStorefrontCategories();
+  // Read-only — StorefrontHeader already fetches categories once per session.
+  const categories = useStorefrontCategoriesStore((s) => s.categories);
+  const loading = useStorefrontCategoriesStore((s) => s.loading);
   const { config: menu } = useHeaderMenu();
   const megaConfig = menu.mega_menu_config;
 

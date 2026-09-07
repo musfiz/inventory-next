@@ -1,6 +1,7 @@
 @import 'tailwindcss';
 @import 'sweetalert2/dist/sweetalert2.min.css';
 @import 'react-datepicker/dist/react-datepicker.css';
+@import '../styles/grocery-theme.css';
 
 @variant dark (&:where(.dark, .dark *));
 

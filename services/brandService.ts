@@ -52,6 +52,56 @@ class BrandService {
     const response = await apiClient.get<ApiResponse<Brand>>(`/api/v1/brand/${id}`);
     return response.data.data;
   }
+
+  /**
+   * Download brand sample Excel template
+   * GET /api/v1/bulk-import/brands/sample-excel
+   */
+  async downloadBrandSampleExcel(): Promise<void> {
+    const response = await apiClient.get('/api/v1/bulk-import/brands/sample-excel', {
+      responseType: 'blob',
+    });
+
+    // Create download link
+    const url = window.URL.createObjectURL(new Blob([response.data]));
+    const link = document.createElement('a');
+    link.href = url;
+    link.setAttribute('download', `brand_bulk_upload_template_${new Date().toISOString().split('T')[0]}.xlsx`);
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    window.URL.revokeObjectURL(url);
+  }
+
+  /**
+   * Bulk import brands from Excel file
+   * POST /api/v1/bulk-import/brands
+   */
+  async brandBulkImport(file: File): Promise<{
+    success: boolean;
+    message: string;
+    data?: {
+      stats: {
+        imported: number;
+        skipped: number;
+        total: number;
+      };
+      errors: Array<{
+        row: number;
+        attribute: string;
+        errors: string[];
+      }>;
+    };
+  }> {
+    const formData = new FormData();
+    formData.append('file', file);
+
+    const response = await apiClient.post('/api/v1/bulk-import/brands', formData, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    });
+
+    return response.data;
+  }
 }
 
 // Create singleton instance
