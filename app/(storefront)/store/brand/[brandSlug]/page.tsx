@@ -118,7 +118,7 @@ export default function BrandPage() {
         as="div"
         className="border-b border-gray-200 bg-white dark:border-gray-800 dark:bg-gray-900"
       >
-        <div className="mx-auto max-w-7xl px-4 py-10">
+        <div className="mx-auto max-w-screen-2xl px-4 py-10">
           <nav className="text-xs text-gray-500 dark:text-gray-400">
             <Link href="/" className="hover:text-brand-600">
               Home
@@ -162,7 +162,7 @@ export default function BrandPage() {
         </div>
       </ScrollReveal>
 
-      <div className="mx-auto max-w-7xl px-4 py-6">
+      <div className="mx-auto max-w-screen-2xl px-4 py-6">
         {/* Toolbar */}
         <div className="mb-5 flex items-center justify-between rounded-2xl border border-gray-200 bg-white p-3 dark:border-gray-800 dark:bg-gray-900">
           <p className="text-sm text-gray-500">

@@ -204,7 +204,7 @@ export default function AllProductsPage() {
         </div>
         <div className="absolute inset-0 bg-linear-to-t from-black/70 via-black/30 to-transparent" />
         <div className="absolute inset-0 flex flex-col justify-end">
-          <div className="mx-auto w-full max-w-7xl px-4 pb-6">
+          <div className="mx-auto w-full max-w-screen-2xl px-4 pb-6">
             <nav className="text-xs text-white/80">
               <Link href="/" className="hover:text-white">Home</Link>
               <span className="mx-2">/</span>
@@ -220,7 +220,7 @@ export default function AllProductsPage() {
         </div>
       </ScrollReveal>
 
-      <div className="mx-auto max-w-7xl px-4 py-6">
+      <div className="mx-auto max-w-screen-2xl px-4 py-6">
         <div className="lg:grid lg:grid-cols-[260px_1fr] lg:gap-8">
           {/* Sidebar (desktop) */}
           <FilterSidebar {...filterProps} />

@@ -29,7 +29,7 @@ const NAV_ITEMS = [
 function AccountLayoutSkeleton() {
   return (
     <div className="bg-gray-50 dark:bg-gray-950">
-      <div className="mx-auto max-w-7xl px-4 py-6">
+      <div className="mx-auto max-w-screen-2xl px-4 py-6">
         <div className="grid gap-6 lg:grid-cols-[280px_1fr]">
           <aside className="lg:sticky lg:top-32 lg:self-start">
             <div className="animate-pulse overflow-hidden rounded-2xl border border-gray-200 bg-white dark:border-gray-800 dark:bg-gray-900">
@@ -61,7 +61,7 @@ function AccountLayoutSkeleton() {
 function AuthLayout({ children }: { children: React.ReactNode }) {
   return (
     <div className="bg-gray-50 dark:bg-gray-950">
-      <div className="mx-auto max-w-7xl px-4 py-6">
+      <div className="mx-auto max-w-screen-2xl px-4 py-6">
         {children}
       </div>
     </div>
@@ -96,7 +96,7 @@ function ProtectedLayout({ children }: { children: React.ReactNode }) {
 
   return (
     <div className="bg-gray-50 dark:bg-gray-950">
-      <div className="mx-auto max-w-7xl px-4 py-6">
+      <div className="mx-auto max-w-screen-2xl px-4 py-6">
         <div className="grid gap-6 lg:grid-cols-[280px_1fr]">
           {/* Sidebar */}
           <aside className="lg:sticky lg:top-32 lg:self-start">

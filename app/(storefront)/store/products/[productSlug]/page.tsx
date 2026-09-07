@@ -169,7 +169,7 @@ export default function ProductDetailPage() {
 
   if (loading) {
     return (
-      <div className="mx-auto max-w-7xl px-4 py-6 lg:py-8">
+      <div className="mx-auto max-w-screen-2xl px-4 py-6 lg:py-8">
         <div className="grid gap-8 lg:grid-cols-2 lg:gap-12">
           <div className="aspect-square animate-pulse rounded-2xl bg-gray-200 dark:bg-gray-800" />
           <div className="space-y-4">
@@ -247,7 +247,7 @@ export default function ProductDetailPage() {
     <div className="bg-white dark:bg-gray-950">
       {/* Breadcrumb */}
       <div className="border-b border-gray-100 dark:border-gray-800">
-        <nav className="mx-auto flex max-w-7xl flex-wrap items-center gap-1.5 px-4 py-3 text-xs text-gray-500 dark:text-gray-400">
+        <nav className="mx-auto flex max-w-screen-2xl flex-wrap items-center gap-1.5 px-4 py-3 text-xs text-gray-500 dark:text-gray-400">
           <Link href="/" className="hover:text-brand-600">Home</Link>
           <ChevronRight className="h-3 w-3" />
           <Link href={`/store/category/${product.category.slug}`} className="hover:text-brand-600">
@@ -260,7 +260,7 @@ export default function ProductDetailPage() {
         </nav>
       </div>
 
-      <div className="mx-auto max-w-7xl px-4 py-6 lg:py-8">
+      <div className="mx-auto max-w-screen-2xl px-4 py-6 lg:py-8">
         <div className="grid gap-8 lg:grid-cols-2 lg:gap-12">
           {/* Gallery */}
           <ScrollReveal animation="fade-up" duration="normal" as="div" className="lg:flex lg:gap-3">

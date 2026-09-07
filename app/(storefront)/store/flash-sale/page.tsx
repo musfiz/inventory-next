@@ -156,7 +156,7 @@ export default function FlashSalePage() {
   if (loading) {
     return (
       <div className="bg-gray-50 dark:bg-gray-950 min-h-screen">
-        <div className="mx-auto max-w-7xl px-4 py-8 sm:py-12">
+        <div className="mx-auto max-w-screen-2xl px-4 py-8 sm:py-12">
           {/* Hero skeleton */}
           <div className="mb-8 rounded-2xl bg-gradient-to-br from-rose-600 via-pink-600 to-purple-700 p-6 sm:p-8 animate-pulse">
             <div className="h-8 w-1/3 bg-white/20 rounded" />
@@ -178,7 +178,7 @@ export default function FlashSalePage() {
   if (error || campaigns.length === 0) {
     return (
       <div className="bg-gray-50 dark:bg-gray-950 min-h-screen">
-        <div className="mx-auto max-w-7xl px-4 py-16 sm:py-24 text-center">
+        <div className="mx-auto max-w-screen-2xl px-4 py-16 sm:py-24 text-center">
           <div className="mx-auto flex h-20 w-20 items-center justify-center rounded-full bg-rose-100 dark:bg-rose-950/30">
             {error?.includes('Failed') ? (
               <AlertCircle className="h-10 w-10 text-rose-600 dark:text-rose-400" />
@@ -208,7 +208,7 @@ export default function FlashSalePage() {
 
   return (
     <div className="bg-gray-50 dark:bg-gray-950 min-h-screen">
-      <div className="mx-auto max-w-7xl px-4 py-8 sm:py-12">
+      <div className="mx-auto max-w-screen-2xl px-4 py-8 sm:py-12">
         {/* Page Header */}
         <section className="relative mb-10 overflow-hidden rounded-2xl bg-gradient-to-br from-rose-600 via-pink-600 to-purple-700 p-6 sm:p-8 text-white">
           <ScrollReveal animation="fade-up" as="div" className="relative z-10">

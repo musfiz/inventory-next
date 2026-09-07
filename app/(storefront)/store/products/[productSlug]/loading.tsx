@@ -3,7 +3,7 @@ import ProductCardSkeleton from '@/components/storefront/ProductCardSkeleton';
 export default function ProductsLoading() {
   return (
     <div className="bg-gray-50 dark:bg-gray-950">
-      <div className="mx-auto max-w-7xl px-4 py-6">
+      <div className="mx-auto max-w-screen-2xl px-4 py-6">
         {/* Breadcrumb skeleton */}
         <div className="mb-4 h-4 w-48 animate-pulse rounded bg-gray-200 dark:bg-gray-800" />
 

@@ -78,7 +78,7 @@ export const MegaMenu = ({ onClose, onKeepOpen }: { onClose: () => void; onKeepO
       onMouseEnter={onKeepOpen}
       onMouseLeave={onClose}
     >
-      <div className="mx-auto max-w-7xl px-5 py-5">
+      <div className="mx-auto max-w-screen-2xl px-4 py-5">
         <p className="mb-3 text-[10px] font-bold uppercase tracking-[0.2em] text-gray-400">All Categories</p>
         <div className="grid gap-x-6 gap-y-5" style={{ gridTemplateColumns: `repeat(${Math.min(colCount, 6)}, 1fr)` }}>
           {sortedItems.map(item => {

@@ -6,7 +6,7 @@ export default function CategoryLoading() {
       {/* Hero skeleton */}
       <div className="relative h-44 animate-pulse overflow-hidden bg-gray-200 sm:h-60 dark:bg-gray-800" />
 
-      <div className="mx-auto max-w-7xl px-4 py-6">
+      <div className="mx-auto max-w-screen-2xl px-4 py-6">
         {/* Subcategory chips skeleton */}
         <div className="mb-6 flex flex-wrap gap-2">
           {[...Array(4)].map((_, i) => (

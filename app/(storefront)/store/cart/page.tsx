@@ -90,7 +90,7 @@ export default function CartPage() {
 
   return (
     <div className="bg-gray-50 dark:bg-gray-950">
-      <div className="mx-auto max-w-7xl px-4 py-8">
+      <div className="mx-auto max-w-screen-2xl px-4 py-8">
         {/* Breadcrumb */}
         <nav className="mb-6 text-xs text-gray-500 dark:text-gray-400">
           <Link href="/" className="hover:text-brand-600">Home</Link>
