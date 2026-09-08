@@ -33,6 +33,15 @@ export interface Bin {
  */
 class BinService {
   /**
+   * Get bins for dropdown, optionally filtered by warehouse
+   * GET /api/v1/bins/dropdown
+   */
+  async getBinsForDropdown(params?: { search?: string; warehouse_id?: string; tenant_id?: string; business_type_id?: number | string }): Promise<Bin[]> {
+    const response = await apiClient.get<ApiResponse<Bin[]>>('/api/v1/bins/dropdown', { params });
+    return response.data.data;
+  }
+
+  /**
    * Store a new bin or update existing bin
    * POST /api/v1/bins/store
    */

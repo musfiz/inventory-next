@@ -5,6 +5,8 @@ import { Package, Edit2, Trash2, Tag, Image as ImageIcon, Barcode, Loader2, Plus
 import { useRouter } from 'next/navigation';
 import productService from '@/services/productService';
 import productVariationService from '@/services/productVariationService';
+import stockService from '@/services/stockService';
+import binService from '@/services/binService';
 import commonService from '@/services/commonService';
 import { confirm, notify } from '@/lib/notifications';
 import type { Product, ProductVariation, Category } from '@/types/api.types';
@@ -32,6 +34,10 @@ interface VariationFormState {
   dp: string;
   mrp: string;
   is_active: boolean;
+  // Stock entry captured on the variation form (warehouse required, bin optional)
+  quantity: string;
+  warehouse_id: string;
+  bin_id: string;
 }
 
 const emptyProductForm = (): ProductFormState => ({
@@ -52,22 +58,33 @@ const emptyVariationForm = (): VariationFormState => ({
   dp: '0',
   mrp: '0',
   is_active: true,
+  quantity: '0',
+  warehouse_id: '',
+  bin_id: '',
 });
 
 export function ProductDetailPanel({
   selectedProductId,
   categories,
   businessTypeId,
+  tenantId,
+  onTenantChange,
   createTrigger = 0,
   onProductSaved,
   onProductDeleted,
+  onVariationsChanged,
 }: {
   selectedProductId: string | null;
   categories: Category[];
   businessTypeId: number | null;
+  /** Super admin-selected tenant for warehouse scope; tenant users pass their own. */
+  tenantId?: string | null;
+  onTenantChange?: (id: string | null) => void;
   createTrigger?: number;
   onProductSaved?: (p: Product) => void;
   onProductDeleted?: () => void;
+  /** Fired after a variation save/delete so the tree can refresh that product's variations. */
+  onVariationsChanged?: (productId: string) => void;
 }) {
   const router = useRouter();
   const { hasPermission, isSuperAdmin } = usePermissions();
@@ -97,6 +114,60 @@ export function ProductDetailPanel({
   const [unitOptions, setUnitOptions] = useState<SelectOption[]>([]);
   const [loadingFormOptions, setLoadingFormOptions] = useState(false);
 
+  // Warehouse + bin options for the variation's optional stock entry
+  const [warehouseOptions, setWarehouseOptions] = useState<SelectOption[]>([]);
+  const [loadingWarehouses, setLoadingWarehouses] = useState(false);
+  const [binOptions, setBinOptions] = useState<SelectOption[]>([]);
+  const [loadingBins, setLoadingBins] = useState(false);
+
+  const loadWarehouseOptions = useCallback(async (input: string): Promise<SelectOption[]> => {
+    try {
+      // Super admin picks a tenant explicitly (tenant-scoped warehouses);
+      // tenant users are scoped to their own tenant.
+      const scopedTenantId = tenantId ?? (user as any)?.tenant_id ?? (user as any)?.tenant?.id;
+      if (!scopedTenantId) return [];
+      const list: any[] = await commonService.getWarehousesByTenant({
+        search: input.trim() || undefined,
+        tenant_id: scopedTenantId,
+      } as any);
+      return (list || []).map((w: any) => ({ value: String(w.id), label: `${w.name}${w.code ? ` (${w.code})` : ''}` }));
+    } catch {
+      return [];
+    }
+  }, [tenantId, user]);
+
+  const loadBinOptions = useCallback(async (scopedWarehouseId: string, input: string): Promise<SelectOption[]> => {
+    // Bin is optional in the stock entry; only meaningful once a warehouse is chosen.
+    if (!scopedWarehouseId) return [];
+    try {
+      const scopedTenantId = tenantId ?? (user as any)?.tenant_id ?? (user as any)?.tenant?.id;
+      if (!scopedTenantId) return [];
+      const list: any[] = await binService.getBinsForDropdown({
+        search: input.trim() || undefined,
+        warehouse_id: scopedWarehouseId,
+        tenant_id: scopedTenantId,
+      } as any);
+      return (list || []).map((b: any) => ({
+        value: String(b.id),
+        label: b.name || `Bin #${b.id}`,
+      }));
+    } catch {
+      return [];
+    }
+  }, [tenantId, user]);
+
+  // Server-side searchable unit loader (AsyncSelect)
+  const loadUnitOptions = useCallback(async (inputValue: string): Promise<SelectOption[]> => {
+    try {
+      const params: { search?: string } = {};
+      if (inputValue && inputValue.trim()) params.search = inputValue.trim();
+      const units = await commonService.getUnitsForDropdown(params);
+      return units.map(u => ({ value: String(u.id), label: `${u.name} (${u.short_name})` }));
+    } catch {
+      return [];
+    }
+  }, []);
+
   const categoryOptions = useMemo(
     () => categories.filter(c => c.is_active !== false).map(c => ({ value: String(c.id), label: c.name })),
     [categories]
@@ -114,7 +185,7 @@ export function ProductDetailPanel({
         ]);
         if (!mounted) return;
         setBrandOptions(brands.map(b => ({ value: String(b.id), label: b.name })));
-        setUnitOptions(units.map(u => ({ value: String(u.id), label: `${u.name} (${u.symbol})` })));
+        setUnitOptions(units.map(u => ({ value: String(u.id), label: `${u.name} (${u.short_name})` })));
       } catch {
         /* dropdown load failure is non-fatal, form still usable */
       } finally {
@@ -136,11 +207,29 @@ export function ProductDetailPanel({
     setLoadingVariations(true);
     try {
       const res: any = await productVariationService.getVariations({ product_id: productId, per_page: 100 } as any);
-      setVariations(res?.data ?? res?.variations ?? []);
+      // getVariations returns the bare items array (service unwraps response.data.data).
+      setVariations(Array.isArray(res) ? res : (res?.data ?? res?.variations ?? []));
     } catch (e: any) {
       notify.error(e?.response?.data?.message || 'Failed to load variations');
     } finally { setLoadingVariations(false); }
   }, []);
+
+  // When a variation draft opens, prefetch the warehouse options so the
+  // required stock warehouse select is immediately usable (server search onward).
+  useEffect(() => {
+    if (mode !== 'form' || !editingProduct || variationDraftId === null) return;
+    let mounted = true;
+    (async () => {
+      setLoadingWarehouses(true);
+      try {
+        const opts = await loadWarehouseOptions('');
+        if (mounted) setWarehouseOptions(opts);
+      } finally {
+        if (mounted) setLoadingWarehouses(false);
+      }
+    })();
+    return () => { mounted = false; };
+  }, [mode, editingProduct, variationDraftId, tenantId, user, isSuperAdmin, effectiveBtId, loadWarehouseOptions]);
 
   const openNewProductForm = useCallback(() => {
     setEditingProduct(null);
@@ -166,7 +255,7 @@ export function ProductDetailPanel({
     });
     setSelectedCategoryOpt(p.category ? { value: String(p.category.id), label: p.category.name } : (categoryOptions.find(o => o.value === String(p.category_id)) || null));
     setSelectedBrandOpt(p.brand ? { value: String(p.brand.id), label: p.brand.name } : null);
-    setSelectedUnitOpt(p.unit ? { value: String(p.unit.id), label: `${p.unit.name} (${(p.unit as any).symbol ?? ''})` } : null);
+    setSelectedUnitOpt(p.unit ? { value: String(p.unit.id), label: `${p.unit.name} (${p.unit.short_name ?? ''})` } : null);
     setProductErrors({});
     setVariationDraftId(null);
     setMode('form');
@@ -269,6 +358,7 @@ export function ProductDetailPanel({
 
   const openEditVariation = (v: ProductVariation) => {
     setVariationDraftId(String(v.id));
+    const existing = (v as any).stock; // backend may include stock summary per variation
     setVariationForm({
       name: v.name || '',
       sku: v.sku,
@@ -278,6 +368,9 @@ export function ProductDetailPanel({
       dp: String(v.dp ?? 0),
       mrp: String(v.mrp ?? 0),
       is_active: v.is_active,
+      quantity: existing ? String(existing.quantity ?? 0) : '0',
+      warehouse_id: existing?.warehouse_id ? String(existing.warehouse_id) : '',
+      bin_id: '',
     });
   };
 
@@ -290,6 +383,10 @@ export function ProductDetailPanel({
     if (!editingProduct) return;
     if (!variationForm.sku.trim()) {
       notify.error('SKU is required');
+      return;
+    }
+    if (!variationForm.warehouse_id) {
+      notify.error('Warehouse is required to add stock for this variation');
       return;
     }
     setSavingVariation(true);
@@ -305,15 +402,37 @@ export function ProductDetailPanel({
         mrp: parseFloat(variationForm.mrp) || 0,
         is_active: variationForm.is_active,
       };
+      let savedVariation: ProductVariation;
       if (variationDraftId && variationDraftId !== 'new') {
-        await productVariationService.updateVariation({ id: variationDraftId, ...payload });
+        savedVariation = await productVariationService.updateVariation({ id: variationDraftId, ...payload });
         notify.success('Variation updated');
       } else {
-        await productVariationService.createVariation(payload);
+        savedVariation = await productVariationService.createVariation(payload);
         notify.success('Variation added');
       }
+
+      // Persist stock for the (created/updated) variation in the chosen warehouse.
+      // Backend adds `quantity` to the existing stock row (old + new).
+      const qty = parseFloat(variationForm.quantity);
+      if (qty > 0) {
+        // Super admin must send the tenant they picked; tenant users are scoped to their own.
+        const scopedTenantId = tenantId ?? (user as any)?.tenant_id ?? (user as any)?.tenant?.id;
+        await stockService.storeStocks({
+          warehouse_id: variationForm.warehouse_id,
+          product_id: String(editingProduct.id),
+          tenant_id: scopedTenantId || undefined,
+          stocks: [{
+            variation_id: String(savedVariation.id),
+            product_id: String(editingProduct.id),
+            warehouse_id: variationForm.warehouse_id,
+            quantity: qty,
+          }],
+        });
+      }
+
       cancelVariationDraft();
       fetchVariations(String(editingProduct.id));
+      onVariationsChanged?.(String(editingProduct.id));
     } catch (e: any) {
       notify.error(e?.response?.data?.message || 'Failed to save variation');
     } finally {
@@ -327,7 +446,10 @@ export function ProductDetailPanel({
     try {
       await productVariationService.deleteVariation(String(v.id));
       notify.success('Variation deleted');
-      if (editingProduct) fetchVariations(String(editingProduct.id));
+      if (editingProduct) {
+        fetchVariations(String(editingProduct.id));
+        onVariationsChanged?.(String(editingProduct.id));
+      }
     } catch (e: any) {
       notify.error(e?.response?.data?.message || 'Delete failed');
     }
@@ -401,6 +523,8 @@ export function ProductDetailPanel({
                 options={categoryOptions}
                 placeholder="Select"
                 isInvalid={!!productFieldError('category_id')}
+                isDisabled={!effectiveBtId}
+                compact
               />
             </FormRow>
             <FormRow label="Brand" required labelWidth="w-16" error={productFieldError('brand_id')}>
@@ -411,16 +535,20 @@ export function ProductDetailPanel({
                 isLoading={loadingFormOptions}
                 placeholder="Select"
                 isInvalid={!!productFieldError('brand_id')}
+                isDisabled={!effectiveBtId}
+                compact
               />
             </FormRow>
             <FormRow label="Unit" labelWidth="w-16">
               <CustomSelect
                 value={selectedUnitOpt}
                 onChange={opt => { setSelectedUnitOpt(opt); setProductForm(p => ({ ...p, unit_id: opt?.value || '' })); }}
-                options={unitOptions}
+                loadOptions={loadUnitOptions}
+                defaultOptions={unitOptions.length > 0 ? unitOptions : true}
                 isLoading={loadingFormOptions}
                 placeholder="Select"
                 isClearable
+                compact
               />
             </FormRow>
             <FormRow label="Type" labelWidth="w-16">
@@ -486,14 +614,15 @@ export function ProductDetailPanel({
                     <th className="px-2 py-1.5 text-left font-medium text-gray-600 dark:text-gray-400">Name</th>
                     <th className="px-2 py-1.5 text-left font-medium text-gray-600 dark:text-gray-400">SKU</th>
                     <th className="px-2 py-1.5 text-left font-medium text-gray-600 dark:text-gray-400">Code</th>
-                    <th className="px-2 py-1.5 text-right font-medium text-gray-600 dark:text-gray-400">Price</th>
+                    <th className="px-2 py-1.5 text-right font-medium text-gray-600 dark:text-gray-400">Cost</th>
+                    <th className="px-2 py-1.5 text-right font-medium text-gray-600 dark:text-gray-400">Sale</th>
                     <th className="px-2 py-1.5 text-center font-medium text-gray-600 dark:text-gray-400">Active</th>
                     <th className="px-2 py-1.5 text-right font-medium text-gray-600 dark:text-gray-400">Actions</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-100 dark:divide-gray-700">
                   {variations.length === 0 && variationDraftId !== 'new' && (
-                    <tr><td colSpan={6} className="px-2 py-4 text-center text-gray-500">No variations yet.</td></tr>
+                    <tr><td colSpan={7} className="px-2 py-4 text-center text-gray-500">No variations yet.</td></tr>
                   )}
                   {variations.map(v => (
                     variationDraftId === String(v.id) ? (
@@ -504,12 +633,21 @@ export function ProductDetailPanel({
                         onSave={handleSaveVariation}
                         onCancel={cancelVariationDraft}
                         saving={savingVariation}
+                        warehouseOptions={warehouseOptions}
+                        loadingWarehouses={loadingWarehouses}
+                        loadWarehouseOptions={loadWarehouseOptions}
+                        binOptions={binOptions}
+                        setBinOptions={setBinOptions}
+                        loadingBins={loadingBins}
+                        loadBinOptions={loadBinOptions}
+                        isNew={false}
                       />
                     ) : (
                       <tr key={String(v.id)} className="hover:bg-gray-50 dark:hover:bg-gray-700/30">
                         <td className="px-2 py-1.5 text-gray-700 dark:text-gray-300">{v.name || '—'}</td>
                         <td className="px-2 py-1.5 font-mono text-gray-900 dark:text-gray-100">{v.sku}</td>
                         <td className="px-2 py-1.5 text-gray-500">{v.product_code || '—'}</td>
+                        <td className="px-2 py-1.5 text-right text-gray-600 dark:text-gray-400">{Number(v.cost_price ?? 0).toFixed(2)}</td>
                         <td className="px-2 py-1.5 text-right">{Number(v.selling_price).toFixed(2)}</td>
                         <td className="px-2 py-1.5 text-center"><span className={`px-1.5 py-0.5 rounded text-[10px] ${v.is_active ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>{v.is_active ? 'Yes' : 'No'}</span></td>
                         <td className="px-2 py-1.5">
@@ -529,6 +667,14 @@ export function ProductDetailPanel({
                       onCancel={cancelVariationDraft}
                       saving={savingVariation}
                       skuLoading={generatingSku}
+                      warehouseOptions={warehouseOptions}
+                      loadingWarehouses={loadingWarehouses}
+                      loadWarehouseOptions={loadWarehouseOptions}
+                      binOptions={binOptions}
+                      setBinOptions={setBinOptions}
+                      loadingBins={loadingBins}
+                      loadBinOptions={loadBinOptions}
+                      isNew
                     />
                   )}
                 </tbody>
@@ -576,6 +722,14 @@ function VariationEditRow({
   onCancel,
   saving,
   skuLoading,
+  warehouseOptions,
+  loadingWarehouses,
+  loadWarehouseOptions,
+  binOptions,
+  loadingBins,
+  loadBinOptions,
+  setBinOptions,
+  isNew,
 }: {
   form: VariationFormState;
   setForm: React.Dispatch<React.SetStateAction<VariationFormState>>;
@@ -583,27 +737,142 @@ function VariationEditRow({
   onCancel: () => void;
   saving: boolean;
   skuLoading?: boolean;
+  warehouseOptions: SelectOption[];
+  loadingWarehouses: boolean;
+  loadWarehouseOptions: (input: string) => Promise<SelectOption[]>;
+  binOptions: SelectOption[];
+  loadingBins: boolean;
+  loadBinOptions: (warehouseId: string, input: string) => Promise<SelectOption[]>;
+  setBinOptions: React.Dispatch<React.SetStateAction<SelectOption[]>>;
+  /** true for the brand-new draft row (label "Save") vs editing an existing variation */
+  isNew: boolean;
 }) {
   const cellInputCls = 'w-full px-1.5 py-1 text-xs bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-1 focus:ring-indigo-500';
+  const selectedWarehouseOpt = warehouseOptions.find(o => o.value === form.warehouse_id) || null;
+  const selectedBinOpt = binOptions.find(o => o.value === form.bin_id) || null;
+  // Server-search loader for bins, scoped to the currently selected warehouse.
+  const scopedBinLoader = useCallback(
+    (input: string) => loadBinOptions(form.warehouse_id, input),
+    [loadBinOptions, form.warehouse_id]
+  );
+
   return (
     <tr className="bg-indigo-50/40 dark:bg-indigo-900/10">
-      <td className="px-1.5 py-1.5"><input className={cellInputCls} placeholder="Name (e.g. Red - L)" value={form.name} onChange={e => setForm(f => ({ ...f, name: e.target.value }))} /></td>
-      <td className="px-1.5 py-1.5"><input className={cellInputCls} placeholder={skuLoading ? 'Generating…' : 'SKU'} value={form.sku} onChange={e => setForm(f => ({ ...f, sku: e.target.value }))} /></td>
-      <td className="px-1.5 py-1.5"><input className={cellInputCls} placeholder="Code" value={form.product_code} onChange={e => setForm(f => ({ ...f, product_code: e.target.value }))} /></td>
-      <td className="px-1.5 py-1.5"><input className={cellInputCls + ' text-right'} type="number" step="0.01" placeholder="0.00" value={form.selling_price} onChange={e => setForm(f => ({ ...f, selling_price: e.target.value }))} /></td>
-      <td className="px-1.5 py-1.5 text-center">
-        <input type="checkbox" checked={form.is_active} onChange={e => setForm(f => ({ ...f, is_active: e.target.checked }))} />
-      </td>
-      <td className="px-1.5 py-1.5">
-        <div className="flex items-center justify-end gap-1">
-          <button onClick={onSave} disabled={saving} className="p-1 rounded bg-indigo-600 hover:bg-indigo-700 disabled:opacity-60 text-white" title="Save">
-            {saving ? <Loader2 className="w-3 h-3 animate-spin" /> : <Save className="w-3 h-3" />}
-          </button>
-          <button onClick={onCancel} className="p-1 rounded border border-gray-300 dark:border-gray-600 text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-600" title="Cancel">
-            <X className="w-3 h-3" />
-          </button>
+      <td colSpan={7} className="px-2 py-2">
+        <div className="bg-white dark:bg-gray-800 border border-indigo-200 dark:border-indigo-800/60 rounded-md px-2.5 py-2 space-y-2">
+          {/* Variation basics */}
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-x-3 gap-y-2">
+            <StackLabel label="Name">
+              <input className={cellInputCls} placeholder="e.g. Red - L" value={form.name} onChange={e => setForm(f => ({ ...f, name: e.target.value }))} />
+            </StackLabel>
+            <StackLabel label="SKU">
+              <input className={cellInputCls} placeholder={skuLoading ? 'Generating…' : 'SKU'} value={form.sku} onChange={e => setForm(f => ({ ...f, sku: e.target.value }))} />
+            </StackLabel>
+            <StackLabel label="Code">
+              <input className={cellInputCls} placeholder="Product code" value={form.product_code} onChange={e => setForm(f => ({ ...f, product_code: e.target.value }))} />
+            </StackLabel>
+            <StackLabel label="Active" inline>
+              <label className="flex items-center h-full">
+                <input type="checkbox" checked={form.is_active} onChange={e => setForm(f => ({ ...f, is_active: e.target.checked }))} className="w-3.5 h-3.5 accent-indigo-600" />
+              </label>
+            </StackLabel>
+          </div>
+
+          {/* Pricing */}
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-x-3 gap-y-2">
+            <StackLabel label="Cost Price">
+              <div className="relative">
+                <span className="absolute left-1.5 top-1/2 -translate-y-1/2 text-[10px] text-gray-400">$</span>
+                <input className={cellInputCls + ' pl-4 text-right'} type="number" step="0.01" min="0" placeholder="0.00" value={form.cost_price} onChange={e => setForm(f => ({ ...f, cost_price: e.target.value }))} onFocus={e => e.currentTarget.select()} />
+              </div>
+            </StackLabel>
+            <StackLabel label="Sale Price">
+              <div className="relative">
+                <span className="absolute left-1.5 top-1/2 -translate-y-1/2 text-[10px] text-gray-400">$</span>
+                <input className={cellInputCls + ' pl-4 text-right'} type="number" step="0.01" min="0" placeholder="0.00" value={form.selling_price} onChange={e => setForm(f => ({ ...f, selling_price: e.target.value }))} onFocus={e => e.currentTarget.select()} />
+              </div>
+            </StackLabel>
+          </div>
+
+          {/* Stock entry — warehouse required, bin optional */}
+          <div className="border-t border-gray-100 dark:border-gray-700 pt-2">
+            <div className="flex items-center gap-1.5 mb-1.5">
+              <span className="text-[10px] font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">Stock</span>
+              <span className="text-[10px] text-gray-400 dark:text-gray-500">— added to existing quantity on save</span>
+            </div>
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-x-3 gap-y-2">
+              <StackLabel label="Quantity">
+                <input className={cellInputCls + ' text-right'} type="number" step="1" min="0" placeholder="0" value={form.quantity} onChange={e => setForm(f => ({ ...f, quantity: e.target.value }))} onFocus={e => e.currentTarget.select()} />
+              </StackLabel>
+              <StackLabel label="Warehouse" required>
+                <CustomSelect
+                  value={selectedWarehouseOpt}
+                  onChange={opt => {
+                    const wid = opt?.value || '';
+                    setForm(f => ({ ...f, warehouse_id: wid, bin_id: '' }));
+                    setBinOptions([]);
+                  }}
+                  loadOptions={loadWarehouseOptions}
+                  defaultOptions={warehouseOptions.length > 0 ? warehouseOptions : true}
+                  isLoading={loadingWarehouses}
+                  placeholder="Select warehouse"
+                  isClearable
+                  compact
+                />
+              </StackLabel>
+              <StackLabel label="Bin (Optional)">
+                <CustomSelect
+                  value={selectedBinOpt}
+                  onChange={opt => setForm(f => ({ ...f, bin_id: opt?.value || '' }))}
+                  loadOptions={scopedBinLoader}
+                  defaultOptions={binOptions.length > 0 ? binOptions : true}
+                  isLoading={loadingBins}
+                  isDisabled={!form.warehouse_id}
+                  placeholder={form.warehouse_id ? 'Select bin' : 'Select warehouse first'}
+                  isClearable
+                  compact
+                />
+              </StackLabel>
+              <div className="hidden md:block" />
+            </div>
+          </div>
+
+          {/* Actions */}
+          <div className="flex items-center justify-end gap-1.5 pt-1">
+            {!form.warehouse_id && (
+              <span className="text-[10px] text-amber-600 dark:text-amber-400 mr-auto">Warehouse is required to save stock</span>
+            )}
+            <button onClick={onCancel} className="px-2.5 py-1 text-xs rounded border border-gray-300 dark:border-gray-600 text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-600">
+              Reset
+            </button>
+            <button onClick={onSave} disabled={saving} className="inline-flex items-center gap-1 px-2.5 py-1 text-xs rounded bg-indigo-600 hover:bg-indigo-700 disabled:opacity-60 text-white">
+              {saving ? <Loader2 className="w-3 h-3 animate-spin" /> : <Save className="w-3 h-3" />} {isNew ? 'Save' : 'Update'}
+            </button>
+          </div>
         </div>
       </td>
     </tr>
+  );
+}
+
+function StackLabel({
+  label,
+  required,
+  inline,
+  children,
+}: {
+  label: string;
+  required?: boolean;
+  inline?: boolean;
+  children: React.ReactNode;
+}) {
+  if (inline) return children;
+  return (
+    <div className="flex items-center gap-1.5">
+      <label className="w-16 shrink-0 text-[11px] font-medium text-gray-600 dark:text-gray-400 text-right">
+        {label}{required && <span className="text-red-500">*</span>}:
+      </label>
+      <div className="flex-1 min-w-0">{children}</div>
+    </div>
   );
 }

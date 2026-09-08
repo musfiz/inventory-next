@@ -19,6 +19,12 @@ export default function ProductManageTreePage() {
   const tenantBusinessTypeId = (user as any)?.tenant?.business_type?.id ?? null;
   const [businessTypeId, setBusinessTypeId] = useState<number | null>(isSuperAdmin ? null : tenantBusinessTypeId);
 
+  // Tenant scope for warehouse selection: super admin picks a tenant explicitly;
+  // tenant users are fixed to their own tenant.
+  const [tenantId, setTenantId] = useState<string | null>(
+    isSuperAdmin ? null : ((user as any)?.tenant_id ?? (user as any)?.tenant?.id ?? null)
+  );
+
   // Categories still needed for the product form dropdown
   const [categories, setCategories] = useState<Category[]>([]);
   const [, setLoadingCategories] = useState(false);
@@ -27,6 +33,8 @@ export default function ProductManageTreePage() {
   const [selectedProductId, setSelectedProductId] = useState<string | null>(null);
   const [createTrigger, setCreateTrigger] = useState(0);
   const [treeRefreshKey, setTreeRefreshKey] = useState(0);
+  // Signal the tree to refetch a product's variations after save/delete in the detail panel.
+  const [variationsSignal, setVariationsSignal] = useState<{ productId: string; nonce: number } | null>(null);
 
   useEffect(() => {
     if (!isSuperAdmin && tenantBusinessTypeId) setBusinessTypeId(tenantBusinessTypeId);
@@ -41,7 +49,7 @@ export default function ProductManageTreePage() {
   const fetchCategories = useCallback(async () => {
     setLoadingCategories(true);
     try {
-      const params: Record<string, any> = { per_page: 200 };
+      const params: Record<string, any> = { per_page: 100 };
       const bt = isSuperAdmin ? businessTypeId : tenantBusinessTypeId;
       if (bt) params.business_type_id = bt;
       const res = await apiClient.get('/api/v1/categories', { params });
@@ -68,6 +76,9 @@ export default function ProductManageTreePage() {
   const handleBusinessTypeChange = (id: number | null) => {
     setBusinessTypeId(id);
     setSelectedProductId(null);
+    // Warehouses are tenant-scoped: reset tenant when business type changes so
+    // a stale tenant selection from another business type isn't used.
+    if (isSuperAdmin) setTenantId(null);
   };
 
   const handleAddProduct = () => {
@@ -86,6 +97,11 @@ export default function ProductManageTreePage() {
 
   const handleProductDeleted = () => {
     setTreeRefreshKey(v => v + 1);
+  };
+
+  // Bump the tree to refetch a product's variations after a save/delete.
+  const handleVariationsChanged = (productId: string) => {
+    setVariationsSignal(prev => ({ productId, nonce: (prev?.nonce ?? 0) + 1 }));
   };
 
   const canCreateProduct = hasPermission('create-product') || isSuperAdmin;
@@ -113,6 +129,8 @@ export default function ProductManageTreePage() {
           <ProductTreePanel
             businessTypeId={businessTypeId}
             onBusinessTypeChange={handleBusinessTypeChange}
+            tenantId={tenantId}
+            onTenantChange={setTenantId}
             selectedProductId={selectedProductId}
             onSelectProduct={handleSelectProduct}
             onAddProduct={handleAddProduct}
@@ -123,6 +141,7 @@ export default function ProductManageTreePage() {
             canDelete={canDeleteProduct}
             refreshKey={treeRefreshKey}
             categories={categories}
+            variationsSignal={variationsSignal}
           />
         </div>
 
@@ -131,9 +150,12 @@ export default function ProductManageTreePage() {
             selectedProductId={selectedProductId}
             categories={categories}
             businessTypeId={businessTypeId}
+            tenantId={tenantId}
+            onTenantChange={setTenantId}
             createTrigger={createTrigger}
             onProductSaved={handleProductSaved}
             onProductDeleted={handleProductDeleted}
+            onVariationsChanged={handleVariationsChanged}
           />
         </div>
       </div>

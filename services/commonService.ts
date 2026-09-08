@@ -98,6 +98,21 @@ class CommonService {
   }
 
   /**
+   * Get warehouses for a business type (all its tenants' warehouses).
+   * Super admin only — used when managing a business type without a tenant selected.
+   * GET /api/v1/dropdown/warehouse?business_type_id=...
+   */
+  async getWarehousesByBusinessType(params?: { search?: string; business_type_id?: number | string; per_page?: number }): Promise<any[]> {
+    if (!params?.business_type_id) return [];
+    const queryParams: any = {};
+    if (params.search) queryParams.search = params.search;
+    if (params.per_page) queryParams.per_page = params.per_page;
+    queryParams.business_type_id = params.business_type_id;
+    const response = await apiClient.get<{ data: any[] }>('/api/v1/dropdown/warehouse', { params: queryParams });
+    return response.data.data;
+  }
+
+  /**
    * Get tenants for dropdown (simplified) - Super admin only
    * GET /api/v1/dropdown/tenant
    */

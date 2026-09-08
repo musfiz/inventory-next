@@ -10,9 +10,10 @@ interface TenantSelectProps {
   placeholder?: string;
   isDisabled?: boolean;
   isInvalid?: boolean;
+  compact?: boolean;
 }
 
-export default function TenantSelect({ value, onChange, placeholder = 'Select tenant', isDisabled = false, isInvalid = false }: TenantSelectProps) {
+export default function TenantSelect({ value, onChange, placeholder = 'Select tenant', isDisabled = false, isInvalid = false, compact = false }: TenantSelectProps) {
   const [defaultOptions, setDefaultOptions] = useState<{ value: string; label: string }[]>([]);
   const [selected, setSelected] = useState<any>(null);
 
@@ -64,6 +65,7 @@ export default function TenantSelect({ value, onChange, placeholder = 'Select te
       placeholder={placeholder}
       isDisabled={isDisabled}
       isInvalid={isInvalid}
+      compact={compact}
     />
   );
 }

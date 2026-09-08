@@ -15,9 +15,11 @@ interface BusinessTypeSelectProps {
   isInvalid?: boolean;
   isClearable?: boolean;
   className?: string;
+  /** Use the compact variant (mirrors native <select> styles). */
+  compact?: boolean;
 }
 
-export default function BusinessTypeSelect({ value, onChange, onChangeDetail, placeholder = 'Select business type', isDisabled = false, isInvalid = false, isClearable = true, className = 'w-full' }: BusinessTypeSelectProps) {
+export default function BusinessTypeSelect({ value, onChange, onChangeDetail, placeholder = 'Select business type', isDisabled = false, isInvalid = false, isClearable = true, className = 'w-full', compact = false }: BusinessTypeSelectProps) {
   const [defaultOptions, setDefaultOptions] = useState<SelectOption[]>([]);
   const [selected, setSelected] = useState<SelectOption | null>(null);
 
@@ -86,6 +88,7 @@ export default function BusinessTypeSelect({ value, onChange, onChangeDetail, pl
       isInvalid={isInvalid}
       isClearable={isClearable}
       className={className}
+      compact={compact}
     />
   );
 }

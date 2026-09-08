@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { ChevronRight, ChevronDown, Package, Search, Plus, Edit2, Trash2, RefreshCw, Maximize2, Minimize2, Tag, Loader2 } from 'lucide-react';
 import BusinessTypeSelect from '@/components/ui/business-type-select';
+import TenantSelect from '@/components/ui/tenant-select';
 import { usePermissions } from '@/hooks/use-permissions';
 import { useAuthStore } from '@/stores/auth-store';
 import productService from '@/services/productService';
@@ -13,6 +14,9 @@ import { confirm, notify } from '@/lib/notifications';
 interface ProductTreePanelProps {
   businessTypeId: number | null;
   onBusinessTypeChange: (id: number | null) => void;
+  /** Tenant scope for warehouse selection — super admin only picks one explicitly. */
+  tenantId?: string | null;
+  onTenantChange?: (id: string | null) => void;
   selectedProductId: string | null;
   onSelectProduct: (id: string | null) => void;
   onAddProduct: () => void;
@@ -23,11 +27,20 @@ interface ProductTreePanelProps {
   canDelete: boolean;
   refreshKey?: number;
   categories?: any[];
+  /**
+   * Signal for the tree to refetch a product's variations (e.g. after a
+   * variation save/delete in the detail panel). Bumps with { productId, nonce }.
+   */
+  variationsSignal?: { productId: string; nonce: number } | null;
 }
+
+const noopTenantChange = (_id?: string | null) => { /* tenant change handled by parent */ };
 
 export function ProductTreePanel({
   businessTypeId,
   onBusinessTypeChange,
+  tenantId,
+  onTenantChange = noopTenantChange,
   selectedProductId,
   onSelectProduct,
   onAddProduct,
@@ -36,7 +49,10 @@ export function ProductTreePanel({
   canUpdate,
   canDelete,
   refreshKey = 0,
+  variationsSignal,
 }: ProductTreePanelProps) {
+  // onTenantChange accepts the optional-param form TenantSelect passes.
+  const handleTenantChange = (id?: string | null) => onTenantChange(id ?? null);
   const { isSuperAdmin } = usePermissions();
   const user = useAuthStore(s => s.user);
   const tenantBusinessTypeId = (user as any)?.tenant?.business_type?.id ?? null;
@@ -58,11 +74,16 @@ export function ProductTreePanel({
   const fetchProducts = useCallback(async () => {
     setLoading(true);
     try {
-      const params: any = { per_page: 200 };
+      const params: any = { per_page: 100, lite: 1 };
       if (debounced) params.search = debounced;
       if (effectiveBtId) params.business_type_id = effectiveBtId;
       const res: any = await productService.getProducts(params);
-      const data: Product[] = res?.data ?? res?.products ?? [];
+      // getProducts returns the bare array (service already unwraps response.data.data).
+      const data: Product[] = Array.isArray(res)
+        ? res
+        : Array.isArray(res?.data)
+          ? res.data
+          : (res?.products ?? []);
       setProducts(data);
       // keep selection valid
       if (selectedProductId && !data.some(p => String(p.id) === selectedProductId)) {
@@ -79,6 +100,28 @@ export function ProductTreePanel({
   // refetch when business type changes resets expanded
   useEffect(() => { setExpanded(new Set()); setVariationMap({}); }, [effectiveBtId]);
 
+  // When the detail panel saves/deletes a variation, refetch that product's
+  // variations so the tree row reflects the latest backend state.
+  useEffect(() => {
+    if (!variationsSignal?.productId) return;
+    let cancelled = false;
+    (async () => {
+      const pid = variationsSignal.productId;
+      setLoadingVariations(prev => ({ ...prev, [pid]: true }));
+      try {
+        const res: any = await productVariationService.getVariations({ product_id: pid, per_page: 100 } as any);
+        if (cancelled) return;
+        const data: ProductVariation[] = Array.isArray(res) ? res : (res?.data ?? res?.variations ?? []);
+        setVariationMap(prev => ({ ...prev, [pid]: data }));
+      } catch {
+        if (!cancelled) setVariationMap(prev => ({ ...prev, [pid]: [] }));
+      } finally {
+        if (!cancelled) setLoadingVariations(prev => ({ ...prev, [pid]: false }));
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [variationsSignal]);
+
   const handleToggle = async (productId: string) => {
     const isExpanded = expanded.has(productId);
     if (isExpanded) {
@@ -90,7 +133,8 @@ export function ProductTreePanel({
       setLoadingVariations(prev => ({ ...prev, [productId]: true }));
       try {
         const res: any = await productVariationService.getVariations({ product_id: productId, per_page: 100 } as any);
-        const data: ProductVariation[] = res?.data ?? res?.variations ?? [];
+        // getVariations already unwraps to the items array via response.data.data.
+        const data: ProductVariation[] = Array.isArray(res) ? res : (res?.data ?? res?.variations ?? []);
         setVariationMap(prev => ({ ...prev, [productId]: data }));
       } catch {
         setVariationMap(prev => ({ ...prev, [productId]: [] }));
@@ -109,7 +153,7 @@ export function ProductTreePanel({
         setLoadingVariations(prev => ({ ...prev, [pid]: true }));
         try {
           const res: any = await productVariationService.getVariations({ product_id: pid, per_page: 100 } as any);
-          const data: ProductVariation[] = res?.data ?? res?.variations ?? [];
+          const data: ProductVariation[] = Array.isArray(res) ? res : (res?.data ?? res?.variations ?? []);
           setVariationMap(prev => ({ ...prev, [pid]: data }));
         } catch {
           setVariationMap(prev => ({ ...prev, [pid]: [] }));
@@ -151,6 +195,19 @@ export function ProductTreePanel({
     <div className="flex flex-col h-full bg-white dark:bg-gray-800 rounded-md border border-gray-200 dark:border-gray-700 overflow-hidden">
       {/* Business Type selector — above tree, as requested */}
       <div className="px-3 py-2 border-b border-gray-200 dark:border-gray-700 space-y-2">
+        {/* Tenant selector — super admin only; warehouses are tenant-scoped & shown per tenant */}
+        {isSuperAdmin && (
+          <div>
+            <label className="block text-[11px] font-medium text-gray-600 dark:text-gray-400 mb-1">Tenant</label>
+            <TenantSelect
+              value={tenantId}
+              onChange={handleTenantChange}
+              placeholder="Select tenant"
+              compact
+            />
+          </div>
+        )}
+
         <div>
           <label className="block text-[11px] font-medium text-gray-600 dark:text-gray-400 mb-1">Business Type</label>
           {isSuperAdmin ? (
@@ -160,6 +217,7 @@ export function ProductTreePanel({
               placeholder="All business types"
               isClearable
               className="w-full"
+              compact
             />
           ) : (
             <div className="w-full px-2.5 py-1.5 text-xs border border-gray-200 dark:border-gray-700 rounded bg-gray-50 dark:bg-gray-700/50 text-gray-700 dark:text-gray-300 truncate">
@@ -246,12 +304,6 @@ export function ProductTreePanel({
                         </button>
                       )}
                     </span>
-                  </div>
-                  {/* meta row: category/brand chips */}
-                  <div className="ml-7 flex flex-wrap items-center gap-1 mt-0.5 mb-0.5">
-                    {product.category?.name && <span className="px-1.5 py-0.5 rounded-full bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-300 text-[10px]">{product.category.name}</span>}
-                    {product.brand?.name && <span className="px-1.5 py-0.5 rounded-full bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300 text-[10px]">{product.brand.name}</span>}
-                    <span className="text-[10px] text-gray-400">{product.type}</span>
                   </div>
                   {isExpanded && (
                     <ul className="ml-5 border-l border-gray-200 dark:border-gray-700 pl-2 mt-1 space-y-0.5">
