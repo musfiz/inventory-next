@@ -19,11 +19,28 @@ export default function ProductManageTreePage() {
   const tenantBusinessTypeId = (user as any)?.tenant?.business_type?.id ?? null;
   const [businessTypeId, setBusinessTypeId] = useState<number | null>(isSuperAdmin ? null : tenantBusinessTypeId);
 
-  // Tenant scope for warehouse selection: super admin picks a tenant explicitly;
-  // tenant users are fixed to their own tenant.
-  const [tenantId, setTenantId] = useState<string | null>(
-    isSuperAdmin ? null : ((user as any)?.tenant_id ?? (user as any)?.tenant?.id ?? null)
-  );
+  // Tenant scope for warehouse selection. Super admin picks a tenant explicitly and
+  // the choice persists in sessionStorage until the tab closes or they clear it.
+  // Tenant users are scoped to their own tenant via the user object, so this stays null.
+  const [tenantId, setTenantId] = useState<string | null>(null);
+
+  // Restore the super admin's stored tenant selection once auth is hydrated.
+  useEffect(() => {
+    if (!isSuperAdmin) return;
+    try {
+      const stored = window.sessionStorage.getItem('manage-selected-tenant');
+      if (stored) setTenantId(stored);
+    } catch { /* storage unavailable */ }
+  }, [isSuperAdmin]);
+
+  // Persist the selection for the current tab session; clearing removes it.
+  useEffect(() => {
+    if (!isSuperAdmin) return;
+    try {
+      if (tenantId) window.sessionStorage.setItem('manage-selected-tenant', tenantId);
+      else window.sessionStorage.removeItem('manage-selected-tenant');
+    } catch { /* storage unavailable */ }
+  }, [isSuperAdmin, tenantId]);
 
   // Categories still needed for the product form dropdown
   const [categories, setCategories] = useState<Category[]>([]);
@@ -72,13 +89,12 @@ export default function ProductManageTreePage() {
 
   useEffect(() => { fetchCategories(); }, [fetchCategories]);
 
-  // When business type changes, clear selection and refresh tree
+  // When business type changes, clear selection and refresh tree.
+  // Tenant selection is intentionally preserved — it's a separate scope and
+  // only cleared manually (or when the tab closes).
   const handleBusinessTypeChange = (id: number | null) => {
     setBusinessTypeId(id);
     setSelectedProductId(null);
-    // Warehouses are tenant-scoped: reset tenant when business type changes so
-    // a stale tenant selection from another business type isn't used.
-    if (isSuperAdmin) setTenantId(null);
   };
 
   const handleAddProduct = () => {
@@ -106,7 +122,6 @@ export default function ProductManageTreePage() {
 
   const canCreateProduct = hasPermission('create-product') || isSuperAdmin;
   const canUpdateProduct = hasPermission('update-product') || hasPermission('edit-product') || isSuperAdmin;
-  const canDeleteProduct = hasPermission('delete-product') || hasPermission('delete-products') || isSuperAdmin;
 
   return (
     <div className="space-y-2">
@@ -138,7 +153,6 @@ export default function ProductManageTreePage() {
             onRefresh={() => setTreeRefreshKey(v => v + 1)}
             canCreate={canCreateProduct}
             canUpdate={canUpdateProduct}
-            canDelete={canDeleteProduct}
             refreshKey={treeRefreshKey}
             categories={categories}
             variationsSignal={variationsSignal}

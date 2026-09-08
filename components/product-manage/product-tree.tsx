@@ -1,7 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { ChevronRight, ChevronDown, Package, Search, Plus, Edit2, Trash2, RefreshCw, Maximize2, Minimize2, Tag, Loader2 } from 'lucide-react';
+import { ChevronRight, ChevronDown, Package, Search, Plus, Edit2, RefreshCw, Maximize2, Minimize2, Tag, Loader2 } from 'lucide-react';
 import BusinessTypeSelect from '@/components/ui/business-type-select';
 import TenantSelect from '@/components/ui/tenant-select';
 import { usePermissions } from '@/hooks/use-permissions';
@@ -9,7 +9,7 @@ import { useAuthStore } from '@/stores/auth-store';
 import productService from '@/services/productService';
 import productVariationService from '@/services/productVariationService';
 import type { Product, ProductVariation } from '@/types/api.types';
-import { confirm, notify } from '@/lib/notifications';
+import { notify } from '@/lib/notifications';
 
 interface ProductTreePanelProps {
   businessTypeId: number | null;
@@ -24,7 +24,6 @@ interface ProductTreePanelProps {
   onRefresh?: () => void;
   canCreate: boolean;
   canUpdate: boolean;
-  canDelete: boolean;
   refreshKey?: number;
   categories?: any[];
   /**
@@ -47,7 +46,6 @@ export function ProductTreePanel({
   onRefresh,
   canCreate,
   canUpdate,
-  canDelete,
   refreshKey = 0,
   variationsSignal,
 }: ProductTreePanelProps) {
@@ -165,21 +163,6 @@ export function ProductTreePanel({
   };
   const collapseAll = () => setExpanded(new Set());
 
-  const handleDeleteProduct = async (p: Product, e?: React.MouseEvent) => {
-    e?.stopPropagation();
-    const r = await confirm({ title: 'Delete product', html: `Delete <b>${p.name}</b>?`, confirmButtonText: 'Delete', cancelButtonText: 'Cancel' });
-    if (!r.isConfirmed) return;
-    try {
-      await productService.deleteProduct(String(p.id));
-      notify.success('Product deleted');
-      if (selectedProductId === String(p.id)) onSelectProduct(null);
-      fetchProducts();
-      onRefresh?.();
-    } catch (err: any) {
-      notify.error(err?.response?.data?.message || 'Delete failed');
-    }
-  };
-
   const filteredProducts = useMemo(() => {
     if (!debounced) return products;
     const q = debounced.toLowerCase();
@@ -204,6 +187,7 @@ export function ProductTreePanel({
               onChange={handleTenantChange}
               placeholder="Select tenant"
               compact
+              isClearable
             />
           </div>
         )}
@@ -297,14 +281,7 @@ export function ProductTreePanel({
                     {product.status && (
                       <span className={`ml-1 px-1 py-0.5 rounded text-[10px] leading-none ${product.status === 'active' ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-600'}`}>{product.status}</span>
                     )}
-                    <span className="hidden group-hover:flex items-center gap-0.5 ml-1">
-                      {canDelete && (
-                        <button onClick={e => handleDeleteProduct(product, e)} className="p-1 rounded hover:bg-white dark:hover:bg-gray-600 text-gray-500 hover:text-red-600" title="Delete">
-                          <Trash2 className="w-3 h-3" />
-                        </button>
-                      )}
-                    </span>
-                  </div>
+                    </div>
                   {isExpanded && (
                     <ul className="ml-5 border-l border-gray-200 dark:border-gray-700 pl-2 mt-1 space-y-0.5">
                       {isLoadingVar ? (
