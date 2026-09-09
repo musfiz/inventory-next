@@ -19,7 +19,7 @@ class CategoryService {
     id?: string;
     name: string;
     description?: string;
-    parent_id?: string;
+    parent_id?: string | null;
     business_type_ids: number[];
     image_url?: string;
     sort_order?: number;
@@ -27,6 +27,31 @@ class CategoryService {
   }): Promise<Category> {
     const response = await apiClient.post<ApiResponse<Category>>('/api/v1/categories/store', data);
     return response.data.data;
+  }
+
+  /**
+   * Get single category by ID (fresh data for edit form).
+   * Tries RESTful show route first, then legacy show/edit variants.
+   * GET /api/v1/categories/{id}
+   */
+  async getCategoryById(id: string): Promise<Category> {
+    const candidates = [
+      `/api/v1/categories/${id}`,
+      `/api/v1/categories/show/${id}`,
+      `/api/v1/categories/edit/${id}`,
+    ];
+    let lastError: unknown = null;
+    for (const url of candidates) {
+      try {
+        const response = await apiClient.get<ApiResponse<Category>>(url);
+        if (response.data?.data) return response.data.data;
+      } catch (err: any) {
+        lastError = err;
+        // Only fall through on 404; rethrow auth/validation errors immediately
+        if (err?.response?.status !== 404) throw err;
+      }
+    }
+    throw lastError;
   }
 
   /**

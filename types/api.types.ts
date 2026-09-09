@@ -210,8 +210,11 @@ export interface Category {
   name: string;
   description?: string;
   parent_id?: string;
+  parent_category?: string;
   business_type?: BusinessType;
   business_types?: BusinessType[];
+  business_type_ids?: number[];
+  business_type_id?: number;
   parent?: Category;
   children?: Category[];
   is_active: boolean;

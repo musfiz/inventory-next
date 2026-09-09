@@ -276,8 +276,31 @@ export default function TenantCategoriesPage() {
     if (!tenantBusinessTypeId) {
       errors.business_type = 'Tenant business type is not configured. Contact support.';
     }
+    if (isEditing && formData.parent_id && currentCategory && formData.parent_id === currentCategory.id) {
+      errors.parent_id = 'Parent category cannot be itself';
+    }
     setFormErrors(errors);
     return Object.keys(errors).length === 0;
+  };
+
+  /** Map Laravel 422 errors to adjacent form fields (handles `field.0` nesting). */
+  const mapBackendErrors = (errors: Record<string, string[] | string>) => {
+    const transformed: { [key: string]: string } = {};
+    Object.entries(errors).forEach(([key, messages]) => {
+      const baseKey = key.split('.')[0];
+      const message = Array.isArray(messages) ? messages.join(', ') : messages;
+      transformed[baseKey] = transformed[baseKey] ? `${transformed[baseKey]}, ${message}` : message;
+    });
+    return transformed;
+  };
+
+  const clearFieldError = (field: string) => {
+    setFormErrors(prev => {
+      if (!prev[field]) return prev;
+      const next = { ...prev };
+      delete next[field];
+      return next;
+    });
   };
 
   const handleFormSubmit = async (e: React.FormEvent) => {
@@ -289,6 +312,8 @@ export default function TenantCategoriesPage() {
       // Fixed to tenant's business type — backend syncs category_business_type pivot.
       const submitData = {
         ...formData,
+        // Explicit null when cleared so backend removes the parent link.
+        parent_id: formData.parent_id ?? null,
         business_type_ids: [tenantBusinessTypeId],
         ...(isEditing && currentCategory && { id: currentCategory.id }),
       };
@@ -312,11 +337,7 @@ export default function TenantCategoriesPage() {
         response?: { data?: { errors?: Record<string, string[]>; message?: string } };
       };
       if (axiosError.response?.data?.errors) {
-        const transformedErrors: { [key: string]: string } = {};
-        Object.entries(axiosError.response.data.errors).forEach(([key, messages]) => {
-          transformedErrors[key] = Array.isArray(messages) ? messages.join(', ') : messages;
-        });
-        setFormErrors(transformedErrors);
+        setFormErrors(mapBackendErrors(axiosError.response.data.errors));
       } else {
         notify.error(axiosError.response?.data?.message || 'Failed to save category');
       }
@@ -681,7 +702,7 @@ export default function TenantCategoriesPage() {
                   type="text"
                   placeholder="Enter category name"
                   value={formData.name}
-                  onChange={e => setFormData({ ...formData, name: e.target.value })}
+                  onChange={e => { setFormData({ ...formData, name: e.target.value }); clearFieldError('name'); }}
                   className={`w-full px-2 py-1.25 text-sm border rounded-sm focus:outline-none focus:ring-1 focus:ring-blue-500 dark:focus:ring-blue-400 focus:border-transparent dark:bg-gray-700 dark:text-gray-100 ${formErrors.name ? 'border-red-500' : 'border-gray-300 dark:border-gray-600'
                     }`}
                   required
@@ -702,14 +723,20 @@ export default function TenantCategoriesPage() {
                       }
                       : null
                   }
-                  onChange={option =>
-                    setFormData({ ...formData, parent_id: option?.value || undefined })
-                  }
+                  onChange={option => {
+                    setFormData({ ...formData, parent_id: option?.value || undefined });
+                    clearFieldError('parent_id');
+                  }}
                   loadOptions={loadParentCategoryOptions}
                   defaultOptions={defaultParentOptions}
                   placeholder="Select parent (optional)"
                   className="text-sm"
+                  isClearable
+                  isInvalid={!!formErrors.parent_id}
                 />
+                {formErrors.parent_id && (
+                  <p className="text-red-600 text-xs mt-1">{formErrors.parent_id}</p>
+                )}
               </div>
               <div>
                 <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-0.5">
@@ -717,14 +744,19 @@ export default function TenantCategoriesPage() {
                 </label>
                 <select
                   value={formData.is_active ? 'active' : 'inactive'}
-                  onChange={e =>
-                    setFormData({ ...formData, is_active: e.target.value === 'active' })
-                  }
-                  className="w-full px-2 py-1.25 text-sm border border-gray-300 dark:border-gray-600 rounded-sm focus:outline-none focus:ring-1 focus:ring-blue-500 dark:focus:ring-blue-400 focus:border-transparent dark:bg-gray-700 dark:text-gray-100"
+                  onChange={e => {
+                    setFormData({ ...formData, is_active: e.target.value === 'active' });
+                    clearFieldError('is_active');
+                  }}
+                  className={`w-full px-2 py-1.25 text-sm border rounded-sm focus:outline-none focus:ring-1 focus:ring-blue-500 dark:focus:ring-blue-400 focus:border-transparent dark:bg-gray-700 dark:text-gray-100 ${formErrors.is_active ? 'border-red-500' : 'border-gray-300 dark:border-gray-600'
+                    }`}
                 >
                   <option value="active">Active</option>
                   <option value="inactive">Inactive</option>
                 </select>
+                {formErrors.is_active && (
+                  <p className="text-red-600 text-xs mt-1">{formErrors.is_active}</p>
+                )}
               </div>
             </div>
             <div className="md:col-span-2 grid grid-cols-1 md:grid-cols-2 gap-1">
@@ -735,10 +767,14 @@ export default function TenantCategoriesPage() {
                 <textarea
                   placeholder="Describe the category"
                   value={formData.description}
-                  onChange={e => setFormData({ ...formData, description: e.target.value })}
-                  className="w-full px-2 py-1.25 text-sm border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500 dark:focus:ring-blue-400 focus:border-transparent dark:bg-gray-700 dark:text-gray-100 h-9 resize-none"
+                  onChange={e => { setFormData({ ...formData, description: e.target.value }); clearFieldError('description'); }}
+                  className={`w-full px-2 py-1.25 text-sm border rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500 dark:focus:ring-blue-400 focus:border-transparent dark:bg-gray-700 dark:text-gray-100 h-9 resize-none ${formErrors.description ? 'border-red-500' : 'border-gray-300 dark:border-gray-600'
+                    }`}
                   rows={3}
                 />
+                {formErrors.description && (
+                  <p className="text-red-600 text-xs mt-1">{formErrors.description}</p>
+                )}
               </div>
             </div>
             {formErrors.business_type && (

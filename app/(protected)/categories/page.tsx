@@ -59,6 +59,7 @@ export default function CategoriesPage() {
   const [defaultParentOptions, setDefaultParentOptions] = useState<
     { value: string; label: string }[]
   >([]);
+  const [isLoadingEdit, setIsLoadingEdit] = useState(false);
 
   const handleExportExcel = async () => {
     try {
@@ -262,23 +263,78 @@ export default function CategoriesPage() {
     setShowForm(true);
   };
 
-  const handleEditCategory = (category: Category) => {
-    setIsEditing(true);
-    setCurrentCategory(category);
+  const extractBusinessTypeIds = (cat: any): number[] => {
+    if (Array.isArray(cat?.business_types) && cat.business_types.length > 0) {
+      return cat.business_types.map((bt: any) => Number(bt.id)).filter((n: number) => !Number.isNaN(n));
+    }
+    if (Array.isArray(cat?.business_type_ids) && cat.business_type_ids.length > 0) {
+      return cat.business_type_ids.map((n: any) => Number(n)).filter((n: number) => !Number.isNaN(n));
+    }
+    if (cat?.business_type_id) {
+      const n = Number(cat.business_type_id);
+      return Number.isNaN(n) ? [] : [n];
+    }
+    if (cat?.business_type?.id) {
+      const n = Number(cat.business_type.id);
+      return Number.isNaN(n) ? [] : [n];
+    }
+    return [];
+  };
+
+  const applyCategoryToForm = (category: Category) => {
+    const freshIds = extractBusinessTypeIds(category as any);
     const initialIds = isSuperAdmin
-      ? ((category as any).business_types?.map((bt: any) => bt.id) ?? [])
+      ? freshIds
       : (tenantBusinessTypeId ? [tenantBusinessTypeId] : []);
     setFormData({
       name: category.name,
       description: category.description || '',
+      // BusinessTypeMultiSelect loads ALL options from /v1/business-types/dropdown
+      // and pre-selects these ids resolved from the fresh category data.
       business_type_ids: initialIds,
       is_active: category.is_active,
       parent_id: category.parent_id || undefined,
     });
+    // Keep parent label visible even before the parent dropdown reloads
+    const parentLabel =
+      (category as any)?.parent?.name ?? (category as any)?.parent_category ?? '';
+    if (category.parent_id && parentLabel) {
+      setParentCategories(prev => {
+        if (prev.some(c => c.id === category.parent_id)) return prev;
+        return [...prev, { id: category.parent_id!, name: parentLabel } as Category];
+      });
+      setDefaultParentOptions(prev => {
+        if (prev.some(o => o.value === category.parent_id)) return prev;
+        return [{ value: category.parent_id!, label: parentLabel }, ...prev];
+      });
+    }
+    loadParentCategoryOptions('', initialIds);
+  };
+
+  const handleEditCategory = async (category: Category) => {
+    setIsEditing(true);
+    setCurrentCategory(category);
     setFormErrors({});
     setDefaultParentOptions([]);
-    loadParentCategoryOptions('', initialIds);
+    setParentCategories([]);
+    // Show row data instantly so the form opens without delay
+    applyCategoryToForm(category);
     setShowForm(true);
+
+    // Then fetch fresh category through backend API so business_types are accurate.
+    // BusinessTypeMultiSelect shows all types from /v1/business-types/dropdown
+    // and selects the ids coming from this fresh data.
+    setIsLoadingEdit(true);
+    try {
+      const fresh = await categoryService.getCategoryById(category.id);
+      setCurrentCategory(fresh);
+      applyCategoryToForm(fresh);
+    } catch (error) {
+      console.error('Failed to fetch fresh category, falling back to row data:', error);
+      // Row data already applied above; keep the form usable.
+    } finally {
+      setIsLoadingEdit(false);
+    }
   };
 
   const validateForm = () => {
@@ -289,8 +345,32 @@ export default function CategoriesPage() {
     if (formData.business_type_ids.length === 0) {
       errors.business_type_ids = 'At least one business type is required';
     }
+    if (isEditing && formData.parent_id && currentCategory && formData.parent_id === currentCategory.id) {
+      errors.parent_id = 'Parent category cannot be itself';
+    }
     setFormErrors(errors);
     return Object.keys(errors).length === 0;
+  };
+
+  /** Map Laravel 422 errors to adjacent form fields (handles `field.0` nesting). */
+  const mapBackendErrors = (errors: Record<string, string[] | string>) => {
+    const transformed: { [key: string]: string } = {};
+    Object.entries(errors).forEach(([key, messages]) => {
+      const baseKey = key.split('.')[0];
+      const message = Array.isArray(messages) ? messages.join(', ') : messages;
+      // Merge multiple indexed messages (e.g. business_type_ids.0, .1) into one field
+      transformed[baseKey] = transformed[baseKey] ? `${transformed[baseKey]}, ${message}` : message;
+    });
+    return transformed;
+  };
+
+  const clearFieldError = (field: string) => {
+    setFormErrors(prev => {
+      if (!prev[field]) return prev;
+      const next = { ...prev };
+      delete next[field];
+      return next;
+    });
   };
 
   const handleFormSubmit = async (e: React.FormEvent) => {
@@ -300,6 +380,9 @@ export default function CategoriesPage() {
     try {
       const submitData = {
         ...formData,
+        // Send explicit null when cleared so backend removes the parent link
+        // (undefined keys are dropped by JSON.stringify and old parent would persist).
+        parent_id: formData.parent_id ?? null,
         business_type_ids: isSuperAdmin
           ? formData.business_type_ids
           : (tenantBusinessTypeId ? [tenantBusinessTypeId] : []),
@@ -327,11 +410,7 @@ export default function CategoriesPage() {
         response?: { data?: { errors?: Record<string, string[]>; message?: string } };
       };
       if (axiosError.response?.data?.errors) {
-        const transformedErrors: { [key: string]: string } = {};
-        Object.entries(axiosError.response.data.errors).forEach(([key, messages]) => {
-          transformedErrors[key] = Array.isArray(messages) ? messages.join(', ') : messages;
-        });
-        setFormErrors(transformedErrors);
+        setFormErrors(mapBackendErrors(axiosError.response.data.errors));
       } else {
         notify.error(axiosError.response?.data?.message || 'Failed to save category');
       }
@@ -700,6 +779,9 @@ export default function CategoriesPage() {
         <div className="bg-white dark:bg-gray-800 rounded-md shadow-sm border border-gray-200 dark:border-gray-700 p-1.5 mb-1">
           <h2 className="text-lg font-semibold mb-1.5 text-gray-900 dark:text-gray-100">
             {isEditing ? 'Edit Category' : 'Add Category'}
+            {isEditing && isLoadingEdit && (
+              <span className="ml-2 text-xs font-normal text-gray-500">Loading fresh data…</span>
+            )}
           </h2>
           <form onSubmit={handleFormSubmit} className="grid grid-cols-1 md:grid-cols-2 gap-1.5">
             <div className="md:col-span-2 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-1">
@@ -711,7 +793,7 @@ export default function CategoriesPage() {
                   type="text"
                   placeholder="Enter category name"
                   value={formData.name}
-                  onChange={e => setFormData({ ...formData, name: e.target.value })}
+                  onChange={e => { setFormData({ ...formData, name: e.target.value }); clearFieldError('name'); }}
                   className={`w-full px-2 py-1.25 text-sm border rounded-sm focus:outline-none focus:ring-1 focus:ring-blue-500 dark:focus:ring-blue-400 focus:border-transparent dark:bg-gray-700 dark:text-gray-100 ${formErrors.name ? 'border-red-500' : 'border-gray-300 dark:border-gray-600'
                     }`}
                   required
@@ -725,9 +807,10 @@ export default function CategoriesPage() {
                   </label>
                   <BusinessTypeMultiSelect
                     value={formData.business_type_ids}
-                    onChange={(ids) =>
-                      setFormData({ ...formData, business_type_ids: ids })
-                    }
+                    onChange={(ids) => {
+                      setFormData({ ...formData, business_type_ids: ids });
+                      clearFieldError('business_type_ids');
+                    }}
                     placeholder="Select business types"
                     isInvalid={!!formErrors.business_type_ids}
                   />
@@ -750,14 +833,20 @@ export default function CategoriesPage() {
                       }
                       : null
                   }
-                  onChange={option =>
-                    setFormData({ ...formData, parent_id: option?.value || undefined })
-                  }
+                  onChange={option => {
+                    setFormData({ ...formData, parent_id: option?.value || undefined });
+                    clearFieldError('parent_id');
+                  }}
                   loadOptions={loadParentCategoryOptions}
                   defaultOptions={defaultParentOptions}
                   placeholder="Select parent (optional)"
                   className="text-sm"
+                  isClearable
+                  isInvalid={!!formErrors.parent_id}
                 />
+                {formErrors.parent_id && (
+                  <p className="text-red-600 text-xs mt-1">{formErrors.parent_id}</p>
+                )}
               </div>
               <div>
                 <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-0.5">
@@ -765,14 +854,19 @@ export default function CategoriesPage() {
                 </label>
                 <select
                   value={formData.is_active ? 'active' : 'inactive'}
-                  onChange={e =>
-                    setFormData({ ...formData, is_active: e.target.value === 'active' })
-                  }
-                  className="w-full px-2 py-1.25 text-sm border border-gray-300 dark:border-gray-600 rounded-sm focus:outline-none focus:ring-1 focus:ring-blue-500 dark:focus:ring-blue-400 focus:border-transparent dark:bg-gray-700 dark:text-gray-100"
+                  onChange={e => {
+                    setFormData({ ...formData, is_active: e.target.value === 'active' });
+                    clearFieldError('is_active');
+                  }}
+                  className={`w-full px-2 py-1.25 text-sm border rounded-sm focus:outline-none focus:ring-1 focus:ring-blue-500 dark:focus:ring-blue-400 focus:border-transparent dark:bg-gray-700 dark:text-gray-100 ${formErrors.is_active ? 'border-red-500' : 'border-gray-300 dark:border-gray-600'
+                    }`}
                 >
                   <option value="active">Active</option>
                   <option value="inactive">Inactive</option>
                 </select>
+                {formErrors.is_active && (
+                  <p className="text-red-600 text-xs mt-1">{formErrors.is_active}</p>
+                )}
               </div>
             </div>
             <div className="md:col-span-2 grid grid-cols-1 md:grid-cols-2 gap-1">
@@ -783,10 +877,14 @@ export default function CategoriesPage() {
                 <textarea
                   placeholder="Describe the category"
                   value={formData.description}
-                  onChange={e => setFormData({ ...formData, description: e.target.value })}
-                  className="w-full px-2 py-1.25 text-sm border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500 dark:focus:ring-blue-400 focus:border-transparent dark:bg-gray-700 dark:text-gray-100 h-9 resize-none"
+                  onChange={e => { setFormData({ ...formData, description: e.target.value }); clearFieldError('description'); }}
+                  className={`w-full px-2 py-1.25 text-sm border rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500 dark:focus:ring-blue-400 focus:border-transparent dark:bg-gray-700 dark:text-gray-100 h-9 resize-none ${formErrors.description ? 'border-red-500' : 'border-gray-300 dark:border-gray-600'
+                    }`}
                   rows={3}
                 />
+                {formErrors.description && (
+                  <p className="text-red-600 text-xs mt-1">{formErrors.description}</p>
+                )}
               </div>
             </div>
             <div className="flex gap-2 md:col-span-2 mt-1.5">

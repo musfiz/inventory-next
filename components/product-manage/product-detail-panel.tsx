@@ -384,7 +384,10 @@ export function ProductDetailPanel({
 
   const openEditVariation = (v: ProductVariation) => {
     setVariationDraftId(String(v.id));
-    const existing = (v as any).stock; // backend may include stock summary per variation
+    // Backend may include the variation's stock rows (one per warehouse) on the
+    // list/show payload. Populate the stock/warehouse fields from the first row.
+    const stockRows: any[] = (v as any).stocks ?? ((v as any).stock ? [(v as any).stock] : []);
+    const existing = stockRows[0] ?? null;
     setVariationForm({
       name: v.name || '',
       sku: v.sku,
