@@ -1,20 +1,20 @@
 'use client';
 
-import { useState, useEffect } from 'react';
-import Link from 'next/link';
-import Image from 'next/image';
-import { useParams, notFound } from 'next/navigation';
-import { useSeo } from '@/lib/utils/use-seo';
 import { ChevronDown, ArrowRight, SlidersHorizontal } from 'lucide-react';
-import ProductCard from '@/components/storefront/ProductCard';
+import Image from 'next/image';
+import Link from 'next/link';
+import { useParams, notFound } from 'next/navigation';
+import { useState, useEffect } from 'react';
 import ProductCardSkeleton from '@/components/storefront/ProductCardSkeleton';
-import ScrollReveal from '@/components/storefront/ScrollReveal';
 import { FilterSidebar, FilterDrawer, PRICE_STEPS } from '@/components/storefront/ProductFilterSidebar';
+import ProductVariationCards from '@/components/storefront/ProductVariationCards';
+import ScrollReveal from '@/components/storefront/ScrollReveal';
 import { useStorefrontBrands } from '@/hooks/use-storefront-brands';
 import { useStorefrontStatus } from '@/hooks/use-storefront-status';
-import type { Product } from '@/types/storefront';
+import { useSeo } from '@/lib/utils/use-seo';
 import storefrontService from '@/services/storefrontService';
 import type { CategoryPageData } from '@/services/storefrontService';
+import type { Product } from '@/types/storefront';
 
 const SORTS = [
   { id: 'featured', label: 'Featured' },
@@ -349,9 +349,7 @@ export default function CategoryPage() {
             <>
               <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
                 {products.map((p, i) => (
-                  <ScrollReveal key={p.id} animation="zoom-in" staggerIndex={i}>
-                    <ProductCard product={p} />
-                  </ScrollReveal>
+                  <ProductVariationCards key={p.id} product={p} staggerIndex={i} />
                 ))}
               </div>
               {hasMore && (

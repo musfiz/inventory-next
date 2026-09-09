@@ -1,8 +1,5 @@
 'use client';
 
-import { useState, useEffect, useRef } from 'react';
-import Link from 'next/link';
-import Image from 'next/image';
 import {
   ChevronLeft,
   ChevronRight,
@@ -12,23 +9,26 @@ import {
   ArrowRight,
   History,
 } from 'lucide-react';
-import ProductCard from '@/components/storefront/ProductCard';
-import ProductCardSkeleton from '@/components/storefront/ProductCardSkeleton';
-import ScrollReveal from '@/components/storefront/ScrollReveal';
+import Image from 'next/image';
+import Link from 'next/link';
+import { useState, useEffect, useRef } from 'react';
+import GroceryHomePage from '@/components/storefront/grocery/GroceryHomePage';
 import HeroCarousel, { HeroCarouselSkeleton } from '@/components/storefront/HeroCarousel';
+import ProductCardSkeleton from '@/components/storefront/ProductCardSkeleton';
+import ProductVariationCards from '@/components/storefront/ProductVariationCards';
+import ScrollReveal from '@/components/storefront/ScrollReveal';
+import { useStorefrontTheme } from '@/contexts/storefront-theme-context';
 import { useRecentlyViewed } from '@/hooks/use-recently-viewed';
-import storefrontService from '@/services/storefrontService';
-import type { StorefrontHeroSlider } from '@/services/storefrontService';
-import type { StorefrontOfferSlide, Product } from '@/types/storefront';
+import { useStorefrontCategories } from '@/hooks/use-storefront-categories';
+import { useStorefrontStatus } from '@/hooks/use-storefront-status';
 import {
   accentDisplayClass,
   accentOverlayStyle,
 } from '@/lib/utils/offer-accent';
-import { useStorefrontCategories } from '@/hooks/use-storefront-categories';
-import { useStorefrontStatus } from '@/hooks/use-storefront-status';
 import { useSeo } from '@/lib/utils/use-seo';
-import { useStorefrontTheme } from '@/contexts/storefront-theme-context';
-import GroceryHomePage from '@/components/storefront/grocery/GroceryHomePage';
+import storefrontService from '@/services/storefrontService';
+import type { StorefrontHeroSlider } from '@/services/storefrontService';
+import type { StorefrontOfferSlide, Product } from '@/types/storefront';
 
 const resolveImageUrl = (url?: string | null) => {
   if (!url) return '';
@@ -248,9 +248,7 @@ const FeaturedProducts = () => {
 
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-4 xl:grid-cols-5">
         {products.map((p, i) => (
-          <ScrollReveal key={p.id} animation="zoom-in" staggerIndex={i}>
-            <ProductCard product={p as any} />
-          </ScrollReveal>
+          <ProductVariationCards key={p.id} product={p as any} staggerIndex={i} />
         ))}
       </div>
     </section>
@@ -335,9 +333,7 @@ const BestSellers = () => {
 
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-4 xl:grid-cols-5">
         {products.map((p, i) => (
-          <ScrollReveal key={p.id} animation="zoom-in" staggerIndex={i}>
-            <ProductCard product={p as any} />
-          </ScrollReveal>
+          <ProductVariationCards key={p.id} product={p as any} staggerIndex={i} />
         ))}
       </div>
     </section>
@@ -422,9 +418,7 @@ const NewArrivals = () => {
 
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-4 xl:grid-cols-5">
         {products.map((p, i) => (
-          <ScrollReveal key={p.id} animation="zoom-in" staggerIndex={i}>
-            <ProductCard product={p as any} />
-          </ScrollReveal>
+          <ProductVariationCards key={p.id} product={p as any} staggerIndex={i} />
         ))}
       </div>
     </section>
@@ -596,9 +590,7 @@ const RecentlyViewed = () => {
       </ScrollReveal>
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5">
         {products.map((p, i) => (
-          <ScrollReveal key={p.id} animation="zoom-in" staggerIndex={i}>
-            <ProductCard product={p} />
-          </ScrollReveal>
+          <ProductVariationCards key={p.id} product={p} staggerIndex={i} />
         ))}
       </div>
     </section>

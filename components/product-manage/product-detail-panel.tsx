@@ -70,6 +70,7 @@ export function ProductDetailPanel({
   tenantId,
   onTenantChange,
   createTrigger = 0,
+  refreshKey = 0,
   onProductSaved,
   onProductDeleted,
   onVariationsChanged,
@@ -81,6 +82,8 @@ export function ProductDetailPanel({
   tenantId?: string | null;
   onTenantChange?: (id: string | null) => void;
   createTrigger?: number;
+  /** Bump to refetch the currently loaded product's data (product, variations & stock). */
+  refreshKey?: number;
   onProductSaved?: (p: Product) => void;
   onProductDeleted?: () => void;
   /** Fired after a variation save/delete so the tree can refresh that product's variations. */
@@ -289,6 +292,29 @@ export function ProductDetailPanel({
       openNewProductForm();
     }
   }, [createTrigger, openNewProductForm]);
+
+  // Parent-triggered refresh: re-fetch the currently loaded product (and its
+  // variations / stock) from the backend without changing the selection, the
+  // business type, or the super-admin tenant scope.
+  useEffect(() => {
+    if (!refreshKey || refreshKey <= 0) return;
+    if (!selectedProductId) return;
+    let mounted = true;
+    setLoadingProduct(true);
+    productService.getProduct(selectedProductId)
+      .then(p => {
+        if (!mounted) return;
+        openEditProductForm(p);
+      })
+      .catch((e: any) => {
+        if (mounted) notify.error(e?.response?.data?.message || 'Failed to refresh product');
+      })
+      .finally(() => {
+        if (mounted) setLoadingProduct(false);
+      });
+    return () => { mounted = false; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [refreshKey]);
 
   const backToEmpty = () => {
     setMode('empty');

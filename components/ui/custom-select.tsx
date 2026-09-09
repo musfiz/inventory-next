@@ -1,7 +1,7 @@
 'use client';
 
 import React from 'react';
-import Select, { StylesConfig, ThemeConfig } from 'react-select';
+import Select, { components, SingleValueProps, StylesConfig, ThemeConfig } from 'react-select';
 import AsyncSelect from 'react-select/async';
 
 export interface SelectOption {
@@ -33,6 +33,31 @@ interface CustomSelectProps {
   compact?: boolean;
 }
 
+/**
+ * Render the selected option with ellipsis truncation ("...") so a long label
+ * stays on a single line and never overflows the control's width — mirroring a
+ * native <select>. The wrapper span constrains the absolutely-positioned
+ * react-select single value so it can shrink with the control.
+ */
+const SingleValueWithEllipsis: React.FC<SingleValueProps<SelectOption, false>> = props => (
+  <components.SingleValue {...props}>
+    <span
+      style={{
+        display: 'block',
+        overflow: 'hidden',
+        textOverflow: 'ellipsis',
+        whiteSpace: 'nowrap',
+        maxWidth: '100%',
+      }}
+    >
+      {props.children}
+    </span>
+  </components.SingleValue>
+);
+
+// Shared components override: truncate the selected value in both Select & AsyncSelect.
+const TRUNCATE_COMPONENTS = { SingleValue: SingleValueWithEllipsis };
+
 const customStyles = (isInvalid?: boolean): StylesConfig<SelectOption, false> => ({
   control: (provided, state) => ({
     ...provided,
@@ -62,6 +87,7 @@ const customStyles = (isInvalid?: boolean): StylesConfig<SelectOption, false> =>
     padding: '0 8px',
     display: 'flex',
     alignItems: 'center',
+    minWidth: 0, // allow the value to shrink so truncation applies
   }),
   indicatorsContainer: provided => ({
     ...provided,
@@ -71,6 +97,9 @@ const customStyles = (isInvalid?: boolean): StylesConfig<SelectOption, false> =>
     ...provided,
     color: 'var(--tw-text-gray-100)',
     fontSize: '0.875rem', // text-sm to match other inputs
+    overflow: 'hidden',
+    textOverflow: 'ellipsis',
+    whiteSpace: 'nowrap',
   }),
   placeholder: provided => ({
     ...provided,
@@ -159,6 +188,7 @@ const compactStyles = (isInvalid?: boolean): StylesConfig<SelectOption, false> =
     padding: '0 8px',
     display: 'flex',
     alignItems: 'center',
+    minWidth: 0, // allow the value to shrink so truncation applies
   }),
   indicatorsContainer: provided => ({
     ...provided,
@@ -168,6 +198,9 @@ const compactStyles = (isInvalid?: boolean): StylesConfig<SelectOption, false> =
     ...provided,
     color: 'var(--rc-text, #111827)',
     fontSize: '0.75rem', // text-xs
+    overflow: 'hidden',
+    textOverflow: 'ellipsis',
+    whiteSpace: 'nowrap',
   }),
   placeholder: provided => ({
     ...provided,
@@ -260,6 +293,7 @@ export default function CustomSelect({
         menuPosition="fixed"
         isClearable={isClearable}
         formatOptionLabel={formatOptionLabel}
+        components={TRUNCATE_COMPONENTS}
       />
     );
   }
@@ -282,6 +316,7 @@ export default function CustomSelect({
       menuPosition="fixed"
       isClearable={isClearable}
       formatOptionLabel={formatOptionLabel}
+      components={TRUNCATE_COMPONENTS}
     />
   );
 }

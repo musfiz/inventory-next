@@ -1,16 +1,16 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { ChevronDown, ArrowRight, Loader2, Package } from 'lucide-react';
 import Link from 'next/link';
 import { useParams } from 'next/navigation';
-import { useSeo } from '@/lib/utils/use-seo';
-import { ChevronDown, ArrowRight, Loader2, Package } from 'lucide-react';
-import ProductCard from '@/components/storefront/ProductCard';
+import { useState, useEffect } from 'react';
+import ProductVariationCards from '@/components/storefront/ProductVariationCards';
 import ScrollReveal from '@/components/storefront/ScrollReveal';
-import { formatMoney } from '@/lib/utils/format';
-import storefrontService from '@/services/storefrontService';
-import { notify } from '@/lib/notifications';
 import { useStorefrontStatus } from '@/hooks/use-storefront-status';
+import { notify } from '@/lib/notifications';
+import { formatMoney } from '@/lib/utils/format';
+import { useSeo } from '@/lib/utils/use-seo';
+import storefrontService from '@/services/storefrontService';
 import type { Brand, Product } from '@/types/storefront';
 
 const SORTS = [
@@ -207,9 +207,7 @@ export default function BrandPage() {
           <>
             <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
               {products.map((p, i) => (
-                <ScrollReveal key={p.id} animation="zoom-in" staggerIndex={i}>
-                  <ProductCard product={p} />
-                </ScrollReveal>
+                <ProductVariationCards key={p.id} product={p} staggerIndex={i} />
               ))}
             </div>
             {page < meta.last_page && (

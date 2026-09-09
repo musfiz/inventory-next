@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
-import { LayoutGrid, List } from 'lucide-react';
+import { LayoutGrid, List, RefreshCw } from 'lucide-react';
 import apiClient from '@/lib/api/axios';
 import { notify } from '@/lib/notifications';
 import { usePermissions } from '@/hooks/use-permissions';
@@ -50,6 +50,9 @@ export default function ProductManageTreePage() {
   const [selectedProductId, setSelectedProductId] = useState<string | null>(null);
   const [createTrigger, setCreateTrigger] = useState(0);
   const [treeRefreshKey, setTreeRefreshKey] = useState(0);
+  // Bump to refetch the currently loaded product's data (product, variations & stock)
+  // in the detail panel without clearing the tree selection.
+  const [detailRefreshKey, setDetailRefreshKey] = useState(0);
   // Signal the tree to refetch a product's variations after save/delete in the detail panel.
   const [variationsSignal, setVariationsSignal] = useState<{ productId: string; nonce: number } | null>(null);
 
@@ -120,6 +123,14 @@ export default function ProductManageTreePage() {
     setVariationsSignal(prev => ({ productId, nonce: (prev?.nonce ?? 0) + 1 }));
   };
 
+  // Reload product/entry/variation/stock data without resetting the tenant
+  // selection (super admin) or the business type input. Only scopes are preserved;
+  // the tree and the open detail form are refetched from the backend.
+  const handleRefresh = () => {
+    setTreeRefreshKey(v => v + 1);
+    setDetailRefreshKey(v => v + 1);
+  };
+
   const canCreateProduct = hasPermission('create-product') || isSuperAdmin;
   const canUpdateProduct = hasPermission('update-product') || hasPermission('edit-product') || isSuperAdmin;
 
@@ -132,6 +143,9 @@ export default function ProductManageTreePage() {
           <span className="text-xs font-normal text-gray-500 dark:text-gray-400 ml-1 hidden sm:inline">Tree view · Business type → Products → Variations</span>
         </h1>
         <div className="flex items-center gap-1.5">
+          <button onClick={handleRefresh} title="Refresh product data" className="inline-flex items-center gap-1.5 px-2.5 py-1.5 text-xs bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 rounded hover:bg-gray-50">
+            <RefreshCw className="w-3.5 h-3.5" /> Refresh
+          </button>
           <button onClick={() => router.push('/products')} className="inline-flex items-center gap-1.5 px-2.5 py-1.5 text-xs bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 rounded hover:bg-gray-50">
             <List className="w-3.5 h-3.5" /> List view
           </button>
@@ -167,6 +181,7 @@ export default function ProductManageTreePage() {
             tenantId={tenantId}
             onTenantChange={setTenantId}
             createTrigger={createTrigger}
+            refreshKey={detailRefreshKey}
             onProductSaved={handleProductSaved}
             onProductDeleted={handleProductDeleted}
             onVariationsChanged={handleVariationsChanged}

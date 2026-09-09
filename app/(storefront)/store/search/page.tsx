@@ -1,19 +1,19 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { Search, X, ArrowRight, ChevronDown, SlidersHorizontal } from 'lucide-react';
 import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
-import { useSeo } from '@/lib/utils/use-seo';
-import { Search, X, ArrowRight, ChevronDown, SlidersHorizontal } from 'lucide-react';
-import ProductCard from '@/components/storefront/ProductCard';
-import ScrollReveal from '@/components/storefront/ScrollReveal';
+import { useState, useEffect } from 'react';
 import ProductCardSkeleton from '@/components/storefront/ProductCardSkeleton';
-import { POPULAR_SEARCHES } from '@/lib/storefront/mock-data';
-import { useStorefrontCategories } from '@/hooks/use-storefront-categories';
-import { useStorefrontBrands } from '@/hooks/use-storefront-brands';
 import { FilterSidebar, FilterDrawer, PRICE_STEPS } from '@/components/storefront/ProductFilterSidebar';
-import storefrontService from '@/services/storefrontService';
+import ProductVariationCards from '@/components/storefront/ProductVariationCards';
+import ScrollReveal from '@/components/storefront/ScrollReveal';
+import { useStorefrontBrands } from '@/hooks/use-storefront-brands';
+import { useStorefrontCategories } from '@/hooks/use-storefront-categories';
 import { useStorefrontStatus } from '@/hooks/use-storefront-status';
+import { POPULAR_SEARCHES } from '@/lib/storefront/mock-data';
+import { useSeo } from '@/lib/utils/use-seo';
+import storefrontService from '@/services/storefrontService';
 import type { Product } from '@/types/storefront';
 
 const SORTS = [
@@ -273,9 +273,7 @@ export default function SearchPage() {
               <>
                 <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
                   {displayed.map((p, i) => (
-                    <ScrollReveal key={p.id} animation="zoom-in" staggerIndex={i}>
-                      <ProductCard product={p} />
-                    </ScrollReveal>
+                    <ProductVariationCards key={p.id} product={p} staggerIndex={i} />
                   ))}
                 </div>
                 {hasMore && (
