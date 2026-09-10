@@ -1,23 +1,28 @@
 'use client';
 
-import { useEffect, useState, useCallback } from 'react';
-import { useRouter } from 'next/navigation';
 import { LayoutGrid, List, RefreshCw } from 'lucide-react';
-import apiClient from '@/lib/api/axios';
-import { notify } from '@/lib/notifications';
-import { usePermissions } from '@/hooks/use-permissions';
-import { useAuthStore } from '@/stores/auth-store';
-import type { Category, Product } from '@/types/api.types';
-import { ProductTreePanel } from '@/components/product-manage/product-tree';
+import { useRouter } from 'next/navigation';
+import { useEffect, useState } from 'react';
+import { useSWRConfig } from 'swr';
 import { ProductDetailPanel } from '@/components/product-manage/product-detail-panel';
+import { ProductTreePanel } from '@/components/product-manage/product-tree';
+import { usePermissions } from '@/hooks/use-permissions';
+import { useCategories } from '@/services/queries/useCategories';
+import { useAuthStore } from '@/stores/auth-store';
+import type { Product } from '@/types/api.types';
 
 export default function ProductManageTreePage() {
   const router = useRouter();
   const { hasPermission, hasAnyPermission, isSuperAdmin, isHydrated } = usePermissions();
+  const { mutate } = useSWRConfig();
   const user = useAuthStore(s => s.user);
 
-  const tenantBusinessTypeId = (user as any)?.tenant?.business_type?.id ?? null;
-  const [businessTypeId, setBusinessTypeId] = useState<number | null>(isSuperAdmin ? null : tenantBusinessTypeId);
+  const tenantBusinessTypeId = user?.tenant?.business_type?.id ?? null;
+  // Start null (not a pre-hydration guess) — the real scope resolves after
+  // hydration via effectiveBtId below, and queries stay disabled until then,
+  // so no request ever fires with a wrong/null business type.
+  const [businessTypeId, setBusinessTypeId] = useState<number | null>(null);
+  const effectiveBtId = isSuperAdmin ? businessTypeId : tenantBusinessTypeId;
 
   // Tenant scope for warehouse selection. Super admin picks a tenant explicitly and
   // the choice persists in sessionStorage until the tab closes or they clear it.
@@ -42,23 +47,14 @@ export default function ProductManageTreePage() {
     } catch { /* storage unavailable */ }
   }, [isSuperAdmin, tenantId]);
 
-  // Categories still needed for the product form dropdown
-  const [categories, setCategories] = useState<Category[]>([]);
-  const [, setLoadingCategories] = useState(false);
+  // Categories for the product form dropdown. Gated on hydration — this single
+  // change eliminates the pre-hydration double fetch (Issue 1). The key includes
+  // the business type, so switching scope refetches automatically.
+  const { data: categories = [] } = useCategories(effectiveBtId, isHydrated);
 
   // Left tree selection (business_type_id-wise product nodes)
   const [selectedProductId, setSelectedProductId] = useState<string | null>(null);
   const [createTrigger, setCreateTrigger] = useState(0);
-  const [treeRefreshKey, setTreeRefreshKey] = useState(0);
-  // Bump to refetch the currently loaded product's data (product, variations & stock)
-  // in the detail panel without clearing the tree selection.
-  const [detailRefreshKey, setDetailRefreshKey] = useState(0);
-  // Signal the tree to refetch a product's variations after save/delete in the detail panel.
-  const [variationsSignal, setVariationsSignal] = useState<{ productId: string; nonce: number } | null>(null);
-
-  useEffect(() => {
-    if (!isSuperAdmin && tenantBusinessTypeId) setBusinessTypeId(tenantBusinessTypeId);
-  }, [isSuperAdmin, tenantBusinessTypeId]);
 
   useEffect(() => {
     if (isHydrated && !hasAnyPermission(['view-product', 'view-product-variation', 'view-product-image', 'view-product-barcode'])) {
@@ -66,33 +62,8 @@ export default function ProductManageTreePage() {
     }
   }, [isHydrated, hasAnyPermission, router]);
 
-  const fetchCategories = useCallback(async () => {
-    setLoadingCategories(true);
-    try {
-      const params: Record<string, any> = { per_page: 100 };
-      const bt = isSuperAdmin ? businessTypeId : tenantBusinessTypeId;
-      if (bt) params.business_type_id = bt;
-      const res = await apiClient.get('/api/v1/categories', { params });
-      const raw: any[] = res.data?.data ?? res.data ?? [];
-      const normalized: Category[] = raw.map((r: any) => ({
-        id: String(r.id),
-        name: r.name,
-        description: r.description,
-        parent_id: r.parent_id ? String(r.parent_id) : undefined,
-        is_active: !!r.is_active,
-        business_types: r.business_types,
-        business_type: r.business_type,
-        parent: r.parent,
-      } as Category));
-      setCategories(normalized);
-    } catch (e: any) {
-      notify.error(e?.response?.data?.message || 'Failed to load categories');
-    } finally { setLoadingCategories(false); }
-  }, [businessTypeId, isSuperAdmin, tenantBusinessTypeId]);
-
-  useEffect(() => { fetchCategories(); }, [fetchCategories]);
-
-  // When business type changes, clear selection and refresh tree.
+  // When business type changes, clear selection. No refresh-key bump needed —
+  // the SWR keys contain the business type, so tree + categories refetch alone.
   // Tenant selection is intentionally preserved — it's a separate scope and
   // only cleared manually (or when the tab closes).
   const handleBusinessTypeChange = (id: number | null) => {
@@ -111,28 +82,27 @@ export default function ProductManageTreePage() {
 
   const handleProductSaved = (p: Product) => {
     setSelectedProductId(String(p.id));
-    setTreeRefreshKey(v => v + 1);
+    // New/renamed product must appear in the tree.
+    void mutate(key => Array.isArray(key) && key[0] === 'products');
   };
 
   const handleProductDeleted = () => {
-    setTreeRefreshKey(v => v + 1);
+    setSelectedProductId(null);
+    void mutate(key => Array.isArray(key) && key[0] === 'products');
   };
 
-  // Bump the tree to refetch a product's variations after a save/delete.
-  const handleVariationsChanged = (productId: string) => {
-    setVariationsSignal(prev => ({ productId, nonce: (prev?.nonce ?? 0) + 1 }));
-  };
-
-  // Reload product/entry/variation/stock data without resetting the tenant
-  // selection (super admin) or the business type input. Only scopes are preserved;
-  // the tree and the open detail form are refetched from the backend.
+  // Reload product/variation/category data without resetting the tenant
+  // selection (super admin) or the business type input. One invalidation fans
+  // out to every hook (tree + detail panel); SWR dedupes concurrent refetches.
   const handleRefresh = () => {
-    setTreeRefreshKey(v => v + 1);
-    setDetailRefreshKey(v => v + 1);
+    void mutate(
+      key =>
+        Array.isArray(key) &&
+        (key[0] === 'categories' || key[0] === 'products' || key[0] === 'product' || key[0] === 'variations')
+    );
   };
 
   const canCreateProduct = hasPermission('create-product') || isSuperAdmin;
-  const canUpdateProduct = hasPermission('update-product') || hasPermission('edit-product') || isSuperAdmin;
 
   return (
     <div className="space-y-2">
@@ -163,13 +133,8 @@ export default function ProductManageTreePage() {
             selectedProductId={selectedProductId}
             onSelectProduct={handleSelectProduct}
             onAddProduct={handleAddProduct}
-            onEditProduct={(p) => setSelectedProductId(String(p.id))}
-            onRefresh={() => setTreeRefreshKey(v => v + 1)}
+            onRefresh={handleRefresh}
             canCreate={canCreateProduct}
-            canUpdate={canUpdateProduct}
-            refreshKey={treeRefreshKey}
-            categories={categories}
-            variationsSignal={variationsSignal}
           />
         </div>
 
@@ -179,12 +144,9 @@ export default function ProductManageTreePage() {
             categories={categories}
             businessTypeId={businessTypeId}
             tenantId={tenantId}
-            onTenantChange={setTenantId}
             createTrigger={createTrigger}
-            refreshKey={detailRefreshKey}
             onProductSaved={handleProductSaved}
             onProductDeleted={handleProductDeleted}
-            onVariationsChanged={handleVariationsChanged}
           />
         </div>
       </div>

@@ -1,18 +1,23 @@
 'use client';
 
-import { useEffect, useState, useCallback, useMemo } from 'react';
-import { Package, Edit2, Trash2, Tag, Image as ImageIcon, Barcode, Loader2, Plus, ArrowLeft, Save, X } from 'lucide-react';
+import { Package, Edit2, Trash2, Tag, Image as ImageIcon, Barcode, Loader2, Plus, ArrowLeft, Save } from 'lucide-react';
 import { useRouter } from 'next/navigation';
-import productService from '@/services/productService';
-import productVariationService from '@/services/productVariationService';
-import stockService from '@/services/stockService';
-import binService from '@/services/binService';
-import commonService from '@/services/commonService';
-import { confirm, notify } from '@/lib/notifications';
-import type { Product, ProductVariation, Category } from '@/types/api.types';
+import { useEffect, useState, useCallback, useMemo, useRef } from 'react';
+import { mutate as globalMutate } from 'swr';
 import CustomSelect, { SelectOption } from '@/components/ui/custom-select';
 import { usePermissions } from '@/hooks/use-permissions';
+import { confirm, notify } from '@/lib/notifications';
+import binService from '@/services/binService';
+import commonService from '@/services/commonService';
+import productService from '@/services/productService';
+import productVariationService from '@/services/productVariationService';
+import { useBrandsDropdown } from '@/services/queries/useBrandsDropdown';
+import { useProduct } from '@/services/queries/useProduct';
+import { useProductVariations } from '@/services/queries/useProductVariations';
+import { useUnitsDropdown } from '@/services/queries/useUnitsDropdown';
+import stockService from '@/services/stockService';
 import { useAuthStore } from '@/stores/auth-store';
+import type { Product, ProductVariation, Category } from '@/types/api.types';
 
 type PanelMode = 'empty' | 'form';
 
@@ -68,37 +73,28 @@ export function ProductDetailPanel({
   categories,
   businessTypeId,
   tenantId,
-  onTenantChange,
   createTrigger = 0,
-  refreshKey = 0,
   onProductSaved,
   onProductDeleted,
-  onVariationsChanged,
 }: {
   selectedProductId: string | null;
   categories: Category[];
   businessTypeId: number | null;
   /** Super admin-selected tenant for warehouse scope; tenant users pass their own. */
   tenantId?: string | null;
-  onTenantChange?: (id: string | null) => void;
   createTrigger?: number;
-  /** Bump to refetch the currently loaded product's data (product, variations & stock). */
-  refreshKey?: number;
   onProductSaved?: (p: Product) => void;
   onProductDeleted?: () => void;
-  /** Fired after a variation save/delete so the tree can refresh that product's variations. */
-  onVariationsChanged?: (productId: string) => void;
 }) {
   const router = useRouter();
-  const { hasPermission, isSuperAdmin } = usePermissions();
+  const { hasPermission, isSuperAdmin, isHydrated } = usePermissions();
   const user = useAuthStore(s => s.user);
-  const tenantBusinessTypeId = (user as any)?.tenant?.business_type?.id ?? null;
+  const tenantBusinessTypeId = user?.tenant?.business_type?.id ?? null;
   const effectiveBtId = isSuperAdmin ? businessTypeId : tenantBusinessTypeId;
 
   const [mode, setMode] = useState<PanelMode>('empty');
 
   const canCreateProduct = hasPermission('create-product');
-  const canEditProduct = hasPermission('edit-product') || hasPermission('update-product');
   const canCreateVariation = hasPermission('create-product-variation') || hasPermission('create-products');
   const canEditVariation = hasPermission('update-product-variation') || hasPermission('update-products');
   const canDeleteVariation = hasPermission('delete-products');
@@ -111,11 +107,21 @@ export function ProductDetailPanel({
   const [selectedUnitOpt, setSelectedUnitOpt] = useState<SelectOption | null>(null);
   const [productErrors, setProductErrors] = useState<Record<string, string[]>>({});
   const [savingProduct, setSavingProduct] = useState(false);
-  const [loadingProduct, setLoadingProduct] = useState(false);
+
+  // Cache-backed preloads (same Issue 5 rationale as tenant/business-type):
+  // SWR dedupes StrictMode remounts and form open/close cycles, so the form
+  // no longer fires a fresh GET /api/v1/dropdown/brand (and /unit, on first
+  // focus) every time it opens. NOTE: no `= []` defaults — fresh [] literals
+  // would retrigger the mapping effects below in a loop.
+  const { data: preloadedBrands, isLoading: loadingBrands } = useBrandsDropdown(
+    effectiveBtId,
+    mode === 'form'
+  );
+  const { data: preloadedUnits } = useUnitsDropdown(mode === 'form');
 
   const [brandOptions, setBrandOptions] = useState<SelectOption[]>([]);
   const [unitOptions, setUnitOptions] = useState<SelectOption[]>([]);
-  const [loadingFormOptions, setLoadingFormOptions] = useState(false);
+  const loadingFormOptions = loadingBrands;
 
   // Warehouse + bin options for the variation's optional stock entry
   const [warehouseOptions, setWarehouseOptions] = useState<SelectOption[]>([]);
@@ -123,17 +129,28 @@ export function ProductDetailPanel({
   const [binOptions, setBinOptions] = useState<SelectOption[]>([]);
   const [loadingBins, setLoadingBins] = useState(false);
 
+  // ── Shared data: SWR handles dedup, caching, and stale-response ordering
+  // internally, so rapid selection changes can no longer let an older fetch
+  // overwrite a newer one (Issue 4), and the ['variations', id] key is shared
+  // with the tree — one fetch serves both consumers (Issue 3).
+  const variationProductId = selectedProductId && isHydrated ? selectedProductId : null;
+  const { data: loadedProduct, isLoading: loadingProduct } = useProduct(
+    selectedProductId && isHydrated ? selectedProductId : null
+  );
+  const { data: variations = [], isLoading: loadingVariations, mutate: mutateVariations } =
+    useProductVariations(variationProductId);
+
   const loadWarehouseOptions = useCallback(async (input: string): Promise<SelectOption[]> => {
     try {
       // Super admin picks a tenant explicitly (tenant-scoped warehouses);
       // tenant users are scoped to their own tenant.
-      const scopedTenantId = tenantId ?? (user as any)?.tenant_id ?? (user as any)?.tenant?.id;
+      const scopedTenantId = tenantId ?? user?.tenant_id ?? user?.tenant?.id;
       if (!scopedTenantId) return [];
-      const list: any[] = await commonService.getWarehousesByTenant({
+      const list = await commonService.getWarehousesByTenant({
         search: input.trim() || undefined,
         tenant_id: scopedTenantId,
-      } as any);
-      return (list || []).map((w: any) => ({ value: String(w.id), label: `${w.name}${w.code ? ` (${w.code})` : ''}` }));
+      });
+      return (list || []).map((w) => ({ value: String(w.id), label: `${w.name}${w.code ? ` (${w.code})` : ''}` }));
     } catch {
       return [];
     }
@@ -143,14 +160,14 @@ export function ProductDetailPanel({
     // Bin is optional in the stock entry; only meaningful once a warehouse is chosen.
     if (!scopedWarehouseId) return [];
     try {
-      const scopedTenantId = tenantId ?? (user as any)?.tenant_id ?? (user as any)?.tenant?.id;
+      const scopedTenantId = tenantId ?? user?.tenant_id ?? user?.tenant?.id;
       if (!scopedTenantId) return [];
-      const list: any[] = await binService.getBinsForDropdown({
+      const list = await binService.getBinsForDropdown({
         search: input.trim() || undefined,
         warehouse_id: scopedWarehouseId,
         tenant_id: scopedTenantId,
-      } as any);
-      return (list || []).map((b: any) => ({
+      });
+      return (list || []).map((b) => ({
         value: String(b.id),
         label: b.name || `Bin #${b.id}`,
       }));
@@ -159,63 +176,41 @@ export function ProductDetailPanel({
     }
   }, [tenantId, user]);
 
-  // Server-side searchable unit loader (AsyncSelect)
+  // Server-side searchable unit loader (AsyncSelect). The empty preload path
+  // is served by useUnitsDropdown above (cached); typed input fires live.
   const loadUnitOptions = useCallback(async (inputValue: string): Promise<SelectOption[]> => {
+    const q = inputValue.trim();
+    if (!q) return unitOptions;
     try {
-      const params: { search?: string } = {};
-      if (inputValue && inputValue.trim()) params.search = inputValue.trim();
-      const units = await commonService.getUnitsForDropdown(params);
+      const units = await commonService.getUnitsForDropdown({ search: q });
       return units.map(u => ({ value: String(u.id), label: `${u.name} (${u.short_name})` }));
     } catch {
       return [];
     }
-  }, []);
+  }, [unitOptions]);
 
   const categoryOptions = useMemo(
     () => categories.filter(c => c.is_active !== false).map(c => ({ value: String(c.id), label: c.name })),
     [categories]
   );
 
+  // Map the cached preloads into select options (no separate fetch).
+  // A dropdown load failure is non-fatal — the form stays usable.
   useEffect(() => {
-    if (mode !== 'form') return;
-    let mounted = true;
-    (async () => {
-      setLoadingFormOptions(true);
-      try {
-        const [brands, units] = await Promise.all([
-          commonService.getBrandsForDropdown(effectiveBtId ? { business_type_id: effectiveBtId } : {}),
-          commonService.getUnitsForDropdown({}),
-        ]);
-        if (!mounted) return;
-        setBrandOptions(brands.map(b => ({ value: String(b.id), label: b.name })));
-        setUnitOptions(units.map(u => ({ value: String(u.id), label: `${u.name} (${u.short_name})` })));
-      } catch {
-        /* dropdown load failure is non-fatal, form still usable */
-      } finally {
-        if (mounted) setLoadingFormOptions(false);
-      }
-    })();
-    return () => { mounted = false; };
-  }, [mode, effectiveBtId]);
+    if (!preloadedBrands) return;
+    setBrandOptions(preloadedBrands.map(b => ({ value: String(b.id), label: b.name })));
+  }, [preloadedBrands]);
+
+  useEffect(() => {
+    if (!preloadedUnits) return;
+    setUnitOptions(preloadedUnits.map(u => ({ value: String(u.id), label: `${u.name} (${u.short_name})` })));
+  }, [preloadedUnits]);
 
   // Variations of the currently open product
-  const [variations, setVariations] = useState<ProductVariation[]>([]);
-  const [loadingVariations, setLoadingVariations] = useState(false);
   const [variationDraftId, setVariationDraftId] = useState<string | null>(null); // 'new' | variation id | null
   const [variationForm, setVariationForm] = useState<VariationFormState>(emptyVariationForm());
   const [savingVariation, setSavingVariation] = useState(false);
   const [generatingSku, setGeneratingSku] = useState(false);
-
-  const fetchVariations = useCallback(async (productId: string) => {
-    setLoadingVariations(true);
-    try {
-      const res: any = await productVariationService.getVariations({ product_id: productId, per_page: 100 } as any);
-      // getVariations returns the bare items array (service unwraps response.data.data).
-      setVariations(Array.isArray(res) ? res : (res?.data ?? res?.variations ?? []));
-    } catch (e: any) {
-      notify.error(e?.response?.data?.message || 'Failed to load variations');
-    } finally { setLoadingVariations(false); }
-  }, []);
 
   // When a variation draft opens, prefetch the warehouse options so the
   // required stock warehouse select is immediately usable (server search onward).
@@ -232,7 +227,7 @@ export function ProductDetailPanel({
       }
     })();
     return () => { mounted = false; };
-  }, [mode, editingProduct, variationDraftId, tenantId, user, isSuperAdmin, effectiveBtId, loadWarehouseOptions]);
+  }, [mode, editingProduct, variationDraftId, loadWarehouseOptions]);
 
   const openNewProductForm = useCallback(() => {
     setEditingProduct(null);
@@ -241,7 +236,6 @@ export function ProductDetailPanel({
     setSelectedBrandOpt(null);
     setSelectedUnitOpt(null);
     setProductErrors({});
-    setVariations([]);
     setVariationDraftId(null);
     setMode('form');
   }, []);
@@ -253,8 +247,8 @@ export function ProductDetailPanel({
       category_id: p.category_id ? String(p.category_id) : '',
       brand_id: p.brand_id ? String(p.brand_id) : '',
       unit_id: p.unit_id ? String(p.unit_id) : '',
-      type: (p.type as any) || 'simple',
-      status: (p.status as any) || 'active',
+      type: (p.type as ProductFormState['type']) || 'simple',
+      status: (p.status as ProductFormState['status']) || 'active',
     });
     setSelectedCategoryOpt(p.category ? { value: String(p.category.id), label: p.category.name } : (categoryOptions.find(o => o.value === String(p.category_id)) || null));
     setSelectedBrandOpt(p.brand ? { value: String(p.brand.id), label: p.brand.name } : null);
@@ -262,64 +256,46 @@ export function ProductDetailPanel({
     setProductErrors({});
     setVariationDraftId(null);
     setMode('form');
-    fetchVariations(String(p.id));
-  }, [categoryOptions, fetchVariations]);
+  }, [categoryOptions]);
 
-  // When a product is selected in the left tree, load it into the form
+  // Populate the form when the SWR product query resolves. Guarded by
+  // syncedProductId so background revalidations don't wipe unsaved edits —
+  // the form only resets when a *different* product is selected.
+  const syncedProductId = useRef<string | null>(null);
   useEffect(() => {
-    if (selectedProductId) {
-      setLoadingProduct(true);
-      productService.getProduct(selectedProductId)
-        .then(p => {
-          openEditProductForm(p);
-        })
-        .catch((e: any) => {
-          notify.error(e?.response?.data?.message || 'Failed to load product');
-        })
-        .finally(() => setLoadingProduct(false));
-    } else if (createTrigger === 0) {
-      // no selection and not a create trigger — show empty placeholder
-      // keep current mode unless we were showing a product
-      // if we were in form for a product, go empty
-      setMode(prev => prev === 'form' && editingProduct ? 'empty' : prev);
-      if (editingProduct) setEditingProduct(null);
+    if (!selectedProductId || !loadedProduct) return;
+    if (syncedProductId.current === String(loadedProduct.id)) return;
+    syncedProductId.current = String(loadedProduct.id);
+    openEditProductForm(loadedProduct);
+  }, [selectedProductId, loadedProduct, openEditProductForm]);
+
+  // Clearing the selection returns to the empty placeholder — unless a
+  // brand-new (unsaved) draft is open, which has no selection by design.
+  useEffect(() => {
+    if (selectedProductId) return;
+    syncedProductId.current = null;
+    if (editingProduct) {
+      setEditingProduct(null);
+      setVariationDraftId(null);
+      setMode('empty');
     }
-  }, [selectedProductId]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [selectedProductId, editingProduct]);
 
   // createTrigger increments when user clicks "New Product" in the tree
+  const createTriggerSeen = useRef(createTrigger);
   useEffect(() => {
-    if (createTrigger > 0) {
+    if (createTrigger > 0 && createTrigger !== createTriggerSeen.current) {
+      createTriggerSeen.current = createTrigger;
+      syncedProductId.current = null;
       openNewProductForm();
     }
   }, [createTrigger, openNewProductForm]);
-
-  // Parent-triggered refresh: re-fetch the currently loaded product (and its
-  // variations / stock) from the backend without changing the selection, the
-  // business type, or the super-admin tenant scope.
-  useEffect(() => {
-    if (!refreshKey || refreshKey <= 0) return;
-    if (!selectedProductId) return;
-    let mounted = true;
-    setLoadingProduct(true);
-    productService.getProduct(selectedProductId)
-      .then(p => {
-        if (!mounted) return;
-        openEditProductForm(p);
-      })
-      .catch((e: any) => {
-        if (mounted) notify.error(e?.response?.data?.message || 'Failed to refresh product');
-      })
-      .finally(() => {
-        if (mounted) setLoadingProduct(false);
-      });
-    return () => { mounted = false; };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [refreshKey]);
 
   const backToEmpty = () => {
     setMode('empty');
     setEditingProduct(null);
     setVariationDraftId(null);
+    syncedProductId.current = null;
     onProductDeleted?.(); // signal to clear selection if needed — parent already cleared
   };
 
@@ -345,6 +321,7 @@ export function ProductDetailPanel({
         status: productForm.status,
         business_type_id: effectiveBtId,
       };
+      const wasNew = !editingProduct;
       let saved: Product;
       if (editingProduct) {
         saved = await productService.updateProduct(editingProduct.id, payload);
@@ -354,12 +331,19 @@ export function ProductDetailPanel({
         notify.success('Product created');
       }
       setEditingProduct(saved);
+      syncedProductId.current = String(saved.id);
       setProductErrors({});
       onProductSaved?.(saved);
-      if (!editingProduct) fetchVariations(String(saved.id));
-    } catch (e: any) {
-      if (e?.response?.data?.errors) setProductErrors(e.response.data.errors);
-      notify.error(e?.response?.data?.message || 'Failed to save product');
+      if (wasNew) {
+        // New product: refresh the tree list and prime this product's cache entries.
+        await globalMutate(key => Array.isArray(key) && key[0] === 'products');
+      } else {
+        await globalMutate(['product', String(saved.id)]);
+      }
+    } catch (e: unknown) {
+      const err = e as { response?: { data?: { errors?: Record<string, string[]>; message?: string } } };
+      if (err?.response?.data?.errors) setProductErrors(err.response.data.errors);
+      notify.error(err?.response?.data?.message || 'Failed to save product');
     } finally {
       setSavingProduct(false);
     }
@@ -386,8 +370,11 @@ export function ProductDetailPanel({
     setVariationDraftId(String(v.id));
     // Backend may include the variation's stock rows (one per warehouse) on the
     // list/show payload. Populate the stock/warehouse fields from the first row.
-    const stockRows: any[] = (v as any).stocks ?? ((v as any).stock ? [(v as any).stock] : []);
-    const existing = stockRows[0] ?? null;
+    const stocks = (v as ProductVariation & { stocks?: Array<{ quantity?: number; warehouse_id?: string | number }>; stock?: { quantity?: number; warehouse_id?: string | number } }).stocks
+      ?? ((v as ProductVariation & { stock?: { quantity?: number; warehouse_id?: string | number } }).stock
+        ? [(v as ProductVariation & { stock?: { quantity?: number; warehouse_id?: string | number } }).stock as { quantity?: number; warehouse_id?: string | number }]
+        : []);
+    const existing = stocks[0] ?? null;
     setVariationForm({
       name: v.name || '',
       sku: v.sku,
@@ -420,7 +407,7 @@ export function ProductDetailPanel({
     }
     setSavingVariation(true);
     try {
-      const payload: any = {
+      const payload = {
         product_id: String(editingProduct.id),
         sku: variationForm.sku.trim(),
         product_code: variationForm.product_code.trim() || null,
@@ -445,7 +432,7 @@ export function ProductDetailPanel({
       const qty = parseFloat(variationForm.quantity);
       if (qty > 0) {
         // Super admin must send the tenant they picked; tenant users are scoped to their own.
-        const scopedTenantId = tenantId ?? (user as any)?.tenant_id ?? (user as any)?.tenant?.id;
+        const scopedTenantId = tenantId ?? user?.tenant_id ?? user?.tenant?.id;
         await stockService.storeStocks({
           warehouse_id: variationForm.warehouse_id,
           product_id: String(editingProduct.id),
@@ -460,10 +447,12 @@ export function ProductDetailPanel({
       }
 
       cancelVariationDraft();
-      fetchVariations(String(editingProduct.id));
-      onVariationsChanged?.(String(editingProduct.id));
-    } catch (e: any) {
-      notify.error(e?.response?.data?.message || 'Failed to save variation');
+      // Single invalidation on the shared ['variations', id] key refreshes both
+      // this panel's table and any expanded tree row (Issue 2: was two fetches).
+      await mutateVariations();
+    } catch (e: unknown) {
+      const err = e as { response?: { data?: { message?: string } } };
+      notify.error(err?.response?.data?.message || 'Failed to save variation');
     } finally {
       setSavingVariation(false);
     }
@@ -476,11 +465,11 @@ export function ProductDetailPanel({
       await productVariationService.deleteVariation(String(v.id));
       notify.success('Variation deleted');
       if (editingProduct) {
-        fetchVariations(String(editingProduct.id));
-        onVariationsChanged?.(String(editingProduct.id));
+        await mutateVariations();
       }
-    } catch (e: any) {
-      notify.error(e?.response?.data?.message || 'Delete failed');
+    } catch (e: unknown) {
+      const err = e as { response?: { data?: { message?: string } } };
+      notify.error(err?.response?.data?.message || 'Delete failed');
     }
   };
 
@@ -510,7 +499,9 @@ export function ProductDetailPanel({
   }
 
   // ── Render: FORM MODE (product + variations) ──
-  if (loadingProduct) {
+  // SWR serves the selected product from cache instantly when the tree already
+  // expanded it; only a true first load shows the spinner.
+  if (loadingProduct && !loadedProduct && selectedProductId) {
     return (
       <div className="flex flex-col h-full bg-white dark:bg-gray-800 rounded-md border border-gray-200 dark:border-gray-700 overflow-hidden">
         <div className="flex-1 flex items-center justify-center gap-2 text-xs text-gray-500"><Loader2 className="w-4 h-4 animate-spin" /> Loading product...</div>
@@ -574,14 +565,13 @@ export function ProductDetailPanel({
                 onChange={opt => { setSelectedUnitOpt(opt); setProductForm(p => ({ ...p, unit_id: opt?.value || '' })); }}
                 loadOptions={loadUnitOptions}
                 defaultOptions={unitOptions.length > 0 ? unitOptions : true}
-                isLoading={loadingFormOptions}
                 placeholder="Select"
                 isClearable
                 compact
               />
             </FormRow>
             <FormRow label="Type" labelWidth="w-16">
-              <select value={productForm.type} onChange={e => setProductForm(p => ({ ...p, type: e.target.value as any }))} className={inputCls()}>
+              <select value={productForm.type} onChange={e => setProductForm(p => ({ ...p, type: e.target.value as ProductFormState['type'] }))} className={inputCls()}>
                 <option value="simple">Simple</option>
                 <option value="variable">Variable</option>
                 <option value="composite">Composite</option>
@@ -590,7 +580,7 @@ export function ProductDetailPanel({
               </select>
             </FormRow>
             <FormRow label="Status" labelWidth="w-16">
-              <select value={productForm.status} onChange={e => setProductForm(p => ({ ...p, status: e.target.value as any }))} className={inputCls()}>
+              <select value={productForm.status} onChange={e => setProductForm(p => ({ ...p, status: e.target.value as ProductFormState['status'] }))} className={inputCls()}>
                 <option value="active">Active</option>
                 <option value="inactive">Inactive</option>
                 <option value="discontinued">Discontinued</option>
