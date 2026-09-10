@@ -11,10 +11,12 @@ import binService from '@/services/binService';
 import commonService from '@/services/commonService';
 import productService from '@/services/productService';
 import productVariationService from '@/services/productVariationService';
+import { useBinsDropdown } from '@/services/queries/useBinsDropdown';
 import { useBrandsDropdown } from '@/services/queries/useBrandsDropdown';
 import { useProduct } from '@/services/queries/useProduct';
 import { useProductVariations } from '@/services/queries/useProductVariations';
 import { useUnitsDropdown } from '@/services/queries/useUnitsDropdown';
+import { useWarehousesDropdown } from '@/services/queries/useWarehousesDropdown';
 import stockService from '@/services/stockService';
 import { useAuthStore } from '@/stores/auth-store';
 import type { Product, ProductVariation, Category } from '@/types/api.types';
@@ -123,11 +125,34 @@ export function ProductDetailPanel({
   const [unitOptions, setUnitOptions] = useState<SelectOption[]>([]);
   const loadingFormOptions = loadingBrands;
 
-  // Warehouse + bin options for the variation's optional stock entry
+  // Variations of the currently open product ('new' | variation id | null).
+  // Declared before the warehouse/bin preloads below, which key off the draft.
+  const [variationDraftId, setVariationDraftId] = useState<string | null>(null);
+  const [variationForm, setVariationForm] = useState<VariationFormState>(emptyVariationForm());
+  const [savingVariation, setSavingVariation] = useState(false);
+  const [generatingSku, setGeneratingSku] = useState(false);
+
+  // Warehouse + bin options for the variation's optional stock entry.
+  // SWR-cached preloads (same Issue 5 rationale as brands/units) so StrictMode
+  // remounts and variation-to-variation switches hit the cache instead of
+  // firing a fresh fetch every time a draft opens.
+  const scopedTenantId = tenantId ?? user?.tenant_id ?? user?.tenant?.id ?? null;
+  const stockFormOpen = mode === 'form' && !!editingProduct && variationDraftId !== null;
+  const { data: preloadedWarehouses, isLoading: loadingWarehouses } = useWarehousesDropdown(
+    scopedTenantId,
+    stockFormOpen
+  );
+  const { data: preloadedBins, isLoading: loadingBins } = useBinsDropdown(
+    variationForm.warehouse_id || null,
+    scopedTenantId,
+    stockFormOpen && !!variationForm.warehouse_id
+  );
+
   const [warehouseOptions, setWarehouseOptions] = useState<SelectOption[]>([]);
-  const [loadingWarehouses, setLoadingWarehouses] = useState(false);
   const [binOptions, setBinOptions] = useState<SelectOption[]>([]);
-  const [loadingBins, setLoadingBins] = useState(false);
+  // Last-used warehouse per product — variation-to-variation switches keep it
+  // sticky until the user changes it manually.
+  const [stickyWarehouseByProduct, setStickyWarehouseByProduct] = useState<Record<string, string>>({});
 
   // ── Shared data: SWR handles dedup, caching, and stale-response ordering
   // internally, so rapid selection changes can no longer let an older fetch
@@ -206,28 +231,60 @@ export function ProductDetailPanel({
     setUnitOptions(preloadedUnits.map(u => ({ value: String(u.id), label: `${u.name} (${u.short_name})` })));
   }, [preloadedUnits]);
 
-  // Variations of the currently open product
-  const [variationDraftId, setVariationDraftId] = useState<string | null>(null); // 'new' | variation id | null
-  const [variationForm, setVariationForm] = useState<VariationFormState>(emptyVariationForm());
-  const [savingVariation, setSavingVariation] = useState(false);
-  const [generatingSku, setGeneratingSku] = useState(false);
-
-  // When a variation draft opens, prefetch the warehouse options so the
-  // required stock warehouse select is immediately usable (server search onward).
+  // Map the cached warehouse + bin preloads into select options.
+  // The draft's warehouse is always preserved: if it isn't in the list yet
+  // (sticky id restored before list loads, or a search-scoped list), resolve
+  // the option async — same single-fetch fallback pattern as BusinessTypeSelect.
+  const resolvedWarehouseIds = useRef<Set<string>>(new Set());
   useEffect(() => {
-    if (mode !== 'form' || !editingProduct || variationDraftId === null) return;
-    let mounted = true;
-    (async () => {
-      setLoadingWarehouses(true);
-      try {
-        const opts = await loadWarehouseOptions('');
-        if (mounted) setWarehouseOptions(opts);
-      } finally {
-        if (mounted) setLoadingWarehouses(false);
+    if (!preloadedWarehouses) return;
+    setWarehouseOptions(prev => {
+      const mapped = preloadedWarehouses.map((w: any) => ({
+        value: String(w.id),
+        label: `${w.name}${w.code ? ` (${w.code})` : ''}`,
+      }));
+      const current = variationForm.warehouse_id;
+      if (current && !mapped.some(o => o.value === current)) {
+        const kept = prev.find(o => o.value === current);
+        if (kept) return [kept, ...mapped];
+        // Fallback: resolve the sticky/current warehouse label once, rather
+        // than firing a whole-list GET /api/v1/tenant/{id}/warehouse.
+        if (!resolvedWarehouseIds.current.has(current)) {
+          resolvedWarehouseIds.current.add(current);
+          const tenant = scopedTenantId;
+          if (tenant) {
+            commonService
+              .getWarehousesByTenant({ search: undefined, tenant_id: tenant })
+              .then(list => {
+                const match = (list || []).find((w: any) => String(w.id) === current);
+                if (match) {
+                  setWarehouseOptions(p =>
+                    p.some(o => o.value === current)
+                      ? p
+                      : [...p, { value: current, label: `${match.name}${match.code ? ` (${match.code})` : ''}` }]
+                  );
+                }
+              })
+              .catch(() => { /* non-fatal — select stays usable via search */ });
+          }
+        }
       }
-    })();
-    return () => { mounted = false; };
-  }, [mode, editingProduct, variationDraftId, loadWarehouseOptions]);
+      return mapped;
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [preloadedWarehouses]);
+
+  useEffect(() => {
+    if (!variationForm.warehouse_id) {
+      setBinOptions([]);
+      return;
+    }
+    if (!preloadedBins) return;
+    setBinOptions(preloadedBins.map((b: any) => ({
+      value: String(b.id),
+      label: b.name || `Bin #${b.id}`,
+    })));
+  }, [preloadedBins, variationForm.warehouse_id]);
 
   const openNewProductForm = useCallback(() => {
     setEditingProduct(null);
@@ -353,7 +410,11 @@ export function ProductDetailPanel({
 
   const openAddVariation = async () => {
     if (!editingProduct) return;
-    setVariationForm(emptyVariationForm());
+    // Sticky warehouse: pre-fill the last-used warehouse for this product so
+    // similar back-to-back variations don't need to re-select it. Cleared only
+    // by switching product or changing the select manually.
+    const sticky = stickyWarehouseByProduct[String(editingProduct.id)] || '';
+    setVariationForm({ ...emptyVariationForm(), warehouse_id: sticky, bin_id: '' });
     setVariationDraftId('new');
     setGeneratingSku(true);
     try {
@@ -375,6 +436,10 @@ export function ProductDetailPanel({
         ? [(v as ProductVariation & { stock?: { quantity?: number; warehouse_id?: string | number } }).stock as { quantity?: number; warehouse_id?: string | number }]
         : []);
     const existing = stocks[0] ?? null;
+    // Editing an existing variation keeps that variation's own warehouse; if
+    // it has no stock row yet, fall back to the sticky (last-used) warehouse
+    // for this product.
+    const pid = editingProduct ? String(editingProduct.id) : null;
     setVariationForm({
       name: v.name || '',
       sku: v.sku,
@@ -385,14 +450,21 @@ export function ProductDetailPanel({
       mrp: String(v.mrp ?? 0),
       is_active: v.is_active,
       quantity: existing ? String(existing.quantity ?? 0) : '0',
-      warehouse_id: existing?.warehouse_id ? String(existing.warehouse_id) : '',
+      warehouse_id: existing?.warehouse_id
+        ? String(existing.warehouse_id)
+        : (pid ? stickyWarehouseByProduct[pid] || '' : ''),
       bin_id: '',
     });
   };
 
+  // Closing the draft keeps the warehouse sticky for the next similar
+  // variation of this product; switching product resets (no sticky there).
   const cancelVariationDraft = () => {
+    const pid = editingProduct ? String(editingProduct.id) : null;
+    const sticky = pid ? (variationForm.warehouse_id || stickyWarehouseByProduct[pid] || '') : '';
+    if (pid && sticky) setStickyWarehouseByProduct(prev => ({ ...prev, [pid]: sticky }));
     setVariationDraftId(null);
-    setVariationForm(emptyVariationForm());
+    setVariationForm({ ...emptyVariationForm(), warehouse_id: sticky, bin_id: '' });
   };
 
   const handleSaveVariation = async () => {
@@ -445,6 +517,10 @@ export function ProductDetailPanel({
           }],
         });
       }
+
+      // Remember the warehouse for the next similar variation of this product.
+      const pid = String(editingProduct.id);
+      setStickyWarehouseByProduct(prev => ({ ...prev, [pid]: variationForm.warehouse_id }));
 
       cancelVariationDraft();
       // Single invalidation on the shared ['variations', id] key refreshes both
@@ -640,29 +716,33 @@ export function ProductDetailPanel({
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-100 dark:divide-gray-700">
-                  {variations.length === 0 && variationDraftId !== 'new' && (
+                  {/* Draft form always renders at the top of the list (new or edit) */}
+                  {variationDraftId !== null && (
+                    <VariationEditRow
+                      key={variationDraftId === 'new' ? 'draft-new' : `draft-${variationDraftId}`}
+                      form={variationForm}
+                      setForm={setVariationForm}
+                      onSave={handleSaveVariation}
+                      onCancel={cancelVariationDraft}
+                      saving={savingVariation}
+                      skuLoading={variationDraftId === 'new' ? generatingSku : undefined}
+                      warehouseOptions={warehouseOptions}
+                      loadingWarehouses={loadingWarehouses}
+                      loadWarehouseOptions={loadWarehouseOptions}
+                      binOptions={binOptions}
+                      setBinOptions={setBinOptions}
+                      loadingBins={loadingBins}
+                      loadBinOptions={loadBinOptions}
+                      isNew={variationDraftId === 'new'}
+                    />
+                  )}
+                  {variations.length === 0 && variationDraftId === null && (
                     <tr><td colSpan={7} className="px-2 py-4 text-center text-gray-500">No variations yet.</td></tr>
                   )}
-                  {variations.map(v => (
-                    variationDraftId === String(v.id) ? (
-                      <VariationEditRow
-                        key={String(v.id)}
-                        form={variationForm}
-                        setForm={setVariationForm}
-                        onSave={handleSaveVariation}
-                        onCancel={cancelVariationDraft}
-                        saving={savingVariation}
-                        warehouseOptions={warehouseOptions}
-                        loadingWarehouses={loadingWarehouses}
-                        loadWarehouseOptions={loadWarehouseOptions}
-                        binOptions={binOptions}
-                        setBinOptions={setBinOptions}
-                        loadingBins={loadingBins}
-                        loadBinOptions={loadBinOptions}
-                        isNew={false}
-                      />
-                    ) : (
-                      <tr key={String(v.id)} className="hover:bg-gray-50 dark:hover:bg-gray-700/30">
+                  {variations.map(v => {
+                    const isBeingEdited = variationDraftId !== null && variationDraftId !== 'new' && variationDraftId === String(v.id);
+                    return (
+                      <tr key={String(v.id)} className={isBeingEdited ? 'bg-indigo-50/60 dark:bg-indigo-900/20' : 'hover:bg-gray-50 dark:hover:bg-gray-700/30'}>
                         <td className="px-2 py-1.5 text-gray-700 dark:text-gray-300">{v.name || '—'}</td>
                         <td className="px-2 py-1.5 font-mono text-gray-900 dark:text-gray-100">{v.sku}</td>
                         <td className="px-2 py-1.5 text-gray-500">{v.product_code || '—'}</td>
@@ -676,26 +756,8 @@ export function ProductDetailPanel({
                           </div>
                         </td>
                       </tr>
-                    )
-                  ))}
-                  {variationDraftId === 'new' && (
-                    <VariationEditRow
-                      form={variationForm}
-                      setForm={setVariationForm}
-                      onSave={handleSaveVariation}
-                      onCancel={cancelVariationDraft}
-                      saving={savingVariation}
-                      skuLoading={generatingSku}
-                      warehouseOptions={warehouseOptions}
-                      loadingWarehouses={loadingWarehouses}
-                      loadWarehouseOptions={loadWarehouseOptions}
-                      binOptions={binOptions}
-                      setBinOptions={setBinOptions}
-                      loadingBins={loadingBins}
-                      loadBinOptions={loadBinOptions}
-                      isNew
-                    />
-                  )}
+                    );
+                  })}
                 </tbody>
               </table>
             </div>
@@ -813,46 +875,51 @@ function VariationEditRow({
             </StackLabel>
           </div>
 
-          {/* Stock entry — warehouse required, bin optional */}
+          {/* Stock entry — quantity on top, warehouse + bin below (fixed 320px each, stacked on small screens). Warehouse required, bin optional */}
           <div className="border-t border-gray-100 dark:border-gray-700 pt-2">
             <div className="flex items-center gap-1.5 mb-1.5">
               <span className="text-[10px] font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">Stock</span>
               <span className="text-[10px] text-gray-400 dark:text-gray-500">— added to existing quantity on save</span>
             </div>
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-x-3 gap-y-2">
+            <div className="w-[260px]">
               <StackLabel label="Quantity">
                 <input className={cellInputCls + ' text-right'} type="number" step="1" min="0" placeholder="0" value={form.quantity} onChange={e => setForm(f => ({ ...f, quantity: e.target.value }))} onFocus={e => e.currentTarget.select()} />
               </StackLabel>
-              <StackLabel label="Warehouse" required>
-                <CustomSelect
-                  value={selectedWarehouseOpt}
-                  onChange={opt => {
-                    const wid = opt?.value || '';
-                    setForm(f => ({ ...f, warehouse_id: wid, bin_id: '' }));
-                    setBinOptions([]);
-                  }}
-                  loadOptions={loadWarehouseOptions}
-                  defaultOptions={warehouseOptions.length > 0 ? warehouseOptions : true}
-                  isLoading={loadingWarehouses}
-                  placeholder="Select warehouse"
-                  isClearable
-                  compact
-                />
-              </StackLabel>
-              <StackLabel label="Bin (Optional)">
-                <CustomSelect
-                  value={selectedBinOpt}
-                  onChange={opt => setForm(f => ({ ...f, bin_id: opt?.value || '' }))}
-                  loadOptions={scopedBinLoader}
-                  defaultOptions={binOptions.length > 0 ? binOptions : true}
-                  isLoading={loadingBins}
-                  isDisabled={!form.warehouse_id}
-                  placeholder={form.warehouse_id ? 'Select bin' : 'Select warehouse first'}
-                  isClearable
-                  compact
-                />
-              </StackLabel>
-              <div className="hidden md:block" />
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-[320px_320px] gap-x-3 gap-y-2 mt-2 max-w-[652px]">
+              <div className="min-w-0">
+                <StackLabel label="Warehouse" required>
+                  <CustomSelect
+                    value={selectedWarehouseOpt}
+                    onChange={opt => {
+                      const wid = opt?.value || '';
+                      setForm(f => ({ ...f, warehouse_id: wid, bin_id: '' }));
+                      setBinOptions([]);
+                    }}
+                    loadOptions={loadWarehouseOptions}
+                    defaultOptions={warehouseOptions.length > 0 ? warehouseOptions : true}
+                    isLoading={loadingWarehouses}
+                    placeholder="Select warehouse"
+                    isClearable
+                    compact
+                  />
+                </StackLabel>
+              </div>
+              <div className="min-w-0">
+                <StackLabel label="Bin (Optional)">
+                  <CustomSelect
+                    value={selectedBinOpt}
+                    onChange={opt => setForm(f => ({ ...f, bin_id: opt?.value || '' }))}
+                    loadOptions={scopedBinLoader}
+                    defaultOptions={binOptions.length > 0 ? binOptions : true}
+                    isLoading={loadingBins}
+                    isDisabled={!form.warehouse_id}
+                    placeholder={form.warehouse_id ? 'Select bin' : 'Select warehouse first'}
+                    isClearable
+                    compact
+                  />
+                </StackLabel>
+              </div>
             </div>
           </div>
 

@@ -37,12 +37,17 @@ export default function BrandsPage() {
   });
   const [formErrors, setFormErrors] = useState<{ [key: string]: string }>({});
   const [refreshKey, setRefreshKey] = useState(0);
+  const [fileInputKey, setFileInputKey] = useState(0);
 
   const handleAddBrand = () => {
+    // Form stays open for fast multi-entry — if already adding, keep current
+    // selections (don't reset the sticky business type).
+    if (showForm && !isEditing) return;
     setIsEditing(false);
     setCurrentBrand(null);
-    setFormData({ name: '', business_type_id: isSuperAdmin ? businessTypeFilterId : tenantBusinessTypeId, logo_url: null, description: '', is_active: true });
+    setFormData(prev => ({ name: '', business_type_id: prev.business_type_id ?? (isSuperAdmin ? businessTypeFilterId : tenantBusinessTypeId), logo_url: null, description: '', is_active: true }));
     setFormErrors({});
+    setFileInputKey(prev => prev + 1);
     setShowForm(true);
   };
 
@@ -96,7 +101,16 @@ export default function BrandsPage() {
       });
 
       notify.success(isEditing ? 'Brand updated successfully' : 'Brand added successfully');
-      setShowForm(false);
+      // Keep the form open for fast multi-entry: business type stays selected,
+      // only the per-brand fields are cleared. Edit mode still closes the form.
+      setFormData(prev => ({ name: '', business_type_id: prev.business_type_id, logo_url: null, description: '', is_active: true }));
+      setFormErrors({});
+      setCurrentBrand(null);
+      setFileInputKey(prev => prev + 1);
+      if (isEditing) {
+        setIsEditing(false);
+        setShowForm(false);
+      }
       setRefreshKey(prev => prev + 1);
     } catch (error: any) {
       const errorData = error?.response?.data;
@@ -327,18 +341,18 @@ export default function BrandsPage() {
 
       {/* Filters */}
       {isSuperAdmin && (
-        <div className="bg-white dark:bg-gray-800 rounded-md shadow-sm border border-gray-200 dark:border-gray-700 p-1">
-          <div className="flex items-center justify-between">
-            <div className="flex gap-3">
-              {/* Business Type Filter */}
-              <div className="md:col-span-2">
-                <BusinessTypeSelect
-                  value={businessTypeFilterId}
-                  onChange={(id) => setBusinessTypeFilterId(id)}
-                  placeholder="Filter by business type"
-                />
-              </div>
-            </div>
+        <div className="bg-white dark:bg-gray-800 rounded-md shadow-sm border border-gray-200 dark:border-gray-700 px-3 py-2">
+          {/* Business Type Filter — fixed width, compact look like product manage page */}
+          <div className="w-[260px]">
+            <label className="block text-[11px] font-medium text-gray-600 dark:text-gray-400 mb-1">Business Type</label>
+            <BusinessTypeSelect
+              value={businessTypeFilterId}
+              onChange={(id) => setBusinessTypeFilterId(id)}
+              placeholder="All business types"
+              isClearable
+              className="w-full"
+              compact
+            />
           </div>
         </div>
       )}
@@ -408,6 +422,7 @@ export default function BrandsPage() {
                 <div className="flex items-center gap-3 h-20">
                   <label className="flex flex-col items-center justify-center w-full h-20 border-2 border-dashed border-gray-300 dark:border-gray-600 rounded-sm cursor-pointer hover:border-indigo-500 transition-colors bg-gray-50 dark:bg-gray-700">
                     <input
+                      key={fileInputKey}
                       type="file"
                       accept="image/*"
                       onChange={e => {

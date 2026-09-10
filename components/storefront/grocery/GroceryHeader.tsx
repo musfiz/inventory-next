@@ -100,9 +100,9 @@ export default function GroceryHeader() {
                 <Image
                   src={headerLogo}
                   alt="Store logo"
-                  width={160}
-                  height={40}
-                  className="h-10 w-auto object-contain"
+                  width={220}
+                  height={75}
+                  className="h-[75px] w-auto max-w-[220px] object-contain"
                   unoptimized={headerLogo.startsWith('data:')}
                 />
               ) : ready ? (

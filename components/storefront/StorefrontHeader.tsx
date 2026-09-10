@@ -274,7 +274,7 @@ export default function StorefrontHeader() {
                   alt="Store logo"
                   width={160}
                   height={40}
-                  className="h-10 w-auto object-contain"
+                  className="h-[60px] w-auto max-w-[300px] object-contain"
                   unoptimized={headerLogo.startsWith('data:')}
                 />
               ) : ready ? (

@@ -290,7 +290,7 @@ export default function LogoPage() {
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
         <div className="bg-white dark:bg-gray-800 rounded-md shadow-sm border border-gray-200 dark:border-gray-700 p-4">
           <h2 className="text-sm font-semibold text-gray-900 dark:text-gray-100 mb-3">Header Logo</h2>
-          <p className="text-xs text-gray-400 dark:text-gray-500 mb-3">Recommended: 250 &times; 100 px &middot; JPG, PNG, WebP, SVG</p>
+          <p className="text-xs text-gray-400 dark:text-gray-500 mb-3">Recommended: 220 &times; 75 px &middot; JPG, PNG, WebP, SVG</p>
 
           <DropZone
             accept={ACCEPT_HEADER}

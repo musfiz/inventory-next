@@ -61,14 +61,27 @@ export function ProductTreePanel({
   useEffect(() => { setExpanded(new Set()); }, [effectiveBtId]);
 
   const handleToggle = (productId: string) => {
-    // Variation data is fetched by the row itself via the shared
-    // ['variations', productId] SWR key — no manual fetch here (Issues 2 & 3).
+    // Manual chevron toggle — allows multi-expand. Variation data is fetched
+    // by the row itself via the shared ['variations', productId] SWR key.
     setExpanded(prev => {
       const next = new Set(prev);
       if (next.has(productId)) next.delete(productId);
       else next.add(productId);
       return next;
     });
+  };
+
+  // Accordion on select: clicking a product row collapses all others and
+  // expands just this one. Manual chevron toggles above still allow
+  // multi-expand when needed.
+  const handleSelect = (productId: string) => {
+    onSelectProduct(productId);
+    setExpanded(new Set([productId]));
+  };
+
+  const handleSelectAll = () => {
+    onSelectProduct(null);
+    setExpanded(new Set());
   };
 
   const expandAll = () => {
@@ -149,7 +162,7 @@ export function ProductTreePanel({
 
         <div className="flex items-center gap-1.5">
           <button
-            onClick={() => onSelectProduct(null)}
+            onClick={handleSelectAll}
             className={`flex-1 text-xs px-2 py-1 rounded border ${selectedProductId === null ? 'bg-indigo-600 text-white border-indigo-600' : 'bg-white dark:bg-gray-700 border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 hover:bg-gray-50'}`}
           >
             All
@@ -180,7 +193,7 @@ export function ProductTreePanel({
                   isSelected={selectedProductId === pid}
                   isExpanded={expanded.has(pid)}
                   onToggle={() => handleToggle(pid)}
-                  onSelect={() => onSelectProduct(pid)}
+                  onSelect={() => handleSelect(pid)}
                 />
               );
             })}
@@ -239,7 +252,7 @@ function ProductTreeNode({
         )}
       </div>
       {isExpanded && (
-        <ul className="ml-5 border-l border-gray-200 dark:border-gray-700 pl-2 mt-1 space-y-0.5">
+        <ul className="ml-5 border-l border-gray-200 dark:border-gray-700 pl-2 mt-0.5">
           {isLoadingVar ? (
             <li className="px-2 py-1 text-[11px] text-gray-500 flex items-center gap-1"><Loader2 className="w-3 h-3 animate-spin" /> Loading variations...</li>
           ) : variations.length === 0 ? (
@@ -248,7 +261,7 @@ function ProductTreeNode({
             variations.map(v => (
               <li
                 key={String(v.id)}
-                className="flex items-center gap-1.5 px-2 py-1 rounded text-[11px] hover:bg-gray-50 dark:hover:bg-gray-700/40 text-gray-600 dark:text-gray-400"
+                className="flex items-center gap-1.5 px-2 py-0.5 leading-tight rounded text-[11px] hover:bg-gray-50 dark:hover:bg-gray-700/40 text-gray-600 dark:text-gray-400"
                 title={`${v.sku}${v.name ? ' · ' + v.name : ''}`}
               >
                 <Tag className="w-3 h-3 text-gray-400 shrink-0" />
