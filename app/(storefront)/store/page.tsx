@@ -93,7 +93,9 @@ const CATEGORY_ICONS: Record<string, string> = {
 /* ================================================================ */
 const CategoryStrip = () => {
   const { categories, loading } = useStorefrontCategories();
-  const visible = categories.slice(0, 10);
+  // Only categories opted into the storefront show in "Shop by Category".
+  // Defaults to hidden (backend sends storefront_active=false) until toggled on.
+  const visible = categories.filter(cat => cat.storefront_active).slice(0, 10);
 
   if (loading) {
     return (

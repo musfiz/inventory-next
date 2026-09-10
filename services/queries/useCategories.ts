@@ -21,6 +21,7 @@ async function fetchCategories(businessTypeId: number | null | undefined): Promi
         description: r.description,
         parent_id: r.parent_id ? String(r.parent_id) : undefined,
         is_active: !!r.is_active,
+        storefront_active: !!(r as { storefront_active?: unknown }).storefront_active,
         business_types: r.business_types,
         business_type: r.business_type,
         parent: r.parent,

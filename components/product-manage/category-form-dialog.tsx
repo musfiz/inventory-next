@@ -12,6 +12,31 @@ import type { Category } from '@/types/api.types';
 import { useAuthStore } from '@/stores/auth-store';
 import { usePermissions } from '@/hooks/use-permissions';
 
+function ToggleSwitch({
+  checked,
+  onChange,
+  disabled,
+}: {
+  checked: boolean;
+  onChange: (v: boolean) => void;
+  disabled?: boolean;
+}) {
+  return (
+    <button
+      type="button"
+      disabled={disabled}
+      onClick={() => onChange(!checked)}
+      className={`relative inline-flex h-4 w-7 shrink-0 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-1 ${checked ? 'bg-indigo-600' : 'bg-gray-300 dark:bg-gray-600'
+        } ${disabled ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}`}
+    >
+      <span
+        className={`inline-block h-2.5 w-2.5 transform rounded-full bg-white shadow-sm transition-transform ${checked ? 'translate-x-4' : 'translate-x-0.5'
+          }`}
+      />
+    </button>
+  );
+}
+
 export function CategoryFormDialog({
   open,
   onClose,
@@ -36,6 +61,7 @@ export function CategoryFormDialog({
     description: '',
     business_type_ids: [] as number[],
     is_active: true,
+    storefront_active: false,
     parent_id: undefined as string | undefined,
   });
   const [errors, setErrors] = useState<Record<string, string>>({});
@@ -65,6 +91,7 @@ export function CategoryFormDialog({
         description: editingCategory.description || '',
         business_type_ids: btIds,
         is_active: !!editingCategory.is_active,
+        storefront_active: !!(editingCategory as Category).storefront_active,
         parent_id: editingCategory.parent_id ? String(editingCategory.parent_id) : undefined,
       });
     } else {
@@ -73,6 +100,7 @@ export function CategoryFormDialog({
         description: '',
         business_type_ids: isSuperAdmin ? [] : (tenantBusinessTypeId ? [tenantBusinessTypeId] : []),
         is_active: true,
+        storefront_active: false,
         parent_id: defaultParentId ? String(defaultParentId) : undefined,
       });
     }
@@ -157,6 +185,19 @@ export function CategoryFormDialog({
               <option value="active">Active</option>
               <option value="inactive">Inactive</option>
             </select>
+          </div>
+
+          <div>
+            <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">Show on Storefront</label>
+            <div className="flex h-[30px] items-center gap-2">
+              <ToggleSwitch
+                checked={!!formData.storefront_active}
+                onChange={v => setFormData({ ...formData, storefront_active: v })}
+              />
+              <span className="text-xs text-gray-600 dark:text-gray-400">
+                {formData.storefront_active ? 'Shown in Shop by Category' : 'Hidden from Shop by Category'}
+              </span>
+            </div>
           </div>
 
           <div className="flex items-center gap-2 pt-2">

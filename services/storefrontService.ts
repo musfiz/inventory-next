@@ -51,6 +51,7 @@ export interface CategoryTreeItem {
   parentId: string | null;
   productCount: number;
   children: CategoryTreeItem[];
+  storefront_active?: boolean;
 }
 
 export interface CategoryPageData {

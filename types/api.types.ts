@@ -218,6 +218,7 @@ export interface Category {
   parent?: Category;
   children?: Category[];
   is_active: boolean;
+  storefront_active?: boolean;
   created_at?: string;
   updated_at?: string;
 }
@@ -272,6 +273,7 @@ export interface CreateCategoryRequest {
   image_url?: string;
   sort_order?: number;
   is_active?: boolean;
+  storefront_active?: boolean;
 }
 
 export interface UpdateCategoryRequest extends Partial<CreateCategoryRequest> {

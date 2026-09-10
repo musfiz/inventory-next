@@ -19,6 +19,31 @@ import { useRouter } from 'next/navigation';
 import { usePermissions } from '@/hooks/use-permissions';
 import { useAuthStore } from '@/stores/auth-store';
 
+function ToggleSwitch({
+  checked,
+  onChange,
+  disabled,
+}: {
+  checked: boolean;
+  onChange: (v: boolean) => void;
+  disabled?: boolean;
+}) {
+  return (
+    <button
+      type="button"
+      disabled={disabled}
+      onClick={() => onChange(!checked)}
+      className={`relative inline-flex h-4 w-7 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-1 ${checked ? 'bg-indigo-600' : 'bg-gray-300 dark:bg-gray-600'
+        } ${disabled ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}`}
+    >
+      <span
+        className={`inline-block h-2.5 w-2.5 transform rounded-full bg-white shadow-sm transition-transform ${checked ? 'translate-x-4' : 'translate-x-0.5'
+          }`}
+      />
+    </button>
+  );
+}
+
 export default function CategoriesPage() {
   const { isSuperAdmin, isHydrated } = usePermissions();
   const user = useAuthStore(state => state.user);
@@ -38,10 +63,12 @@ export default function CategoriesPage() {
     description: '',
     business_type_ids: isSuperAdmin ? [] as number[] : (tenantBusinessTypeId ? [tenantBusinessTypeId] : []),
     is_active: true,
+    storefront_active: false,
     parent_id: undefined as string | undefined,
   });
   const [formErrors, setFormErrors] = useState<{ [key: string]: string }>({});
   const [refreshKey, setRefreshKey] = useState(0);
+  const [togglingStorefront, setTogglingStorefront] = useState<Record<string, boolean>>({});
   const lastSavedBusinessTypeIds = useRef<number[]>([]);
 
   // Bulk upload state
@@ -255,6 +282,7 @@ export default function CategoriesPage() {
       description: '',
       business_type_ids: initialIds,
       is_active: true,
+      storefront_active: false,
       parent_id: undefined,
     });
     setFormErrors({});
@@ -293,6 +321,7 @@ export default function CategoriesPage() {
       // and pre-selects these ids resolved from the fresh category data.
       business_type_ids: initialIds,
       is_active: category.is_active,
+      storefront_active: category.storefront_active ?? false,
       parent_id: category.parent_id || undefined,
     });
     // Keep parent label visible even before the parent dropdown reloads
@@ -400,6 +429,7 @@ export default function CategoriesPage() {
           description: '',
           business_type_ids: prev.business_type_ids,
           is_active: true,
+          storefront_active: false,
           parent_id: prev.parent_id,
         }));
         setFormErrors({});
@@ -429,6 +459,41 @@ export default function CategoriesPage() {
     } catch (error: unknown) {
       const axiosError = error as { response?: { data?: { message?: string } } };
       notify.error(axiosError.response?.data?.message || 'Failed to delete category');
+    }
+  };
+
+  const handleStorefrontToggle = async (category: Category, value: boolean) => {
+    setTogglingStorefront(prev => ({ ...prev, [category.id]: true }));
+    try {
+      const rowIds = extractBusinessTypeIds(category as any);
+      const submitData = {
+        id: category.id,
+        name: category.name,
+        description: category.description,
+        parent_id: category.parent_id ?? null,
+        business_type_ids:
+          rowIds.length > 0
+            ? rowIds
+            : isSuperAdmin
+              ? []
+              : tenantBusinessTypeId
+                ? [tenantBusinessTypeId]
+                : [],
+        is_active: category.is_active,
+        storefront_active: value,
+      } as Parameters<typeof categoryService.storeCategory>[0];
+      await categoryService.storeCategory(submitData);
+      notify.success(`Category ${value ? 'shown on' : 'hidden from'} storefront`);
+      setRefreshKey(prev => prev + 1);
+    } catch (error: unknown) {
+      const axiosError = error as { response?: { data?: { message?: string } } };
+      notify.error(axiosError.response?.data?.message || 'Failed to update storefront visibility');
+    } finally {
+      setTogglingStorefront(prev => {
+        const next = { ...prev };
+        delete next[category.id];
+        return next;
+      });
     }
   };
 
@@ -516,6 +581,17 @@ export default function CategoriesPage() {
       ),
     },
     {
+      accessorKey: 'storefront_active',
+      header: 'Storefront',
+      cell: ({ row }) => (
+        <ToggleSwitch
+          checked={!!row.original.storefront_active}
+          onChange={checked => handleStorefrontToggle(row.original, checked)}
+          disabled={!!togglingStorefront[row.original.id]}
+        />
+      ),
+    },
+    {
       id: 'actions',
       header: 'Actions',
       cell: ({ row }) => (
@@ -524,14 +600,14 @@ export default function CategoriesPage() {
             onClick={() => handleEditCategory(row.original)}
             className="p-1 text-green-600 hover:text-green-800 dark:text-green-400 dark:hover:text-green-300"
             title="Edit"
-           aria-label="Edit">
+            aria-label="Edit">
             <Edit className="w-4 h-4" />
           </button>
           <button
             onClick={() => handleDelete(row.original)}
             className="p-1 text-red-600 hover:text-red-800 dark:text-red-400 dark:hover:text-red-300"
             title="Delete"
-           aria-label="Delete">
+            aria-label="Delete">
             <Trash2 className="w-4 h-4" />
           </button>
         </div>
@@ -546,54 +622,54 @@ export default function CategoriesPage() {
   return (
     <div className="space-y-2">
       {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-xl font-bold text-gray-900 dark:text-gray-100 flex items-center gap-2">
-            <FolderOpen className="w-5 h-5 text-blue-600 dark:text-blue-400" />
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <div className="shrink-0">
+          <h1 className="text-xl font-bold text-gray-900 dark:text-gray-100 flex items-center gap-2 whitespace-nowrap">
+            <FolderOpen className="w-5 h-5 shrink-0 text-blue-600 dark:text-blue-400" />
             Product Categories
           </h1>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
           <button
             onClick={handleExportExcel}
-            className="flex items-center gap-2 px-3 py-1.5 bg-orange-600 hover:bg-orange-700 text-white text-sm font-medium rounded-sm transition-colors duration-200 cursor-pointer"
+            className="inline-flex h-8 shrink-0 items-center justify-center gap-2 whitespace-nowrap px-3 bg-orange-600 hover:bg-orange-700 text-white text-sm font-medium rounded-sm transition-colors duration-200 cursor-pointer"
           >
-            <Download className="w-4 h-4" />
+            <Download className="w-4 h-4 shrink-0" />
             Export Excel
           </button>
           <button
             onClick={handleDownloadSampleExcel}
-            className="flex items-center gap-2 px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-medium rounded-sm transition-colors duration-200 cursor-pointer"
+            className="inline-flex h-8 shrink-0 items-center justify-center gap-2 whitespace-nowrap px-3 bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-medium rounded-sm transition-colors duration-200 cursor-pointer"
           >
-            <ImDownload className="w-4 h-4" />
+            <ImDownload className="w-4 h-4 shrink-0" />
             Category Sample (Excel)
           </button>
           <button
             onClick={() => setShowBulkUpload(!showBulkUpload)}
-            className="flex items-center gap-2 px-3 py-1.5 bg-green-600 hover:bg-green-700 text-white text-sm font-medium rounded-sm transition-colors duration-200 cursor-pointer"
+            className="inline-flex h-8 shrink-0 items-center justify-center gap-2 whitespace-nowrap px-3 bg-green-600 hover:bg-green-700 text-white text-sm font-medium rounded-sm transition-colors duration-200 cursor-pointer"
           >
-            <RiFileExcel2Line className="w-4 h-4" />
+            <RiFileExcel2Line className="w-4 h-4 shrink-0" />
             Category Upload (Bulk)
           </button>
           <button
             onClick={handleDownloadSubSampleExcel}
-            className="flex items-center gap-2 px-3 py-1.5 bg-purple-600 hover:bg-purple-700 text-white text-sm font-medium rounded-sm transition-colors duration-200 cursor-pointer"
+            className="inline-flex h-8 shrink-0 items-center justify-center gap-2 whitespace-nowrap px-3 bg-purple-600 hover:bg-purple-700 text-white text-sm font-medium rounded-sm transition-colors duration-200 cursor-pointer"
           >
-            <ImDownload className="w-4 h-4" />
+            <ImDownload className="w-4 h-4 shrink-0" />
             Sub Category Sample (Excel)
           </button>
           <button
             onClick={() => setShowSubBulkUpload(!showSubBulkUpload)}
-            className="flex items-center gap-2 px-3 py-1.5 bg-purple-600 hover:bg-purple-700 text-white text-sm font-medium rounded-sm transition-colors duration-200 cursor-pointer"
+            className="inline-flex h-8 shrink-0 items-center justify-center gap-2 whitespace-nowrap px-3 bg-purple-600 hover:bg-purple-700 text-white text-sm font-medium rounded-sm transition-colors duration-200 cursor-pointer"
           >
-            <RiFileExcel2Line className="w-4 h-4" />
+            <RiFileExcel2Line className="w-4 h-4 shrink-0" />
             Sub Category Upload (Bulk)
           </button>
           <button
             onClick={handleAddCategory}
-            className="flex items-center gap-2 px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium rounded-sm transition-colors duration-200 cursor-pointer"
+            className="inline-flex h-8 shrink-0 items-center justify-center gap-2 whitespace-nowrap px-3 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium rounded-sm transition-colors duration-200 cursor-pointer"
           >
-            <Plus className="w-4 h-4" />
+            <Plus className="w-4 h-4 shrink-0" />
             Add Category
           </button>
         </div>
@@ -867,6 +943,23 @@ export default function CategoriesPage() {
                 {formErrors.is_active && (
                   <p className="text-red-600 text-xs mt-1">{formErrors.is_active}</p>
                 )}
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-0.5">
+                  Show on Storefront
+                </label>
+                <div className="flex h-7.5 items-center gap-2">
+                  <ToggleSwitch
+                    checked={!!formData.storefront_active}
+                    onChange={v => {
+                      setFormData({ ...formData, storefront_active: v });
+                      clearFieldError('storefront_active');
+                    }}
+                  />
+                  <span className="text-xs text-gray-500 dark:text-gray-400">
+                    {formData.storefront_active ? 'Shown in Shop by Category' : 'Hidden from Shop by Category'}
+                  </span>
+                </div>
               </div>
             </div>
             <div className="md:col-span-2 grid grid-cols-1 md:grid-cols-2 gap-1">

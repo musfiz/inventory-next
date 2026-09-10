@@ -1,20 +1,46 @@
 'use client';
 
-import { useState, useCallback, useRef } from 'react';
+import { ColumnDef } from '@tanstack/react-table';
 import { FolderOpen, Plus, Edit, Trash2, X, Download, Store } from 'lucide-react';
+import { useState, useCallback, useRef, useMemo } from 'react';
 import { GiSave } from 'react-icons/gi';
 import { ImDownload } from 'react-icons/im';
 import { RiFileExcel2Line } from 'react-icons/ri';
 import { TiUploadOutline } from 'react-icons/ti';
-import { ColumnDef } from '@tanstack/react-table';
+import BusinessTypeSelect from '@/components/ui/business-type-select';
+import CustomSelect from '@/components/ui/custom-select';
+import DataTable from '@/components/ui/datatable';
 import { notify } from '@/lib/notifications';
 import { categoryService } from '@/services';
 import commonService from '@/services/commonService';
-import { Category } from '@/types/api.types';
-import DataTable from '@/components/ui/datatable';
-import BusinessTypeSelect from '@/components/ui/business-type-select';
-import CustomSelect from '@/components/ui/custom-select';
 import { useAuthStore } from '@/stores/auth-store';
+import type { Category } from '@/types/api.types';
+
+function ToggleSwitch({
+  checked,
+  onChange,
+  disabled,
+}: {
+  checked: boolean;
+  onChange: (v: boolean) => void;
+  disabled?: boolean;
+}) {
+  return (
+    <button
+      type="button"
+      disabled={disabled}
+      onClick={() => onChange(!checked)}
+      className={`relative inline-flex h-5.5 w-10 shrink-0 items-center rounded-full transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 ${checked ? 'bg-indigo-600' : 'bg-gray-300 dark:bg-gray-600'
+        } ${disabled ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}`}
+    >
+      <span
+        className={`pointer-events-none absolute top-0.75 left-0.75 h-3.5 w-3.5 rounded-full bg-white shadow-md transition-transform duration-200 ease-in-out ${checked ? 'translate-x-5' : 'translate-x-0'
+          }`}
+      />
+    </button>
+  );
+}
+
 
 /**
  * Tenant Category Management
@@ -43,10 +69,12 @@ export default function TenantCategoriesPage() {
     name: '',
     description: '',
     is_active: true,
+    storefront_active: false,
     parent_id: undefined as string | undefined,
   });
   const [formErrors, setFormErrors] = useState<{ [key: string]: string }>({});
   const [refreshKey, setRefreshKey] = useState(0);
+  const [togglingStorefront, setTogglingStorefront] = useState<Record<string, boolean>>({});
 
   // Bulk upload state
   const [showBulkUpload, setShowBulkUpload] = useState(false);
@@ -243,10 +271,24 @@ export default function TenantCategoriesPage() {
     [tenantBusinessTypeId, isEditing, currentCategory?.id, defaultParentOptions.length]
   );
 
+  // Debounced version to avoid excessive API calls on every keystroke
+  const debouncedLoadParentOptions = useMemo(() => {
+    let timeoutId: NodeJS.Timeout;
+    return (inputValue: string): Promise<{ value: string; label: string }[]> => {
+      return new Promise(resolve => {
+        clearTimeout(timeoutId);
+        timeoutId = setTimeout(async () => {
+          const result = await loadParentCategoryOptions(inputValue);
+          resolve(result);
+        }, 300);
+      });
+    };
+  }, [loadParentCategoryOptions]);
+
   const handleAddCategory = () => {
     setIsEditing(false);
     setCurrentCategory(null);
-    setFormData({ name: '', description: '', is_active: true, parent_id: undefined });
+    setFormData({ name: '', description: '', is_active: true, storefront_active: false, parent_id: undefined });
     setFormErrors({});
     setDefaultParentOptions([]);
     loadParentCategoryOptions('');
@@ -260,6 +302,7 @@ export default function TenantCategoriesPage() {
       name: category.name,
       description: category.description || '',
       is_active: category.is_active,
+      storefront_active: category.storefront_active ?? false,
       parent_id: category.parent_id || undefined,
     });
     setFormErrors({});
@@ -327,6 +370,7 @@ export default function TenantCategoriesPage() {
           name: '',
           description: '',
           is_active: true,
+          storefront_active: false,
           parent_id: prev.parent_id,
         }));
         setFormErrors({});
@@ -356,6 +400,33 @@ export default function TenantCategoriesPage() {
     } catch (error: unknown) {
       const axiosError = error as { response?: { data?: { message?: string } } };
       notify.error(axiosError.response?.data?.message || 'Failed to delete category');
+    }
+  };
+
+  const handleStorefrontToggle = async (category: Category, value: boolean) => {
+    setTogglingStorefront(prev => ({ ...prev, [category.id]: true }));
+    try {
+      const submitData = {
+        id: category.id,
+        name: category.name,
+        description: category.description,
+        parent_id: category.parent_id ?? null,
+        business_type_ids: tenantBusinessTypeId ? [tenantBusinessTypeId] : [],
+        is_active: category.is_active,
+        storefront_active: value,
+      } as Parameters<typeof categoryService.storeCategory>[0];
+      await categoryService.storeCategory(submitData);
+      notify.success(`Category ${value ? 'shown on' : 'hidden from'} storefront`);
+      setRefreshKey(prev => prev + 1);
+    } catch (error: unknown) {
+      const axiosError = error as { response?: { data?: { message?: string } } };
+      notify.error(axiosError.response?.data?.message || 'Failed to update storefront visibility');
+    } finally {
+      setTogglingStorefront(prev => {
+        const next = { ...prev };
+        delete next[category.id];
+        return next;
+      });
     }
   };
 
@@ -417,6 +488,17 @@ export default function TenantCategoriesPage() {
       ),
     },
     {
+      accessorKey: 'storefront_active',
+      header: 'Storefront',
+      cell: ({ row }) => (
+        <ToggleSwitch
+          checked={!!row.original.storefront_active}
+          onChange={checked => handleStorefrontToggle(row.original, checked)}
+          disabled={!!togglingStorefront[row.original.id]}
+        />
+      ),
+    },
+    {
       id: 'actions',
       header: 'Actions',
       cell: ({ row }) => (
@@ -443,62 +525,67 @@ export default function TenantCategoriesPage() {
   return (
     <div className="space-y-2">
       {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
+      <div className="flex items-center gap-2 flex-wrap">
+        <div className="flex items-center gap-2 mr-auto">
           <h1 className="text-xl font-bold text-gray-900 dark:text-gray-100 flex items-center gap-2">
             <FolderOpen className="w-5 h-5 text-blue-600 dark:text-blue-400" />
             Categories
           </h1>
           {tenantBusinessTypeName && (
-            <p className="text-xs text-gray-500 dark:text-gray-400 flex items-center gap-1 mt-0.5">
+            <p className="text-xs text-gray-500 dark:text-gray-400 flex items-center gap-1">
               <Store className="w-3 h-3" />
               Business type: <span className="font-medium">{tenantBusinessTypeName}</span>
               <span className="text-gray-400">(fixed from your store)</span>
             </p>
           )}
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 flex-wrap">
           <button
             onClick={handleExportExcel}
-            className="flex items-center gap-2 px-3 py-1.5 bg-orange-600 hover:bg-orange-700 text-white text-sm font-medium rounded-sm transition-colors duration-200 cursor-pointer"
+            className="flex items-center gap-2 h-8 px-3 bg-orange-600 hover:bg-orange-700 text-white text-sm font-medium rounded-sm transition-colors duration-200 cursor-pointer"
           >
             <Download className="w-4 h-4" />
-            Export Excel
+            <span className="hidden sm:inline">Export Excel</span>
+            <span className="sm:hidden">Export</span>
           </button>
           <button
             onClick={handleDownloadSampleExcel}
-            className="flex items-center gap-2 px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-medium rounded-sm transition-colors duration-200 cursor-pointer"
+            className="flex items-center gap-2 h-8 px-3 bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-medium rounded-sm transition-colors duration-200 cursor-pointer"
           >
             <ImDownload className="w-4 h-4" />
-            Category Sample (Excel)
+            <span className="hidden lg:inline">Category Sample (Excel)</span>
+            <span className="lg:hidden">Cat Sample</span>
           </button>
           <button
             onClick={() => setShowBulkUpload(!showBulkUpload)}
             disabled={!tenantBusinessTypeId}
-            className="flex items-center gap-2 px-3 py-1.5 bg-green-600 hover:bg-green-700 disabled:opacity-50 text-white text-sm font-medium rounded-sm transition-colors duration-200 cursor-pointer"
+            className="flex items-center gap-2 h-8 px-3 bg-green-600 hover:bg-green-700 disabled:opacity-50 text-white text-sm font-medium rounded-sm transition-colors duration-200 cursor-pointer"
           >
             <RiFileExcel2Line className="w-4 h-4" />
-            Category Upload (Bulk)
+            <span className="hidden sm:inline">Category Upload (Bulk)</span>
+            <span className="sm:hidden">Cat Upload</span>
           </button>
           <button
             onClick={handleDownloadSubSampleExcel}
-            className="flex items-center gap-2 px-3 py-1.5 bg-purple-600 hover:bg-purple-700 text-white text-sm font-medium rounded-sm transition-colors duration-200 cursor-pointer"
+            className="flex items-center gap-2 h-8 px-3 bg-purple-600 hover:bg-purple-700 text-white text-sm font-medium rounded-sm transition-colors duration-200 cursor-pointer"
           >
             <ImDownload className="w-4 h-4" />
-            Sub Category Sample (Excel)
+            <span className="hidden lg:inline">Sub Category Sample (Excel)</span>
+            <span className="lg:hidden">Sub Sample</span>
           </button>
           <button
             onClick={() => setShowSubBulkUpload(!showSubBulkUpload)}
             disabled={!tenantBusinessTypeId}
-            className="flex items-center gap-2 px-3 py-1.5 bg-purple-600 hover:bg-purple-700 disabled:opacity-50 text-white text-sm font-medium rounded-sm transition-colors duration-200 cursor-pointer"
+            className="flex items-center gap-2 h-8 px-3 bg-purple-600 hover:bg-purple-700 disabled:opacity-50 text-white text-sm font-medium rounded-sm transition-colors duration-200 cursor-pointer"
           >
             <RiFileExcel2Line className="w-4 h-4" />
-            Sub Category Upload (Bulk)
+            <span className="hidden sm:inline">Sub Upload (Bulk)</span>
+            <span className="sm:hidden">Sub Upload</span>
           </button>
           <button
             onClick={handleAddCategory}
             disabled={!tenantBusinessTypeId}
-            className="flex items-center gap-2 px-3 py-1.5 bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white text-sm font-medium rounded-sm transition-colors duration-200 cursor-pointer"
+            className="flex items-center gap-2 h-8 px-3 bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white text-sm font-medium rounded-sm transition-colors duration-200 cursor-pointer"
           >
             <Plus className="w-4 h-4" />
             Add Category
@@ -686,7 +773,7 @@ export default function TenantCategoriesPage() {
                 </label>
                 <BusinessTypeSelect
                   value={tenantBusinessTypeId}
-                  onChange={() => {}}
+                  onChange={() => { }}
                   placeholder="Business type"
                   isDisabled
                   isClearable={false}
@@ -727,7 +814,7 @@ export default function TenantCategoriesPage() {
                     setFormData({ ...formData, parent_id: option?.value || undefined });
                     clearFieldError('parent_id');
                   }}
-                  loadOptions={loadParentCategoryOptions}
+                  loadOptions={debouncedLoadParentOptions}
                   defaultOptions={defaultParentOptions}
                   placeholder="Select parent (optional)"
                   className="text-sm"
@@ -757,6 +844,23 @@ export default function TenantCategoriesPage() {
                 {formErrors.is_active && (
                   <p className="text-red-600 text-xs mt-1">{formErrors.is_active}</p>
                 )}
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-0.5">
+                  Show on Storefront
+                </label>
+                <div className="flex h-7.5 items-center gap-2">
+                  <ToggleSwitch
+                    checked={!!formData.storefront_active}
+                    onChange={v => {
+                      setFormData({ ...formData, storefront_active: v });
+                      clearFieldError('storefront_active');
+                    }}
+                  />
+                  <span className="text-xs text-gray-500 dark:text-gray-400">
+                    {formData.storefront_active ? 'Shown in Shop by Category' : 'Hidden from Shop by Category'}
+                  </span>
+                </div>
               </div>
             </div>
             <div className="md:col-span-2 grid grid-cols-1 md:grid-cols-2 gap-1">
