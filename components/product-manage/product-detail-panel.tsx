@@ -26,7 +26,6 @@ type PanelMode = 'empty' | 'form';
 interface ProductFormState {
   name: string;
   category_id: string;
-  brand_id: string;
   unit_id: string;
   type: 'simple' | 'variable' | 'composite' | 'digital' | 'service';
   status: 'active' | 'inactive' | 'discontinued' | 'archived';
@@ -36,21 +35,22 @@ interface VariationFormState {
   name: string;
   sku: string;
   product_code: string;
+  brand_id: string;
+  brand_name: string;
   cost_price: string;
   selling_price: string;
   dp: string;
   mrp: string;
   is_active: boolean;
-  // Stock entry captured on the variation form (warehouse required, bin optional)
   quantity: string;
   warehouse_id: string;
+  warehouse_name: string;
   bin_id: string;
 }
 
 const emptyProductForm = (): ProductFormState => ({
   name: '',
   category_id: '',
-  brand_id: '',
   unit_id: '',
   type: 'simple',
   status: 'active',
@@ -60,6 +60,8 @@ const emptyVariationForm = (): VariationFormState => ({
   name: '',
   sku: '',
   product_code: '',
+  brand_id: '',
+  brand_name: '',
   cost_price: '0',
   selling_price: '0',
   dp: '0',
@@ -67,6 +69,7 @@ const emptyVariationForm = (): VariationFormState => ({
   is_active: true,
   quantity: '0',
   warehouse_id: '',
+  warehouse_name: '',
   bin_id: '',
 });
 
@@ -105,10 +108,16 @@ export function ProductDetailPanel({
   const [editingProduct, setEditingProduct] = useState<Product | null>(null);
   const [productForm, setProductForm] = useState<ProductFormState>(emptyProductForm());
   const [selectedCategoryOpt, setSelectedCategoryOpt] = useState<SelectOption | null>(null);
-  const [selectedBrandOpt, setSelectedBrandOpt] = useState<SelectOption | null>(null);
   const [selectedUnitOpt, setSelectedUnitOpt] = useState<SelectOption | null>(null);
   const [productErrors, setProductErrors] = useState<Record<string, string[]>>({});
   const [savingProduct, setSavingProduct] = useState(false);
+
+  // Variations of the currently open product ('new' | variation id | null).
+  // Declared before the brand preload below, which keys off the draft state.
+  const [variationDraftId, setVariationDraftId] = useState<string | null>(null);
+  const [variationForm, setVariationForm] = useState<VariationFormState>(emptyVariationForm());
+  const [savingVariation, setSavingVariation] = useState(false);
+  const [generatingSku, setGeneratingSku] = useState(false);
 
   // Cache-backed preloads (same Issue 5 rationale as tenant/business-type):
   // SWR dedupes StrictMode remounts and form open/close cycles, so the form
@@ -117,20 +126,13 @@ export function ProductDetailPanel({
   // would retrigger the mapping effects below in a loop.
   const { data: preloadedBrands, isLoading: loadingBrands } = useBrandsDropdown(
     effectiveBtId,
-    mode === 'form'
+    mode === 'form' || variationDraftId !== null
   );
   const { data: preloadedUnits } = useUnitsDropdown(mode === 'form');
 
   const [brandOptions, setBrandOptions] = useState<SelectOption[]>([]);
   const [unitOptions, setUnitOptions] = useState<SelectOption[]>([]);
   const loadingFormOptions = loadingBrands;
-
-  // Variations of the currently open product ('new' | variation id | null).
-  // Declared before the warehouse/bin preloads below, which key off the draft.
-  const [variationDraftId, setVariationDraftId] = useState<string | null>(null);
-  const [variationForm, setVariationForm] = useState<VariationFormState>(emptyVariationForm());
-  const [savingVariation, setSavingVariation] = useState(false);
-  const [generatingSku, setGeneratingSku] = useState(false);
 
   // Warehouse + bin options for the variation's optional stock entry.
   // SWR-cached preloads (same Issue 5 rationale as brands/units) so StrictMode
@@ -290,7 +292,6 @@ export function ProductDetailPanel({
     setEditingProduct(null);
     setProductForm(emptyProductForm());
     setSelectedCategoryOpt(null);
-    setSelectedBrandOpt(null);
     setSelectedUnitOpt(null);
     setProductErrors({});
     setVariationDraftId(null);
@@ -302,13 +303,11 @@ export function ProductDetailPanel({
     setProductForm({
       name: p.name || '',
       category_id: p.category_id ? String(p.category_id) : '',
-      brand_id: p.brand_id ? String(p.brand_id) : '',
       unit_id: p.unit_id ? String(p.unit_id) : '',
       type: (p.type as ProductFormState['type']) || 'simple',
       status: (p.status as ProductFormState['status']) || 'active',
     });
     setSelectedCategoryOpt(p.category ? { value: String(p.category.id), label: p.category.name } : (categoryOptions.find(o => o.value === String(p.category_id)) || null));
-    setSelectedBrandOpt(p.brand ? { value: String(p.brand.id), label: p.brand.name } : null);
     setSelectedUnitOpt(p.unit ? { value: String(p.unit.id), label: `${p.unit.name} (${p.unit.short_name ?? ''})` } : null);
     setProductErrors({});
     setVariationDraftId(null);
@@ -360,7 +359,6 @@ export function ProductDetailPanel({
     const errs: Record<string, string[]> = {};
     if (!productForm.name.trim()) errs.name = ['Product name is required'];
     if (!productForm.category_id) errs.category_id = ['Category is required'];
-    if (!productForm.brand_id) errs.brand_id = ['Brand is required'];
     if (!effectiveBtId) errs.business_type = ['Business type is required'];
     if (Object.keys(errs).length > 0) {
       setProductErrors(errs);
@@ -372,7 +370,6 @@ export function ProductDetailPanel({
       const payload: any = {
         name: productForm.name.trim(),
         category_id: productForm.category_id,
-        brand_id: productForm.brand_id,
         unit_id: productForm.unit_id || undefined,
         type: productForm.type,
         status: productForm.status,
@@ -412,7 +409,6 @@ export function ProductDetailPanel({
     const errs: Record<string, string[]> = {};
     if (!productForm.name.trim()) errs.name = ['Product name is required'];
     if (!productForm.category_id) errs.category_id = ['Category is required'];
-    if (!productForm.brand_id) errs.brand_id = ['Brand is required'];
     if (!effectiveBtId) errs.business_type = ['Business type is required'];
     if (Object.keys(errs).length > 0) {
       setProductErrors(errs);
@@ -424,7 +420,6 @@ export function ProductDetailPanel({
       const payload: any = {
         name: productForm.name.trim(),
         category_id: productForm.category_id,
-        brand_id: productForm.brand_id,
         unit_id: productForm.unit_id || undefined,
         type: productForm.type,
         status: productForm.status,
@@ -437,8 +432,9 @@ export function ProductDetailPanel({
       setEditingProduct(saved);
       syncedProductId.current = String(saved.id);
       setProductErrors({});
-      // Open variation add form for rapid entry
-      await openAddVariation();
+      // Open variation add form for rapid entry — pass saved product directly
+      // so it doesn't rely on state that hasn't updated yet
+      await openAddVariation(saved);
       onProductSaved?.(saved);
       // Refresh the tree list
       await globalMutate(key => Array.isArray(key) && key[0] === 'products');
@@ -453,17 +449,18 @@ export function ProductDetailPanel({
 
   const productFieldError = (field: string) => productErrors[field]?.[0] || null;
 
-  const openAddVariation = async () => {
-    if (!editingProduct) return;
+  const openAddVariation = async (product?: Product) => {
+    const targetProduct = product || editingProduct;
+    if (!targetProduct) return;
     // Sticky warehouse: pre-fill the last-used warehouse for this product so
     // similar back-to-back variations don't need to re-select it. Cleared only
     // by switching product or changing the select manually.
-    const sticky = stickyWarehouseByProduct[String(editingProduct.id)] || '';
+    const sticky = stickyWarehouseByProduct[String(targetProduct.id)] || '';
     setVariationForm({ ...emptyVariationForm(), warehouse_id: sticky, bin_id: '' });
     setVariationDraftId('new');
     setGeneratingSku(true);
     try {
-      const sku = await productVariationService.generateSku(String(editingProduct.id), editingProduct.name);
+      const sku = await productVariationService.generateSku(String(targetProduct.id), targetProduct.name);
       setVariationForm(prev => ({ ...prev, sku: sku || '' }));
     } catch {
       /* SKU can still be typed manually if generation fails */
@@ -489,6 +486,8 @@ export function ProductDetailPanel({
       name: v.name || '',
       sku: v.sku,
       product_code: v.product_code || '',
+      brand_id: v.brand_id ? String(v.brand_id) : '',
+      brand_name: v.brand_name || '',
       cost_price: String(v.cost_price ?? 0),
       selling_price: String(v.selling_price ?? 0),
       dp: String(v.dp ?? 0),
@@ -498,6 +497,7 @@ export function ProductDetailPanel({
       warehouse_id: existing?.warehouse_id
         ? String(existing.warehouse_id)
         : (pid ? stickyWarehouseByProduct[pid] || '' : ''),
+      warehouse_name: '',
       bin_id: '',
     });
   };
@@ -529,6 +529,7 @@ export function ProductDetailPanel({
         sku: variationForm.sku.trim(),
         product_code: variationForm.product_code.trim() || null,
         name: variationForm.name.trim() || undefined,
+        brand_id: variationForm.brand_id || undefined,
         cost_price: parseFloat(variationForm.cost_price) || 0,
         selling_price: parseFloat(variationForm.selling_price) || 0,
         dp: parseFloat(variationForm.dp) || 0,
@@ -668,18 +669,7 @@ export function ProductDetailPanel({
                 compact
               />
             </FormRow>
-            <FormRow label="Brand" required labelWidth="w-16" error={productFieldError('brand_id')}>
-              <CustomSelect
-                value={selectedBrandOpt}
-                onChange={opt => { setSelectedBrandOpt(opt); setProductForm(p => ({ ...p, brand_id: opt?.value || '' })); setProductErrors(p => ({ ...p, brand_id: [] })); }}
-                options={brandOptions}
-                isLoading={loadingFormOptions}
-                placeholder="Select"
-                isInvalid={!!productFieldError('brand_id')}
-                isDisabled={!effectiveBtId}
-                compact
-              />
-            </FormRow>
+
             <FormRow label="Unit" labelWidth="w-16">
               <CustomSelect
                 value={selectedUnitOpt}
@@ -741,7 +731,7 @@ export function ProductDetailPanel({
             </h3>
             {canCreateVariation && (
               <button
-                onClick={openAddVariation}
+                onClick={() => openAddVariation()}
                 disabled={!editingProduct || variationDraftId !== null}
                 title={!editingProduct ? 'Save the product first' : 'Add variation'}
                 className="inline-flex items-center gap-1 text-xs px-2 py-1 rounded bg-indigo-600 hover:bg-indigo-700 disabled:opacity-40 disabled:cursor-not-allowed text-white"
@@ -768,6 +758,8 @@ export function ProductDetailPanel({
                     onCancel={cancelVariationDraft}
                     saving={savingVariation}
                     skuLoading={variationDraftId === 'new' ? generatingSku : undefined}
+                    brandOptions={brandOptions}
+                    loadingBrands={loadingBrands}
                     warehouseOptions={warehouseOptions}
                     loadingWarehouses={loadingWarehouses}
                     loadWarehouseOptions={loadWarehouseOptions}
@@ -788,6 +780,7 @@ export function ProductDetailPanel({
                       <th className="px-2 py-1.5 text-left font-bold text-gray-700 dark:text-gray-300">Name</th>
                       <th className="px-2 py-1.5 text-left font-bold text-gray-700 dark:text-gray-300">SKU</th>
                       <th className="px-2 py-1.5 text-left font-bold text-gray-700 dark:text-gray-300">Code</th>
+                      <th className="px-2 py-1.5 text-left font-bold text-gray-700 dark:text-gray-300">Brand</th>
                       <th className="px-2 py-1.5 text-right font-bold text-gray-700 dark:text-gray-300">Cost</th>
                       <th className="px-2 py-1.5 text-right font-bold text-gray-700 dark:text-gray-300">Sale</th>
                       <th className="px-2 py-1.5 text-center font-bold text-gray-700 dark:text-gray-300">Active</th>
@@ -796,7 +789,7 @@ export function ProductDetailPanel({
                   </thead>
                   <tbody className="divide-y divide-gray-100 dark:divide-gray-700">
                     {variations.length === 0 && variationDraftId === null && (
-                      <tr><td colSpan={7} className="px-2 py-4 text-center text-gray-500">No variations yet.</td></tr>
+                      <tr><td colSpan={8} className="px-2 py-4 text-center text-gray-500">No variations yet.</td></tr>
                     )}
                     {variations.map(v => {
                       const isBeingEdited = variationDraftId !== null && variationDraftId !== 'new' && variationDraftId === String(v.id);
@@ -805,6 +798,7 @@ export function ProductDetailPanel({
                           <td className="px-2 py-1.5 text-gray-700 dark:text-gray-300">{v.name || '—'}</td>
                           <td className="px-2 py-1.5 font-mono text-gray-900 dark:text-gray-100">{v.sku}</td>
                           <td className="px-2 py-1.5 text-gray-500">{v.product_code || '—'}</td>
+                          <td className="px-2 py-1.5 text-gray-600 dark:text-gray-400">{v.brand_name || '—'}</td>
                           <td className="px-2 py-1.5 text-right text-gray-600 dark:text-gray-400">{Number(v.cost_price ?? 0).toFixed(2)}</td>
                           <td className="px-2 py-1.5 text-right">{Number(v.selling_price).toFixed(2)}</td>
                           <td className="px-2 py-1.5 text-center"><span className={`px-1.5 py-0.5 rounded text-[10px] ${v.is_active ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>{v.is_active ? 'Yes' : 'No'}</span></td>
@@ -863,6 +857,8 @@ function VariationEditRow({
   onCancel,
   saving,
   skuLoading,
+  brandOptions,
+  loadingBrands,
   warehouseOptions,
   loadingWarehouses,
   loadWarehouseOptions,
@@ -878,6 +874,8 @@ function VariationEditRow({
   onCancel: () => void;
   saving: boolean;
   skuLoading?: boolean;
+  brandOptions: SelectOption[];
+  loadingBrands: boolean;
   warehouseOptions: SelectOption[];
   loadingWarehouses: boolean;
   loadWarehouseOptions: (input: string) => Promise<SelectOption[]>;
@@ -917,6 +915,21 @@ function VariationEditRow({
           <label className="flex items-center h-full">
             <input type="checkbox" checked={form.is_active} onChange={e => setForm(f => ({ ...f, is_active: e.target.checked }))} className="w-3.5 h-3.5 accent-indigo-600" />
           </label>
+        </StackLabel>
+      </div>
+
+      {/* Brand select */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-x-3 gap-y-2">
+        <StackLabel label="Brand">
+          <CustomSelect
+            value={brandOptions.find(o => o.value === form.brand_id) || null}
+            onChange={opt => setForm(f => ({ ...f, brand_id: opt?.value || '', brand_name: opt?.label || '' }))}
+            options={brandOptions}
+            isLoading={loadingBrands}
+            placeholder="Select brand"
+            isClearable
+            compact
+          />
         </StackLabel>
       </div>
 
