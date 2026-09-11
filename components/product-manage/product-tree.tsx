@@ -1,6 +1,6 @@
 'use client';
 
-import { ChevronRight, ChevronDown, Package, Search, Plus, RefreshCw, Maximize2, Minimize2, Tag, Loader2, Store, Hash } from 'lucide-react';
+import { ChevronRight, ChevronDown, Package, Search, X, Plus, RefreshCw, Maximize2, Minimize2, Tag, Loader2, Store, Hash } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
 import BusinessTypeSelect from '@/components/ui/business-type-select';
 import TenantSelect from '@/components/ui/tenant-select';
@@ -181,8 +181,17 @@ export function ProductTreePanel({
             value={search}
             onChange={e => setSearch(e.target.value)}
             placeholder="Search products, brands..."
-            className="w-full pl-7 pr-2 py-1.5 text-xs border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 placeholder-gray-400 focus:outline-none focus:ring-1 focus:ring-indigo-500"
+            className="w-full pl-7 pr-8 py-1.5 text-xs border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 placeholder-gray-400 focus:outline-none focus:ring-1 focus:ring-indigo-500"
           />
+          {search && (
+            <button
+              onClick={() => { setSearch(''); onRefresh?.(); }}
+              className="absolute right-1.5 top-1/2 -translate-y-1/2 p-0.5 rounded hover:bg-gray-200 dark:hover:bg-gray-600 text-gray-400 hover:text-gray-700 dark:hover:text-gray-300"
+              title="Clear search"
+            >
+              <X className="w-3.5 h-3.5" />
+            </button>
+          )}
         </div>
 
         <div className="flex items-center gap-1.5">

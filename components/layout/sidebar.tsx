@@ -621,7 +621,7 @@ function NavItem({
           href={item.href}
           onClick={() => setMobileMenuOpen(false)}
           className={`
-            relative group flex items-center px-3 py-1.5 text-sm rounded-md transition-all duration-200 cursor-pointer
+            relative group flex items-center px-3 py-1.5 text-[13px] rounded-md transition-all duration-200 cursor-pointer
             ${depth > 0 && sidebarOpen ? 'ml-4' : ''}
             ${isActive
               ? 'font-bold text-indigo-700 dark:text-indigo-300'
@@ -630,7 +630,7 @@ function NavItem({
           `}
           title={!sidebarOpen || depth > 0 ? item.name : undefined}
         >
-          <item.icon className={`w-5 h-5 ${sidebarOpen ? 'mr-3' : 'mx-auto'}`} />
+          <item.icon className={`w-4 h-4 ${sidebarOpen ? 'mr-3' : 'mx-auto'}`} />
           <span className={`${!sidebarOpen && 'hidden'} transition-opacity duration-300`}>
             {item.name}
           </span>
@@ -640,7 +640,7 @@ function NavItem({
           <button
             onClick={handleClick}
             className={`
-              relative group flex items-center px-3 py-2 text-sm rounded-md transition-all duration-200 cursor-pointer
+              relative group flex items-center px-3 py-1.5 text-[13px] rounded-md transition-all duration-200 cursor-pointer
               ${depth > 0 && sidebarOpen ? 'ml-4 w-[calc(100%-1rem)]' : 'w-full'}
               ${isParentActive || isActive
                 ? 'font-bold text-indigo-700 dark:text-indigo-300'
@@ -649,7 +649,7 @@ function NavItem({
             `}
             title={!sidebarOpen || depth > 0 ? item.name : undefined}
           >
-            <item.icon className={`w-5 h-5 ${sidebarOpen ? 'mr-3' : 'mx-auto'}`} />
+            <item.icon className={`w-4 h-4 ${sidebarOpen ? 'mr-3' : 'mx-auto'}`} />
             <span
               className={`${!sidebarOpen && 'hidden'} transition-opacity duration-300 flex-1 text-left`}
             >
@@ -662,7 +662,7 @@ function NavItem({
             )}
           </button>
           {hasChildren && isOpen && sidebarOpen && (
-            <div className="relative mt-1 ml-4 space-y-1">
+            <div className="relative ml-4 space-y-1">
               {item.children!.map((child, index) => (
                 <NavItem
                   key={child.name}

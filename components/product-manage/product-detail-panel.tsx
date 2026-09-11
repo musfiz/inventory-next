@@ -217,7 +217,10 @@ export function ProductDetailPanel({
   }, [unitOptions]);
 
   const categoryOptions = useMemo(
-    () => categories.filter(c => c.is_active !== false).map(c => ({ value: String(c.id), label: c.name })),
+    () => categories.filter(c => c.is_active !== false).map(c => ({
+      value: String(c.id),
+      label: c.parent_id ? `${c.name} (Subcategory)` : c.name,
+    })),
     [categories]
   );
 
@@ -487,7 +490,7 @@ export function ProductDetailPanel({
       sku: v.sku,
       product_code: v.product_code || '',
       brand_id: v.brand_id ? String(v.brand_id) : '',
-      brand_name: v.brand_name || '',
+      brand_name: v.brand?.name || '',
       cost_price: String(v.cost_price ?? 0),
       selling_price: String(v.selling_price ?? 0),
       dp: String(v.dp ?? 0),
@@ -778,9 +781,9 @@ export function ProductDetailPanel({
                   <thead className="bg-gray-50 dark:bg-gray-900/50">
                     <tr>
                       <th className="px-2 py-1.5 text-left font-bold text-gray-700 dark:text-gray-300">Name</th>
+                      <th className="px-2 py-1.5 text-left font-bold text-gray-700 dark:text-gray-300">Brand</th>
                       <th className="px-2 py-1.5 text-left font-bold text-gray-700 dark:text-gray-300">SKU</th>
                       <th className="px-2 py-1.5 text-left font-bold text-gray-700 dark:text-gray-300">Code</th>
-                      <th className="px-2 py-1.5 text-left font-bold text-gray-700 dark:text-gray-300">Brand</th>
                       <th className="px-2 py-1.5 text-right font-bold text-gray-700 dark:text-gray-300">Cost</th>
                       <th className="px-2 py-1.5 text-right font-bold text-gray-700 dark:text-gray-300">Sale</th>
                       <th className="px-2 py-1.5 text-center font-bold text-gray-700 dark:text-gray-300">Active</th>
@@ -796,9 +799,9 @@ export function ProductDetailPanel({
                       return (
                         <tr key={String(v.id)} className={isBeingEdited ? 'bg-indigo-50/60 dark:bg-indigo-900/20' : 'hover:bg-gray-50 dark:hover:bg-gray-700/30'}>
                           <td className="px-2 py-1.5 text-gray-700 dark:text-gray-300">{v.name || '—'}</td>
+                          <td className="px-2 py-1.5 text-gray-600 dark:text-gray-400">{v.brand?.name || '—'}</td>
                           <td className="px-2 py-1.5 font-mono text-gray-900 dark:text-gray-100">{v.sku}</td>
                           <td className="px-2 py-1.5 text-gray-500">{v.product_code || '—'}</td>
-                          <td className="px-2 py-1.5 text-gray-600 dark:text-gray-400">{v.brand_name || '—'}</td>
                           <td className="px-2 py-1.5 text-right text-gray-600 dark:text-gray-400">{Number(v.cost_price ?? 0).toFixed(2)}</td>
                           <td className="px-2 py-1.5 text-right">{Number(v.selling_price).toFixed(2)}</td>
                           <td className="px-2 py-1.5 text-center"><span className={`px-1.5 py-0.5 rounded text-[10px] ${v.is_active ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>{v.is_active ? 'Yes' : 'No'}</span></td>

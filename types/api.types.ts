@@ -148,6 +148,7 @@ export interface ProductVariation {
   id: string;
   product_id: string;
   brand_id?: string;  // Moved from products — each variation can belong to a different brand
+  brand_name?: string; // Computed/display field from brand relation
   sku: string;
   product_code?: string | null;
   name?: string;
