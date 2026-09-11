@@ -406,6 +406,51 @@ export function ProductDetailPanel({
     }
   };
 
+  // Save as New — creates a new product with same data (except name which user can change)
+  // Then opens variation add form for rapid entry
+  const handleSaveAsNew = async () => {
+    const errs: Record<string, string[]> = {};
+    if (!productForm.name.trim()) errs.name = ['Product name is required'];
+    if (!productForm.category_id) errs.category_id = ['Category is required'];
+    if (!productForm.brand_id) errs.brand_id = ['Brand is required'];
+    if (!effectiveBtId) errs.business_type = ['Business type is required'];
+    if (Object.keys(errs).length > 0) {
+      setProductErrors(errs);
+      notify.error('Please fill in all required fields');
+      return;
+    }
+    setSavingProduct(true);
+    try {
+      const payload: any = {
+        name: productForm.name.trim(),
+        category_id: productForm.category_id,
+        brand_id: productForm.brand_id,
+        unit_id: productForm.unit_id || undefined,
+        type: productForm.type,
+        status: productForm.status,
+        business_type_id: effectiveBtId,
+      };
+      // Always create new
+      const saved = await productService.createProduct(payload);
+      notify.success('Product created as new');
+      // Select the new product
+      setEditingProduct(saved);
+      syncedProductId.current = String(saved.id);
+      setProductErrors({});
+      // Open variation add form for rapid entry
+      await openAddVariation();
+      onProductSaved?.(saved);
+      // Refresh the tree list
+      await globalMutate(key => Array.isArray(key) && key[0] === 'products');
+    } catch (e: unknown) {
+      const err = e as { response?: { data?: { errors?: Record<string, string[]>; message?: string } } };
+      if (err?.response?.data?.errors) setProductErrors(err.response.data.errors);
+      notify.error(err?.response?.data?.message || 'Failed to create product');
+    } finally {
+      setSavingProduct(false);
+    }
+  };
+
   const productFieldError = (field: string) => productErrors[field]?.[0] || null;
 
   const openAddVariation = async () => {
@@ -664,11 +709,20 @@ export function ProductDetailPanel({
               </select>
             </FormRow>
           </div>
-          <div className="flex items-center justify-end gap-2 mt-3">
-            <button onClick={backToEmpty} className="px-3 py-1.5 text-xs rounded border border-gray-300 dark:border-gray-600 text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700">Cancel</button>
-            <button onClick={handleSaveProduct} disabled={savingProduct} className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs bg-indigo-600 hover:bg-indigo-700 disabled:opacity-60 text-white rounded">
-              {savingProduct ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Save className="w-3.5 h-3.5" />} Save Product
-            </button>
+          <div className="flex items-center justify-between gap-2 mt-3">
+            <div>
+              {editingProduct && (
+                <button onClick={handleSaveAsNew} disabled={savingProduct} className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs bg-emerald-600 hover:bg-emerald-700 disabled:opacity-60 text-white rounded" title="Create new product with same data (change name to create another)">
+                  {savingProduct ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Plus className="w-3.5 h-3.5" />} Save as New
+                </button>
+              )}
+            </div>
+            <div className="flex items-center gap-2">
+              <button onClick={backToEmpty} className="px-3 py-1.5 text-xs rounded border border-gray-300 dark:border-gray-600 text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700">Cancel</button>
+              <button onClick={handleSaveProduct} disabled={savingProduct} className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs bg-indigo-600 hover:bg-indigo-700 disabled:opacity-60 text-white rounded">
+                {savingProduct ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Save className="w-3.5 h-3.5" />} {editingProduct ? 'Update' : 'Save'} Product
+              </button>
+            </div>
           </div>
           {editingProduct && (
             <div className="flex items-center gap-3 mt-2 pt-2 border-t border-gray-100 dark:border-gray-700 text-[11px] text-gray-500">
@@ -702,65 +756,71 @@ export function ProductDetailPanel({
           ) : loadingVariations ? (
             <div className="flex items-center justify-center gap-2 text-xs text-gray-500 py-6"><Loader2 className="w-4 h-4 animate-spin" /> Loading variations...</div>
           ) : (
-            <div className="overflow-x-auto border border-gray-200 dark:border-gray-700 rounded">
-              <table className="w-full text-xs">
-                <thead className="bg-gray-50 dark:bg-gray-900/50">
-                  <tr>
-                    <th className="px-2 py-1.5 text-left font-medium text-gray-600 dark:text-gray-400">Name</th>
-                    <th className="px-2 py-1.5 text-left font-medium text-gray-600 dark:text-gray-400">SKU</th>
-                    <th className="px-2 py-1.5 text-left font-medium text-gray-600 dark:text-gray-400">Code</th>
-                    <th className="px-2 py-1.5 text-right font-medium text-gray-600 dark:text-gray-400">Cost</th>
-                    <th className="px-2 py-1.5 text-right font-medium text-gray-600 dark:text-gray-400">Sale</th>
-                    <th className="px-2 py-1.5 text-center font-medium text-gray-600 dark:text-gray-400">Active</th>
-                    <th className="px-2 py-1.5 text-right font-medium text-gray-600 dark:text-gray-400">Actions</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-gray-100 dark:divide-gray-700">
-                  {/* Draft form always renders at the top of the list (new or edit) */}
-                  {variationDraftId !== null && (
-                    <VariationEditRow
-                      key={variationDraftId === 'new' ? 'draft-new' : `draft-${variationDraftId}`}
-                      form={variationForm}
-                      setForm={setVariationForm}
-                      onSave={handleSaveVariation}
-                      onCancel={cancelVariationDraft}
-                      saving={savingVariation}
-                      skuLoading={variationDraftId === 'new' ? generatingSku : undefined}
-                      warehouseOptions={warehouseOptions}
-                      loadingWarehouses={loadingWarehouses}
-                      loadWarehouseOptions={loadWarehouseOptions}
-                      binOptions={binOptions}
-                      setBinOptions={setBinOptions}
-                      loadingBins={loadingBins}
-                      loadBinOptions={loadBinOptions}
-                      isNew={variationDraftId === 'new'}
-                    />
-                  )}
-                  {variations.length === 0 && variationDraftId === null && (
-                    <tr><td colSpan={7} className="px-2 py-4 text-center text-gray-500">No variations yet.</td></tr>
-                  )}
-                  {variations.map(v => {
-                    const isBeingEdited = variationDraftId !== null && variationDraftId !== 'new' && variationDraftId === String(v.id);
-                    return (
-                      <tr key={String(v.id)} className={isBeingEdited ? 'bg-indigo-50/60 dark:bg-indigo-900/20' : 'hover:bg-gray-50 dark:hover:bg-gray-700/30'}>
-                        <td className="px-2 py-1.5 text-gray-700 dark:text-gray-300">{v.name || '—'}</td>
-                        <td className="px-2 py-1.5 font-mono text-gray-900 dark:text-gray-100">{v.sku}</td>
-                        <td className="px-2 py-1.5 text-gray-500">{v.product_code || '—'}</td>
-                        <td className="px-2 py-1.5 text-right text-gray-600 dark:text-gray-400">{Number(v.cost_price ?? 0).toFixed(2)}</td>
-                        <td className="px-2 py-1.5 text-right">{Number(v.selling_price).toFixed(2)}</td>
-                        <td className="px-2 py-1.5 text-center"><span className={`px-1.5 py-0.5 rounded text-[10px] ${v.is_active ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>{v.is_active ? 'Yes' : 'No'}</span></td>
-                        <td className="px-2 py-1.5">
-                          <div className="flex items-center justify-end gap-1">
-                            {canEditVariation && <button onClick={() => openEditVariation(v)} className="p-1 rounded hover:bg-gray-100 dark:hover:bg-gray-600 text-blue-600"><Edit2 className="w-3 h-3" /></button>}
-                            {canDeleteVariation && <button onClick={() => handleDeleteVariation(v)} className="p-1 rounded hover:bg-gray-100 dark:hover:bg-gray-600 text-red-600"><Trash2 className="w-3 h-3" /></button>}
-                          </div>
-                        </td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
-            </div>
+            <>
+              {/* Variation add/edit form — outside and above the table */}
+              {variationDraftId !== null && (
+                <div className="mb-3">
+                  <VariationEditRow
+                    key={variationDraftId === 'new' ? 'draft-new' : `draft-${variationDraftId}`}
+                    form={variationForm}
+                    setForm={setVariationForm}
+                    onSave={handleSaveVariation}
+                    onCancel={cancelVariationDraft}
+                    saving={savingVariation}
+                    skuLoading={variationDraftId === 'new' ? generatingSku : undefined}
+                    warehouseOptions={warehouseOptions}
+                    loadingWarehouses={loadingWarehouses}
+                    loadWarehouseOptions={loadWarehouseOptions}
+                    binOptions={binOptions}
+                    setBinOptions={setBinOptions}
+                    loadingBins={loadingBins}
+                    loadBinOptions={loadBinOptions}
+                    isNew={variationDraftId === 'new'}
+                  />
+                </div>
+              )}
+
+              {/* Variation list table */}
+              <div className="overflow-x-auto border border-gray-200 dark:border-gray-700 rounded">
+                <table className="w-full text-xs">
+                  <thead className="bg-gray-50 dark:bg-gray-900/50">
+                    <tr>
+                      <th className="px-2 py-1.5 text-left font-bold text-gray-700 dark:text-gray-300">Name</th>
+                      <th className="px-2 py-1.5 text-left font-bold text-gray-700 dark:text-gray-300">SKU</th>
+                      <th className="px-2 py-1.5 text-left font-bold text-gray-700 dark:text-gray-300">Code</th>
+                      <th className="px-2 py-1.5 text-right font-bold text-gray-700 dark:text-gray-300">Cost</th>
+                      <th className="px-2 py-1.5 text-right font-bold text-gray-700 dark:text-gray-300">Sale</th>
+                      <th className="px-2 py-1.5 text-center font-bold text-gray-700 dark:text-gray-300">Active</th>
+                      <th className="px-2 py-1.5 text-right font-bold text-gray-700 dark:text-gray-300">Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-gray-100 dark:divide-gray-700">
+                    {variations.length === 0 && variationDraftId === null && (
+                      <tr><td colSpan={7} className="px-2 py-4 text-center text-gray-500">No variations yet.</td></tr>
+                    )}
+                    {variations.map(v => {
+                      const isBeingEdited = variationDraftId !== null && variationDraftId !== 'new' && variationDraftId === String(v.id);
+                      return (
+                        <tr key={String(v.id)} className={isBeingEdited ? 'bg-indigo-50/60 dark:bg-indigo-900/20' : 'hover:bg-gray-50 dark:hover:bg-gray-700/30'}>
+                          <td className="px-2 py-1.5 text-gray-700 dark:text-gray-300">{v.name || '—'}</td>
+                          <td className="px-2 py-1.5 font-mono text-gray-900 dark:text-gray-100">{v.sku}</td>
+                          <td className="px-2 py-1.5 text-gray-500">{v.product_code || '—'}</td>
+                          <td className="px-2 py-1.5 text-right text-gray-600 dark:text-gray-400">{Number(v.cost_price ?? 0).toFixed(2)}</td>
+                          <td className="px-2 py-1.5 text-right">{Number(v.selling_price).toFixed(2)}</td>
+                          <td className="px-2 py-1.5 text-center"><span className={`px-1.5 py-0.5 rounded text-[10px] ${v.is_active ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>{v.is_active ? 'Yes' : 'No'}</span></td>
+                          <td className="px-2 py-1.5">
+                            <div className="flex items-center justify-end gap-1">
+                              {canEditVariation && <button onClick={() => openEditVariation(v)} className="p-1 rounded hover:bg-gray-100 dark:hover:bg-gray-600 text-blue-600"><Edit2 className="w-3 h-3" /></button>}
+                              {canDeleteVariation && <button onClick={() => handleDeleteVariation(v)} className="p-1 rounded hover:bg-gray-100 dark:hover:bg-gray-600 text-red-600"><Trash2 className="w-3 h-3" /></button>}
+                            </div>
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            </>
           )}
         </div>
       </div>
@@ -838,106 +898,105 @@ function VariationEditRow({
   );
 
   return (
-    <tr className="bg-indigo-50/40 dark:bg-indigo-900/10">
-      <td colSpan={7} className="px-2 py-2">
-        <div className="bg-white dark:bg-gray-800 border border-indigo-200 dark:border-indigo-800/60 rounded-md px-2.5 py-2 space-y-2">
-          {/* Variation basics */}
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-x-3 gap-y-2">
-            <StackLabel label="Name">
-              <input className={cellInputCls} placeholder="e.g. Red - L" value={form.name} onChange={e => setForm(f => ({ ...f, name: e.target.value }))} />
-            </StackLabel>
-            <StackLabel label="SKU">
-              <input className={cellInputCls} placeholder={skuLoading ? 'Generating…' : 'SKU'} value={form.sku} onChange={e => setForm(f => ({ ...f, sku: e.target.value }))} />
-            </StackLabel>
-            <StackLabel label="Code">
-              <input className={cellInputCls} placeholder="Product code" value={form.product_code} onChange={e => setForm(f => ({ ...f, product_code: e.target.value }))} />
-            </StackLabel>
-            <StackLabel label="Active" inline>
-              <label className="flex items-center h-full">
-                <input type="checkbox" checked={form.is_active} onChange={e => setForm(f => ({ ...f, is_active: e.target.checked }))} className="w-3.5 h-3.5 accent-indigo-600" />
-              </label>
+    <div className="bg-indigo-50/40 dark:bg-indigo-900/10 border border-indigo-200 dark:border-indigo-800/60 rounded-md px-2.5 py-2 space-y-2">
+      <h4 className="text-[11px] font-bold text-indigo-700 dark:text-indigo-400">
+        {isNew ? 'Add New Variation' : 'Edit Variation'}
+      </h4>
+      {/* Variation basics */}
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-x-3 gap-y-2">
+        <StackLabel label="Name">
+          <input className={cellInputCls} placeholder="e.g. Red - L" value={form.name} onChange={e => setForm(f => ({ ...f, name: e.target.value }))} />
+        </StackLabel>
+        <StackLabel label="SKU">
+          <input className={cellInputCls} placeholder={skuLoading ? 'Generating…' : 'SKU'} value={form.sku} onChange={e => setForm(f => ({ ...f, sku: e.target.value }))} />
+        </StackLabel>
+        <StackLabel label="Code">
+          <input className={cellInputCls} placeholder="Product code" value={form.product_code} onChange={e => setForm(f => ({ ...f, product_code: e.target.value }))} />
+        </StackLabel>
+        <StackLabel label="Active" inline>
+          <label className="flex items-center h-full">
+            <input type="checkbox" checked={form.is_active} onChange={e => setForm(f => ({ ...f, is_active: e.target.checked }))} className="w-3.5 h-3.5 accent-indigo-600" />
+          </label>
+        </StackLabel>
+      </div>
+
+      {/* Pricing */}
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-x-3 gap-y-2">
+        <StackLabel label="Cost Price">
+          <div className="relative">
+            <span className="absolute left-1.5 top-1/2 -translate-y-1/2 text-[10px] text-gray-400">$</span>
+            <input className={cellInputCls + ' pl-4 text-right'} type="number" step="0.01" min="0" placeholder="0.00" value={form.cost_price} onChange={e => setForm(f => ({ ...f, cost_price: e.target.value }))} onFocus={e => e.currentTarget.select()} />
+          </div>
+        </StackLabel>
+        <StackLabel label="Sale Price">
+          <div className="relative">
+            <span className="absolute left-1.5 top-1/2 -translate-y-1/2 text-[10px] text-gray-400">$</span>
+            <input className={cellInputCls + ' pl-4 text-right'} type="number" step="0.01" min="0" placeholder="0.00" value={form.selling_price} onChange={e => setForm(f => ({ ...f, selling_price: e.target.value }))} onFocus={e => e.currentTarget.select()} />
+          </div>
+        </StackLabel>
+      </div>
+
+      {/* Stock entry — quantity on top, warehouse + bin below (fixed 320px each, stacked on small screens). Warehouse required, bin optional */}
+      <div className="border-t border-gray-100 dark:border-gray-700 pt-2">
+        <div className="flex items-center gap-1.5 mb-1.5">
+          <span className="text-[10px] font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">Stock</span>
+          <span className="text-[10px] text-gray-400 dark:text-gray-500">— added to existing quantity on save</span>
+        </div>
+        <div className="w-[260px]">
+          <StackLabel label="Quantity">
+            <input className={cellInputCls + ' text-right'} type="number" step="1" min="0" placeholder="0" value={form.quantity} onChange={e => setForm(f => ({ ...f, quantity: e.target.value }))} onFocus={e => e.currentTarget.select()} />
+          </StackLabel>
+        </div>
+        <div className="grid grid-cols-1 md:grid-cols-[320px_320px] gap-x-3 gap-y-2 mt-2 max-w-[652px]">
+          <div className="min-w-0">
+            <StackLabel label="Warehouse" required>
+              <CustomSelect
+                value={selectedWarehouseOpt}
+                onChange={opt => {
+                  const wid = opt?.value || '';
+                  setForm(f => ({ ...f, warehouse_id: wid, bin_id: '' }));
+                  setBinOptions([]);
+                }}
+                loadOptions={loadWarehouseOptions}
+                defaultOptions={warehouseOptions.length > 0 ? warehouseOptions : true}
+                isLoading={loadingWarehouses}
+                placeholder="Select warehouse"
+                isClearable
+                compact
+              />
             </StackLabel>
           </div>
-
-          {/* Pricing */}
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-x-3 gap-y-2">
-            <StackLabel label="Cost Price">
-              <div className="relative">
-                <span className="absolute left-1.5 top-1/2 -translate-y-1/2 text-[10px] text-gray-400">$</span>
-                <input className={cellInputCls + ' pl-4 text-right'} type="number" step="0.01" min="0" placeholder="0.00" value={form.cost_price} onChange={e => setForm(f => ({ ...f, cost_price: e.target.value }))} onFocus={e => e.currentTarget.select()} />
-              </div>
+          <div className="min-w-0">
+            <StackLabel label="Bin (Optional)">
+              <CustomSelect
+                value={selectedBinOpt}
+                onChange={opt => setForm(f => ({ ...f, bin_id: opt?.value || '' }))}
+                loadOptions={scopedBinLoader}
+                defaultOptions={binOptions.length > 0 ? binOptions : true}
+                isLoading={loadingBins}
+                isDisabled={!form.warehouse_id}
+                placeholder={form.warehouse_id ? 'Select bin' : 'Select warehouse first'}
+                isClearable
+                compact
+              />
             </StackLabel>
-            <StackLabel label="Sale Price">
-              <div className="relative">
-                <span className="absolute left-1.5 top-1/2 -translate-y-1/2 text-[10px] text-gray-400">$</span>
-                <input className={cellInputCls + ' pl-4 text-right'} type="number" step="0.01" min="0" placeholder="0.00" value={form.selling_price} onChange={e => setForm(f => ({ ...f, selling_price: e.target.value }))} onFocus={e => e.currentTarget.select()} />
-              </div>
-            </StackLabel>
-          </div>
-
-          {/* Stock entry — quantity on top, warehouse + bin below (fixed 320px each, stacked on small screens). Warehouse required, bin optional */}
-          <div className="border-t border-gray-100 dark:border-gray-700 pt-2">
-            <div className="flex items-center gap-1.5 mb-1.5">
-              <span className="text-[10px] font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">Stock</span>
-              <span className="text-[10px] text-gray-400 dark:text-gray-500">— added to existing quantity on save</span>
-            </div>
-            <div className="w-[260px]">
-              <StackLabel label="Quantity">
-                <input className={cellInputCls + ' text-right'} type="number" step="1" min="0" placeholder="0" value={form.quantity} onChange={e => setForm(f => ({ ...f, quantity: e.target.value }))} onFocus={e => e.currentTarget.select()} />
-              </StackLabel>
-            </div>
-            <div className="grid grid-cols-1 md:grid-cols-[320px_320px] gap-x-3 gap-y-2 mt-2 max-w-[652px]">
-              <div className="min-w-0">
-                <StackLabel label="Warehouse" required>
-                  <CustomSelect
-                    value={selectedWarehouseOpt}
-                    onChange={opt => {
-                      const wid = opt?.value || '';
-                      setForm(f => ({ ...f, warehouse_id: wid, bin_id: '' }));
-                      setBinOptions([]);
-                    }}
-                    loadOptions={loadWarehouseOptions}
-                    defaultOptions={warehouseOptions.length > 0 ? warehouseOptions : true}
-                    isLoading={loadingWarehouses}
-                    placeholder="Select warehouse"
-                    isClearable
-                    compact
-                  />
-                </StackLabel>
-              </div>
-              <div className="min-w-0">
-                <StackLabel label="Bin (Optional)">
-                  <CustomSelect
-                    value={selectedBinOpt}
-                    onChange={opt => setForm(f => ({ ...f, bin_id: opt?.value || '' }))}
-                    loadOptions={scopedBinLoader}
-                    defaultOptions={binOptions.length > 0 ? binOptions : true}
-                    isLoading={loadingBins}
-                    isDisabled={!form.warehouse_id}
-                    placeholder={form.warehouse_id ? 'Select bin' : 'Select warehouse first'}
-                    isClearable
-                    compact
-                  />
-                </StackLabel>
-              </div>
-            </div>
-          </div>
-
-          {/* Actions */}
-          <div className="flex items-center justify-end gap-1.5 pt-1">
-            {!form.warehouse_id && (
-              <span className="text-[10px] text-amber-600 dark:text-amber-400 mr-auto">Warehouse is required to save stock</span>
-            )}
-            <button onClick={onCancel} className="px-2.5 py-1 text-xs rounded border border-gray-300 dark:border-gray-600 text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-600">
-              Reset
-            </button>
-            <button onClick={onSave} disabled={saving} className="inline-flex items-center gap-1 px-2.5 py-1 text-xs rounded bg-indigo-600 hover:bg-indigo-700 disabled:opacity-60 text-white">
-              {saving ? <Loader2 className="w-3 h-3 animate-spin" /> : <Save className="w-3 h-3" />} {isNew ? 'Save' : 'Update'}
-            </button>
           </div>
         </div>
-      </td>
-    </tr>
+      </div>
+
+      {/* Actions */}
+      <div className="flex items-center justify-end gap-1.5 pt-1">
+        {!form.warehouse_id && (
+          <span className="text-[10px] text-amber-600 dark:text-amber-400 mr-auto">Warehouse is required to save stock</span>
+        )}
+        <button onClick={onCancel} className="px-2.5 py-1 text-xs rounded border border-gray-300 dark:border-gray-600 text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-600">
+          Reset
+        </button>
+        <button onClick={onSave} disabled={saving} className="inline-flex items-center gap-1 px-2.5 py-1 text-xs rounded bg-indigo-600 hover:bg-indigo-700 disabled:opacity-60 text-white">
+          {saving ? <Loader2 className="w-3 h-3 animate-spin" /> : <Save className="w-3 h-3" />} {isNew ? 'Save' : 'Update'}
+        </button>
+      </div>
+    </div>
   );
 }
 

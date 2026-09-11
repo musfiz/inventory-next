@@ -1,12 +1,13 @@
 'use client';
 
-import { ChevronRight, ChevronDown, Package, Search, Plus, RefreshCw, Maximize2, Minimize2, Tag, Loader2 } from 'lucide-react';
+import { ChevronRight, ChevronDown, Package, Search, Plus, RefreshCw, Maximize2, Minimize2, Tag, Loader2, Store } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
 import BusinessTypeSelect from '@/components/ui/business-type-select';
 import TenantSelect from '@/components/ui/tenant-select';
 import { usePermissions } from '@/hooks/use-permissions';
 import { useProducts } from '@/services/queries/useProducts';
 import { useProductVariations } from '@/services/queries/useProductVariations';
+import { useBrandsByBusinessType } from '@/services/queries/useBrandsByBusinessType';
 import { useAuthStore } from '@/stores/auth-store';
 import type { Product } from '@/types/api.types';
 
@@ -57,26 +58,23 @@ export function ProductTreePanel({
   // or search changes refetch automatically — no refreshKey plumbing needed.
   const { data: products = [], isLoading: loading } = useProducts(effectiveBtId, debounced, isHydrated);
 
+  // Brands loaded by business type — only when business type is selected
+  const { data: brands = [], isLoading: loadingBrands } = useBrandsByBusinessType(effectiveBtId, isHydrated && !!effectiveBtId);
+
   // Reset expansion when the scope changes.
   useEffect(() => { setExpanded(new Set()); }, [effectiveBtId]);
 
-  const handleToggle = (productId: string) => {
-    // Manual chevron toggle — allows multi-expand. Variation data is fetched
-    // by the row itself via the shared ['variations', productId] SWR key.
+  const handleToggle = (brandId: string) => {
     setExpanded(prev => {
       const next = new Set(prev);
-      if (next.has(productId)) next.delete(productId);
-      else next.add(productId);
+      if (next.has(brandId)) next.delete(brandId);
+      else next.add(brandId);
       return next;
     });
   };
 
-  // Accordion on select: clicking a product row collapses all others and
-  // expands just this one. Manual chevron toggles above still allow
-  // multi-expand when needed.
   const handleSelect = (productId: string) => {
     onSelectProduct(productId);
-    setExpanded(new Set([productId]));
   };
 
   const handleSelectAll = () => {
@@ -85,12 +83,12 @@ export function ProductTreePanel({
   };
 
   const expandAll = () => {
-    setExpanded(new Set(products.map(p => String(p.id))));
-    // Rows fetch their own variations on demand into the shared cache;
-    // no fan-out loop needed here.
+    const brandIds = new Set(brandGroups.map(g => g.brandId));
+    setExpanded(brandIds);
   };
   const collapseAll = () => setExpanded(new Set());
 
+  // Filter products by search
   const filteredProducts = useMemo(() => {
     if (!debounced) return products;
     const q = debounced.toLowerCase();
@@ -102,11 +100,51 @@ export function ProductTreePanel({
     );
   }, [products, debounced]);
 
+  // Group products by brand
+  const brandGroups = useMemo(() => {
+    const groupMap = new Map<string, { brandId: string; brandName: string; products: Product[] }>();
+
+    // Initialize brands from API
+    brands.forEach(brand => {
+      groupMap.set(String(brand.id), {
+        brandId: String(brand.id),
+        brandName: brand.name,
+        products: [],
+      });
+    });
+
+    // Group filtered products by brand
+    filteredProducts.forEach(product => {
+      const brandId = product.brand_id ? String(product.brand_id) : 'unassigned';
+      const brandName = product.brand?.name || 'Unassigned';
+
+      if (!groupMap.has(brandId)) {
+        groupMap.set(brandId, {
+          brandId,
+          brandName,
+          products: [],
+        });
+      }
+      groupMap.get(brandId)!.products.push(product);
+    });
+
+    // Sort: brands with products first, then alphabetical
+    return Array.from(groupMap.values())
+      .filter(g => g.brandId !== 'unassigned' || g.products.length > 0)
+      .sort((a, b) => {
+        if (a.products.length > 0 && b.products.length === 0) return -1;
+        if (a.products.length === 0 && b.products.length > 0) return 1;
+        return a.brandName.localeCompare(b.brandName);
+      });
+  }, [brands, filteredProducts]);
+
+  const totalProducts = filteredProducts.length;
+
   return (
     <div className="flex flex-col h-full bg-white dark:bg-gray-800 rounded-md border border-gray-200 dark:border-gray-700 overflow-hidden">
-      {/* Business Type selector — above tree, as requested */}
+      {/* Business Type selector — above tree */}
       <div className="px-3 py-2 border-b border-gray-200 dark:border-gray-700 space-y-2">
-        {/* Tenant selector — super admin only; warehouses are tenant-scoped & shown per tenant */}
+        {/* Tenant selector — super admin only */}
         {isSuperAdmin && (
           <div>
             <label className="block text-[11px] font-medium text-gray-600 dark:text-gray-400 mb-1">Tenant</label>
@@ -140,8 +178,8 @@ export function ProductTreePanel({
 
         <div className="flex items-center justify-between">
           <h2 className="text-sm font-semibold text-gray-900 dark:text-gray-100 flex items-center gap-1.5">
-            <Package className="w-4 h-4 text-indigo-600" /> Products
-            <span className="text-xs font-normal text-gray-500">· {filteredProducts.length}</span>
+            <Store className="w-4 h-4 text-indigo-600" /> Brands
+            <span className="text-xs font-normal text-gray-500">· {brandGroups.length}</span>
           </h2>
           <div className="flex items-center gap-1">
             <button onClick={expandAll} className="p-1 rounded hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-500" title="Expand all"><Maximize2 className="w-3.5 h-3.5" /></button>
@@ -155,7 +193,7 @@ export function ProductTreePanel({
           <input
             value={search}
             onChange={e => setSearch(e.target.value)}
-            placeholder="Search products..."
+            placeholder="Search products or brands..."
             className="w-full pl-7 pr-2 py-1.5 text-xs border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 placeholder-gray-400 focus:outline-none focus:ring-1 focus:ring-indigo-500"
           />
         </div>
@@ -176,70 +214,134 @@ export function ProductTreePanel({
       </div>
 
       <div className="flex-1 overflow-y-auto px-1 py-1 scrollbar-thin">
-        {loading ? (
-          <div className="p-4 flex items-center justify-center gap-2 text-xs text-gray-500"><Loader2 className="w-4 h-4 animate-spin" /> Loading products...</div>
-        ) : filteredProducts.length === 0 ? (
+        {loading || loadingBrands ? (
+          <div className="p-4 flex items-center justify-center gap-2 text-xs text-gray-500"><Loader2 className="w-4 h-4 animate-spin" /> Loading...</div>
+        ) : !effectiveBtId ? (
           <div className="p-4 text-center text-xs text-gray-500">
-            No products found{effectiveBtId ? ' for this business type' : ''}.
+            Select a business type to view brands and products.
+          </div>
+        ) : brandGroups.length === 0 ? (
+          <div className="p-4 text-center text-xs text-gray-500">
+            No brands or products found.
           </div>
         ) : (
           <ul className="space-y-0.5">
-            {filteredProducts.map(product => {
-              const pid = String(product.id);
-              return (
-                <ProductTreeNode
-                  key={pid}
-                  product={product}
-                  isSelected={selectedProductId === pid}
-                  isExpanded={expanded.has(pid)}
-                  onToggle={() => handleToggle(pid)}
-                  onSelect={() => handleSelect(pid)}
-                />
-              );
-            })}
+            {brandGroups.map(group => (
+              <BrandTreeNode
+                key={group.brandId}
+                brandId={group.brandId}
+                brandName={group.brandName}
+                products={group.products}
+                isSelected={selectedProductId !== null && group.products.some(p => String(p.id) === selectedProductId)}
+                isExpanded={expanded.has(group.brandId)}
+                onToggle={() => handleToggle(group.brandId)}
+                onSelectProduct={handleSelect}
+                selectedProductId={selectedProductId}
+              />
+            ))}
           </ul>
         )}
       </div>
 
       <div className="px-3 py-2 border-t border-gray-200 dark:border-gray-700 text-xs text-gray-500 dark:text-gray-400">
-        {filteredProducts.length} products {effectiveBtId ? '· filtered by business type' : '· all business types'}
+        {totalProducts} products · {brandGroups.length} brands {effectiveBtId ? '' : '· select business type'}
       </div>
     </div>
   );
 }
 
 /**
- * One product row. When expanded, variations load through the shared
- * ['variations', productId] SWR key — the exact same key the detail panel
- * uses, so expanding here and then selecting the product serves the panel
- * from cache with zero extra requests (Issue 3). Saves/deletes in the panel
- * mutate that key once, and every expanded row updates automatically
- * (Issue 2) — no variationsSignal plumbing.
+ * Brand node — shows brand name with summary (product count, variation count).
+ * When expanded, shows product nodes with their variations.
  */
-function ProductTreeNode({
-  product,
+function BrandTreeNode({
+  brandId,
+  brandName,
+  products,
   isSelected,
   isExpanded,
   onToggle,
-  onSelect,
+  onSelectProduct,
+  selectedProductId,
 }: {
-  product: Product;
+  brandId: string;
+  brandName: string;
+  products: Product[];
   isSelected: boolean;
   isExpanded: boolean;
   onToggle: () => void;
-  onSelect: () => void;
+  onSelectProduct: (id: string) => void;
+  selectedProductId: string | null;
 }) {
-  const pid = String(product.id);
-  const { data: variations = [], isLoading: isLoadingVar } = useProductVariations(isExpanded ? pid : null);
+  // Count products and variations
+  const productCount = products.length;
 
   return (
     <li>
       <div
-        className={`group flex items-center gap-1 px-1.5 py-1.5 rounded text-xs cursor-pointer select-none border ${isSelected ? 'bg-indigo-50 dark:bg-indigo-900/30 text-indigo-700 dark:text-indigo-300 border-indigo-200 dark:border-indigo-800 font-medium' : 'hover:bg-gray-50 dark:hover:bg-gray-700/50 text-gray-700 dark:text-gray-300 border-transparent'}`}
-        onClick={onSelect}
+        className={`group flex items-center gap-1 px-1.5 py-1.5 rounded text-xs cursor-pointer select-none border ${isSelected ? 'bg-indigo-50 dark:bg-indigo-900/30 text-indigo-700 dark:text-indigo-300 border-indigo-200 dark:border-indigo-800' : 'hover:bg-gray-50 dark:hover:bg-gray-700/50 text-gray-700 dark:text-gray-300 border-transparent'}`}
+        onClick={onToggle}
       >
         <button
           onClick={e => { e.stopPropagation(); onToggle(); }}
+          className="p-0.5 rounded hover:bg-gray-200 dark:hover:bg-gray-600 shrink-0"
+          title={isExpanded ? 'Collapse' : 'Expand'}
+        >
+          {isExpanded ? <ChevronDown className="w-3 h-3" /> : <ChevronRight className="w-3 h-3" />}
+        </button>
+        <Store className="w-3.5 h-3.5 text-purple-500 shrink-0" />
+        <span className="truncate flex-1 font-medium" title={brandName}>{brandName}</span>
+        <span className="text-[10px] text-gray-500 dark:text-gray-400 ml-1">
+          {productCount} {productCount === 1 ? 'product' : 'products'}
+        </span>
+      </div>
+      {isExpanded && (
+        <ul className="ml-5 border-l border-gray-200 dark:border-gray-700 pl-2 mt-0.5">
+          {products.length === 0 ? (
+            <li className="px-2 py-1 text-[11px] text-gray-400">No products</li>
+          ) : (
+            products.map(product => (
+              <ProductVariationNode
+                key={String(product.id)}
+                product={product}
+                isSelected={selectedProductId === String(product.id)}
+                onSelect={() => onSelectProduct(String(product.id))}
+              />
+            ))
+          )}
+        </ul>
+      )}
+    </li>
+  );
+}
+
+/**
+ * Product node with variations — click to select product,
+ * expand to see variation names.
+ */
+function ProductVariationNode({
+  product,
+  isSelected,
+  onSelect,
+}: {
+  product: Product;
+  isSelected: boolean;
+  onSelect: () => void;
+}) {
+  const pid = String(product.id);
+  const [isExpanded, setIsExpanded] = useState(false);
+  const { data: variations = [], isLoading: isLoadingVar } = useProductVariations(isExpanded ? pid : null);
+
+  const hasVariations = variations.length > 0;
+
+  return (
+    <li>
+      <div
+        className={`group flex items-center gap-1 px-1.5 py-1 rounded text-xs cursor-pointer select-none border ${isSelected ? 'bg-indigo-50 dark:bg-indigo-900/30 text-indigo-700 dark:text-indigo-300 border-indigo-200 dark:border-indigo-800 font-medium' : 'hover:bg-gray-50 dark:hover:bg-gray-700/50 text-gray-700 dark:text-gray-300 border-transparent'}`}
+        onClick={onSelect}
+      >
+        <button
+          onClick={e => { e.stopPropagation(); setIsExpanded(!isExpanded); }}
           className="p-0.5 rounded hover:bg-gray-200 dark:hover:bg-gray-600 shrink-0"
           title={isExpanded ? 'Collapse' : 'Expand variations'}
         >
@@ -247,14 +349,19 @@ function ProductTreeNode({
         </button>
         <Package className="w-3.5 h-3.5 text-indigo-500 shrink-0" />
         <span className="truncate flex-1" title={product.name}>{product.name}</span>
-        {product.status && (
-          <span className={`ml-1 px-1 py-0.5 rounded text-[10px] leading-none ${product.status === 'active' ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-600'}`}>{product.status}</span>
+        {hasVariations && product.status && (
+          <span className={`ml-1 px-1 py-0.5 rounded text-[10px] leading-none ${product.status === 'active' ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-600'}`}>
+            {product.status}
+          </span>
+        )}
+        {!hasVariations && (
+          <span className="ml-1 text-[10px] text-gray-400">no variations</span>
         )}
       </div>
       {isExpanded && (
         <ul className="ml-5 border-l border-gray-200 dark:border-gray-700 pl-2 mt-0.5">
           {isLoadingVar ? (
-            <li className="px-2 py-1 text-[11px] text-gray-500 flex items-center gap-1"><Loader2 className="w-3 h-3 animate-spin" /> Loading variations...</li>
+            <li className="px-2 py-1 text-[11px] text-gray-500 flex items-center gap-1"><Loader2 className="w-3 h-3 animate-spin" /> Loading...</li>
           ) : variations.length === 0 ? (
             <li className="px-2 py-1 text-[11px] text-gray-400">No variations</li>
           ) : (
@@ -262,12 +369,13 @@ function ProductTreeNode({
               <li
                 key={String(v.id)}
                 className="flex items-center gap-1.5 px-2 py-0.5 leading-tight rounded text-[11px] hover:bg-gray-50 dark:hover:bg-gray-700/40 text-gray-600 dark:text-gray-400"
-                title={`${v.sku}${v.name ? ' · ' + v.name : ''}`}
+                title={v.name || v.sku}
               >
                 <Tag className="w-3 h-3 text-gray-400 shrink-0" />
-                <span className="font-mono truncate">{v.sku}</span>
-                {v.name && <span className="truncate text-gray-500">· {v.name}</span>}
-                <span className={`ml-auto px-1 py-0.5 rounded text-[10px] ${v.is_active ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>{v.is_active ? 'Active' : 'Inactive'}</span>
+                <span className="truncate">{v.name || v.sku}</span>
+                <span className={`ml-auto px-1 py-0.5 rounded text-[10px] ${v.is_active ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>
+                  {v.is_active ? 'Active' : 'Inactive'}
+                </span>
               </li>
             ))
           )}
