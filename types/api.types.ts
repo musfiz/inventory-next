@@ -142,6 +142,7 @@ export interface ProductVariation {
   id: string;
   product_id: string;
   sku: string;
+  product_code?: string | null;
   name?: string;
   cost_price: number;
   selling_price: number;
@@ -209,11 +210,15 @@ export interface Category {
   name: string;
   description?: string;
   parent_id?: string;
+  parent_category?: string;
   business_type?: BusinessType;
   business_types?: BusinessType[];
+  business_type_ids?: number[];
+  business_type_id?: number;
   parent?: Category;
   children?: Category[];
   is_active: boolean;
+  storefront_active?: boolean;
   created_at?: string;
   updated_at?: string;
 }
@@ -268,6 +273,7 @@ export interface CreateCategoryRequest {
   image_url?: string;
   sort_order?: number;
   is_active?: boolean;
+  storefront_active?: boolean;
 }
 
 export interface UpdateCategoryRequest extends Partial<CreateCategoryRequest> {
@@ -529,6 +535,7 @@ export interface PaginatedResponse<T> {
 export interface CreateProductVariationRequest {
   product_id: string;
   sku: string;
+  product_code?: string | null;
   name?: string;
   cost_price: number;
   selling_price: number;

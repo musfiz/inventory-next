@@ -9,7 +9,6 @@ import { useRouter } from 'next/navigation';
 import { usePermissions } from '@/hooks/use-permissions';
 import { Package2, RefreshCcw } from 'lucide-react';
 import { GiSave } from 'react-icons/gi';
-import Spinner from '@/components/ui/spinner';
 
 export default function StockAddPage() {
   const { isSuperAdmin, hasPermission, isHydrated } = usePermissions();
@@ -32,28 +31,11 @@ export default function StockAddPage() {
 
   const [variations, setVariations] = useState<any[]>([]);
   const [stocks, setStocks] = useState<any[]>([]);
-  const [productFilterType, setProductFilterType] = useState<'brand' | 'category' | null>(null);
-  const [isLoading, setIsLoading] = useState(false);
-
-  // Full reset function
-  const handleFullReset = () => {
-    setSelectedTenant(null);
-    setDefaultWarehouseOptions([]);
-    setSelectedWarehouse(null);
-    setDefaultProductOptions([]);
-    setSelectedProduct(null);
-    setVariations([]);
-    setStocks([]);
-    setProductFilterType(null);
-    setFormErrors({});
-    setShowConfirm(false);
-    setConfirmItems([]);
-    setPendingPayload(null);
-  };
+  const [productByBrand, setproductByBrand] = useState<boolean>(false);
 
   // Confirmation modal state (used when productByBrand is active)
   const [showConfirm, setShowConfirm] = useState(false);
-  const [confirmItems, setConfirmItems] = useState<Array<{ sku: string; name: string; productName: string; categoryName: string; qty: number }>>([]);
+  const [confirmItems, setConfirmItems] = useState<Array<{ sku: string; name: string; productName: string; qty: number }>>([]);
   const [pendingPayload, setPendingPayload] = useState<any>(null);
 
   // Computed: check if product selection is allowed
@@ -90,34 +72,8 @@ export default function StockAddPage() {
       return [];
     }
 
-    const list = await commonService.getProductsForDropdown({ search: input, tenant_id }).catch(() => []);
-    return (list || []).map((p: any) => ({
-      value: p.id,
-      label: p.name,
-      _product: p, // attach full product data for custom formatting
-    }));
-  };
-
-  // Custom product option formatter - show product name + category/brand in dropdown, only name when selected
-  const formatProductOption = (option: any, context: any) => {
-    const p = option._product || option;
-    // Show only product name when selected (in input), show full format in dropdown
-    const isSelectedValue = context === 'value' || context === 'aria';
-    if (isSelectedValue) {
-      return <span className="text-gray-800 font-medium">{p.name}</span>;
-    }
-    return (
-      <div className="flex flex-col">
-        <span className="font-medium text-gray-900 dark:text-gray-100">{p.name}</span>
-        {(p.category?.name || p.brand?.name) && (
-          <span className="text-xs text-gray-500 dark:text-gray-400">
-            {p.category?.name && <span className="text-purple-600 dark:text-purple-400">{p.category.name}</span>}
-            {p.category?.name && p.brand?.name && <span className="mx-1">/</span>}
-            {p.brand?.name && <span className="text-cyan-600 dark:text-cyan-400">{p.brand.name}</span>}
-          </span>
-        )}
-      </div>
-    );
+    const list = await commonService.getProductsForDropdown({ search: input }).catch(() => []);
+    return (list || []).map((p: any) => ({ value: p.id, label: p.name }));
   };
 
   const loadWarehouseOptions = async (input: string) => {
@@ -147,36 +103,23 @@ export default function StockAddPage() {
 
   // Prefetch product options for initial dropdown (so users see items immediately)
   useEffect(() => {
-    const tenant_id = isSuperAdmin ? selectedTenant?.value : authUser?.tenant_id;
-    if (!tenant_id) {
-      setDefaultProductOptions([]);
-      return;
-    }
     const prefetchProducts = async () => {
-      setIsLoading(true);
-      const list = await commonService.getProductsForDropdown({ tenant_id }).catch(() => []);
-      setDefaultProductOptions((list || []).map((p: any) => ({
-        value: p.id,
-        label: p.name,
-        _product: p,
-      })));
-      setIsLoading(false);
+      const list = await commonService.getProductsForDropdown({}).catch(() => []);
+      setDefaultProductOptions((list || []).map((p: any) => ({ value: p.id, label: p.name })));
     };
     prefetchProducts();
-  }, [selectedTenant]);
+  }, []);
 
   // When superadmin selects a tenant, prefetch warehouses for that tenant
   useEffect(() => {
     const prefetchForTenant = async () => {
       if (isSuperAdmin && selectedTenant?.value) {
-        setIsLoading(true);
         const list = await commonService
           .getWarehousesByTenant({ tenant_id: selectedTenant.value })
           .catch(() => []);
         setDefaultWarehouseOptions(
           (list || []).map((w: any) => ({ value: w.id, label: `${w.name} (${w.code})` }))
         );
-        setIsLoading(false);
       } else if (isSuperAdmin && !selectedTenant) {
         setDefaultWarehouseOptions([]);
       }
@@ -185,22 +128,18 @@ export default function StockAddPage() {
   }, [isSuperAdmin, selectedTenant]);
 
   useEffect(() => {
-    // when product selected, load variations (backend handles brand/category logic via is_brand/is_category param)
+    // when product selected, load variations (backend handles brand logic via is_brand param)
     const load = async () => {
       if (!selectedProduct) return;
       try {
         const warehouseId = selectedWarehouse?.value;
 
-        // Pass is_brand or is_category to backend based on filter type
-        const params: any = { warehouse_id: warehouseId };
-        if (productFilterType === 'brand') {
-          params.is_brand = 'true';
-        } else if (productFilterType === 'category') {
-          params.is_category = 'true';
-        }
-
+        // Pass is_brand to backend - it will handle fetching all brand variations if true
         const items = await commonService
-          .getVariationsByProduct(selectedProduct.value, params)
+          .getVariationsByProduct(selectedProduct.value, {
+            warehouse_id: warehouseId,
+            is_brand: productByBrand
+          } as any)
           .catch(() => []);
 
         setVariations(items || []);
@@ -211,7 +150,7 @@ export default function StockAddPage() {
           min_quantity: v.stock?.min_quantity ?? null,
           max_quantity: v.stock?.max_quantity ?? null,
           reorder_point: v.stock?.reorder_point ?? null,
-          last_cost: v.cost_price ?? v.stock?.last_cost ?? null,
+          last_cost: v.stock?.last_cost ?? null,
         })));
       } catch (err) {
         console.error('Failed to load variations', err);
@@ -221,7 +160,7 @@ export default function StockAddPage() {
     };
     load();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [selectedProduct, selectedWarehouse, productFilterType]);
+  }, [selectedProduct, selectedWarehouse, productByBrand]);
 
   const handleStockChange = (index: number, field: string, value: any) => {
     const copy = [...stocks];
@@ -290,8 +229,8 @@ export default function StockAddPage() {
             : Number(s.last_cost),
       });
 
-      if (productFilterType) {
-        // Brand or Category mode: only include rows where the user entered qty > 0
+      if (productByBrand) {
+        // Brand mode: only include rows where the user entered qty > 0
         const activeItems = stocks
           .map((s, i) => ({ s, i }))
           .filter(({ s }) => Number(s.quantity) > 0);
@@ -306,7 +245,6 @@ export default function StockAddPage() {
           sku: variations[i]?.sku || '',
           name: variations[i]?.name || '',
           productName: variations[i]?.product?.name || selectedProduct.label || '',
-          categoryName: variations[i]?.product?.category?.name || '',
           qty: Number(s.quantity),
         }));
 
@@ -384,14 +322,7 @@ export default function StockAddPage() {
         <h1 className="text-xl font-bold">Add Stocks</h1>
       </div>
 
-      <form onSubmit={handleSave} className="relative bg-white dark:bg-gray-800 rounded-md p-3 space-y-3">
-        {/* Section Loading Overlay */}
-        {isLoading && (
-          <div className="absolute inset-0 z-50 flex flex-col items-center justify-center bg-white/80 dark:bg-gray-800/80 rounded-md">
-            <Spinner size="md" className="mb-2" />
-            <p className="text-sm text-gray-500 dark:text-gray-400">Loading...</p>
-          </div>
-        )}
+      <form onSubmit={handleSave} className="bg-white dark:bg-gray-800 rounded-md p-3 space-y-3">
         {isSuperAdmin && (
           <div className="grid grid-cols-1 md:grid-cols-3 gap-1.5">
             <div>
@@ -482,7 +413,6 @@ export default function StockAddPage() {
                   className="text-sm"
                   isInvalid={!!formErrors.product_id}
                   isDisabled={!canSelectProduct()}
-                  formatOptionLabel={formatProductOption}
                 />
               </div>
               {selectedProduct && (
@@ -492,23 +422,15 @@ export default function StockAddPage() {
                     setSelectedProduct(null);
                     setVariations([]);
                     setStocks([]);
-                    setProductFilterType(null);
                   }}
                   className="px-3 py-1.5 bg-gray-500 hover:bg-gray-600 text-white text-sm font-medium rounded-sm transition-colors flex items-center gap-1"
                   title="Clear Product"
                 >
-                  <RefreshCcw className="w-5 h-5" />
+                  <span>
+                    <RefreshCcw className="w-5 h-5 cursor-pointer" />
+                  </span>
                 </button>
               )}
-              <button
-                type="button"
-                onClick={handleFullReset}
-                className="px-3 py-1.5 bg-red-500 hover:bg-red-600 text-white text-sm font-medium rounded-sm transition-colors flex items-center gap-1.5"
-                title="Full Reset"
-              >
-                <RefreshCcw className={`w-4 h-4 ${isLoading ? 'animate-spin' : ''}`} />
-                Reset
-              </button>
             </div>
             {formErrors.product_id && (
               <p className="text-red-600 text-xs mt-1">{formErrors.product_id}</p>
@@ -523,61 +445,26 @@ export default function StockAddPage() {
           </div>
         </div>
 
-        {/* Product By Brand/Category Row */}
-        <div className="flex items-center gap-4">
+        {/* Product By Brand Row */}
+        <div className="flex items-center gap-3">
           <label className="flex items-center text-sm cursor-pointer">
             <input
-              type="radio"
-              name="productFilterType"
-              value="brand"
-              checked={productFilterType === 'brand'}
-              onChange={e => {
-                setProductFilterType(e.target.value as 'brand');
-              }}
-              disabled={!selectedProduct}
+              type="checkbox"
+              checked={productByBrand}
+              onChange={e => setproductByBrand(e.target.checked)}
+              disabled={!canSelectProduct()}
               className="mr-2 w-4 h-4 disabled:opacity-50 disabled:cursor-not-allowed"
             />
-            <span className={!selectedProduct ? 'text-gray-400 dark:text-gray-500' : 'text-gray-700 dark:text-gray-300 font-medium'}>
+            <span className={!canSelectProduct() ? 'text-gray-400 dark:text-gray-500' : 'text-gray-700 dark:text-gray-300 font-medium'}>
               Product By Brand
             </span>
           </label>
-          <label className="flex items-center text-sm cursor-pointer">
-            <input
-              type="radio"
-              name="productFilterType"
-              value="category"
-              checked={productFilterType === 'category'}
-              onChange={e => {
-                setProductFilterType(e.target.value as 'category');
-              }}
-              disabled={!selectedProduct}
-              className="mr-2 w-4 h-4 disabled:opacity-50 disabled:cursor-not-allowed"
-            />
-            <span className={!selectedProduct ? 'text-gray-400 dark:text-gray-500' : 'text-gray-700 dark:text-gray-300 font-medium'}>
-              Product By Category
+          {productByBrand && (
+            <span className="text-xs font-bold text-cyan-600 dark:text-cyan-400">
+              ℹ All variations from products with the same brand will be loaded
             </span>
-          </label>
-          {productFilterType && (
-            <button
-              type="button"
-              onClick={() => {
-                setProductFilterType(null);
-                setVariations([]);
-                setStocks([]);
-              }}
-              className="px-2 py-1 text-xs bg-gray-200 hover:bg-gray-300 dark:bg-gray-700 dark:hover:bg-gray-600 text-gray-700 dark:text-gray-300 rounded-sm transition-colors"
-            >
-              Clear Filter
-            </button>
           )}
         </div>
-        {productFilterType && (
-          <span className="text-xs font-bold text-cyan-600 dark:text-cyan-400">
-            {productFilterType === 'brand'
-              ? 'ℹ All variations from products with the same brand will be loaded'
-              : 'ℹ All variations from products with the same category will be loaded'}
-          </span>
-        )}
 
         {/* Variations table */}
         {variations.length > 0 && (
@@ -599,10 +486,7 @@ export default function StockAddPage() {
                         #
                       </th>
                       <th className="px-3 py-2 text-left text-xs font-semibold text-gray-700 dark:text-gray-300 border-b border-gray-300 dark:border-gray-600 min-w-[200px]">
-                        Product / Variation
-                      </th>
-                      <th className="px-3 py-2 text-left text-xs font-semibold text-gray-700 dark:text-gray-300 border-b border-gray-300 dark:border-gray-600 min-w-[150px]">
-                        Category / Brand
+                        Variation (SKU / Name)
                       </th>
                       <th className="px-3 py-2 text-left text-xs font-semibold text-gray-700 dark:text-gray-300 border-b border-gray-300 dark:border-gray-600 w-32">
                         Current Stock
@@ -638,13 +522,8 @@ export default function StockAddPage() {
                         </td>
                         <td className="px-3 py-1">
                           <div className="flex flex-col">
-                            {v.product && v.product.name && (
-                              <span className="text-sm font-medium text-blue-600 dark:text-blue-400">
-                                {v.product.name}
-                              </span>
-                            )}
                             {v.sku && (
-                              <span className="font-mono text-xs text-gray-500 dark:text-gray-400">
+                              <span className="font-mono text-sm font-medium text-gray-900 dark:text-gray-100">
                                 {v.sku}
                               </span>
                             )}
@@ -653,18 +532,9 @@ export default function StockAddPage() {
                                 {v.name}
                               </span>
                             )}
-                          </div>
-                        </td>
-                        <td className="px-3 py-1">
-                          <div className="flex flex-col">
-                            {v.product?.category?.name && (
-                              <span className="text-xs text-purple-600 dark:text-purple-400">
-                                {v.product.category.name}
-                              </span>
-                            )}
-                            {v.product?.brand?.name && (
-                              <span className="text-xs text-cyan-600 dark:text-cyan-400">
-                                {v.product.brand.name}
+                            {v.product && v.product.name && (
+                              <span className="text-xs text-blue-600 dark:text-blue-400 mt-0.5 font-medium">
+                                {v.product.name}
                               </span>
                             )}
                           </div>
@@ -754,9 +624,10 @@ export default function StockAddPage() {
                             min={0}
                             step="0.01"
                             value={stocks[idx]?.last_cost !== undefined && stocks[idx]?.last_cost !== null && stocks[idx]?.last_cost !== '' ? stocks[idx].last_cost : ''}
-                            readOnly
-                            className="w-full px-2.5 py-1.5 text-right text-sm border border-gray-300 dark:border-gray-600 rounded-sm bg-gray-100 dark:bg-gray-700 text-gray-500 dark:text-gray-400 cursor-not-allowed"
-                            placeholder="N/A"
+                            onChange={e => handleStockChange(idx, 'last_cost', e.target.value)}
+                            onFocus={e => e.target.select()}
+                            className="w-full px-2.5 py-1.5 text-right text-sm border border-gray-300 dark:border-gray-600 rounded-sm focus:outline-none focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400 focus:border-transparent dark:bg-gray-700 dark:text-gray-100 transition-all"
+                            placeholder="Opt."
                           />
                         </td>
                       </tr>
@@ -783,12 +654,12 @@ export default function StockAddPage() {
         </div>
       </form>
 
-      {/* Confirmation Modal — shown only when filter mode is active */}
+      {/* Confirmation Modal — shown only in Product By Brand mode */}
       {showConfirm && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
           <div className="bg-white dark:bg-gray-800 rounded-lg shadow-xl p-5 max-w-lg w-full mx-4">
             <h2 className="text-base font-semibold text-gray-900 dark:text-gray-100 mb-1">
-              Confirm Stock Update - {productFilterType === 'brand' ? 'Brand' : 'Category'} Mode
+              Confirm Stock Update
             </h2>
             <p className="text-sm text-gray-600 dark:text-gray-400 mb-3">
               <strong>{confirmItems.length}</strong> variation(s) with new quantity will be updated.
@@ -798,7 +669,8 @@ export default function StockAddPage() {
               <table className="w-full text-sm">
                 <thead className="bg-gray-100 dark:bg-gray-700 sticky top-0">
                   <tr>
-                    <th className="px-3 py-2 text-left text-xs font-semibold text-gray-700 dark:text-gray-300">Product / Variation</th>
+                    <th className="px-3 py-2 text-left text-xs font-semibold text-gray-700 dark:text-gray-300">Variation</th>
+                    <th className="px-3 py-2 text-left text-xs font-semibold text-gray-700 dark:text-gray-300">Product</th>
                     <th className="px-3 py-2 text-right text-xs font-semibold text-gray-700 dark:text-gray-300">Add Qty</th>
                   </tr>
                 </thead>
@@ -806,16 +678,12 @@ export default function StockAddPage() {
                   {confirmItems.map((item, i) => (
                     <tr key={i}>
                       <td className="px-3 py-1.5">
-                        <span className="text-xs font-medium text-gray-900 dark:text-gray-100">
-                          {item.productName}{item.sku ? ` (${item.sku})` : ''}
-                        </span>
-                        {item.categoryName && (
-                          <span className="block text-xs text-purple-600 dark:text-purple-400">{item.categoryName}</span>
-                        )}
+                        <span className="font-mono text-xs font-medium text-gray-900 dark:text-gray-100">{item.sku}</span>
                         {item.name && (
                           <span className="block text-xs text-gray-500 dark:text-gray-400">{item.name}</span>
                         )}
                       </td>
+                      <td className="px-3 py-1.5 text-xs text-blue-600 dark:text-blue-400">{item.productName}</td>
                       <td className="px-3 py-1.5 text-right font-semibold text-green-600 dark:text-green-400">+{item.qty}</td>
                     </tr>
                   ))}

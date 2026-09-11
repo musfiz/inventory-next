@@ -76,6 +76,8 @@ export function ProductFormPage({ editRef }: { editRef?: string }) {
   // Business type state — for non-super-admin, locked to their tenant's business_type
   const [businessType, setBusinessType] = useState<string>(isSuperAdmin ? '' : tenantBusinessType);
   const [businessTypeId, setBusinessTypeId] = useState<number | null>(null);
+  // Effective business type id — admin picks it, tenant is locked to theirs
+  const effectiveBtId = isSuperAdmin ? businessTypeId : tenantBusinessTypeId;
 
   // Edit-mode state
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -541,6 +543,7 @@ export function ProductFormPage({ editRef }: { editRef?: string }) {
                     onChangeDetail={({ name }) => setBusinessType(name || '')}
                     placeholder="Select business type"
                     isInvalid={hasFieldError('business_type')}
+                    compact
                   />
                 ) : (
                   <input
@@ -608,6 +611,8 @@ export function ProductFormPage({ editRef }: { editRef?: string }) {
                   defaultOptions={defaultCategoryOptions.length > 0 ? defaultCategoryOptions : true}
                   placeholder="Search category..."
                   isInvalid={hasFieldError('category_id')}
+                  isDisabled={!effectiveBtId}
+                  compact
                 />
                 {hasFieldError('category_id') && (
                   <p className="mt-1 text-xs text-red-600 dark:text-red-400">
@@ -627,6 +632,8 @@ export function ProductFormPage({ editRef }: { editRef?: string }) {
                   defaultOptions={defaultBrandOptions.length > 0 ? defaultBrandOptions : true}
                   placeholder="Search brand..."
                   isInvalid={hasFieldError('brand_id')}
+                  isDisabled={!effectiveBtId}
+                  compact
                 />
                 {hasFieldError('brand_id') && (
                   <p className="mt-1 text-xs text-red-600 dark:text-red-400">

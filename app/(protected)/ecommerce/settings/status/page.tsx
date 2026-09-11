@@ -110,11 +110,14 @@ export default function SettingsPage() {
   if (isLoading) return <div className="flex items-center justify-center h-64"><Spinner size="md" /></div>;
 
   return (
-    <div className="space-y-6">
-      <h1 className="text-xl font-bold text-gray-900 dark:text-gray-100 flex items-center gap-2">
-        <Building2 className="w-5 h-5 text-indigo-600 dark:text-indigo-400" />
-        Store Settings
-      </h1>
+    <div className="space-y-2">
+      {/* Header */}
+      <div className="flex items-center gap-2 flex-wrap">
+        <h1 className="text-xl font-bold text-gray-900 dark:text-gray-100 flex items-center gap-2 mr-auto">
+          <Building2 className="w-5 h-5 text-indigo-600 dark:text-indigo-400" />
+          Store Settings
+        </h1>
+      </div>
 
       {/* Status & Activation */}
       <div className="space-y-2">
@@ -206,16 +209,16 @@ export default function SettingsPage() {
               aria-checked={expressCheckoutEnabled}
               disabled={expressCheckoutSaving}
               onClick={handleExpressCheckoutToggle}
-              className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer items-center rounded-full border-2 border-transparent transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 ${
+              className={`relative inline-flex h-5.5 w-10 shrink-0 items-center rounded-full transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 ${
                 expressCheckoutEnabled ? 'bg-indigo-600' : 'bg-gray-300 dark:bg-gray-600'
-              }`}
+              } ${expressCheckoutSaving ? 'opacity-70 cursor-wait' : 'cursor-pointer'}`}
             >
               {expressCheckoutSaving && (
                 <Loader2 className="absolute left-1 h-3 w-3 animate-spin text-white" />
               )}
               <span
-                className={`inline-block h-5 w-5 transform rounded-full bg-white shadow-sm transition-transform duration-200 ${
-                  expressCheckoutEnabled ? 'translate-x-5' : 'translate-x-0'
+                className={`pointer-events-none absolute top-0.75 left-0.75 h-3.5 w-3.5 rounded-full bg-white shadow-md transition-transform duration-200 ease-in-out ${
+                  expressCheckoutEnabled ? 'translate-x-4' : 'translate-x-0'
                 }`}
               />
             </button>

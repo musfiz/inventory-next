@@ -1,8 +1,9 @@
 'use client';
 
-import { useEffect, useState } from 'react';
-import CustomSelect from './custom-select';
+import { useEffect, useMemo, useState } from 'react';
 import { commonService } from '@/services';
+import { useTenantsDropdown } from '@/services/queries/useTenantsDropdown';
+import CustomSelect from './custom-select';
 
 interface TenantSelectProps {
   value?: string | null;
@@ -10,18 +11,37 @@ interface TenantSelectProps {
   placeholder?: string;
   isDisabled?: boolean;
   isInvalid?: boolean;
+  compact?: boolean;
+  isClearable?: boolean;
 }
 
-export default function TenantSelect({ value, onChange, placeholder = 'Select tenant', isDisabled = false, isInvalid = false }: TenantSelectProps) {
-  const [defaultOptions, setDefaultOptions] = useState<{ value: string; label: string }[]>([]);
-  const [selected, setSelected] = useState<any>(null);
+export default function TenantSelect({ value, onChange, placeholder = 'Select tenant', isDisabled = false, isInvalid = false, compact = false, isClearable = false }: TenantSelectProps) {
+  // Cache-backed preload (Issue 5): survives React 18 StrictMode's
+  // mount → unmount → remount, so the second mount hits the SWR cache
+  // instead of firing a duplicate GET /api/v1/dropdown/tenant.
+  // NOTE: no `= []` default — a fresh [] literal each render would be a new
+  // reference and retrigger the effect below in a loop.
+  const { data: preloadedTenants } = useTenantsDropdown();
+  const [selected, setSelected] = useState<{ value: string; label: string } | null>(null);
 
-  // loader for react-select
+  // Derived via useMemo — no setState-in-effect, so this can never feed a
+  // "Maximum update depth exceeded" loop no matter how often it recomputes.
+  const defaultOptions = useMemo(
+    () =>
+      (preloadedTenants ?? []).map((t) => ({
+        value: String(t.id),
+        label: t.business_name,
+      })),
+    [preloadedTenants]
+  );
+
+  // Loader for react-select. Kept live for search-as-you-type; the empty
+  // preload path is served by the hook above, so StrictMode remounts and
+  // remount-via-key-changes don't duplicate it.
   const loadOptions = async (input: string) => {
     try {
       const tenants = await commonService.getTenantsForDropdown({ search: input });
-      const opts = (tenants || []).map((t: any) => ({ value: String(t.id), label: t.business_name }));
-      if (!input && defaultOptions.length === 0) setDefaultOptions(opts);
+      const opts = (tenants || []).map((t) => ({ value: String(t.id), label: t.business_name }));
       return opts;
     } catch (err) {
       console.error('TenantSelect loadOptions error', err);
@@ -29,22 +49,8 @@ export default function TenantSelect({ value, onChange, placeholder = 'Select te
     }
   };
 
-  // preload default options on mount
-  useEffect(() => {
-    let mounted = true;
-    (async () => {
-      try {
-        const opts = await loadOptions('');
-        if (!mounted) return;
-        setDefaultOptions(opts);
-      } catch (e) {
-        console.error(e);
-      }
-    })();
-    return () => { mounted = false; };
-  }, []);
-
-  // sync selected state when value prop changes (without re-fetching)
+  // Sync selected state when value prop changes (without re-fetching).
+  // Only calls setSelected — never touches the options — so no loop.
   useEffect(() => {
     if (!value) { setSelected(null); return; }
     const valueStr = String(value);
@@ -64,6 +70,8 @@ export default function TenantSelect({ value, onChange, placeholder = 'Select te
       placeholder={placeholder}
       isDisabled={isDisabled}
       isInvalid={isInvalid}
+      compact={compact}
+      isClearable={isClearable}
     />
   );
 }

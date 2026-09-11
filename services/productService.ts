@@ -22,11 +22,14 @@ class ProductService {
     search?: string;
     category_id?: string;
     brand_id?: string;
+    business_type_id?: number | string;
     is_active?: boolean;
     sort_by?: string;
     sort_order?: 'asc' | 'desc';
-  }): Promise<ProductListResponse> {
-    const response = await apiClient.get<ApiResponse<ProductListResponse>>('/api/v1/products', {
+    /** Skip heavy relations (variations, images) — enough for tree/list nodes. */
+    lite?: number;
+  }): Promise<Product[]> {
+    const response = await apiClient.get<ApiResponse<Product[]>>('/api/v1/products', {
       params,
     });
     return response.data.data;

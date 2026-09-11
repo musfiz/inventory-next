@@ -1,7 +1,7 @@
 'use client';
 
 import React from 'react';
-import Select, { StylesConfig, ThemeConfig } from 'react-select';
+import Select, { components, SingleValueProps, StylesConfig, ThemeConfig } from 'react-select';
 import AsyncSelect from 'react-select/async';
 
 export interface SelectOption {
@@ -24,7 +24,39 @@ interface CustomSelectProps {
   autoFocus?: boolean;
   isClearable?: boolean;
   formatOptionLabel?: (option: SelectOption, context: any) => React.ReactNode;
+  /**
+   * Compact variant that mirrors a native <select> styled by `inputCls()`
+   * (text-xs, py-1 height, rounded, indigo focus ring, theme-aware).
+   * Drive colors from the Tailwind `dark:` CSS variables scoped to `.rc-compact`,
+   * so both the control and its dropdown stay correct in light & dark mode.
+   */
+  compact?: boolean;
 }
+
+/**
+ * Render the selected option with ellipsis truncation ("...") so a long label
+ * stays on a single line and never overflows the control's width — mirroring a
+ * native <select>. The wrapper span constrains the absolutely-positioned
+ * react-select single value so it can shrink with the control.
+ */
+const SingleValueWithEllipsis: React.FC<SingleValueProps<SelectOption, false>> = props => (
+  <components.SingleValue {...props}>
+    <span
+      style={{
+        display: 'block',
+        overflow: 'hidden',
+        textOverflow: 'ellipsis',
+        whiteSpace: 'nowrap',
+        maxWidth: '100%',
+      }}
+    >
+      {props.children}
+    </span>
+  </components.SingleValue>
+);
+
+// Shared components override: truncate the selected value in both Select & AsyncSelect.
+const TRUNCATE_COMPONENTS = { SingleValue: SingleValueWithEllipsis };
 
 const customStyles = (isInvalid?: boolean): StylesConfig<SelectOption, false> => ({
   control: (provided, state) => ({
@@ -55,6 +87,7 @@ const customStyles = (isInvalid?: boolean): StylesConfig<SelectOption, false> =>
     padding: '0 8px',
     display: 'flex',
     alignItems: 'center',
+    minWidth: 0, // allow the value to shrink so truncation applies
   }),
   indicatorsContainer: provided => ({
     ...provided,
@@ -64,6 +97,9 @@ const customStyles = (isInvalid?: boolean): StylesConfig<SelectOption, false> =>
     ...provided,
     color: 'var(--tw-text-gray-100)',
     fontSize: '0.875rem', // text-sm to match other inputs
+    overflow: 'hidden',
+    textOverflow: 'ellipsis',
+    whiteSpace: 'nowrap',
   }),
   placeholder: provided => ({
     ...provided,
@@ -115,6 +151,107 @@ const customTheme: ThemeConfig = theme => ({
   },
 });
 
+/**
+ * Compact styles that mirror the native <select> using `inputCls()`:
+ *   text-xs | bg-white dark:bg-gray-700 | border-gray-300 dark:border-gray-600
+ *   | rounded | focus:ring-1 focus:ring-indigo-500
+ *
+ * Colors are driven by CSS variables defined on `.rc-compact` (and `.dark .rc-compact`),
+ * which lets light/dark theming be handled entirely in CSS — matching the native selects.
+ */
+const compactStyles = (isInvalid?: boolean): StylesConfig<SelectOption, false> => ({
+  control: (provided, state) => ({
+    ...provided,
+    backgroundColor: 'var(--rc-control-bg, #ffffff)',
+    borderColor: isInvalid
+      ? 'var(--rc-invalid, #ef4444)'
+      : state.isFocused
+        ? 'var(--rc-focus, #6366f1)'
+        : 'var(--rc-border, #d1d5db)',
+    borderWidth: '1px',
+    borderRadius: '0.25rem', // rounded
+    boxShadow: state.isFocused ? '0 0 0 1px var(--rc-focus, #6366f1)' : 'none',
+    cursor: 'pointer',
+    minHeight: '28px',
+    height: '28px', // py-1 (~4px top/bottom) + text-xs (~1rem line-height)
+    '&:hover': {
+      borderColor: isInvalid
+        ? 'var(--rc-invalid, #ef4444)'
+        : state.isFocused
+          ? 'var(--rc-focus, #6366f1)'
+          : 'var(--rc-border-hover, #9ca3af)',
+    },
+  }),
+  valueContainer: provided => ({
+    ...provided,
+    height: '28px',
+    padding: '0 8px',
+    display: 'flex',
+    alignItems: 'center',
+    minWidth: 0, // allow the value to shrink so truncation applies
+  }),
+  indicatorsContainer: provided => ({
+    ...provided,
+    height: '28px',
+  }),
+  singleValue: provided => ({
+    ...provided,
+    color: 'var(--rc-text, #111827)',
+    fontSize: '0.75rem', // text-xs
+    overflow: 'hidden',
+    textOverflow: 'ellipsis',
+    whiteSpace: 'nowrap',
+  }),
+  placeholder: provided => ({
+    ...provided,
+    color: 'var(--rc-placeholder, #9ca3af)',
+    fontSize: '0.75rem', // text-xs
+  }),
+  menu: provided => ({
+    ...provided,
+    backgroundColor: 'var(--rc-menu-bg, #ffffff)',
+    border: '1px solid var(--rc-border, #d1d5db)',
+    borderRadius: '0.25rem', // rounded
+    boxShadow: '0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -2px rgb(0 0 0 / 0.05)',
+    zIndex: 9999,
+  }),
+  menuPortal: provided => ({
+    ...provided,
+    zIndex: 99999,
+  }),
+  option: (provided, state) => ({
+    ...provided,
+    backgroundColor: state.isSelected
+      ? 'var(--rc-focus, #6366f1)'
+      : state.isFocused
+        ? 'var(--rc-option-focus, #f3f4f6)'
+        : 'transparent',
+    color: state.isSelected ? '#ffffff' : 'var(--rc-text, #111827)',
+    cursor: 'pointer',
+    fontSize: '0.75rem', // text-xs
+    padding: '6px 10px',
+    '&:hover': {
+      backgroundColor: state.isSelected ? 'var(--rc-focus, #6366f1)' : 'var(--rc-option-focus, #f3f4f6)',
+    },
+  }),
+  input: provided => ({
+    ...provided,
+    color: 'var(--rc-text, #111827)',
+    fontSize: '0.75rem', // text-xs
+  }),
+  dropdownIndicator: provided => ({
+    ...provided,
+    color: 'var(--rc-placeholder, #9ca3af)',
+    padding: '0 4px',
+    '&:hover': { color: 'var(--rc-text, #111827)' },
+  }),
+  clearIndicator: provided => ({
+    ...provided,
+    color: 'var(--rc-placeholder, #9ca3af)',
+    padding: '0 4px',
+  }),
+});
+
 export default function CustomSelect({
   value,
   onChange,
@@ -129,9 +266,10 @@ export default function CustomSelect({
   isInvalid = false,
   autoFocus = false,
   isClearable = false,
+  compact = false,
   formatOptionLabel,
 }: CustomSelectProps) {
-  const styles = customStyles(isInvalid);
+  const styles = (compact ? compactStyles : customStyles)(isInvalid);
 
   // Use AsyncSelect if loadOptions is provided
   if (loadOptions) {
@@ -143,8 +281,8 @@ export default function CustomSelect({
         defaultOptions={defaultOptions}
         autoFocus={autoFocus}
         placeholder={placeholder}
-        className={className}
-        classNamePrefix={classNamePrefix}
+        className={compact ? `${className} rc-compact` : className}
+        classNamePrefix={compact ? 'rc' : classNamePrefix}
         styles={styles}
         theme={customTheme}
         isDisabled={isDisabled}
@@ -155,6 +293,7 @@ export default function CustomSelect({
         menuPosition="fixed"
         isClearable={isClearable}
         formatOptionLabel={formatOptionLabel}
+        components={TRUNCATE_COMPONENTS}
       />
     );
   }
@@ -167,8 +306,8 @@ export default function CustomSelect({
       autoFocus={autoFocus}
       options={options || []}
       placeholder={placeholder}
-      className={className}
-      classNamePrefix={classNamePrefix}
+      className={compact ? `${className} rc-compact` : className}
+      classNamePrefix={compact ? 'rc' : classNamePrefix}
       styles={styles}
       theme={customTheme}
       isDisabled={isDisabled}
@@ -177,6 +316,7 @@ export default function CustomSelect({
       menuPosition="fixed"
       isClearable={isClearable}
       formatOptionLabel={formatOptionLabel}
+      components={TRUNCATE_COMPONENTS}
     />
   );
 }

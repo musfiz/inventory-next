@@ -29,8 +29,8 @@ export const MobileMenu = ({ open, onClose, headerLogo, ready, storeName }: { op
               <Image
                 src={headerLogo}
                 alt="Logo"
-                width={128}
-                height={32}
+                width={220}
+                height={75}
                 className="h-8 w-auto object-contain"
                 unoptimized={headerLogo.startsWith('data:')}
               />

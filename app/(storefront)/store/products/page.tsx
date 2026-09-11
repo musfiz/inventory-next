@@ -1,21 +1,21 @@
 'use client';
 
-import { useState, useMemo, useEffect } from 'react';
-import Link from 'next/link';
 import {
   SlidersHorizontal,
   X,
   ChevronDown,
 } from 'lucide-react';
+import Link from 'next/link';
+import { useState, useMemo, useEffect } from 'react';
 import { FiGrid } from 'react-icons/fi';
 import { IoListSharp } from 'react-icons/io5';
-import ProductCard from '@/components/storefront/ProductCard';
-import ScrollReveal from '@/components/storefront/ScrollReveal';
 import ProductCardSkeleton from '@/components/storefront/ProductCardSkeleton';
-import storefrontService from '@/services/storefrontService';
-import { useStorefrontCategories } from '@/hooks/use-storefront-categories';
-import { useStorefrontBrands } from '@/hooks/use-storefront-brands';
 import { FilterSidebar, FilterDrawer, PRICE_STEPS } from '@/components/storefront/ProductFilterSidebar';
+import ProductVariationCards from '@/components/storefront/ProductVariationCards';
+import ScrollReveal from '@/components/storefront/ScrollReveal';
+import { useStorefrontBrands } from '@/hooks/use-storefront-brands';
+import { useStorefrontCategories } from '@/hooks/use-storefront-categories';
+import storefrontService from '@/services/storefrontService';
 import type { Product } from '@/types/storefront';
 
 const SORTS = [
@@ -366,9 +366,7 @@ export default function AllProductsPage() {
               <>
                 <div className={`grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 ${view === 'list' ? '!grid-cols-1' : ''}`}>
                   {filtered.map((p, i) => (
-                    <ScrollReveal key={p.id} animation="zoom-in" staggerIndex={i}>
-                      <ProductCard product={p} variant={view === 'list' ? 'list' : 'default'} />
-                    </ScrollReveal>
+                    <ProductVariationCards key={p.id} product={p} variant={view === 'list' ? 'list' : 'default'} staggerIndex={i} />
                   ))}
                 </div>
                 {hasMorePages && (

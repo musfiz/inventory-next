@@ -19,13 +19,23 @@ class CategoryService {
     id?: string;
     name: string;
     description?: string;
-    parent_id?: string;
+    parent_id?: string | null;
     business_type_ids: number[];
     image_url?: string;
     sort_order?: number;
     is_active: boolean;
+    storefront_active?: boolean;
   }): Promise<Category> {
     const response = await apiClient.post<ApiResponse<Category>>('/api/v1/categories/store', data);
+    return response.data.data;
+  }
+
+  /**
+   * Get single category by ID (fresh data for edit form).
+   * GET /api/v1/categories/{id}
+   */
+  async getCategoryById(id: string): Promise<Category> {
+    const response = await apiClient.get<ApiResponse<Category>>(`/api/v1/categories/${id}`);
     return response.data.data;
   }
 

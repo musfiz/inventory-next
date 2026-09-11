@@ -132,6 +132,7 @@ const navigation: NavigationItem[] = [
     icon: AiOutlineProduct,
     permissions: ['view-product', 'view-product-variation', 'view-product-barcode', 'view-product-image'],
     children: [
+      { name: 'Product Summary', href: '/products/manage', icon: LayoutGrid, permission: 'view-product' },
       { name: 'Products', href: '/products', icon: List, permission: 'view-product' },
       { name: 'Add Product', href: '/products/add', icon: UserPlus, permission: 'create-product' },
       {

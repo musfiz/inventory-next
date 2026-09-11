@@ -1,13 +1,13 @@
 'use client';
 
-import { useState, useEffect, useMemo } from 'react';
-import Link from 'next/link';
-import Image from 'next/image';
 import { Flame, ArrowRight, AlertCircle, Clock, Zap } from 'lucide-react';
-import { formatMoney } from '@/lib/utils/format';
-import ProductCard from '@/components/storefront/ProductCard';
+import Image from 'next/image';
+import Link from 'next/link';
+import { useState, useEffect, useMemo } from 'react';
 import ProductCardSkeleton from '@/components/storefront/ProductCardSkeleton';
+import ProductVariationCards from '@/components/storefront/ProductVariationCards';
 import ScrollReveal from '@/components/storefront/ScrollReveal';
+import { formatMoney } from '@/lib/utils/format';
 import storefrontService, { StorefrontFlashSaleCampaign, StorefrontFlashSaleProduct } from '@/services/storefrontService';
 
 interface FlashSaleProductForCard {
@@ -307,9 +307,7 @@ export default function FlashSalePage() {
               ) : (
                 <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
                   {(productsByCampaign[campaign.id] || []).map((product, index) => (
-                    <ScrollReveal key={`${campaign.id}-${product.id}`} animation="zoom-in" staggerIndex={index}>
-                      <ProductCard product={product as any} variant="default" showWishlist={true} />
-                    </ScrollReveal>
+                    <ProductVariationCards key={`${campaign.id}-${product.id}`} product={product as any} variant="default" showWishlist={true} staggerIndex={index} />
                   ))}
                 </div>
               )}

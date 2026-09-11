@@ -46,6 +46,8 @@ export default function ProductCard({
   const price = defaultVariation.sellingPrice;
   const mrp = defaultVariation.mrp;
   const pct = discount(mrp, price);
+  // Absolute user savings; only meaningful when MRP is actually above the price.
+  const saved = mrp && price != null && mrp > price ? mrp - price : 0;
   const inStock = product.variations.some(v => v.stock > 0);
   const hasManyVariations = product.variations.length > 1;
   const totalStock = product.variations.reduce((s, v) => s + v.stock, 0);
@@ -346,9 +348,9 @@ export default function ProductCard({
                 </span>
               )}
             </div>
-            {pct > 0 && (
+            {pct > 0 && saved > 0 && (
               <span className="text-xs font-semibold text-emerald-600 dark:text-emerald-400">
-                Save {formatMoneyDecimal(mrp! - price)}
+                Save {formatMoneyDecimal(saved)}
               </span>
             )}
           </div>

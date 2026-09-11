@@ -83,6 +83,16 @@ export default function ProductVariationsPage() {
       ),
     },
     {
+      accessorKey: 'product_code',
+      header: 'Product Code',
+      meta: { width: '12%' },
+      cell: ({ row }) => (
+        <span className="text-xs font-mono text-gray-700 dark:text-gray-300" title={row.original.product_code || ''}>
+          {row.original.product_code || <span className="text-gray-400">—</span>}
+        </span>
+      ),
+    },
+    {
       id: 'attributes',
       header: 'Attributes',
       meta: { width: '25%' },

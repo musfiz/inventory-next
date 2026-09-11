@@ -8,6 +8,7 @@ export interface Category {
   image?: string;
   parentId?: string | null;
   productCount?: number;
+  storefront_active?: boolean;
 }
 
 export interface Brand {
