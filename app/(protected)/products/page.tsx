@@ -196,12 +196,6 @@ export default function ProductsPage() {
       ]
       : []),
     {
-      accessorKey: 'brand.name',
-      header: 'Brand',
-      meta: { width: '10%' },
-      cell: ({ row }) => <span className="text-xs text-gray-600 dark:text-gray-400">{row.original.brand?.name || '-'}</span>,
-    },
-    {
       accessorKey: 'category.name',
       header: 'Category',
       meta: { width: '12%' },

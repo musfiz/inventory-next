@@ -24,6 +24,24 @@ export default function ProductManageTreePage() {
   const [businessTypeId, setBusinessTypeId] = useState<number | null>(null);
   const effectiveBtId = isSuperAdmin ? businessTypeId : tenantBusinessTypeId;
 
+  // Restore super admin's stored business type selection once auth is hydrated.
+  useEffect(() => {
+    if (!isSuperAdmin) return;
+    try {
+      const stored = window.localStorage.getItem('manage-selected-business-type');
+      if (stored) setBusinessTypeId(Number(stored));
+    } catch { /* storage unavailable */ }
+  }, [isSuperAdmin]);
+
+  // Persist the business type selection so it survives page reloads.
+  useEffect(() => {
+    if (!isSuperAdmin) return;
+    try {
+      if (businessTypeId) window.localStorage.setItem('manage-selected-business-type', String(businessTypeId));
+      else window.localStorage.removeItem('manage-selected-business-type');
+    } catch { /* storage unavailable */ }
+  }, [isSuperAdmin, businessTypeId]);
+
   // Tenant scope for warehouse selection. Super admin picks a tenant explicitly and
   // the choice persists in sessionStorage until the tab closes or they clear it.
   // Tenant users are scoped to their own tenant via the user object, so this stays null.
@@ -110,7 +128,7 @@ export default function ProductManageTreePage() {
         <h1 className="text-xl font-bold text-gray-900 dark:text-gray-100 flex items-center gap-2">
           <LayoutGrid className="w-5 h-5 text-indigo-600 dark:text-indigo-400" />
           Product Management
-          <span className="text-xs font-normal text-gray-500 dark:text-gray-400 ml-1 hidden sm:inline">Tree view · Business type → Products → Variations</span>
+          <span className="text-xs font-normal text-gray-500 dark:text-gray-400 ml-1 hidden sm:inline">Tree view · Products → Variations (with brand)</span>
         </h1>
         <div className="flex items-center gap-1.5">
           <button onClick={handleRefresh} title="Refresh product data" className="inline-flex items-center gap-1.5 px-2.5 py-1.5 text-xs bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 rounded hover:bg-gray-50">
@@ -124,7 +142,7 @@ export default function ProductManageTreePage() {
 
       <div className="grid grid-cols-1 lg:grid-cols-[380px_1fr] gap-2 items-start">
         {/* Left: Business type selector ABOVE + business_type_id-wise product tree (products → variations) */}
-        <div className="lg:sticky lg:top-2 lg:h-[calc(100vh-120px)] lg:overflow-hidden h-[520px] lg:h-[calc(100vh-120px)]">
+        <div className="lg:sticky lg:top-2 lg:h-[calc(100vh-120px)] lg:overflow-hidden h-130]">
           <ProductTreePanel
             businessTypeId={businessTypeId}
             onBusinessTypeChange={handleBusinessTypeChange}
@@ -138,7 +156,7 @@ export default function ProductManageTreePage() {
           />
         </div>
 
-        <div className="min-h-[420px] lg:h-[calc(100vh-120px)] lg:overflow-hidden flex flex-col">
+        <div className="min-h-105 lg:h-[calc(100vh-120px)] lg:overflow-hidden flex flex-col">
           <ProductDetailPanel
             selectedProductId={selectedProductId}
             categories={categories}
