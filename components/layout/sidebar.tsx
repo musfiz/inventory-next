@@ -174,6 +174,7 @@ const navigation: NavigationItem[] = [
     children: [
       { name: 'Stock', href: '/stock', icon: List, permission: 'view-stock' },
       { name: 'Add Stock', href: '/stock/add', icon: LayersPlus, permission: 'create-stock' },
+      { name: 'Stock Entry (PO)', href: '/stock/manage', icon: ClipboardList, permission: 'create-stock' },
       { name: 'Stock Movement', href: '/stock/movement', icon: History, permission: 'view-stock-movement' },
       { name: 'Warehouse', href: '/warehouse', icon: Warehouse, permission: 'view-warehouse' },
       { name: 'Bins', href: '/bins', icon: Container, permission: 'view-bin' },
