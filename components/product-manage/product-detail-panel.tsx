@@ -1,6 +1,6 @@
 'use client';
 
-import { Package, Edit2, Trash2, Tag, Image as ImageIcon, Barcode, Loader2, Plus, ArrowLeft, Save } from 'lucide-react';
+import { Package, Edit2, Trash2, Tag, Image as ImageIcon, Barcode, Loader2, Plus, ArrowLeft, Save, Copy } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { useEffect, useState, useCallback, useMemo, useRef } from 'react';
 import { mutate as globalMutate } from 'swr';
@@ -118,6 +118,8 @@ export function ProductDetailPanel({
   const [variationForm, setVariationForm] = useState<VariationFormState>(emptyVariationForm());
   const [savingVariation, setSavingVariation] = useState(false);
   const [generatingSku, setGeneratingSku] = useState(false);
+  const [lastSkuInfo, setLastSkuInfo] = useState<{ last_sku: string | null; next_sku: string | null; variation_name: string | null } | null>(null);
+  const [variationErrors, setVariationErrors] = useState<Record<string, string[]>>({});
 
   // Cache-backed preloads (same Issue 5 rationale as tenant/business-type):
   // SWR dedupes StrictMode remounts and form open/close cycles, so the form
@@ -452,15 +454,43 @@ export function ProductDetailPanel({
 
   const productFieldError = (field: string) => productErrors[field]?.[0] || null;
 
-  const openAddVariation = async (product?: Product) => {
+  const openAddVariation = async (product?: Product, seed?: ProductVariation) => {
     const targetProduct = product || editingProduct;
     if (!targetProduct) return;
     // Sticky warehouse: pre-fill the last-used warehouse for this product so
     // similar back-to-back variations don't need to re-select it. Cleared only
     // by switching product or changing the select manually.
     const sticky = stickyWarehouseByProduct[String(targetProduct.id)] || '';
-    setVariationForm({ ...emptyVariationForm(), warehouse_id: sticky, bin_id: '' });
+    setVariationForm({
+      ...emptyVariationForm(),
+      warehouse_id: seed
+        ? ((seed as ProductVariation & { stocks?: Array<{ warehouse_id?: string | number }> }).stocks?.[0]?.warehouse_id
+          ? String((seed as ProductVariation & { stocks?: Array<{ warehouse_id?: string | number }> }).stocks![0].warehouse_id)
+          : sticky)
+        : sticky,
+      bin_id: '',
+      // Duplicate: keep name/prices/brand/status, drop identity (sku/code).
+      ...(seed
+        ? {
+            name: seed.name || '',
+            brand_id: seed.brand_id ? String(seed.brand_id) : '',
+            brand_name: seed.brand?.name || '',
+            cost_price: String(seed.cost_price ?? 0),
+            selling_price: String(seed.selling_price ?? 0),
+            dp: String(seed.dp ?? 0),
+            mrp: String(seed.mrp ?? 0),
+            is_active: seed.is_active,
+          }
+        : {}),
+    });
     setVariationDraftId('new');
+    setVariationErrors({});
+    // Show last + next SKU so the user can sanity-check the sequence.
+    setLastSkuInfo(null);
+    productVariationService
+      .getLastSku(String(targetProduct.id))
+      .then(info => setLastSkuInfo({ last_sku: info.last_sku, next_sku: info.next_sku, variation_name: info.variation_name }))
+      .catch(() => { /* non-fatal — SKU hint simply stays hidden */ });
     setGeneratingSku(true);
     try {
       const sku = await productVariationService.generateSku(String(targetProduct.id), targetProduct.name);
@@ -472,7 +502,14 @@ export function ProductDetailPanel({
     }
   };
 
+  // Duplicate a variation: open the add draft pre-filled from the source row.
+  const openDuplicateVariation = (v: ProductVariation) => {
+    if (variationDraftId !== null) return;
+    void openAddVariation(undefined, v);
+  };
+
   const openEditVariation = (v: ProductVariation) => {
+    setLastSkuInfo(null);
     setVariationDraftId(String(v.id));
     // Backend may include the variation's stock rows (one per warehouse) on the
     // list/show payload. Populate the stock/warehouse fields from the first row.
@@ -512,17 +549,31 @@ export function ProductDetailPanel({
     const sticky = pid ? (variationForm.warehouse_id || stickyWarehouseByProduct[pid] || '') : '';
     if (pid && sticky) setStickyWarehouseByProduct(prev => ({ ...prev, [pid]: sticky }));
     setVariationDraftId(null);
+    setLastSkuInfo(null);
     setVariationForm({ ...emptyVariationForm(), warehouse_id: sticky, bin_id: '' });
+  };
+
+  const clearVariationError = (field: string) => {
+    setVariationErrors(prev => {
+      const next = { ...prev };
+      delete next[field];
+      return next;
+    });
   };
 
   const handleSaveVariation = async () => {
     if (!editingProduct) return;
-    if (!variationForm.sku.trim()) {
-      notify.error('SKU is required');
-      return;
-    }
-    if (!variationForm.warehouse_id) {
-      notify.error('Warehouse is required to add stock for this variation');
+    const errs: Record<string, string[]> = {};
+    if (!variationForm.sku.trim()) errs.sku = ['SKU is required'];
+    if (!variationForm.warehouse_id) errs.warehouse_id = ['Warehouse is required'];
+    if (!variationForm.name?.trim()) errs.name = ['Variation name is required'];
+    if (!variationForm.brand_id) errs.brand_id = ['Brand is required'];
+    const cost = parseFloat(variationForm.cost_price);
+    const sale = parseFloat(variationForm.selling_price);
+    if (variationForm.cost_price && (isNaN(cost) || cost < 0)) errs.cost_price = ['Cost price must be >= 0'];
+    if (variationForm.selling_price && (isNaN(sale) || sale < 0)) errs.selling_price = ['Selling price must be >= 0'];
+    if (Object.keys(errs).length > 0) {
+      setVariationErrors(errs);
       return;
     }
     setSavingVariation(true);
@@ -533,8 +584,8 @@ export function ProductDetailPanel({
         product_code: variationForm.product_code.trim() || null,
         name: variationForm.name.trim() || undefined,
         brand_id: variationForm.brand_id || undefined,
-        cost_price: parseFloat(variationForm.cost_price) || 0,
-        selling_price: parseFloat(variationForm.selling_price) || 0,
+        cost_price: cost || 0,
+        selling_price: sale || 0,
         dp: parseFloat(variationForm.dp) || 0,
         mrp: parseFloat(variationForm.mrp) || 0,
         is_active: variationForm.is_active,
@@ -571,12 +622,14 @@ export function ProductDetailPanel({
       const pid = String(editingProduct.id);
       setStickyWarehouseByProduct(prev => ({ ...prev, [pid]: variationForm.warehouse_id }));
 
+      setVariationErrors({});
       cancelVariationDraft();
       // Single invalidation on the shared ['variations', id] key refreshes both
       // this panel's table and any expanded tree row (Issue 2: was two fetches).
       await mutateVariations();
     } catch (e: unknown) {
-      const err = e as { response?: { data?: { message?: string } } };
+      const err = e as { response?: { data?: { errors?: Record<string, string[]>; message?: string } } };
+      if (err?.response?.data?.errors) setVariationErrors(err.response.data.errors);
       notify.error(err?.response?.data?.message || 'Failed to save variation');
     } finally {
       setSavingVariation(false);
@@ -761,6 +814,9 @@ export function ProductDetailPanel({
                     onCancel={cancelVariationDraft}
                     saving={savingVariation}
                     skuLoading={variationDraftId === 'new' ? generatingSku : undefined}
+                    lastSku={variationDraftId === 'new' ? lastSkuInfo?.last_sku ?? null : null}
+                    nextSku={variationDraftId === 'new' ? lastSkuInfo?.next_sku ?? null : null}
+                    lastSkuName={variationDraftId === 'new' ? lastSkuInfo?.variation_name ?? null : null}
                     brandOptions={brandOptions}
                     loadingBrands={loadingBrands}
                     warehouseOptions={warehouseOptions}
@@ -771,6 +827,8 @@ export function ProductDetailPanel({
                     loadingBins={loadingBins}
                     loadBinOptions={loadBinOptions}
                     isNew={variationDraftId === 'new'}
+                    variationErrors={variationErrors}
+                    clearVariationError={clearVariationError}
                   />
                 </div>
               )}
@@ -807,8 +865,9 @@ export function ProductDetailPanel({
                           <td className="px-2 py-1.5 text-center"><span className={`px-1.5 py-0.5 rounded text-[10px] ${v.is_active ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>{v.is_active ? 'Yes' : 'No'}</span></td>
                           <td className="px-2 py-1.5">
                             <div className="flex items-center justify-end gap-1">
-                              {canEditVariation && <button onClick={() => openEditVariation(v)} className="p-1 rounded hover:bg-gray-100 dark:hover:bg-gray-600 text-blue-600"><Edit2 className="w-3 h-3" /></button>}
-                              {canDeleteVariation && <button onClick={() => handleDeleteVariation(v)} className="p-1 rounded hover:bg-gray-100 dark:hover:bg-gray-600 text-red-600"><Trash2 className="w-3 h-3" /></button>}
+                              {canCreateVariation && <button onClick={() => openDuplicateVariation(v)} disabled={variationDraftId !== null} title={variationDraftId !== null ? 'Finish the open draft first' : 'Duplicate variation'} className="p-1 rounded hover:bg-gray-100 dark:hover:bg-gray-600 disabled:opacity-40 text-emerald-600"><Copy className="w-3 h-3" /></button>}
+                              {canEditVariation && <button onClick={() => openEditVariation(v)} title="Edit variation" className="p-1 rounded hover:bg-gray-100 dark:hover:bg-gray-600 text-blue-600"><Edit2 className="w-3 h-3" /></button>}
+                              {canDeleteVariation && <button onClick={() => handleDeleteVariation(v)} title="Delete variation" className="p-1 rounded hover:bg-gray-100 dark:hover:bg-gray-600 text-red-600"><Trash2 className="w-3 h-3" /></button>}
                             </div>
                           </td>
                         </tr>
@@ -860,6 +919,9 @@ function VariationEditRow({
   onCancel,
   saving,
   skuLoading,
+  lastSku,
+  nextSku,
+  lastSkuName,
   brandOptions,
   loadingBrands,
   warehouseOptions,
@@ -870,6 +932,8 @@ function VariationEditRow({
   loadBinOptions,
   setBinOptions,
   isNew,
+  variationErrors,
+  clearVariationError,
 }: {
   form: VariationFormState;
   setForm: React.Dispatch<React.SetStateAction<VariationFormState>>;
@@ -877,6 +941,11 @@ function VariationEditRow({
   onCancel: () => void;
   saving: boolean;
   skuLoading?: boolean;
+  /** Last entry's SKU for this product, shown as a sequence hint on new drafts. */
+  lastSku?: string | null;
+  /** Last SKU + 1, derived from the latest variation row. */
+  nextSku?: string | null;
+  lastSkuName?: string | null;
   brandOptions: SelectOption[];
   loadingBrands: boolean;
   warehouseOptions: SelectOption[];
@@ -888,8 +957,17 @@ function VariationEditRow({
   setBinOptions: React.Dispatch<React.SetStateAction<SelectOption[]>>;
   /** true for the brand-new draft row (label "Save") vs editing an existing variation */
   isNew: boolean;
+  variationErrors?: Record<string, string[]>;
+  clearVariationError: (field: string) => void;
 }) {
-  const cellInputCls = 'w-full px-1.5 py-1 text-xs bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-1 focus:ring-indigo-500';
+  const getFieldError = (field: string): string | null => variationErrors?.[field]?.[0] || null;
+  const hasError = (field: string): boolean => !!variationErrors?.[field];
+
+  const cellInputCls = (field: string) =>
+    `w-full px-1.5 py-1 text-xs bg-white dark:bg-gray-700 border ${hasError(field) ? 'border-red-500' : 'border-gray-300 dark:border-gray-600'} rounded text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-1 focus:ring-indigo-500`;
+
+  const brandError = getFieldError('brand_id') || getFieldError('brand_name');
+
   const selectedWarehouseOpt = warehouseOptions.find(o => o.value === form.warehouse_id) || null;
   const selectedBinOpt = binOptions.find(o => o.value === form.bin_id) || null;
   // Server-search loader for bins, scoped to the currently selected warehouse.
@@ -905,14 +983,23 @@ function VariationEditRow({
       </h4>
       {/* Variation basics */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-x-3 gap-y-2">
-        <StackLabel label="Name">
-          <input className={cellInputCls} placeholder="e.g. Red - L" value={form.name} onChange={e => setForm(f => ({ ...f, name: e.target.value }))} />
+        <StackLabel label="Name" error={getFieldError('name')}>
+          <input className={cellInputCls('name')} placeholder="e.g. Red - L" value={form.name} onChange={e => { setForm(f => ({ ...f, name: e.target.value })); clearVariationError?.('name'); }} />
         </StackLabel>
-        <StackLabel label="SKU">
-          <input className={cellInputCls} placeholder={skuLoading ? 'Generating…' : 'SKU'} value={form.sku} onChange={e => setForm(f => ({ ...f, sku: e.target.value }))} />
+        <StackLabel label="SKU" error={getFieldError('sku')}>
+          <input className={cellInputCls('sku')} placeholder={skuLoading ? 'Generating…' : 'SKU'} value={form.sku} onChange={e => { setForm(f => ({ ...f, sku: e.target.value })); clearVariationError?.('sku'); }} />
+          {lastSku && (
+            <p className="mt-0.5 text-[10px] text-gray-400 dark:text-gray-500">
+              Last entry: <span className="font-mono text-gray-500 dark:text-gray-400">{lastSku}</span>
+              {lastSkuName ? ` (${lastSkuName})` : ''}
+              {nextSku && (
+                <> → Next: <span className="font-mono font-semibold text-indigo-500 dark:text-indigo-400">{nextSku}</span></>
+              )}
+            </p>
+          )}
         </StackLabel>
-        <StackLabel label="Code">
-          <input className={cellInputCls} placeholder="Product code" value={form.product_code} onChange={e => setForm(f => ({ ...f, product_code: e.target.value }))} />
+        <StackLabel label="Code" error={getFieldError('product_code')}>
+          <input className={cellInputCls('product_code')} placeholder="Product code" value={form.product_code} onChange={e => { setForm(f => ({ ...f, product_code: e.target.value })); clearVariationError?.('product_code'); }} />
         </StackLabel>
         <StackLabel label="Active" inline>
           <label className="flex items-center h-full">
@@ -923,31 +1010,32 @@ function VariationEditRow({
 
       {/* Brand select */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-x-3 gap-y-2">
-        <StackLabel label="Brand">
+        <StackLabel label="Brand" error={brandError}>
           <CustomSelect
             value={brandOptions.find(o => o.value === form.brand_id) || null}
-            onChange={opt => setForm(f => ({ ...f, brand_id: opt?.value || '', brand_name: opt?.label || '' }))}
+            onChange={opt => { setForm(f => ({ ...f, brand_id: opt?.value || '', brand_name: opt?.label || '' })); clearVariationError?.('brand_id'); clearVariationError?.('brand_name'); }}
             options={brandOptions}
             isLoading={loadingBrands}
             placeholder="Select brand"
             isClearable
             compact
+            isInvalid={!!brandError}
           />
         </StackLabel>
       </div>
 
       {/* Pricing */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-x-3 gap-y-2">
-        <StackLabel label="Cost Price">
+        <StackLabel label="Cost Price" error={getFieldError('cost_price')}>
           <div className="relative">
             <span className="absolute left-1.5 top-1/2 -translate-y-1/2 text-[10px] text-gray-400">$</span>
-            <input className={cellInputCls + ' pl-4 text-right'} type="number" step="0.01" min="0" placeholder="0.00" value={form.cost_price} onChange={e => setForm(f => ({ ...f, cost_price: e.target.value }))} onFocus={e => e.currentTarget.select()} />
+            <input className={cellInputCls('cost_price') + ' pl-4 text-right'} type="number" step="0.01" min="0" placeholder="0.00" value={form.cost_price} onChange={e => { setForm(f => ({ ...f, cost_price: e.target.value })); clearVariationError?.('cost_price'); }} onFocus={e => e.currentTarget.select()} />
           </div>
         </StackLabel>
-        <StackLabel label="Sale Price">
+        <StackLabel label="Sale Price" error={getFieldError('selling_price')}>
           <div className="relative">
             <span className="absolute left-1.5 top-1/2 -translate-y-1/2 text-[10px] text-gray-400">$</span>
-            <input className={cellInputCls + ' pl-4 text-right'} type="number" step="0.01" min="0" placeholder="0.00" value={form.selling_price} onChange={e => setForm(f => ({ ...f, selling_price: e.target.value }))} onFocus={e => e.currentTarget.select()} />
+            <input className={cellInputCls('selling_price') + ' pl-4 text-right'} type="number" step="0.01" min="0" placeholder="0.00" value={form.selling_price} onChange={e => { setForm(f => ({ ...f, selling_price: e.target.value })); clearVariationError?.('selling_price'); }} onFocus={e => e.currentTarget.select()} />
           </div>
         </StackLabel>
       </div>
@@ -959,19 +1047,20 @@ function VariationEditRow({
           <span className="text-[10px] text-gray-400 dark:text-gray-500">— added to existing quantity on save</span>
         </div>
         <div className="w-[260px]">
-          <StackLabel label="Quantity">
-            <input className={cellInputCls + ' text-right'} type="number" step="1" min="0" placeholder="0" value={form.quantity} onChange={e => setForm(f => ({ ...f, quantity: e.target.value }))} onFocus={e => e.currentTarget.select()} />
+          <StackLabel label="Quantity" error={getFieldError('quantity')}>
+            <input className={cellInputCls('quantity') + ' text-right'} type="number" step="1" min="0" placeholder="0" value={form.quantity} onChange={e => { setForm(f => ({ ...f, quantity: e.target.value })); clearVariationError?.('quantity'); }} onFocus={e => e.currentTarget.select()} />
           </StackLabel>
         </div>
         <div className="grid grid-cols-1 md:grid-cols-[320px_320px] gap-x-3 gap-y-2 mt-2 max-w-[652px]">
           <div className="min-w-0">
-            <StackLabel label="Warehouse" required>
+            <StackLabel label="Warehouse" required error={getFieldError('warehouse_id')}>
               <CustomSelect
                 value={selectedWarehouseOpt}
                 onChange={opt => {
                   const wid = opt?.value || '';
                   setForm(f => ({ ...f, warehouse_id: wid, bin_id: '' }));
                   setBinOptions([]);
+                  clearVariationError?.('warehouse_id');
                 }}
                 loadOptions={loadWarehouseOptions}
                 defaultOptions={warehouseOptions.length > 0 ? warehouseOptions : true}
@@ -979,6 +1068,7 @@ function VariationEditRow({
                 placeholder="Select warehouse"
                 isClearable
                 compact
+                isInvalid={hasError('warehouse_id')}
               />
             </StackLabel>
           </div>
@@ -1020,20 +1110,25 @@ function StackLabel({
   label,
   required,
   inline,
+  error,
   children,
 }: {
   label: string;
   required?: boolean;
   inline?: boolean;
+  error?: string | null;
   children: React.ReactNode;
 }) {
   if (inline) return children;
   return (
-    <div className="flex items-center gap-1.5">
-      <label className="w-16 shrink-0 text-[11px] font-medium text-gray-600 dark:text-gray-400 text-right">
-        {label}{required && <span className="text-red-500">*</span>}:
-      </label>
-      <div className="flex-1 min-w-0">{children}</div>
+    <div>
+      <div className="flex items-center gap-1.5">
+        <label className="w-16 shrink-0 text-[11px] font-medium text-gray-600 dark:text-gray-400 text-right">
+          {label}{required && <span className="text-red-500">*</span>}:
+        </label>
+        <div className="flex-1 min-w-0">{children}</div>
+      </div>
+      {error && <p className="ml-[4.375rem] mt-0.5 text-[10px] text-red-500 dark:text-red-400">{error}</p>}
     </div>
   );
 }

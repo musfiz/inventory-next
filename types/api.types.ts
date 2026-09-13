@@ -1151,6 +1151,30 @@ export interface ProductFlagsItem {
   hide_when_out_of_stock: boolean;
   available_from: string | null;
   available_until: string | null;
+  variations: ProductFlagsVariation[];
+}
+
+export interface ProductFlagsVariation {
+  id: string;
+  product_id: string;
+  name: string | null;
+  sku: string;
+  product_code: string | null;
+  brand: { id: string; name: string } | null;
+  cost_price: number;
+  selling_price: number;
+  is_active: boolean;
+  is_default: boolean;
+  display_order: number;
+  stock: { total_quantity: number; total_reserved: number; available_quantity: number };
+  is_visible_on_storefront: boolean;
+  is_featured: boolean;
+  is_new: boolean;
+  is_bestseller: boolean;
+  is_on_sale: boolean;
+  hide_when_out_of_stock: boolean;
+  available_from: string | null;
+  available_until: string | null;
 }
 
 export interface CategoryContent {
