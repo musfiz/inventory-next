@@ -1,6 +1,6 @@
 'use client';
 
-import { Package, Edit2, Trash2, Tag, Image as ImageIcon, Barcode, Loader2, Plus, ArrowLeft, Save } from 'lucide-react';
+import { Package, Edit2, Trash2, Tag, Image as ImageIcon, Barcode, Loader2, Plus, ArrowLeft, Save, Copy } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { useEffect, useState, useCallback, useMemo, useRef } from 'react';
 import { mutate as globalMutate } from 'swr';
@@ -26,7 +26,6 @@ type PanelMode = 'empty' | 'form';
 interface ProductFormState {
   name: string;
   category_id: string;
-  brand_id: string;
   unit_id: string;
   type: 'simple' | 'variable' | 'composite' | 'digital' | 'service';
   status: 'active' | 'inactive' | 'discontinued' | 'archived';
@@ -36,21 +35,22 @@ interface VariationFormState {
   name: string;
   sku: string;
   product_code: string;
+  brand_id: string;
+  brand_name: string;
   cost_price: string;
   selling_price: string;
   dp: string;
   mrp: string;
   is_active: boolean;
-  // Stock entry captured on the variation form (warehouse required, bin optional)
   quantity: string;
   warehouse_id: string;
+  warehouse_name: string;
   bin_id: string;
 }
 
 const emptyProductForm = (): ProductFormState => ({
   name: '',
   category_id: '',
-  brand_id: '',
   unit_id: '',
   type: 'simple',
   status: 'active',
@@ -60,6 +60,8 @@ const emptyVariationForm = (): VariationFormState => ({
   name: '',
   sku: '',
   product_code: '',
+  brand_id: '',
+  brand_name: '',
   cost_price: '0',
   selling_price: '0',
   dp: '0',
@@ -67,6 +69,7 @@ const emptyVariationForm = (): VariationFormState => ({
   is_active: true,
   quantity: '0',
   warehouse_id: '',
+  warehouse_name: '',
   bin_id: '',
 });
 
@@ -105,10 +108,18 @@ export function ProductDetailPanel({
   const [editingProduct, setEditingProduct] = useState<Product | null>(null);
   const [productForm, setProductForm] = useState<ProductFormState>(emptyProductForm());
   const [selectedCategoryOpt, setSelectedCategoryOpt] = useState<SelectOption | null>(null);
-  const [selectedBrandOpt, setSelectedBrandOpt] = useState<SelectOption | null>(null);
   const [selectedUnitOpt, setSelectedUnitOpt] = useState<SelectOption | null>(null);
   const [productErrors, setProductErrors] = useState<Record<string, string[]>>({});
   const [savingProduct, setSavingProduct] = useState(false);
+
+  // Variations of the currently open product ('new' | variation id | null).
+  // Declared before the brand preload below, which keys off the draft state.
+  const [variationDraftId, setVariationDraftId] = useState<string | null>(null);
+  const [variationForm, setVariationForm] = useState<VariationFormState>(emptyVariationForm());
+  const [savingVariation, setSavingVariation] = useState(false);
+  const [generatingSku, setGeneratingSku] = useState(false);
+  const [lastSkuInfo, setLastSkuInfo] = useState<{ last_sku: string | null; next_sku: string | null; variation_name: string | null } | null>(null);
+  const [variationErrors, setVariationErrors] = useState<Record<string, string[]>>({});
 
   // Cache-backed preloads (same Issue 5 rationale as tenant/business-type):
   // SWR dedupes StrictMode remounts and form open/close cycles, so the form
@@ -117,20 +128,13 @@ export function ProductDetailPanel({
   // would retrigger the mapping effects below in a loop.
   const { data: preloadedBrands, isLoading: loadingBrands } = useBrandsDropdown(
     effectiveBtId,
-    mode === 'form'
+    mode === 'form' || variationDraftId !== null
   );
   const { data: preloadedUnits } = useUnitsDropdown(mode === 'form');
 
   const [brandOptions, setBrandOptions] = useState<SelectOption[]>([]);
   const [unitOptions, setUnitOptions] = useState<SelectOption[]>([]);
   const loadingFormOptions = loadingBrands;
-
-  // Variations of the currently open product ('new' | variation id | null).
-  // Declared before the warehouse/bin preloads below, which key off the draft.
-  const [variationDraftId, setVariationDraftId] = useState<string | null>(null);
-  const [variationForm, setVariationForm] = useState<VariationFormState>(emptyVariationForm());
-  const [savingVariation, setSavingVariation] = useState(false);
-  const [generatingSku, setGeneratingSku] = useState(false);
 
   // Warehouse + bin options for the variation's optional stock entry.
   // SWR-cached preloads (same Issue 5 rationale as brands/units) so StrictMode
@@ -215,7 +219,10 @@ export function ProductDetailPanel({
   }, [unitOptions]);
 
   const categoryOptions = useMemo(
-    () => categories.filter(c => c.is_active !== false).map(c => ({ value: String(c.id), label: c.name })),
+    () => categories.filter(c => c.is_active !== false).map(c => ({
+      value: String(c.id),
+      label: c.parent_id ? `${c.name} (Subcategory)` : c.name,
+    })),
     [categories]
   );
 
@@ -290,7 +297,6 @@ export function ProductDetailPanel({
     setEditingProduct(null);
     setProductForm(emptyProductForm());
     setSelectedCategoryOpt(null);
-    setSelectedBrandOpt(null);
     setSelectedUnitOpt(null);
     setProductErrors({});
     setVariationDraftId(null);
@@ -302,13 +308,11 @@ export function ProductDetailPanel({
     setProductForm({
       name: p.name || '',
       category_id: p.category_id ? String(p.category_id) : '',
-      brand_id: p.brand_id ? String(p.brand_id) : '',
       unit_id: p.unit_id ? String(p.unit_id) : '',
       type: (p.type as ProductFormState['type']) || 'simple',
       status: (p.status as ProductFormState['status']) || 'active',
     });
     setSelectedCategoryOpt(p.category ? { value: String(p.category.id), label: p.category.name } : (categoryOptions.find(o => o.value === String(p.category_id)) || null));
-    setSelectedBrandOpt(p.brand ? { value: String(p.brand.id), label: p.brand.name } : null);
     setSelectedUnitOpt(p.unit ? { value: String(p.unit.id), label: `${p.unit.name} (${p.unit.short_name ?? ''})` } : null);
     setProductErrors({});
     setVariationDraftId(null);
@@ -360,7 +364,6 @@ export function ProductDetailPanel({
     const errs: Record<string, string[]> = {};
     if (!productForm.name.trim()) errs.name = ['Product name is required'];
     if (!productForm.category_id) errs.category_id = ['Category is required'];
-    if (!productForm.brand_id) errs.brand_id = ['Brand is required'];
     if (!effectiveBtId) errs.business_type = ['Business type is required'];
     if (Object.keys(errs).length > 0) {
       setProductErrors(errs);
@@ -372,7 +375,6 @@ export function ProductDetailPanel({
       const payload: any = {
         name: productForm.name.trim(),
         category_id: productForm.category_id,
-        brand_id: productForm.brand_id,
         unit_id: productForm.unit_id || undefined,
         type: productForm.type,
         status: productForm.status,
@@ -406,19 +408,92 @@ export function ProductDetailPanel({
     }
   };
 
+  // Save as New — creates a new product with same data (except name which user can change)
+  // Then opens variation add form for rapid entry
+  const handleSaveAsNew = async () => {
+    const errs: Record<string, string[]> = {};
+    if (!productForm.name.trim()) errs.name = ['Product name is required'];
+    if (!productForm.category_id) errs.category_id = ['Category is required'];
+    if (!effectiveBtId) errs.business_type = ['Business type is required'];
+    if (Object.keys(errs).length > 0) {
+      setProductErrors(errs);
+      notify.error('Please fill in all required fields');
+      return;
+    }
+    setSavingProduct(true);
+    try {
+      const payload: any = {
+        name: productForm.name.trim(),
+        category_id: productForm.category_id,
+        unit_id: productForm.unit_id || undefined,
+        type: productForm.type,
+        status: productForm.status,
+        business_type_id: effectiveBtId,
+      };
+      // Always create new
+      const saved = await productService.createProduct(payload);
+      notify.success('Product created as new');
+      // Select the new product
+      setEditingProduct(saved);
+      syncedProductId.current = String(saved.id);
+      setProductErrors({});
+      // Open variation add form for rapid entry — pass saved product directly
+      // so it doesn't rely on state that hasn't updated yet
+      await openAddVariation(saved);
+      onProductSaved?.(saved);
+      // Refresh the tree list
+      await globalMutate(key => Array.isArray(key) && key[0] === 'products');
+    } catch (e: unknown) {
+      const err = e as { response?: { data?: { errors?: Record<string, string[]>; message?: string } } };
+      if (err?.response?.data?.errors) setProductErrors(err.response.data.errors);
+      notify.error(err?.response?.data?.message || 'Failed to create product');
+    } finally {
+      setSavingProduct(false);
+    }
+  };
+
   const productFieldError = (field: string) => productErrors[field]?.[0] || null;
 
-  const openAddVariation = async () => {
-    if (!editingProduct) return;
+  const openAddVariation = async (product?: Product, seed?: ProductVariation) => {
+    const targetProduct = product || editingProduct;
+    if (!targetProduct) return;
     // Sticky warehouse: pre-fill the last-used warehouse for this product so
     // similar back-to-back variations don't need to re-select it. Cleared only
     // by switching product or changing the select manually.
-    const sticky = stickyWarehouseByProduct[String(editingProduct.id)] || '';
-    setVariationForm({ ...emptyVariationForm(), warehouse_id: sticky, bin_id: '' });
+    const sticky = stickyWarehouseByProduct[String(targetProduct.id)] || '';
+    setVariationForm({
+      ...emptyVariationForm(),
+      warehouse_id: seed
+        ? ((seed as ProductVariation & { stocks?: Array<{ warehouse_id?: string | number }> }).stocks?.[0]?.warehouse_id
+          ? String((seed as ProductVariation & { stocks?: Array<{ warehouse_id?: string | number }> }).stocks![0].warehouse_id)
+          : sticky)
+        : sticky,
+      bin_id: '',
+      // Duplicate: keep name/prices/brand/status, drop identity (sku/code).
+      ...(seed
+        ? {
+            name: seed.name || '',
+            brand_id: seed.brand_id ? String(seed.brand_id) : '',
+            brand_name: seed.brand?.name || '',
+            cost_price: String(seed.cost_price ?? 0),
+            selling_price: String(seed.selling_price ?? 0),
+            dp: String(seed.dp ?? 0),
+            mrp: String(seed.mrp ?? 0),
+            is_active: seed.is_active,
+          }
+        : {}),
+    });
     setVariationDraftId('new');
+    setVariationErrors({});
+    // Show last + next SKU so the user can sanity-check the sequence.
+    setLastSkuInfo(null);
+    productVariationService
+      .getLastSku(String(targetProduct.id))
+      .then(info => setLastSkuInfo({ last_sku: info.last_sku, next_sku: info.next_sku, variation_name: info.variation_name }))
+      .catch(() => { /* non-fatal — SKU hint simply stays hidden */ });
     setGeneratingSku(true);
     try {
-      const sku = await productVariationService.generateSku(String(editingProduct.id), editingProduct.name);
+      const sku = await productVariationService.generateSku(String(targetProduct.id), targetProduct.name);
       setVariationForm(prev => ({ ...prev, sku: sku || '' }));
     } catch {
       /* SKU can still be typed manually if generation fails */
@@ -427,7 +502,14 @@ export function ProductDetailPanel({
     }
   };
 
+  // Duplicate a variation: open the add draft pre-filled from the source row.
+  const openDuplicateVariation = (v: ProductVariation) => {
+    if (variationDraftId !== null) return;
+    void openAddVariation(undefined, v);
+  };
+
   const openEditVariation = (v: ProductVariation) => {
+    setLastSkuInfo(null);
     setVariationDraftId(String(v.id));
     // Backend may include the variation's stock rows (one per warehouse) on the
     // list/show payload. Populate the stock/warehouse fields from the first row.
@@ -444,6 +526,8 @@ export function ProductDetailPanel({
       name: v.name || '',
       sku: v.sku,
       product_code: v.product_code || '',
+      brand_id: v.brand_id ? String(v.brand_id) : '',
+      brand_name: v.brand?.name || '',
       cost_price: String(v.cost_price ?? 0),
       selling_price: String(v.selling_price ?? 0),
       dp: String(v.dp ?? 0),
@@ -453,6 +537,7 @@ export function ProductDetailPanel({
       warehouse_id: existing?.warehouse_id
         ? String(existing.warehouse_id)
         : (pid ? stickyWarehouseByProduct[pid] || '' : ''),
+      warehouse_name: '',
       bin_id: '',
     });
   };
@@ -464,17 +549,31 @@ export function ProductDetailPanel({
     const sticky = pid ? (variationForm.warehouse_id || stickyWarehouseByProduct[pid] || '') : '';
     if (pid && sticky) setStickyWarehouseByProduct(prev => ({ ...prev, [pid]: sticky }));
     setVariationDraftId(null);
+    setLastSkuInfo(null);
     setVariationForm({ ...emptyVariationForm(), warehouse_id: sticky, bin_id: '' });
+  };
+
+  const clearVariationError = (field: string) => {
+    setVariationErrors(prev => {
+      const next = { ...prev };
+      delete next[field];
+      return next;
+    });
   };
 
   const handleSaveVariation = async () => {
     if (!editingProduct) return;
-    if (!variationForm.sku.trim()) {
-      notify.error('SKU is required');
-      return;
-    }
-    if (!variationForm.warehouse_id) {
-      notify.error('Warehouse is required to add stock for this variation');
+    const errs: Record<string, string[]> = {};
+    if (!variationForm.sku.trim()) errs.sku = ['SKU is required'];
+    if (!variationForm.warehouse_id) errs.warehouse_id = ['Warehouse is required'];
+    if (!variationForm.name?.trim()) errs.name = ['Variation name is required'];
+    if (!variationForm.brand_id) errs.brand_id = ['Brand is required'];
+    const cost = parseFloat(variationForm.cost_price);
+    const sale = parseFloat(variationForm.selling_price);
+    if (variationForm.cost_price && (isNaN(cost) || cost < 0)) errs.cost_price = ['Cost price must be >= 0'];
+    if (variationForm.selling_price && (isNaN(sale) || sale < 0)) errs.selling_price = ['Selling price must be >= 0'];
+    if (Object.keys(errs).length > 0) {
+      setVariationErrors(errs);
       return;
     }
     setSavingVariation(true);
@@ -484,8 +583,9 @@ export function ProductDetailPanel({
         sku: variationForm.sku.trim(),
         product_code: variationForm.product_code.trim() || null,
         name: variationForm.name.trim() || undefined,
-        cost_price: parseFloat(variationForm.cost_price) || 0,
-        selling_price: parseFloat(variationForm.selling_price) || 0,
+        brand_id: variationForm.brand_id || undefined,
+        cost_price: cost || 0,
+        selling_price: sale || 0,
         dp: parseFloat(variationForm.dp) || 0,
         mrp: parseFloat(variationForm.mrp) || 0,
         is_active: variationForm.is_active,
@@ -522,12 +622,14 @@ export function ProductDetailPanel({
       const pid = String(editingProduct.id);
       setStickyWarehouseByProduct(prev => ({ ...prev, [pid]: variationForm.warehouse_id }));
 
+      setVariationErrors({});
       cancelVariationDraft();
       // Single invalidation on the shared ['variations', id] key refreshes both
       // this panel's table and any expanded tree row (Issue 2: was two fetches).
       await mutateVariations();
     } catch (e: unknown) {
-      const err = e as { response?: { data?: { message?: string } } };
+      const err = e as { response?: { data?: { errors?: Record<string, string[]>; message?: string } } };
+      if (err?.response?.data?.errors) setVariationErrors(err.response.data.errors);
       notify.error(err?.response?.data?.message || 'Failed to save variation');
     } finally {
       setSavingVariation(false);
@@ -623,18 +725,7 @@ export function ProductDetailPanel({
                 compact
               />
             </FormRow>
-            <FormRow label="Brand" required labelWidth="w-16" error={productFieldError('brand_id')}>
-              <CustomSelect
-                value={selectedBrandOpt}
-                onChange={opt => { setSelectedBrandOpt(opt); setProductForm(p => ({ ...p, brand_id: opt?.value || '' })); setProductErrors(p => ({ ...p, brand_id: [] })); }}
-                options={brandOptions}
-                isLoading={loadingFormOptions}
-                placeholder="Select"
-                isInvalid={!!productFieldError('brand_id')}
-                isDisabled={!effectiveBtId}
-                compact
-              />
-            </FormRow>
+
             <FormRow label="Unit" labelWidth="w-16">
               <CustomSelect
                 value={selectedUnitOpt}
@@ -664,11 +755,20 @@ export function ProductDetailPanel({
               </select>
             </FormRow>
           </div>
-          <div className="flex items-center justify-end gap-2 mt-3">
-            <button onClick={backToEmpty} className="px-3 py-1.5 text-xs rounded border border-gray-300 dark:border-gray-600 text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700">Cancel</button>
-            <button onClick={handleSaveProduct} disabled={savingProduct} className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs bg-indigo-600 hover:bg-indigo-700 disabled:opacity-60 text-white rounded">
-              {savingProduct ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Save className="w-3.5 h-3.5" />} Save Product
-            </button>
+          <div className="flex items-center justify-between gap-2 mt-3">
+            <div>
+              {editingProduct && (
+                <button onClick={handleSaveAsNew} disabled={savingProduct} className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs bg-emerald-600 hover:bg-emerald-700 disabled:opacity-60 text-white rounded" title="Create new product with same data (change name to create another)">
+                  {savingProduct ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Plus className="w-3.5 h-3.5" />} Save as New
+                </button>
+              )}
+            </div>
+            <div className="flex items-center gap-2">
+              <button onClick={backToEmpty} className="px-3 py-1.5 text-xs rounded border border-gray-300 dark:border-gray-600 text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700">Cancel</button>
+              <button onClick={handleSaveProduct} disabled={savingProduct} className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs bg-indigo-600 hover:bg-indigo-700 disabled:opacity-60 text-white rounded">
+                {savingProduct ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Save className="w-3.5 h-3.5" />} {editingProduct ? 'Update' : 'Save'} Product
+              </button>
+            </div>
           </div>
           {editingProduct && (
             <div className="flex items-center gap-3 mt-2 pt-2 border-t border-gray-100 dark:border-gray-700 text-[11px] text-gray-500">
@@ -687,7 +787,7 @@ export function ProductDetailPanel({
             </h3>
             {canCreateVariation && (
               <button
-                onClick={openAddVariation}
+                onClick={() => openAddVariation()}
                 disabled={!editingProduct || variationDraftId !== null}
                 title={!editingProduct ? 'Save the product first' : 'Add variation'}
                 className="inline-flex items-center gap-1 text-xs px-2 py-1 rounded bg-indigo-600 hover:bg-indigo-700 disabled:opacity-40 disabled:cursor-not-allowed text-white"
@@ -702,65 +802,81 @@ export function ProductDetailPanel({
           ) : loadingVariations ? (
             <div className="flex items-center justify-center gap-2 text-xs text-gray-500 py-6"><Loader2 className="w-4 h-4 animate-spin" /> Loading variations...</div>
           ) : (
-            <div className="overflow-x-auto border border-gray-200 dark:border-gray-700 rounded">
-              <table className="w-full text-xs">
-                <thead className="bg-gray-50 dark:bg-gray-900/50">
-                  <tr>
-                    <th className="px-2 py-1.5 text-left font-medium text-gray-600 dark:text-gray-400">Name</th>
-                    <th className="px-2 py-1.5 text-left font-medium text-gray-600 dark:text-gray-400">SKU</th>
-                    <th className="px-2 py-1.5 text-left font-medium text-gray-600 dark:text-gray-400">Code</th>
-                    <th className="px-2 py-1.5 text-right font-medium text-gray-600 dark:text-gray-400">Cost</th>
-                    <th className="px-2 py-1.5 text-right font-medium text-gray-600 dark:text-gray-400">Sale</th>
-                    <th className="px-2 py-1.5 text-center font-medium text-gray-600 dark:text-gray-400">Active</th>
-                    <th className="px-2 py-1.5 text-right font-medium text-gray-600 dark:text-gray-400">Actions</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-gray-100 dark:divide-gray-700">
-                  {/* Draft form always renders at the top of the list (new or edit) */}
-                  {variationDraftId !== null && (
-                    <VariationEditRow
-                      key={variationDraftId === 'new' ? 'draft-new' : `draft-${variationDraftId}`}
-                      form={variationForm}
-                      setForm={setVariationForm}
-                      onSave={handleSaveVariation}
-                      onCancel={cancelVariationDraft}
-                      saving={savingVariation}
-                      skuLoading={variationDraftId === 'new' ? generatingSku : undefined}
-                      warehouseOptions={warehouseOptions}
-                      loadingWarehouses={loadingWarehouses}
-                      loadWarehouseOptions={loadWarehouseOptions}
-                      binOptions={binOptions}
-                      setBinOptions={setBinOptions}
-                      loadingBins={loadingBins}
-                      loadBinOptions={loadBinOptions}
-                      isNew={variationDraftId === 'new'}
-                    />
-                  )}
-                  {variations.length === 0 && variationDraftId === null && (
-                    <tr><td colSpan={7} className="px-2 py-4 text-center text-gray-500">No variations yet.</td></tr>
-                  )}
-                  {variations.map(v => {
-                    const isBeingEdited = variationDraftId !== null && variationDraftId !== 'new' && variationDraftId === String(v.id);
-                    return (
-                      <tr key={String(v.id)} className={isBeingEdited ? 'bg-indigo-50/60 dark:bg-indigo-900/20' : 'hover:bg-gray-50 dark:hover:bg-gray-700/30'}>
-                        <td className="px-2 py-1.5 text-gray-700 dark:text-gray-300">{v.name || '—'}</td>
-                        <td className="px-2 py-1.5 font-mono text-gray-900 dark:text-gray-100">{v.sku}</td>
-                        <td className="px-2 py-1.5 text-gray-500">{v.product_code || '—'}</td>
-                        <td className="px-2 py-1.5 text-right text-gray-600 dark:text-gray-400">{Number(v.cost_price ?? 0).toFixed(2)}</td>
-                        <td className="px-2 py-1.5 text-right">{Number(v.selling_price).toFixed(2)}</td>
-                        <td className="px-2 py-1.5 text-center"><span className={`px-1.5 py-0.5 rounded text-[10px] ${v.is_active ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>{v.is_active ? 'Yes' : 'No'}</span></td>
-                        <td className="px-2 py-1.5">
-                          <div className="flex items-center justify-end gap-1">
-                            {canEditVariation && <button onClick={() => openEditVariation(v)} className="p-1 rounded hover:bg-gray-100 dark:hover:bg-gray-600 text-blue-600"><Edit2 className="w-3 h-3" /></button>}
-                            {canDeleteVariation && <button onClick={() => handleDeleteVariation(v)} className="p-1 rounded hover:bg-gray-100 dark:hover:bg-gray-600 text-red-600"><Trash2 className="w-3 h-3" /></button>}
-                          </div>
-                        </td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
-            </div>
+            <>
+              {/* Variation add/edit form — outside and above the table */}
+              {variationDraftId !== null && (
+                <div className="mb-3">
+                  <VariationEditRow
+                    key={variationDraftId === 'new' ? 'draft-new' : `draft-${variationDraftId}`}
+                    form={variationForm}
+                    setForm={setVariationForm}
+                    onSave={handleSaveVariation}
+                    onCancel={cancelVariationDraft}
+                    saving={savingVariation}
+                    skuLoading={variationDraftId === 'new' ? generatingSku : undefined}
+                    lastSku={variationDraftId === 'new' ? lastSkuInfo?.last_sku ?? null : null}
+                    nextSku={variationDraftId === 'new' ? lastSkuInfo?.next_sku ?? null : null}
+                    lastSkuName={variationDraftId === 'new' ? lastSkuInfo?.variation_name ?? null : null}
+                    brandOptions={brandOptions}
+                    loadingBrands={loadingBrands}
+                    warehouseOptions={warehouseOptions}
+                    loadingWarehouses={loadingWarehouses}
+                    loadWarehouseOptions={loadWarehouseOptions}
+                    binOptions={binOptions}
+                    setBinOptions={setBinOptions}
+                    loadingBins={loadingBins}
+                    loadBinOptions={loadBinOptions}
+                    isNew={variationDraftId === 'new'}
+                    variationErrors={variationErrors}
+                    clearVariationError={clearVariationError}
+                  />
+                </div>
+              )}
+
+              {/* Variation list table */}
+              <div className="overflow-x-auto border border-gray-200 dark:border-gray-700 rounded">
+                <table className="w-full text-xs">
+                  <thead className="bg-gray-50 dark:bg-gray-900/50">
+                    <tr>
+                      <th className="px-2 py-1.5 text-left font-bold text-gray-700 dark:text-gray-300">Name</th>
+                      <th className="px-2 py-1.5 text-left font-bold text-gray-700 dark:text-gray-300">Brand</th>
+                      <th className="px-2 py-1.5 text-left font-bold text-gray-700 dark:text-gray-300">SKU</th>
+                      <th className="px-2 py-1.5 text-left font-bold text-gray-700 dark:text-gray-300">Code</th>
+                      <th className="px-2 py-1.5 text-right font-bold text-gray-700 dark:text-gray-300">Cost</th>
+                      <th className="px-2 py-1.5 text-right font-bold text-gray-700 dark:text-gray-300">Sale</th>
+                      <th className="px-2 py-1.5 text-center font-bold text-gray-700 dark:text-gray-300">Active</th>
+                      <th className="px-2 py-1.5 text-right font-bold text-gray-700 dark:text-gray-300">Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-gray-100 dark:divide-gray-700">
+                    {variations.length === 0 && variationDraftId === null && (
+                      <tr><td colSpan={8} className="px-2 py-4 text-center text-gray-500">No variations yet.</td></tr>
+                    )}
+                    {variations.map(v => {
+                      const isBeingEdited = variationDraftId !== null && variationDraftId !== 'new' && variationDraftId === String(v.id);
+                      return (
+                        <tr key={String(v.id)} className={isBeingEdited ? 'bg-indigo-50/60 dark:bg-indigo-900/20' : 'hover:bg-gray-50 dark:hover:bg-gray-700/30'}>
+                          <td className="px-2 py-1.5 text-gray-700 dark:text-gray-300">{v.name || '—'}</td>
+                          <td className="px-2 py-1.5 text-gray-600 dark:text-gray-400">{v.brand?.name || '—'}</td>
+                          <td className="px-2 py-1.5 font-mono text-gray-900 dark:text-gray-100">{v.sku}</td>
+                          <td className="px-2 py-1.5 text-gray-500">{v.product_code || '—'}</td>
+                          <td className="px-2 py-1.5 text-right text-gray-600 dark:text-gray-400">{Number(v.cost_price ?? 0).toFixed(2)}</td>
+                          <td className="px-2 py-1.5 text-right">{Number(v.selling_price).toFixed(2)}</td>
+                          <td className="px-2 py-1.5 text-center"><span className={`px-1.5 py-0.5 rounded text-[10px] ${v.is_active ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>{v.is_active ? 'Yes' : 'No'}</span></td>
+                          <td className="px-2 py-1.5">
+                            <div className="flex items-center justify-end gap-1">
+                              {canCreateVariation && <button onClick={() => openDuplicateVariation(v)} disabled={variationDraftId !== null} title={variationDraftId !== null ? 'Finish the open draft first' : 'Duplicate variation'} className="p-1 rounded hover:bg-gray-100 dark:hover:bg-gray-600 disabled:opacity-40 text-emerald-600"><Copy className="w-3 h-3" /></button>}
+                              {canEditVariation && <button onClick={() => openEditVariation(v)} title="Edit variation" className="p-1 rounded hover:bg-gray-100 dark:hover:bg-gray-600 text-blue-600"><Edit2 className="w-3 h-3" /></button>}
+                              {canDeleteVariation && <button onClick={() => handleDeleteVariation(v)} title="Delete variation" className="p-1 rounded hover:bg-gray-100 dark:hover:bg-gray-600 text-red-600"><Trash2 className="w-3 h-3" /></button>}
+                            </div>
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            </>
           )}
         </div>
       </div>
@@ -803,6 +919,11 @@ function VariationEditRow({
   onCancel,
   saving,
   skuLoading,
+  lastSku,
+  nextSku,
+  lastSkuName,
+  brandOptions,
+  loadingBrands,
   warehouseOptions,
   loadingWarehouses,
   loadWarehouseOptions,
@@ -811,6 +932,8 @@ function VariationEditRow({
   loadBinOptions,
   setBinOptions,
   isNew,
+  variationErrors,
+  clearVariationError,
 }: {
   form: VariationFormState;
   setForm: React.Dispatch<React.SetStateAction<VariationFormState>>;
@@ -818,6 +941,13 @@ function VariationEditRow({
   onCancel: () => void;
   saving: boolean;
   skuLoading?: boolean;
+  /** Last entry's SKU for this product, shown as a sequence hint on new drafts. */
+  lastSku?: string | null;
+  /** Last SKU + 1, derived from the latest variation row. */
+  nextSku?: string | null;
+  lastSkuName?: string | null;
+  brandOptions: SelectOption[];
+  loadingBrands: boolean;
   warehouseOptions: SelectOption[];
   loadingWarehouses: boolean;
   loadWarehouseOptions: (input: string) => Promise<SelectOption[]>;
@@ -827,8 +957,17 @@ function VariationEditRow({
   setBinOptions: React.Dispatch<React.SetStateAction<SelectOption[]>>;
   /** true for the brand-new draft row (label "Save") vs editing an existing variation */
   isNew: boolean;
+  variationErrors?: Record<string, string[]>;
+  clearVariationError: (field: string) => void;
 }) {
-  const cellInputCls = 'w-full px-1.5 py-1 text-xs bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-1 focus:ring-indigo-500';
+  const getFieldError = (field: string): string | null => variationErrors?.[field]?.[0] || null;
+  const hasError = (field: string): boolean => !!variationErrors?.[field];
+
+  const cellInputCls = (field: string) =>
+    `w-full px-1.5 py-1 text-xs bg-white dark:bg-gray-700 border ${hasError(field) ? 'border-red-500' : 'border-gray-300 dark:border-gray-600'} rounded text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-1 focus:ring-indigo-500`;
+
+  const brandError = getFieldError('brand_id') || getFieldError('brand_name');
+
   const selectedWarehouseOpt = warehouseOptions.find(o => o.value === form.warehouse_id) || null;
   const selectedBinOpt = binOptions.find(o => o.value === form.bin_id) || null;
   // Server-search loader for bins, scoped to the currently selected warehouse.
@@ -838,106 +977,132 @@ function VariationEditRow({
   );
 
   return (
-    <tr className="bg-indigo-50/40 dark:bg-indigo-900/10">
-      <td colSpan={7} className="px-2 py-2">
-        <div className="bg-white dark:bg-gray-800 border border-indigo-200 dark:border-indigo-800/60 rounded-md px-2.5 py-2 space-y-2">
-          {/* Variation basics */}
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-x-3 gap-y-2">
-            <StackLabel label="Name">
-              <input className={cellInputCls} placeholder="e.g. Red - L" value={form.name} onChange={e => setForm(f => ({ ...f, name: e.target.value }))} />
-            </StackLabel>
-            <StackLabel label="SKU">
-              <input className={cellInputCls} placeholder={skuLoading ? 'Generating…' : 'SKU'} value={form.sku} onChange={e => setForm(f => ({ ...f, sku: e.target.value }))} />
-            </StackLabel>
-            <StackLabel label="Code">
-              <input className={cellInputCls} placeholder="Product code" value={form.product_code} onChange={e => setForm(f => ({ ...f, product_code: e.target.value }))} />
-            </StackLabel>
-            <StackLabel label="Active" inline>
-              <label className="flex items-center h-full">
-                <input type="checkbox" checked={form.is_active} onChange={e => setForm(f => ({ ...f, is_active: e.target.checked }))} className="w-3.5 h-3.5 accent-indigo-600" />
-              </label>
+    <div className="bg-indigo-50/40 dark:bg-indigo-900/10 border border-indigo-200 dark:border-indigo-800/60 rounded-md px-2.5 py-2 space-y-2">
+      <h4 className="text-[11px] font-bold text-indigo-700 dark:text-indigo-400">
+        {isNew ? 'Add New Variation' : 'Edit Variation'}
+      </h4>
+      {/* Variation basics */}
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-x-3 gap-y-2">
+        <StackLabel label="Name" error={getFieldError('name')}>
+          <input className={cellInputCls('name')} placeholder="e.g. Red - L" value={form.name} onChange={e => { setForm(f => ({ ...f, name: e.target.value })); clearVariationError?.('name'); }} />
+        </StackLabel>
+        <StackLabel label="SKU" error={getFieldError('sku')}>
+          <input className={cellInputCls('sku')} placeholder={skuLoading ? 'Generating…' : 'SKU'} value={form.sku} onChange={e => { setForm(f => ({ ...f, sku: e.target.value })); clearVariationError?.('sku'); }} />
+          {lastSku && (
+            <p className="mt-0.5 text-[10px] text-gray-400 dark:text-gray-500">
+              Last entry: <span className="font-mono text-gray-500 dark:text-gray-400">{lastSku}</span>
+              {lastSkuName ? ` (${lastSkuName})` : ''}
+              {nextSku && (
+                <> → Next: <span className="font-mono font-semibold text-indigo-500 dark:text-indigo-400">{nextSku}</span></>
+              )}
+            </p>
+          )}
+        </StackLabel>
+        <StackLabel label="Code" error={getFieldError('product_code')}>
+          <input className={cellInputCls('product_code')} placeholder="Product code" value={form.product_code} onChange={e => { setForm(f => ({ ...f, product_code: e.target.value })); clearVariationError?.('product_code'); }} />
+        </StackLabel>
+        <StackLabel label="Active" inline>
+          <label className="flex items-center h-full">
+            <input type="checkbox" checked={form.is_active} onChange={e => setForm(f => ({ ...f, is_active: e.target.checked }))} className="w-3.5 h-3.5 accent-indigo-600" />
+          </label>
+        </StackLabel>
+      </div>
+
+      {/* Brand select */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-x-3 gap-y-2">
+        <StackLabel label="Brand" error={brandError}>
+          <CustomSelect
+            value={brandOptions.find(o => o.value === form.brand_id) || null}
+            onChange={opt => { setForm(f => ({ ...f, brand_id: opt?.value || '', brand_name: opt?.label || '' })); clearVariationError?.('brand_id'); clearVariationError?.('brand_name'); }}
+            options={brandOptions}
+            isLoading={loadingBrands}
+            placeholder="Select brand"
+            isClearable
+            compact
+            isInvalid={!!brandError}
+          />
+        </StackLabel>
+      </div>
+
+      {/* Pricing */}
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-x-3 gap-y-2">
+        <StackLabel label="Cost Price" error={getFieldError('cost_price')}>
+          <div className="relative">
+            <span className="absolute left-1.5 top-1/2 -translate-y-1/2 text-[10px] text-gray-400">$</span>
+            <input className={cellInputCls('cost_price') + ' pl-4 text-right'} type="number" step="0.01" min="0" placeholder="0.00" value={form.cost_price} onChange={e => { setForm(f => ({ ...f, cost_price: e.target.value })); clearVariationError?.('cost_price'); }} onFocus={e => e.currentTarget.select()} />
+          </div>
+        </StackLabel>
+        <StackLabel label="Sale Price" error={getFieldError('selling_price')}>
+          <div className="relative">
+            <span className="absolute left-1.5 top-1/2 -translate-y-1/2 text-[10px] text-gray-400">$</span>
+            <input className={cellInputCls('selling_price') + ' pl-4 text-right'} type="number" step="0.01" min="0" placeholder="0.00" value={form.selling_price} onChange={e => { setForm(f => ({ ...f, selling_price: e.target.value })); clearVariationError?.('selling_price'); }} onFocus={e => e.currentTarget.select()} />
+          </div>
+        </StackLabel>
+      </div>
+
+      {/* Stock entry — quantity on top, warehouse + bin below (fixed 320px each, stacked on small screens). Warehouse required, bin optional */}
+      <div className="border-t border-gray-100 dark:border-gray-700 pt-2">
+        <div className="flex items-center gap-1.5 mb-1.5">
+          <span className="text-[10px] font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">Stock</span>
+          <span className="text-[10px] text-gray-400 dark:text-gray-500">— added to existing quantity on save</span>
+        </div>
+        <div className="w-[260px]">
+          <StackLabel label="Quantity" error={getFieldError('quantity')}>
+            <input className={cellInputCls('quantity') + ' text-right'} type="number" step="1" min="0" placeholder="0" value={form.quantity} onChange={e => { setForm(f => ({ ...f, quantity: e.target.value })); clearVariationError?.('quantity'); }} onFocus={e => e.currentTarget.select()} />
+          </StackLabel>
+        </div>
+        <div className="grid grid-cols-1 md:grid-cols-[320px_320px] gap-x-3 gap-y-2 mt-2 max-w-[652px]">
+          <div className="min-w-0">
+            <StackLabel label="Warehouse" required error={getFieldError('warehouse_id')}>
+              <CustomSelect
+                value={selectedWarehouseOpt}
+                onChange={opt => {
+                  const wid = opt?.value || '';
+                  setForm(f => ({ ...f, warehouse_id: wid, bin_id: '' }));
+                  setBinOptions([]);
+                  clearVariationError?.('warehouse_id');
+                }}
+                loadOptions={loadWarehouseOptions}
+                defaultOptions={warehouseOptions.length > 0 ? warehouseOptions : true}
+                isLoading={loadingWarehouses}
+                placeholder="Select warehouse"
+                isClearable
+                compact
+                isInvalid={hasError('warehouse_id')}
+              />
             </StackLabel>
           </div>
-
-          {/* Pricing */}
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-x-3 gap-y-2">
-            <StackLabel label="Cost Price">
-              <div className="relative">
-                <span className="absolute left-1.5 top-1/2 -translate-y-1/2 text-[10px] text-gray-400">$</span>
-                <input className={cellInputCls + ' pl-4 text-right'} type="number" step="0.01" min="0" placeholder="0.00" value={form.cost_price} onChange={e => setForm(f => ({ ...f, cost_price: e.target.value }))} onFocus={e => e.currentTarget.select()} />
-              </div>
+          <div className="min-w-0">
+            <StackLabel label="Bin (Optional)">
+              <CustomSelect
+                value={selectedBinOpt}
+                onChange={opt => setForm(f => ({ ...f, bin_id: opt?.value || '' }))}
+                loadOptions={scopedBinLoader}
+                defaultOptions={binOptions.length > 0 ? binOptions : true}
+                isLoading={loadingBins}
+                isDisabled={!form.warehouse_id}
+                placeholder={form.warehouse_id ? 'Select bin' : 'Select warehouse first'}
+                isClearable
+                compact
+              />
             </StackLabel>
-            <StackLabel label="Sale Price">
-              <div className="relative">
-                <span className="absolute left-1.5 top-1/2 -translate-y-1/2 text-[10px] text-gray-400">$</span>
-                <input className={cellInputCls + ' pl-4 text-right'} type="number" step="0.01" min="0" placeholder="0.00" value={form.selling_price} onChange={e => setForm(f => ({ ...f, selling_price: e.target.value }))} onFocus={e => e.currentTarget.select()} />
-              </div>
-            </StackLabel>
-          </div>
-
-          {/* Stock entry — quantity on top, warehouse + bin below (fixed 320px each, stacked on small screens). Warehouse required, bin optional */}
-          <div className="border-t border-gray-100 dark:border-gray-700 pt-2">
-            <div className="flex items-center gap-1.5 mb-1.5">
-              <span className="text-[10px] font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">Stock</span>
-              <span className="text-[10px] text-gray-400 dark:text-gray-500">— added to existing quantity on save</span>
-            </div>
-            <div className="w-[260px]">
-              <StackLabel label="Quantity">
-                <input className={cellInputCls + ' text-right'} type="number" step="1" min="0" placeholder="0" value={form.quantity} onChange={e => setForm(f => ({ ...f, quantity: e.target.value }))} onFocus={e => e.currentTarget.select()} />
-              </StackLabel>
-            </div>
-            <div className="grid grid-cols-1 md:grid-cols-[320px_320px] gap-x-3 gap-y-2 mt-2 max-w-[652px]">
-              <div className="min-w-0">
-                <StackLabel label="Warehouse" required>
-                  <CustomSelect
-                    value={selectedWarehouseOpt}
-                    onChange={opt => {
-                      const wid = opt?.value || '';
-                      setForm(f => ({ ...f, warehouse_id: wid, bin_id: '' }));
-                      setBinOptions([]);
-                    }}
-                    loadOptions={loadWarehouseOptions}
-                    defaultOptions={warehouseOptions.length > 0 ? warehouseOptions : true}
-                    isLoading={loadingWarehouses}
-                    placeholder="Select warehouse"
-                    isClearable
-                    compact
-                  />
-                </StackLabel>
-              </div>
-              <div className="min-w-0">
-                <StackLabel label="Bin (Optional)">
-                  <CustomSelect
-                    value={selectedBinOpt}
-                    onChange={opt => setForm(f => ({ ...f, bin_id: opt?.value || '' }))}
-                    loadOptions={scopedBinLoader}
-                    defaultOptions={binOptions.length > 0 ? binOptions : true}
-                    isLoading={loadingBins}
-                    isDisabled={!form.warehouse_id}
-                    placeholder={form.warehouse_id ? 'Select bin' : 'Select warehouse first'}
-                    isClearable
-                    compact
-                  />
-                </StackLabel>
-              </div>
-            </div>
-          </div>
-
-          {/* Actions */}
-          <div className="flex items-center justify-end gap-1.5 pt-1">
-            {!form.warehouse_id && (
-              <span className="text-[10px] text-amber-600 dark:text-amber-400 mr-auto">Warehouse is required to save stock</span>
-            )}
-            <button onClick={onCancel} className="px-2.5 py-1 text-xs rounded border border-gray-300 dark:border-gray-600 text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-600">
-              Reset
-            </button>
-            <button onClick={onSave} disabled={saving} className="inline-flex items-center gap-1 px-2.5 py-1 text-xs rounded bg-indigo-600 hover:bg-indigo-700 disabled:opacity-60 text-white">
-              {saving ? <Loader2 className="w-3 h-3 animate-spin" /> : <Save className="w-3 h-3" />} {isNew ? 'Save' : 'Update'}
-            </button>
           </div>
         </div>
-      </td>
-    </tr>
+      </div>
+
+      {/* Actions */}
+      <div className="flex items-center justify-end gap-1.5 pt-1">
+        {!form.warehouse_id && (
+          <span className="text-[10px] text-amber-600 dark:text-amber-400 mr-auto">Warehouse is required to save stock</span>
+        )}
+        <button onClick={onCancel} className="px-2.5 py-1 text-xs rounded border border-gray-300 dark:border-gray-600 text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-600">
+          Reset
+        </button>
+        <button onClick={onSave} disabled={saving} className="inline-flex items-center gap-1 px-2.5 py-1 text-xs rounded bg-indigo-600 hover:bg-indigo-700 disabled:opacity-60 text-white">
+          {saving ? <Loader2 className="w-3 h-3 animate-spin" /> : <Save className="w-3 h-3" />} {isNew ? 'Save' : 'Update'}
+        </button>
+      </div>
+    </div>
   );
 }
 
@@ -945,20 +1110,25 @@ function StackLabel({
   label,
   required,
   inline,
+  error,
   children,
 }: {
   label: string;
   required?: boolean;
   inline?: boolean;
+  error?: string | null;
   children: React.ReactNode;
 }) {
   if (inline) return children;
   return (
-    <div className="flex items-center gap-1.5">
-      <label className="w-16 shrink-0 text-[11px] font-medium text-gray-600 dark:text-gray-400 text-right">
-        {label}{required && <span className="text-red-500">*</span>}:
-      </label>
-      <div className="flex-1 min-w-0">{children}</div>
+    <div>
+      <div className="flex items-center gap-1.5">
+        <label className="w-16 shrink-0 text-[11px] font-medium text-gray-600 dark:text-gray-400 text-right">
+          {label}{required && <span className="text-red-500">*</span>}:
+        </label>
+        <div className="flex-1 min-w-0">{children}</div>
+      </div>
+      {error && <p className="ml-[4.375rem] mt-0.5 text-[10px] text-red-500 dark:text-red-400">{error}</p>}
     </div>
   );
 }

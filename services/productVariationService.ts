@@ -121,6 +121,19 @@ class ProductVariationService {
   }
 
   /**
+   * Last SKU used for a product (latest variation entry)
+   * GET /api/v1/product-variations/last-sku?product_id=…
+   */
+  async getLastSku(
+    productId: string
+  ): Promise<{ last_sku: string | null; next_sku: string | null; variation_name: string | null; created_at: string | null }> {
+    const response = await apiClient.get<
+      ApiResponse<{ last_sku: string | null; next_sku: string | null; variation_name: string | null; created_at: string | null }>
+    >('/api/v1/product-variations/last-sku', { params: { product_id: productId } });
+    return response.data.data;
+  }
+
+  /**
    * Get attributes for dropdown
    * GET /api/v1/product-variations/attributes
    */

@@ -83,6 +83,12 @@ export interface User {
   last_login_at?: string;
 }
 
+/**
+ * Product interface.
+ * @deprecated brand_id is being migrated from products to product_variations.
+ * The brand_id and brand fields on Product are kept for backward compatibility
+ * during transition. After full migration, use variations[].brand instead.
+ */
 export interface Product {
   id: string;
   uuid?: string;
@@ -102,7 +108,7 @@ export interface Product {
   manufacturer?: string;
   manufacturer_sku?: string;
   category_id?: string;
-  brand_id?: string;
+  brand_id?: string;  // Deprecated: moved to product_variations.brand_id
   unit_id?: string;
   type?: 'simple' | 'variable' | 'composite' | 'digital' | 'service';
   status?: 'draft' | 'active' | 'inactive' | 'discontinued' | 'archived';
@@ -141,6 +147,8 @@ export interface Product {
 export interface ProductVariation {
   id: string;
   product_id: string;
+  brand_id?: string;  // Moved from products — each variation can belong to a different brand
+  brand_name?: string; // Computed/display field from brand relation
   sku: string;
   product_code?: string | null;
   name?: string;
@@ -153,6 +161,7 @@ export interface ProductVariation {
   display_order: number;
   custom_fields?: Record<string, any>;
   product?: Product;
+  brand?: Brand;  // Brand relation moved from product to variation
   variation_attributes?: ProductVariationAttribute[];
   created_at?: string;
   updated_at?: string;
@@ -232,13 +241,18 @@ export interface Unit {
   updated_at?: string;
 }
 
+/**
+ * @deprecated brand_id is being migrated from products to product_variations.
+ * Keep brand_id as optional during transition for backward compatibility.
+ * After full migration, remove brand_id from product requests entirely.
+ */
 export interface CreateProductRequest {
   // Required fields
   name: string;
   business_type: BusinessType;
   business_type_id?: number;
   category_id: string;
-  brand_id: string;
+  brand_id?: string;  // Deprecated: moved to variations; kept optional during transition
   // pricing fields removed for product table (kept in product variations)
 
   // Optional fields
@@ -534,6 +548,7 @@ export interface PaginatedResponse<T> {
 // Product Variation Requests
 export interface CreateProductVariationRequest {
   product_id: string;
+  brand_id?: string;  // Moved from products — each variation can belong to a different brand
   sku: string;
   product_code?: string | null;
   name?: string;
@@ -565,11 +580,15 @@ export interface ProductVariationListResponse {
 
 // ─── Bulk Variation Add Types ─────────────────────────────────────────────────
 
+/**
+ * @deprecated brand_id is being migrated from products to product_variations.
+ * For simple products, brand will be set when the first variation is created.
+ */
 export interface SimpleProduct {
   id: string;
   name: string;
   category_id?: string;
-  brand_id?: string;
+  brand_id?: string;  // Deprecated: moved to product_variations.brand_id
   category?: Category;
   brand?: Brand;
 }
@@ -1124,6 +1143,30 @@ export interface ProductFlagsItem {
   category: { id: string; name: string } | null;
   brand: { id: string; name: string } | null;
   image: { url: string; thumb_url: string } | null;
+  is_visible_on_storefront: boolean;
+  is_featured: boolean;
+  is_new: boolean;
+  is_bestseller: boolean;
+  is_on_sale: boolean;
+  hide_when_out_of_stock: boolean;
+  available_from: string | null;
+  available_until: string | null;
+  variations: ProductFlagsVariation[];
+}
+
+export interface ProductFlagsVariation {
+  id: string;
+  product_id: string;
+  name: string | null;
+  sku: string;
+  product_code: string | null;
+  brand: { id: string; name: string } | null;
+  cost_price: number;
+  selling_price: number;
+  is_active: boolean;
+  is_default: boolean;
+  display_order: number;
+  stock: { total_quantity: number; total_reserved: number; available_quantity: number };
   is_visible_on_storefront: boolean;
   is_featured: boolean;
   is_new: boolean;
