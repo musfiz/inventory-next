@@ -77,6 +77,12 @@ export default function PurchaseOrdersPage() {
     if (e.key === '-') e.preventDefault();
   };
 
+  // Compact field height matching CustomSelect/DatePicker compact (28px, text-xs).
+  const compactFieldCls =
+    'w-full h-7 px-2 text-xs leading-7 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 ' +
+    'rounded text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-1 ' +
+    'focus:ring-blue-500 dark:focus:ring-blue-400 focus:border-transparent';
+
 
   const handleUpdate = async () => {
     if (!currentPO) return;
@@ -384,13 +390,13 @@ export default function PurchaseOrdersPage() {
                   </div>
 
                   {/* Status controls */}
-                  <div className="flex items-center gap-3">
+                  <div className="flex items-end gap-3">
                     <div>
                       <label className="text-xs text-gray-600 mb-1 block">Status</label>
                       <select
                         value={currentPO?.status || 'draft'}
                         onChange={e => setCurrentPO((prev: any) => prev ? { ...prev, status: e.target.value } : prev)}
-                        className="px-2 py-1 border border-gray-300 dark:border-gray-700 rounded text-sm focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
+                        className={compactFieldCls}
                       >
                         {STATUS_LIST.map(s => <option key={s} value={s}>{s}</option>)}
                       </select>
@@ -400,7 +406,7 @@ export default function PurchaseOrdersPage() {
                       <select
                         value={currentPO?.payment_status || 'pending'}
                         onChange={e => setCurrentPO((prev: any) => prev ? { ...prev, payment_status: e.target.value } : prev)}
-                        className="px-2 py-1 border border-gray-300 dark:border-gray-700 rounded text-sm focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
+                        className={compactFieldCls}
                       >
                         {PAYMENT_STATUS_LIST.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
                       </select>
@@ -414,7 +420,7 @@ export default function PurchaseOrdersPage() {
                         onChange={e => setCurrentPO((prev: any) => prev ? { ...prev, paid_amount: e.target.value } : prev)}
                         onFocus={e => e.target.select()}
                         onKeyDown={preventMinus}
-                        className="px-2 py-1 text-right border border-gray-300 dark:border-gray-700 rounded text-sm focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500 w-36 [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                        className={`${compactFieldCls} text-right w-36 [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none`}
                       />
                     </div>
                     {hasPermission('update-purchase-orders') && (

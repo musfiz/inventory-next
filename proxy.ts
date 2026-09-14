@@ -29,6 +29,7 @@ const ADMIN_PREFIXES = [
   '/product-barcodes',
   '/products',
   '/product-variations',
+  '/purchase',
   '/purchase-orders',
   '/reports',
   '/restore',

@@ -39,6 +39,7 @@ interface OrderForm {
   tenant_id?: string;
   supplier_id?: string;
   warehouse_id?: string;
+  supplier_order_no?: string;
   order_date: string;
   expected_delivery_date: string;
   status: string;
@@ -77,6 +78,12 @@ const inputCls =
   'focus:ring-blue-500 dark:focus:ring-blue-400 focus:border-transparent';
 
 const selectCls = inputCls; // same visual as text input
+
+// Compact field height matching CustomSelect `compact` (28px, text-xs).
+const compactFieldCls =
+  'w-full h-[28px] px-2 text-xs leading-[28px] bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 ' +
+  'rounded text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-1 ' +
+  'focus:ring-blue-500 dark:focus:ring-blue-400 focus:border-transparent';
 
 // Shared class for the small numeric inputs inside the order summary card
 const summaryInputCls =
@@ -118,6 +125,7 @@ function AddPurchaseOrderPage() {
     tenant_id: undefined,
     supplier_id: undefined,
     warehouse_id: undefined,
+    supplier_order_no: '',
     order_date: '',
     expected_delivery_date: '',
     status: 'draft',
@@ -392,6 +400,7 @@ function AddPurchaseOrderPage() {
           tenant_id: po.tenant_id ? String(po.tenant_id) : undefined,
           supplier_id: po.supplier_id ? String(po.supplier_id) : undefined,
           warehouse_id: po.warehouse_id ? String(po.warehouse_id) : undefined,
+          supplier_order_no: po.supplier_order_no ?? '',
           order_date: po.order_date ? String(po.order_date).substring(0, 10) : '',
           expected_delivery_date: po.expected_delivery_date
             ? String(po.expected_delivery_date).substring(0, 10)
@@ -456,6 +465,7 @@ function AddPurchaseOrderPage() {
 
     if (!formData.supplier_id) e.supplier_id = ['Supplier is required'];
     if (!formData.warehouse_id) e.warehouse_id = ['Warehouse is required'];
+    if (!formData.supplier_order_no?.trim()) e.supplier_order_no = ['Chalan no is required'];
     if (!formData.order_date) e.order_date = ['Order date is required'];
     if (items.length === 0) e.items = ['At least one item is required'];
 
@@ -580,6 +590,7 @@ function AddPurchaseOrderPage() {
         await purchaseOrderService.updatePurchaseOrderFromDetails(editingId, {
           status: formData.status,
           payment_status: paymentStatus,
+          supplier_order_no: formData.supplier_order_no?.trim() || undefined,
           notes: note,
         });
         notify.success('Purchase order updated successfully');
@@ -605,6 +616,7 @@ function AddPurchaseOrderPage() {
   const handleReset = () => {
     setFormData({
       tenant_id: undefined, supplier_id: undefined, warehouse_id: undefined,
+      supplier_order_no: '',
       order_date: '', expected_delivery_date: '', status: 'draft'
     });
     setSelectedTenant(null);
@@ -651,7 +663,7 @@ function AddPurchaseOrderPage() {
         <div className="bg-white dark:bg-gray-800 rounded-md shadow-sm border border-gray-200 dark:border-gray-700 p-3">
           {/* Tenant row — super admin only, rendered above the main fields */}
           {isSuperAdmin && (
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-3 mb-2">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-2 mb-2">
               <div>
                 <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">
                   Tenant
@@ -666,17 +678,18 @@ function AddPurchaseOrderPage() {
                   defaultOptions={tenantDefaults}
                   placeholder="Select tenant"
                   isInvalid={hasErr('tenant_id')}
+                  compact
                 />
                 {hasErr('tenant_id') && <p className="mt-1 text-xs text-red-600">{err('tenant_id')}</p>}
               </div>
             </div>
           )}
 
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
 
             {/* Supplier */}
             <div>
-              <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">
+              <label className="block text-[11px] font-medium text-gray-600 dark:text-gray-400 mb-1">
                 Supplier <span className="text-red-500">*</span>
               </label>
               <CustomSelect
@@ -691,13 +704,14 @@ function AddPurchaseOrderPage() {
                 defaultOptions={supplierDefaults}
                 placeholder="Select supplier"
                 isInvalid={hasErr('supplier_id')}
+                compact
               />
               {hasErr('supplier_id') && <p className="mt-1 text-xs text-red-600">{err('supplier_id')}</p>}
             </div>
 
             {/* Warehouse */}
             <div>
-              <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">
+              <label className="block text-[11px] font-medium text-gray-600 dark:text-gray-400 mb-1">
                 Warehouse <span className="text-red-500">*</span>
               </label>
               <CustomSelect
@@ -712,16 +726,32 @@ function AddPurchaseOrderPage() {
                 defaultOptions={warehouseDefaults}
                 placeholder="Select warehouse"
                 isInvalid={hasErr('warehouse_id')}
+                compact
               />
               {hasErr('warehouse_id') && <p className="mt-1 text-xs text-red-600">{err('warehouse_id')}</p>}
             </div>
 
+            {/* Supplier Order No (chalan paper) */}
+            <div>
+              <label className="block text-[11px] font-medium text-gray-600 dark:text-gray-400 mb-1">
+                Supplier Order No <span className="text-red-500">*</span>
+              </label>
+              <input
+                value={formData.supplier_order_no || ''}
+                onChange={e => setField('supplier_order_no', e.target.value)}
+                placeholder="No from the chalan paper"
+                className={`${compactFieldCls} ${hasErr('supplier_order_no') ? 'border-red-500!' : ''}`}
+              />
+              {hasErr('supplier_order_no') && <p className="mt-1 text-xs text-red-600">{err('supplier_order_no')}</p>}
+            </div>
+
             {/* Order Date */}
             <div>
-              <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">
+              <label className="block text-[11px] font-medium text-gray-600 dark:text-gray-400 mb-1">
                 Order Date <span className="text-red-500">*</span>
               </label>
               <CustomDatePicker
+                compact
                 value={formData.order_date}
                 onChange={v => setField('order_date', v)}
                 className={hasErr('order_date') ? 'border-red-500' : ''}
@@ -731,10 +761,11 @@ function AddPurchaseOrderPage() {
 
             {/* Expected Delivery */}
             <div>
-              <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">
+              <label className="block text-[11px] font-medium text-gray-600 dark:text-gray-400 mb-1">
                 Expected Delivery
               </label>
               <CustomDatePicker
+                compact
                 value={formData.expected_delivery_date}
                 onChange={v => setField('expected_delivery_date', v)}
               />
@@ -742,13 +773,13 @@ function AddPurchaseOrderPage() {
 
             {/* Order Status */}
             <div>
-              <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">
+              <label className="block text-[11px] font-medium text-gray-600 dark:text-gray-400 mb-1">
                 Status
               </label>
               <select
                 value={formData.status}
                 onChange={e => setField('status', e.target.value)}
-                className={selectCls}
+                className={compactFieldCls}
               >
                 {STATUS_LIST.map(s => (
                   <option key={s} value={s}>{s.charAt(0).toUpperCase() + s.slice(1)}</option>
@@ -758,13 +789,13 @@ function AddPurchaseOrderPage() {
 
             {/* Payment Status */}
             <div>
-              <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">
+              <label className="block text-[11px] font-medium text-gray-600 dark:text-gray-400 mb-1">
                 Payment Status
               </label>
               <select
                 value={paymentStatus}
                 onChange={e => setPaymentStatus(e.target.value as PaymentStatus)}
-                className={selectCls}
+                className={compactFieldCls}
               >
                 {PAYMENT_STATUS_LIST.map(o => (
                   <option key={o.value} value={o.value}>{o.label}</option>
@@ -843,6 +874,7 @@ function AddPurchaseOrderPage() {
                       defaultOptions={productDefaults}
                       placeholder="Select product"
                       isInvalid={hasErr(`items.${idx}.product_id`)}
+                      compact
                     />
                     {err(`items.${idx}.product_id`) && (
                       <p className="text-red-600 text-xs mt-0.5">{err(`items.${idx}.product_id`)}</p>
@@ -861,6 +893,7 @@ function AddPurchaseOrderPage() {
                       placeholder="Variation"
                       isDisabled={!it.product_id}
                       isInvalid={hasErr(`items.${idx}.variation_id`)}
+                      compact
                     />
                   </div>
 
@@ -1106,7 +1139,7 @@ function AddPurchaseOrderPage() {
                       onKeyDown={preventMinus}
                       onFocus={e => e.target.select()}
                       placeholder="0.00"
-                      className="w-full px-2 py-1.5 text-sm font-semibold text-right text-blue-700 dark:text-blue-300 bg-blue-50 dark:bg-blue-900/20 border-2 border-blue-400 dark:border-blue-500 rounded-sm focus:outline-none [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                      className={`${compactFieldCls} font-semibold text-right text-blue-700 dark:text-blue-300 bg-blue-50 dark:bg-blue-900/20 border-2 border-blue-400 dark:border-blue-500`}
                     />
                     {grandTotal > 0 && (
                       <p className="mt-0.5 text-xs text-gray-500 dark:text-gray-400">
@@ -1151,14 +1184,14 @@ function AddPurchaseOrderPage() {
                         onKeyDown={preventMinus}
                         onFocus={e => e.target.select()}
                         placeholder="0.00"
-                        className="w-full px-2 py-1.5 text-sm font-semibold text-right text-amber-700 dark:text-amber-300 bg-amber-50 dark:bg-amber-900/20 border-2 border-amber-400 dark:border-amber-500 rounded-sm focus:outline-none [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                        className={`${compactFieldCls} font-semibold text-right text-amber-700 dark:text-amber-300 bg-amber-50 dark:bg-amber-900/20 border-2 border-amber-400 dark:border-amber-500`}
                       />
                     </div>
                     <div>
                       <label className="block text-xs font-semibold text-green-600 dark:text-green-400 mb-1">
                         Change
                       </label>
-                      <div className={`w-full px-2 py-1.5 text-sm font-bold text-right rounded-sm border-2 pointer-events-none ${changeAmount > 0
+                      <div className={`${compactFieldCls} font-bold text-right pointer-events-none ${changeAmount > 0
                         ? 'text-green-700 dark:text-green-300 bg-green-50 dark:bg-green-900/20 border-green-400 dark:border-green-500'
                         : 'text-gray-400 dark:text-gray-500 bg-gray-50 dark:bg-gray-700/50 border-gray-200 dark:border-gray-600'
                         }`}>
@@ -1181,7 +1214,7 @@ function AddPurchaseOrderPage() {
                         value={cardLastFour}
                         onChange={e => setCardLastFour(e.target.value.replace(/\D/g, '').slice(0, 4))}
                         placeholder="1234"
-                        className="w-full px-2 py-1.5 text-sm font-semibold text-blue-700 dark:text-blue-300 bg-blue-50 dark:bg-blue-900/20 border-2 border-blue-400 dark:border-blue-500 rounded-sm focus:outline-none"
+                        className={`${compactFieldCls} font-semibold text-blue-700 dark:text-blue-300 bg-blue-50 dark:bg-blue-900/20 border-2 border-blue-400 dark:border-blue-500`}
                       />
                     </div>
                     <div>
@@ -1197,7 +1230,7 @@ function AddPurchaseOrderPage() {
                         onKeyDown={preventMinus}
                         onFocus={e => e.target.select()}
                         placeholder="0.00"
-                        className="w-full px-2 py-1.5 text-sm font-semibold text-right text-blue-700 dark:text-blue-300 bg-blue-50 dark:bg-blue-900/20 border-2 border-blue-400 dark:border-blue-500 rounded-sm focus:outline-none [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                        className={`${compactFieldCls} font-semibold text-right text-blue-700 dark:text-blue-300 bg-blue-50 dark:bg-blue-900/20 border-2 border-blue-400 dark:border-blue-500`}
                       />
                     </div>
                     <div>
@@ -1209,7 +1242,7 @@ function AddPurchaseOrderPage() {
                         value={txnReference}
                         onChange={e => setTxnReference(e.target.value)}
                         placeholder="TXN-XXXX"
-                        className="w-full px-2 py-1.5 text-sm font-semibold text-blue-700 dark:text-blue-300 bg-blue-50 dark:bg-blue-900/20 border-2 border-blue-400 dark:border-blue-500 rounded-sm focus:outline-none"
+                        className={`${compactFieldCls} font-semibold text-blue-700 dark:text-blue-300 bg-blue-50 dark:bg-blue-900/20 border-2 border-blue-400 dark:border-blue-500`}
                       />
                     </div>
                   </div>
@@ -1227,7 +1260,7 @@ function AddPurchaseOrderPage() {
                         value={mobileNumber}
                         onChange={e => setMobileNumber(e.target.value)}
                         placeholder="01XXXXXXXXX"
-                        className="w-full px-2 py-1.5 text-sm font-semibold text-pink-700 dark:text-pink-300 bg-pink-50 dark:bg-pink-900/20 border-2 border-pink-400 dark:border-pink-500 rounded-sm focus:outline-none"
+                        className={`${compactFieldCls} font-semibold text-pink-700 dark:text-pink-300 bg-pink-50 dark:bg-pink-900/20 border-2 border-pink-400 dark:border-pink-500`}
                       />
                     </div>
                     <div>
@@ -1239,7 +1272,7 @@ function AddPurchaseOrderPage() {
                         value={mobileTxnId}
                         onChange={e => setMobileTxnId(e.target.value)}
                         placeholder="TXN ID"
-                        className="w-full px-2 py-1.5 text-sm font-semibold text-pink-700 dark:text-pink-300 bg-pink-50 dark:bg-pink-900/20 border-2 border-pink-400 dark:border-pink-500 rounded-sm focus:outline-none"
+                        className={`${compactFieldCls} font-semibold text-pink-700 dark:text-pink-300 bg-pink-50 dark:bg-pink-900/20 border-2 border-pink-400 dark:border-pink-500`}
                       />
                     </div>
                   </div>
@@ -1257,7 +1290,7 @@ function AddPurchaseOrderPage() {
                         value={bankName}
                         onChange={e => setBankName(e.target.value)}
                         placeholder="e.g. Dutch Bangla Bank"
-                        className="w-full px-2 py-1.5 text-sm font-semibold text-teal-700 dark:text-teal-300 bg-teal-50 dark:bg-teal-900/20 border-2 border-teal-400 dark:border-teal-500 rounded-sm focus:outline-none"
+                        className={`${compactFieldCls} font-semibold text-teal-700 dark:text-teal-300 bg-teal-50 dark:bg-teal-900/20 border-2 border-teal-400 dark:border-teal-500`}
                       />
                     </div>
                     <div>
@@ -1269,7 +1302,7 @@ function AddPurchaseOrderPage() {
                         value={bankAccount}
                         onChange={e => setBankAccount(e.target.value)}
                         placeholder="Account number"
-                        className="w-full px-2 py-1.5 text-sm font-semibold text-teal-700 dark:text-teal-300 bg-teal-50 dark:bg-teal-900/20 border-2 border-teal-400 dark:border-teal-500 rounded-sm focus:outline-none"
+                        className={`${compactFieldCls} font-semibold text-teal-700 dark:text-teal-300 bg-teal-50 dark:bg-teal-900/20 border-2 border-teal-400 dark:border-teal-500`}
                       />
                     </div>
                     <div>
@@ -1281,7 +1314,7 @@ function AddPurchaseOrderPage() {
                         value={txnReference}
                         onChange={e => setTxnReference(e.target.value)}
                         placeholder="TXN-XXXX"
-                        className="w-full px-2 py-1.5 text-sm font-semibold text-teal-700 dark:text-teal-300 bg-teal-50 dark:bg-teal-900/20 border-2 border-teal-400 dark:border-teal-500 rounded-sm focus:outline-none"
+                        className={`${compactFieldCls} font-semibold text-teal-700 dark:text-teal-300 bg-teal-50 dark:bg-teal-900/20 border-2 border-teal-400 dark:border-teal-500`}
                       />
                     </div>
                   </div>
@@ -1299,7 +1332,7 @@ function AddPurchaseOrderPage() {
                         value={checkNumber}
                         onChange={e => setCheckNumber(e.target.value)}
                         placeholder="CHK-XXXX"
-                        className="w-full px-2 py-1.5 text-sm font-semibold text-amber-700 dark:text-amber-300 bg-amber-50 dark:bg-amber-900/20 border-2 border-amber-400 dark:border-amber-500 rounded-sm focus:outline-none"
+                        className={`${compactFieldCls} font-semibold text-amber-700 dark:text-amber-300 bg-amber-50 dark:bg-amber-900/20 border-2 border-amber-400 dark:border-amber-500`}
                       />
                     </div>
                     <div>
@@ -1323,8 +1356,8 @@ function AddPurchaseOrderPage() {
                     value={paymentNotes}
                     onChange={e => setPaymentNotes(e.target.value)}
                     placeholder="Add any notes for this payment..."
-                    rows={1}
-                    className={`${inputCls} resize-none`}
+                    rows={2}
+                    className={`${inputCls} resize-y`}
                   />
                 </div>
 

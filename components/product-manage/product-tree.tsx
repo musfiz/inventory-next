@@ -21,6 +21,8 @@ interface ProductTreePanelProps {
   onAddProduct: () => void;
   onRefresh?: () => void;
   canCreate: boolean;
+  formErrors?: Record<string, string>;
+  onTenantErrorClear?: () => void;
 }
 
 const noopTenantChange = (_id?: string | null) => { /* tenant change handled by parent */ };
@@ -60,6 +62,8 @@ export function ProductTreePanel({
   onAddProduct,
   onRefresh,
   canCreate,
+  formErrors = {},
+  onTenantErrorClear,
 }: ProductTreePanelProps) {
   const handleTenantChange = (id?: string | null) => onTenantChange(id ?? null);
   const { isSuperAdmin, isHydrated } = usePermissions();
@@ -137,11 +141,18 @@ export function ProductTreePanel({
             <label className="block text-[11px] font-medium text-gray-600 dark:text-gray-400 mb-1">Tenant</label>
             <TenantSelect
               value={tenantId}
-              onChange={handleTenantChange}
+              onChange={(o) => {
+                handleTenantChange(o);
+                if (o?.value && formErrors.tenant && onTenantErrorClear) onTenantErrorClear();
+              }}
               placeholder="Select tenant"
               compact
               isClearable
+              isInvalid={!!formErrors.tenant}
             />
+            {formErrors.tenant && (
+              <p className="text-red-600 text-xs mt-1">{formErrors.tenant}</p>
+            )}
           </div>
         )}
 
