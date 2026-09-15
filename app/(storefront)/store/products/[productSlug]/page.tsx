@@ -271,7 +271,7 @@ export default function ProductDetailPage() {
                   <button
                     key={i}
                     onClick={() => setActiveImg(i)}
-                    className={`relative aspect-square w-16 shrink-0 overflow-hidden rounded-xl border-2 transition-all lg:w-20 ${activeImg === i
+                    className={`relative aspect-square w-16 shrink-0 overflow-hidden rounded-md border-2 transition-all lg:w-20 ${activeImg === i
                       ? 'border-brand-500 ring-2 ring-brand-500/20'
                       : 'border-gray-200 hover:border-gray-300 dark:border-gray-700'
                       }`}
@@ -289,7 +289,7 @@ export default function ProductDetailPage() {
             )}
             {/* Main image */}
             <div className="order-1 flex-1">
-              <div className="relative aspect-square overflow-hidden rounded-2xl border border-gray-100 bg-gray-50 dark:border-gray-800 dark:bg-gray-900">
+              <div className="relative aspect-square overflow-hidden rounded-lg border border-gray-100 bg-gray-50 dark:border-gray-800 dark:bg-gray-900">
                 {product.images[activeImg] ? (
                   <ProductMagnifier
                     src={imageUrl(product.images[activeImg]) || ''}
@@ -431,7 +431,7 @@ export default function ProductDetailPage() {
               <button
                 onClick={handleAdd}
                 disabled={!inStock}
-                className="inline-flex h-11 flex-1 items-center justify-center gap-2 rounded-full bg-gray-900 text-sm font-bold text-white transition-all hover:bg-gray-800 disabled:cursor-not-allowed disabled:opacity-50 dark:bg-white dark:text-gray-900 dark:hover:bg-gray-100"
+                className="inline-flex h-11 flex-1 items-center justify-center gap-2 rounded-md bg-gray-900 text-sm font-bold text-white transition-all hover:bg-gray-800 disabled:cursor-not-allowed disabled:opacity-50 dark:bg-white dark:text-gray-900 dark:hover:bg-gray-100"
               >
                 <IoCartSharp className="h-4 w-4" />
                 {inStock ? 'Add to Cart' : 'Sold Out'}
@@ -439,7 +439,7 @@ export default function ProductDetailPage() {
               <button
                 onClick={handleBuyNow}
                 disabled={!inStock}
-                className="inline-flex h-11 flex-1 items-center justify-center gap-2 rounded-full bg-brand-600 text-sm font-bold text-white transition-all hover:bg-brand-700 disabled:cursor-not-allowed disabled:opacity-50"
+                className="inline-flex h-11 flex-1 items-center justify-center gap-2 rounded-md bg-brand-600 text-sm font-bold text-white transition-all hover:bg-brand-700 disabled:cursor-not-allowed disabled:opacity-50"
               >
                 <Zap className="h-4 w-4" />
                 Buy Now
