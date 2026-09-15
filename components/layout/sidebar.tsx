@@ -203,6 +203,12 @@ const navigation: NavigationItem[] = [
         permission: 'create-purchase-order',
       },
       {
+        name: 'Purchase Entry',
+        href: '/purchase/manage',
+        icon: ClipboardList,
+        permission: 'create-purchase-order',
+      },
+      {
         name: 'Purchase Orders Return',
         href: '/purchase-order-return',
         icon: MdOutlineAssignmentReturn,

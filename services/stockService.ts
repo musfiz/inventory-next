@@ -8,6 +8,7 @@ export interface StockEntry {
   product_id: string;
   variation_id: string;
   warehouse_id: string;
+  purchase_order_no?: string | null;
   quantity?: number | string | null;
   reserved_quantity?: number | string | null;
   min_quantity?: number | string | null;
@@ -39,6 +40,10 @@ class StockService {
     return response.data.data;
   }
 
+  /**
+   * Store stock entry (standalone, no PO).
+   * POST /api/v1/stocks/store
+   */
   async storeStocks(data: {
     tenant_id?: string;
     warehouse_id: string;

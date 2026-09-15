@@ -322,23 +322,21 @@ export default function StockAddPage() {
         <h1 className="text-xl font-bold">Add Stocks</h1>
       </div>
 
-      <form onSubmit={handleSave} className="bg-white dark:bg-gray-800 rounded-md p-3 space-y-3">
+      <form onSubmit={handleSave} className="bg-white dark:bg-gray-800 rounded-md border border-gray-200 dark:border-gray-700 p-3 space-y-3">
         {isSuperAdmin && (
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-1.5">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
+              <label className="block text-[11px] font-medium text-gray-600 dark:text-gray-400 mb-1">
                 Tenant <span className="text-red-500">*</span>
               </label>
               <CustomSelect
                 value={selectedTenant}
                 onChange={(o: any) => {
                   setSelectedTenant(o);
-                  // clear tenant error
                   if (o?.value && formErrors.tenant_id) {
                     const { tenant_id, ...rest } = formErrors;
                     setFormErrors(rest);
                   }
-                  // clear selected warehouse and product when tenant changes
                   setSelectedWarehouse(null);
                   setSelectedProduct(null);
                   setVariations([]);
@@ -359,7 +357,7 @@ export default function StockAddPage() {
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
+            <label className="block text-[11px] font-medium text-gray-600 dark:text-gray-400 mb-1">
               Warehouse <span className="text-red-500">*</span>
             </label>
             <CustomSelect
@@ -370,7 +368,6 @@ export default function StockAddPage() {
                   const { warehouse_id, ...rest } = formErrors;
                   setFormErrors(rest);
                 }
-                // clear selected product when warehouse changes
                 setSelectedProduct(null);
                 setVariations([]);
                 setStocks([]);
@@ -387,7 +384,7 @@ export default function StockAddPage() {
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
+            <label className="block text-[11px] font-medium text-gray-600 dark:text-gray-400 mb-1">
               Product <span className="text-red-500">*</span>
             </label>
             <div className="flex gap-2">
@@ -423,12 +420,10 @@ export default function StockAddPage() {
                     setVariations([]);
                     setStocks([]);
                   }}
-                  className="px-3 py-1.5 bg-gray-500 hover:bg-gray-600 text-white text-sm font-medium rounded-sm transition-colors flex items-center gap-1"
+                  className="px-3 py-1.5 bg-gray-500 hover:bg-gray-600 text-white text-sm font-medium rounded-sm transition-colors flex items-center gap-1 shrink-0"
                   title="Clear Product"
                 >
-                  <span>
-                    <RefreshCcw className="w-5 h-5 cursor-pointer" />
-                  </span>
+                  <RefreshCcw className="w-5 h-5 cursor-pointer" />
                 </button>
               )}
             </div>
@@ -460,55 +455,38 @@ export default function StockAddPage() {
             </span>
           </label>
           {productByBrand && (
-            <span className="text-xs font-bold text-cyan-600 dark:text-cyan-400">
-              ℹ All variations from products with the same brand will be loaded
+            <span className="text-xs text-cyan-600 dark:text-cyan-400">
+              Loads all variations from products with the same brand
             </span>
           )}
         </div>
 
         {/* Variations table */}
         {variations.length > 0 && (
-          <div className="mt-4">
-            <div className="flex items-center justify-between mb-2">
-              <h3 className="text-sm font-semibold text-gray-700 dark:text-gray-300">
+          <div className="mt-3">
+            <div className="flex items-center justify-between mb-1.5">
+              <h3 className="text-sm font-semibold text-gray-900 dark:text-gray-100 flex items-center gap-1.5">
+                <Package2 className="w-4 h-4 text-indigo-500" />
                 Product Variations ({variations.length})
               </h3>
-              <span className="text-xs text-gray-500 dark:text-gray-400">
-                Click on any field to edit
+              <span className="text-[11px] text-gray-500 dark:text-gray-400">
+                Click any field to edit
               </span>
             </div>
-            <div className="border border-gray-300 dark:border-gray-600 rounded-md overflow-hidden">
+            <div className="border border-gray-200 dark:border-gray-600 rounded overflow-hidden">
               <div className="overflow-x-auto min-h-[500px] max-h-[70vh] overflow-y-auto">
                 <table className="w-full text-sm">
                   <thead className="bg-gray-100 dark:bg-gray-700 sticky top-0 z-10">
                     <tr>
-                      <th className="px-3 py-2 text-left text-xs font-semibold text-gray-700 dark:text-gray-300 border-b border-gray-300 dark:border-gray-600 w-12">
-                        #
-                      </th>
-                      <th className="px-3 py-2 text-left text-xs font-semibold text-gray-700 dark:text-gray-300 border-b border-gray-300 dark:border-gray-600 min-w-[200px]">
-                        Variation (SKU / Name)
-                      </th>
-                      <th className="px-3 py-2 text-left text-xs font-semibold text-gray-700 dark:text-gray-300 border-b border-gray-300 dark:border-gray-600 w-32">
-                        Current Stock
-                      </th>
-                      <th className="px-3 py-2 text-left text-xs font-semibold text-gray-700 dark:text-gray-300 border-b border-gray-300 dark:border-gray-600 w-32">
-                        Add Quantity
-                      </th>
-                      <th className="px-3 py-2 text-left text-xs font-semibold text-gray-700 dark:text-gray-300 border-b border-gray-300 dark:border-gray-600 w-32">
-                        Reserved
-                      </th>
-                      <th className="px-3 py-2 text-left text-xs font-semibold text-gray-700 dark:text-gray-300 border-b border-gray-300 dark:border-gray-600 w-28">
-                        Min Qty
-                      </th>
-                      <th className="px-3 py-2 text-left text-xs font-semibold text-gray-700 dark:text-gray-300 border-b border-gray-300 dark:border-gray-600 w-28">
-                        Max Qty
-                      </th>
-                      <th className="px-3 py-2 text-left text-xs font-semibold text-gray-700 dark:text-gray-300 border-b border-gray-300 dark:border-gray-600 w-28">
-                        Reorder Point
-                      </th>
-                      <th className="px-3 py-2 text-left text-xs font-semibold text-gray-700 dark:text-gray-300 border-b border-gray-300 dark:border-gray-600 w-32">
-                        Last Cost
-                      </th>
+                      <th className="px-2 py-2 text-left text-[11px] font-semibold text-gray-700 dark:text-gray-300 border-b border-gray-300 dark:border-gray-600 w-10">#</th>
+                      <th className="px-2 py-2 text-left text-[11px] font-semibold text-gray-700 dark:text-gray-300 border-b border-gray-300 dark:border-gray-600 min-w-[200px]">Variation (SKU / Name)</th>
+                      <th className="px-2 py-2 text-left text-[11px] font-semibold text-gray-700 dark:text-gray-300 border-b border-gray-300 dark:border-gray-600 w-32">Current Stock</th>
+                      <th className="px-2 py-2 text-left text-[11px] font-semibold text-gray-700 dark:text-gray-300 border-b border-gray-300 dark:border-gray-600 w-32">Add Quantity</th>
+                      <th className="px-2 py-2 text-left text-[11px] font-semibold text-gray-700 dark:text-gray-300 border-b border-gray-300 dark:border-gray-600 w-28">Reserved</th>
+                      <th className="px-2 py-2 text-left text-[11px] font-semibold text-gray-700 dark:text-gray-300 border-b border-gray-300 dark:border-gray-600 w-28">Min Qty</th>
+                      <th className="px-2 py-2 text-left text-[11px] font-semibold text-gray-700 dark:text-gray-300 border-b border-gray-300 dark:border-gray-600 w-28">Max Qty</th>
+                      <th className="px-2 py-2 text-left text-[11px] font-semibold text-gray-700 dark:text-gray-300 border-b border-gray-300 dark:border-gray-600 w-28">Reorder Point</th>
+                      <th className="px-2 py-2 text-left text-[11px] font-semibold text-gray-700 dark:text-gray-300 border-b border-gray-300 dark:border-gray-600 w-32">Last Cost</th>
                     </tr>
                   </thead>
                   <tbody className="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
@@ -520,26 +498,21 @@ export default function StockAddPage() {
                         <td className="px-2 py-1 text-gray-600 dark:text-gray-400 font-medium">
                           {idx + 1}
                         </td>
-                        <td className="px-3 py-1">
-                          <div className="flex flex-col">
-                            {v.sku && (
-                              <span className="font-mono text-sm font-medium text-gray-900 dark:text-gray-100">
-                                {v.sku}
-                              </span>
-                            )}
-                            {v.name && (
-                              <span className="text-xs text-gray-500 dark:text-gray-400">
-                                {v.name}
-                              </span>
-                            )}
+                        <td className="px-2 py-1">
+                          <div className="flex flex-col gap-0.5">
                             {v.product && v.product.name && (
-                              <span className="text-xs text-blue-600 dark:text-blue-400 mt-0.5 font-medium">
-                                {v.product.name}
+                              <span className="text-xs font-medium text-gray-900 dark:text-gray-100">
+                                {v.product.name} - {v.name}
                               </span>
                             )}
+                            <span className="text-[11px] text-gray-500 dark:text-gray-400">
+                              {v.brand?.name && (
+                                <span className="text-indigo-600 dark:text-indigo-400 font-bold">{v.brand.name}</span>
+                              )}{v.sku && ` · ${v.sku}`}{v.product_code ? ` · ${v.product_code}` : ''}
+                            </span>
                           </div>
                         </td>
-                        <td className="px-3 py-1">
+                        <td className="px-2 py-1">
                           <div className="flex items-center justify-center">
                             {v.stock ? (
                               Number(v.stock.quantity) > 0 ? (
@@ -558,7 +531,7 @@ export default function StockAddPage() {
                             )}
                           </div>
                         </td>
-                        <td className="px-3 py-1">
+                        <td className="px-2 py-1">
                           <input
                             type="number"
                             value={stocks[idx]?.quantity !== undefined && stocks[idx]?.quantity !== null ? Math.round(stocks[idx].quantity) : 0}
@@ -572,7 +545,7 @@ export default function StockAddPage() {
                             placeholder="0"
                           />
                         </td>
-                        <td className="px-3 py-1">
+                        <td className="px-2 py-1">
                           <input
                             type="number"
                             min={0}
@@ -585,7 +558,7 @@ export default function StockAddPage() {
                             placeholder="0"
                           />
                         </td>
-                        <td className="px-3 py-1">
+                        <td className="px-2 py-1">
                           <input
                             type="number"
                             min={0}
@@ -596,7 +569,7 @@ export default function StockAddPage() {
                             placeholder="Opt."
                           />
                         </td>
-                        <td className="px-3 py-1">
+                        <td className="px-2 py-1">
                           <input
                             type="number"
                             min={0}
@@ -607,7 +580,7 @@ export default function StockAddPage() {
                             placeholder="Opt."
                           />
                         </td>
-                        <td className="px-3 py-1">
+                        <td className="px-2 py-1">
                           <input
                             type="number"
                             min={0}
@@ -618,7 +591,7 @@ export default function StockAddPage() {
                             placeholder="Opt."
                           />
                         </td>
-                        <td className="px-3 py-1">
+                        <td className="px-2 py-1">
                           <input
                             type="number"
                             min={0}
@@ -643,7 +616,7 @@ export default function StockAddPage() {
           </div>
         )}
 
-        <div className="flex gap-2">
+        <div className="flex items-center gap-2 mt-3">
           <button
             type="submit"
             className="flex items-center justify-center gap-2 px-5 py-1.5 text-sm bg-indigo-600 hover:bg-indigo-700 disabled:bg-gray-400 text-white rounded-sm transition-colors cursor-pointer"
@@ -665,7 +638,7 @@ export default function StockAddPage() {
               <strong>{confirmItems.length}</strong> variation(s) with new quantity will be updated.
               Variations with Add Quantity = 0 will be skipped.
             </p>
-            <div className="border border-gray-200 dark:border-gray-600 rounded-md overflow-hidden max-h-60 overflow-y-auto mb-3">
+            <div className="border border-gray-200 dark:border-gray-600 rounded overflow-hidden max-h-60 overflow-y-auto mb-3">
               <table className="w-full text-sm">
                 <thead className="bg-gray-100 dark:bg-gray-700 sticky top-0">
                   <tr>

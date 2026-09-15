@@ -6,13 +6,13 @@ export interface PurchaseOrder {
   uuid?: string;
   tenant_id?: string;
   po_number: string;
+  supplier_order_no?: string | null;
   supplier_id?: number;
   supplier?: any;
   warehouse_id?: number;
   warehouse?: any;
   order_date?: string;
   expected_delivery_date?: string | null;
-  actual_delivery_date?: string | null;
   status?: string;
   total_amount?: number;
 }

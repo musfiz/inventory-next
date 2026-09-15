@@ -13,6 +13,8 @@ interface DatePickerProps {
   minDate?: Date;
   maxDate?: Date;
   disabled?: boolean;
+  /** Compact 28px height matching CustomSelect `compact` (h-[28px], text-xs). */
+  compact?: boolean;
 }
 
 export default function CustomDatePicker({
@@ -23,6 +25,7 @@ export default function CustomDatePicker({
   minDate,
   maxDate,
   disabled = false,
+  compact = false,
 }: DatePickerProps) {
   const date = value ? new Date(value + 'T00:00:00') : null;
 
@@ -44,10 +47,11 @@ export default function CustomDatePicker({
     placeholder?: string;
     className?: string;
     onChange?: (e?: any) => void;
+    compact?: boolean;
   }
 
   const CustomInput = forwardRef<HTMLInputElement, CustomInputProps>(
-    ({ value, onClick, placeholder, className }, ref) => (
+    ({ value, onClick, placeholder, className, compact: inputCompact }, ref) => (
       <div className="relative w-full">
         <input
           ref={ref}
@@ -56,7 +60,7 @@ export default function CustomDatePicker({
           placeholder={placeholder}
           readOnly
           disabled={disabled}
-          className={`w-full px-2.5 py-1 text-sm bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-sm text-gray-900 dark:text-gray-100 focus:outline-none focus:border-indigo-500 dark:focus:border-indigo-400 ${disabled ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'} ${value ? 'pr-14' : 'pr-8'} ${className || ''}`}
+          className={`w-full px-2 ${inputCompact ? 'h-[28px] text-xs rounded' : 'px-2.5 py-1 text-sm rounded-sm'} bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 text-gray-900 dark:text-gray-100 focus:outline-none focus:border-indigo-500 dark:focus:border-indigo-400 ${disabled ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'} ${value ? 'pr-14' : 'pr-8'} ${className || ''}`}
         />
         {value && (
           <button
@@ -81,7 +85,7 @@ export default function CustomDatePicker({
         selected={date}
         onChange={handleChange}
         dateFormat="dd/MM/yyyy"
-        customInput={<CustomInput />}
+        customInput={<CustomInput compact={compact} />}
         minDate={minDate}
         maxDate={maxDate}
         placeholderText={placeholder}
