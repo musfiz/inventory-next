@@ -14,10 +14,10 @@ import {
   ArrowRight,
   Banknote,
 } from 'lucide-react';
-import storefrontService from '@/services/storefrontService';
 import checkoutService, { type PlaceOrderPayload } from '@/services/checkoutService';
 import { useCustomerAuthStore } from '@/stores/customer-auth-store';
 import { useStorefrontStatus } from '@/hooks/use-storefront-status';
+import { useProductBySlug } from '@/hooks/use-storefront-data';
 import { formatMoney } from '@/lib/storefront/mock-data';
 import { imageUrl } from '@/lib/image-url';
 import { notify } from '@/lib/notifications';
@@ -122,9 +122,8 @@ export default function ExpressCheckoutPage() {
   const { user } = useCustomerAuthStore();
   const { storeName } = useStorefrontStatus();
 
-  const [product, setProduct] = useState<Product | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [is404, setIs404] = useState(false);
+  // Product — SWR (shared cache with the product detail page); 404 is terminal.
+  const { product, loading, is404 } = useProductBySlug(productSlug);
 
   const [selectedVariationId, setSelectedVariationId] = useState('');
   const [qty, setQty] = useState(1);
@@ -167,35 +166,16 @@ export default function ExpressCheckoutPage() {
     message?: string;
   } | null>(null);
 
-  // ── Load product ───────────────────────────────────────────────
+  // ── Default variation once the product arrives from SWR ─────────
   useEffect(() => {
-    if (!productSlug) return;
-    let cancelled = false;
-    setLoading(true);
-    storefrontService
-      .getProductBySlug(productSlug)
-      .then(data => {
-        if (cancelled) return;
-        setProduct(data);
-        // Prefer an in-stock variation as the default selection so the page
-        // doesn't falsely report "out of stock" when only the default/first
-        // variation lacks stock. Falls back to the product itself if it has no
-        // variations.
-        const list = normalizeVariations(data);
-        const def = pickDefaultVariation(list);
-        setSelectedVariationId(def?.id ?? '');
-      })
-      .catch(err => {
-        if (cancelled) return;
-        if (err?.response?.status === 404) setIs404(true);
-      })
-      .finally(() => {
-        if (!cancelled) setLoading(false);
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, [productSlug]);
+    if (!product) return;
+    // Prefer an in-stock variation as the default selection so the page
+    // doesn't falsely report "out of stock" when only the default/first
+    // variation lacks stock. Falls back to the product itself if it has no
+    // variations.
+    const def = pickDefaultVariation(normalizeVariations(product));
+    setSelectedVariationId(def?.id ?? '');
+  }, [product]);
 
   const variations = useMemo(
     () => (product ? normalizeVariations(product) : []),

@@ -6,9 +6,9 @@ import { useRouter } from 'next/navigation';
 import { Search, X, TrendingUp, History, Tag, Layers, Loader2 } from 'lucide-react';
 import { POPULAR_SEARCHES } from '@/lib/storefront/mock-data';
 import { formatMoney } from '@/lib/utils/format';
-import storefrontService from '@/services/storefrontService';
 import type { SearchSuggestions } from '@/services/storefrontService';
 import { useStorefrontTrending } from '@/hooks/use-storefront-trending';
+import { useSearchSuggestions } from '@/hooks/use-storefront-data';
 
 const RECENT_SEARCHES_KEY = 'sf_recent_searches';
 const EMPTY_SUGGESTIONS: SearchSuggestions = { products: [], categories: [], brands: [] };
@@ -38,14 +38,21 @@ function HighlightedText({ text, query }: { text: string; query: string }) {
 export const SearchBar = ({ onClose }: { onClose?: () => void }) => {
   const [query, setQuery] = useState('');
   const [open, setOpen] = useState(false);
-  const [suggestions, setSuggestions] = useState<SearchSuggestions>(EMPTY_SUGGESTIONS);
-  const [loading, setLoading] = useState(false);
   const [activeIndex, setActiveIndex] = useState(-1);
   const [recentSearches, setRecentSearches] = useState<string[]>([]);
   const ref = useRef<HTMLDivElement>(null);
   const router = useRouter();
   const { terms: trendingTerms, ready: trendingReady } = useStorefrontTrending();
   const trending = trendingReady && trendingTerms.length > 0 ? trendingTerms : POPULAR_SEARCHES;
+
+  // Debounce the typed term, then let SWR own the request (cached per term).
+  const [debounced, setDebounced] = useState('');
+  useEffect(() => {
+    const t = setTimeout(() => setDebounced(query.trim()), 300);
+    return () => clearTimeout(t);
+  }, [query]);
+  const { suggestions: fetched, loading } = useSearchSuggestions(debounced, true);
+  const suggestions = fetched ?? EMPTY_SUGGESTIONS;
 
   useEffect(() => {
     try {
@@ -65,33 +72,6 @@ export const SearchBar = ({ onClose }: { onClose?: () => void }) => {
     document.addEventListener('mousedown', handleClick);
     return () => document.removeEventListener('mousedown', handleClick);
   }, []);
-
-  // Debounced, cancellable fetch of live suggestions from the storefront API.
-  useEffect(() => {
-    const term = query.trim();
-    if (!term) {
-      setSuggestions(EMPTY_SUGGESTIONS);
-      setLoading(false);
-      return;
-    }
-    const controller = new AbortController();
-    setLoading(true);
-    const timer = setTimeout(() => {
-      storefrontService
-        .searchSuggest(term, { limit: 6, signal: controller.signal })
-        .then(data => setSuggestions(data))
-        .catch(() => {
-          if (!controller.signal.aborted) setSuggestions(EMPTY_SUGGESTIONS);
-        })
-        .finally(() => {
-          if (!controller.signal.aborted) setLoading(false);
-        });
-    }, 300);
-    return () => {
-      clearTimeout(timer);
-      controller.abort();
-    };
-  }, [query]);
 
   useEffect(() => {
     setActiveIndex(-1);

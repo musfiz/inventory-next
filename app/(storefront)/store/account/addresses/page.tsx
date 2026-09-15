@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import {
   MapPin,
   Plus,
@@ -15,6 +15,7 @@ import {
 import type { Address } from '@/types/storefront';
 import { notify } from '@/lib/notifications';
 import checkoutService from '@/services/checkoutService';
+import { useSavedAddresses } from '@/hooks/use-storefront-data';
 
 const EMPTY: Omit<Address, 'id'> = {
   label: 'Home',
@@ -30,30 +31,11 @@ const EMPTY: Omit<Address, 'id'> = {
 };
 
 export default function AddressesPage() {
-  const [addresses, setAddresses] = useState<Address[]>([]);
-  const [loading, setLoading] = useState(true);
+  // Saved addresses — SWR; mutations revalidate via mutate().
+  const { addresses, loading, mutate } = useSavedAddresses();
   const [modal, setModal] = useState<Omit<Address, 'id'> | null>(null);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
-
-  useEffect(() => {
-    let active = true;
-    setLoading(true);
-    checkoutService
-      .getAddresses()
-      .then(list => {
-        if (active) setAddresses(list);
-      })
-      .catch(() => {
-        if (active) setAddresses([]);
-      })
-      .finally(() => {
-        if (active) setLoading(false);
-      });
-    return () => {
-      active = false;
-    };
-  }, []);
 
   const openAdd = () => {
     setEditingId(null);
@@ -75,14 +57,13 @@ export default function AddressesPage() {
     setSaving(true);
     try {
       if (editingId) {
-        const updated = await checkoutService.updateAddress(editingId, modal);
-        setAddresses(prev => prev.map(a => (a.id === editingId ? updated : a)));
+        await checkoutService.updateAddress(editingId, modal);
         notify.success('Address updated');
       } else {
-        const created = await checkoutService.saveAddress(modal);
-        setAddresses(prev => [...prev, created]);
+        await checkoutService.saveAddress(modal);
         notify.success('Address added');
       }
+      await mutate();
       setModal(null);
       setEditingId(null);
     } catch {
@@ -96,7 +77,7 @@ export default function AddressesPage() {
     if (!window.confirm('Delete this address?')) return;
     try {
       await checkoutService.deleteAddress(id);
-      setAddresses(prev => prev.filter(a => a.id !== id));
+      await mutate();
       notify.success('Address deleted');
     } catch {
       notify.error('Failed to delete address');
@@ -107,8 +88,8 @@ export default function AddressesPage() {
     const target = addresses.find(a => a.id === id);
     if (!target) return;
     try {
-      const updated = await checkoutService.updateAddress(id, { ...target, isDefault: true });
-      setAddresses(prev => prev.map(a => ({ ...a, isDefault: a.id === id ? updated.isDefault : false })));
+      await checkoutService.updateAddress(id, { ...target, isDefault: true });
+      await mutate();
       notify.success('Default address updated');
     } catch {
       notify.error('Failed to update default address');

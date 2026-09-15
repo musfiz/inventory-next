@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import {
   Package,
   Truck,
@@ -14,8 +14,7 @@ import {
   Loader2,
   AlertCircle,
 } from 'lucide-react';
-import ecommerceOrderService from '@/services/ecommerceOrderService';
-import type { EcommerceOrder } from '@/types/ecommerce';
+import { useTrackableOrders } from '@/hooks/use-storefront-data';
 
 const STATUS_BADGE: Record<string, string> = {
   placed: 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300',
@@ -38,30 +37,11 @@ const STATUS_ICON: Record<string, any> = {
 };
 
 export default function TrackOrdersPage() {
-  const [orders, setOrders] = useState<EcommerceOrder[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
   const [search, setSearch] = useState('');
 
-  useEffect(() => {
-    const fetchOrders = async () => {
-      setLoading(true);
-      setError(null);
-      try {
-        const result = await ecommerceOrderService.list({ per_page: 50 });
-        // Only show orders with tracking info (shipped, delivered, or with tracking number)
-        const trackable = result.data.filter(
-          o => ['shipped', 'delivered', 'packed', 'confirmed'].includes(o.status) || o.tracking_number
-        );
-        setOrders(trackable);
-      } catch {
-        setError('Could not load your orders. Please try again.');
-      } finally {
-        setLoading(false);
-      }
-    };
-    fetchOrders();
-  }, []);
+  // Trackable orders — SWR (deduped, cached across the account section).
+  const { orders, error: loadError, loading } = useTrackableOrders();
+  const error = loadError ? 'Could not load your orders. Please try again.' : null;
 
   const filtered = search.trim()
     ? orders.filter(o =>

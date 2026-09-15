@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import Image from 'next/image';
-import { use, useEffect, useState } from 'react';
+import { use, useState } from 'react';
 import { notFound } from 'next/navigation';
 import {
   Package,
@@ -21,7 +21,7 @@ import {
 } from 'lucide-react';
 import { formatMoney, formatMoneyDecimal } from '@/lib/utils/format';
 import { imageUrl } from '@/lib/image-url';
-import checkoutService from '@/services/checkoutService';
+import { useOrderDetail } from '@/hooks/use-storefront-data';
 import type { Order } from '@/types/storefront';
 
 const STATUS_ICON: Record<string, any> = {
@@ -39,28 +39,11 @@ export default function OrderDetailPage({
   params: Promise<{ orderId: string }>;
 }) {
   const { orderId } = use(params);
-  const [order, setOrder] = useState<Order | null>(null);
-  const [loading, setLoading] = useState(true);
   const [reviewing, setReviewing] = useState<string | null>(null);
 
-  useEffect(() => {
-    let active = true;
-    setLoading(true);
-    checkoutService
-      .getOrderDetail(orderId)
-      .then(o => {
-        if (active) setOrder(o as Order);
-      })
-      .catch(() => {
-        if (active) setOrder(null);
-      })
-      .finally(() => {
-        if (active) setLoading(false);
-      });
-    return () => {
-      active = false;
-    };
-  }, [orderId]);
+  // Order detail — SWR keyed on the uuid; 404/missing is terminal (no retry).
+  const { order: rawOrder, loading } = useOrderDetail(orderId);
+  const order = rawOrder as Order | null;
 
   if (loading) {
     return (

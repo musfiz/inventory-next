@@ -30,15 +30,19 @@ import { useCartStore } from '@/stores/cart-store';
 import { useWishlistStore } from '@/stores/wishlist-store';
 import { useRecentlyViewed } from '@/hooks/use-recently-viewed';
 import { useStorefrontStatus } from '@/hooks/use-storefront-status';
+import {
+  useProductBySlug,
+  useRelatedProducts,
+  useProductReviews,
+  useShowSimilarProducts,
+} from '@/hooks/use-storefront-data';
 import { useCartFly } from '@/components/storefront/CartFlyProvider';
 import { useRouter } from 'next/navigation';
 import { notify } from '@/lib/notifications';
 import { imageUrl } from '@/lib/image-url';
 import SafeHTML from '@/components/ui/safe-html';
-import ecommerceSettingsService from '@/services/ecommerceSettingsService';
 import storefrontService from '@/services/storefrontService';
 import { useCustomerAuthStore } from '@/stores/customer-auth-store';
-import type { Product, StoreReview, ReviewSummary } from '@/types/storefront';
 import Rating from '@/components/storefront/Rating';
 import Badge from '@/components/storefront/Badge';
 import ProductCard from '@/components/storefront/ProductCard';
@@ -50,14 +54,17 @@ export default function ProductDetailPage() {
   const router = useRouter();
   const { trackView } = useRecentlyViewed();
 
-  const [product, setProduct] = useState<Product | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [is404, setIs404] = useState(false);
-  const [related, setRelated] = useState<Product[]>([]);
+  // Product + related + reviews — all SWR; keys stay null until the product loads.
+  const { product, is404, loading } = useProductBySlug(productSlug);
+  const { related } = useRelatedProducts(product?.category?.id, product?.id);
+  const {
+    reviews,
+    summary: reviewSummary,
+    loading: reviewsLoading,
+    mutate: mutateReviews,
+  } = useProductReviews(product?.slug);
+  const showSimilar = useShowSimilarProducts();
 
-  const [reviews, setReviews] = useState<StoreReview[]>([]);
-  const [reviewSummary, setReviewSummary] = useState<ReviewSummary | null>(null);
-  const [reviewsLoading, setReviewsLoading] = useState(false);
   const [showReviewForm, setShowReviewForm] = useState(false);
   const [reviewDraft, setReviewDraft] = useState({ rating: 5, title: '', body: '' });
   const [reviewSubmitting, setReviewSubmitting] = useState(false);
@@ -68,64 +75,13 @@ export default function ProductDetailPage() {
   const siteName = storeName || 'Our Store';
 
   useEffect(() => {
-    if (!productSlug) return;
-    let cancelled = false;
-    setLoading(true);
-    setIs404(false);
-    storefrontService
-      .getProductBySlug(productSlug)
-      .then(data => {
-        if (cancelled) return;
-        setProduct(data);
-        setLoading(false);
-      })
-      .catch(err => {
-        if (cancelled) return;
-        if (err?.response?.status === 404) setIs404(true);
-        setLoading(false);
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, [productSlug]);
-
-  useEffect(() => {
     if (product) trackView(product.id);
   }, [product, trackView]);
-
-  useEffect(() => {
-    if (!product?.category?.id) return;
-    storefrontService
-      .getProducts({ category_id: Number(product.category.id), per_page: 6 })
-      .then(res => setRelated(res.data.filter(p => p.id !== product.id).slice(0, 5)))
-      .catch(() => setRelated([]));
-  }, [product?.category?.id, product?.id]);
-
-  useEffect(() => {
-    if (!product?.slug) return;
-    let cancelled = false;
-    setReviewsLoading(true);
-    storefrontService
-      .getProductReviews(product.slug, { per_page: 10 })
-      .then(res => {
-        if (cancelled) return;
-        setReviews(res.items);
-        setReviewSummary(res.summary);
-      })
-      .catch(() => {})
-      .finally(() => {
-        if (!cancelled) setReviewsLoading(false);
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, [product?.slug]);
 
   const [activeImg, setActiveImg] = useState(0);
   const [selectedVariationId, setSelectedVariationId] = useState<string>('');
   const [qty, setQty] = useState(1);
   const [tab, setTab] = useState<'description' | 'specs' | 'reviews' | 'shipping'>('description');
-  const [showSimilar, setShowSimilar] = useState(true);
 
   const productImage = product?.images?.[0];
   const defaultVariation = product?.variations?.[0];
@@ -148,10 +104,6 @@ export default function ProductDetailPage() {
         })
       : undefined,
   });
-
-  useEffect(() => {
-    ecommerceSettingsService.get().then(s => setShowSimilar(s.show_similar_products)).catch(() => { });
-  }, []);
 
   const addItem = useCartStore(s => s.addItem);
   const openCart = useCartStore(s => s.openDrawer);
@@ -236,6 +188,7 @@ export default function ProductDetailPage() {
       setShowReviewForm(false);
       setReviewDraft({ rating: 5, title: '', body: '' });
       setReviewPendingMsg(true);
+      mutateReviews(); // refresh count/summary from SWR cache
     } catch {
       notify.error('Failed to submit review.');
     } finally {

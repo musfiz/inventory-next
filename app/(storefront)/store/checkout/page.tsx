@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
 import { useRouter } from 'next/navigation';
@@ -31,12 +31,12 @@ import {
   PAYMENT_METHODS,
 } from '@/lib/storefront/mock-data';
 import { imageUrl } from '@/lib/image-url';
-import type { Address, Product } from '@/types/storefront';
+import type { Address } from '@/types/storefront';
 import { notify } from '@/lib/notifications';
 import checkoutService, { type ValidateCartResult } from '@/services/checkoutService';
 import type { PlaceOrderPayload } from '@/services/checkoutService';
-import storefrontService from '@/services/storefrontService';
 import { useStorefrontStatus } from '@/hooks/use-storefront-status';
+import { useProductBySlug, useSavedAddresses } from '@/hooks/use-storefront-data';
 import VariantSelector from '@/components/storefront/VariantSelector';
 
 type Step = 'details' | 'shipping' | 'payment';
@@ -67,32 +67,26 @@ export default function CheckoutPage() {
   } = useCartStore();
 
   const [editingItemId, setEditingItemId] = useState<string | null>(null);
-  const [editProduct, setEditProduct] = useState<Product | null>(null);
-  const [editLoading, setEditLoading] = useState(false);
+  const [editingSlug, setEditingSlug] = useState<string | null>(null);
   const [editSelected, setEditSelected] = useState('');
 
-  const openVariantEditor = async (item: (typeof items)[number]) => {
+  // Variant editor product data — SWR keyed on the clicked cart item's slug.
+  const { product: editProduct, loading: editLoading } = useProductBySlug(editingSlug ?? undefined);
+  const editProductRef = editProduct;
+
+  const openVariantEditor = (item: (typeof items)[number]) => {
     setEditingItemId(item.variationId);
     setEditSelected(item.variationId);
-    setEditProduct(null);
-    setEditLoading(true);
-    try {
-      const product = await storefrontService.getProductBySlug(item.slug);
-      setEditProduct(product);
-    } catch {
-      notify.error('Failed to load product options');
-      setEditingItemId(null);
-    } finally {
-      setEditLoading(false);
-    }
+    setEditingSlug(item.slug);
   };
 
   const confirmVariantChange = () => {
-    if (!editProduct || !editingItemId) return;
-    const res = updateItemVariation(editingItemId, editProduct, editSelected);
+    if (!editProductRef || !editingItemId) return;
+    const res = updateItemVariation(editingItemId, editProductRef, editSelected);
     if (res.ok) {
       notify.success('Variant updated');
       setEditingItemId(null);
+      setEditingSlug(null);
     } else {
       notify.error(res.message ?? 'Could not update variant');
     }
@@ -104,8 +98,6 @@ export default function CheckoutPage() {
   const [address, setAddress] = useState<Address>({ ...emptyAddress, phone: user?.phone || '' });
   const [shipping, setShipping] = useState(SHIPPING_METHODS[0]?.id ?? 'ship-standard');
   const [payment, setPayment] = useState('pm-cod');
-  const [savedAddresses, setSavedAddresses] = useState<Address[]>([]);
-  const [loadingAddresses, setLoadingAddresses] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [validating, setValidating] = useState(false);
   const [validationResult, setValidationResult] = useState<ValidateCartResult | null>(null);
@@ -121,15 +113,7 @@ export default function CheckoutPage() {
   const total = subtotal + shippingCost + tax - couponDiscount;
 
   // Load the customer's saved addresses for quick selection at checkout.
-  useEffect(() => {
-    if (!isAuthenticated) return;
-    setLoadingAddresses(true);
-    checkoutService
-      .getAddresses()
-      .then(setSavedAddresses)
-      .catch(() => setSavedAddresses([]))
-      .finally(() => setLoadingAddresses(false));
-  }, [isAuthenticated]);
+  const { addresses: savedAddresses, loading: loadingAddresses } = useSavedAddresses(isAuthenticated);
 
   const selectSavedAddress = (a: Address) => setAddress({ ...a });
 
