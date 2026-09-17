@@ -2,7 +2,7 @@
 
 import { Suspense } from 'react';
 import { useSearchParams } from 'next/navigation';
-import { ProductFormPage } from '@/app/(protected)/products/add/page';
+import { ProductFormPage } from '../_components/product-form';
 import PageLoader from '@/components/ui/page-loader';
 
 function EditProductContent() {
