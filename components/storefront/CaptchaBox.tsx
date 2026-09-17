@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect } from 'react';
-import { loadCaptchaEnginge, LoadCanvasTemplate } from 'react-simple-captcha';
+import { loadCaptchaEnginge, LoadCanvasTemplate } from '@/lib/captcha';
 
 /**
  * Client-only captcha widget. Loaded with `next/dynamic({ ssr: false })` so the

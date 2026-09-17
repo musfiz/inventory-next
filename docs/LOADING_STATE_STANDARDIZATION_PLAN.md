@@ -287,7 +287,7 @@ The repo's lint/build tooling was broken before this work and had to be repaired
    - `eslint-config-next`: `^0.2.4` → `^16.2.6` (the old version did not export the flat-config entry points `eslint-config-next/core-web-vitals` + `/typescript` that `eslint.config.mjs` imports; it was incompatible with ESLint 10/Next 16).
    - `eslint`: `^10.0.2` → `^9.0.0` (`eslint-config-next@16` targets ESLint 9; ESLint 10 removed `context.getFilename()`, which `eslint-plugin-react@7` still relied on).
    - Added `yjs` (runtime dep) — required transitively by `@lexkit/editor` (`rich-text-editor.tsx`) but missing from `node_modules`; build failed with "Can't resolve 'yjs'".
-   - Installs must use `--legacy-peer-deps` (pre-existing peer conflict: `react-image-magnifiers@1.4.0` demands `react@^16.8.0`).
+   - Installs must use `--legacy-peer-deps` (pre-existing peer conflict: `react-image-magnifiers@1.4.0` demands `react@^16.8.0`). **Resolved 2026-09-17**: `react-image-magnifiers` (unused, custom `ProductMagnifier` replaced it) and `react-simple-captcha@9.3.1` (pulled in `react-html-parser@2.0.2`, React ≤16) were removed from `package.json`; captcha is now a self-built module (`lib/captcha.tsx`) and `npm install` succeeds without `--legacy-peer-deps`.
 
 2. **`eslint.config.mjs`** — added a `legacyBaselineRules` override that downgrades the strict rules newly enabled by `eslint-config-next@16` to **warnings**:
    - `@typescript-eslint/no-explicit-any`, `react-hooks/set-state-in-effect`, `react-hooks/static-components`, `react-hooks/refs`, `react-hooks/immutability`, `react-hooks/purity`, `react-hooks/rules-of-hooks`, `react/no-unescaped-entities`, `prefer-const`.

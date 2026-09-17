@@ -1,9 +1,5 @@
 'use client';
 
-import { useState, useMemo, useEffect } from 'react';
-import Link from 'next/link';
-import Image from 'next/image';
-import { useParams, notFound } from 'next/navigation';
 import {
   Star,
   Heart,
@@ -18,36 +14,40 @@ import {
   Zap,
   Image as ImageIcon,
 } from 'lucide-react';
+import Image from 'next/image';
+import Link from 'next/link';
+import { useParams, notFound } from 'next/navigation';
+import { useRouter } from 'next/navigation';
+import { useState, useMemo, useEffect } from 'react';
 import { IoCartSharp } from 'react-icons/io5';
+import Badge from '@/components/storefront/Badge';
+import { useCartFly } from '@/components/storefront/CartFlyProvider';
+import ProductCard from '@/components/storefront/ProductCard';
 import ProductMagnifier from '@/components/storefront/ProductMagnifier';
-import {
-  STORE_INFO,
-} from '@/lib/storefront/mock-data';
-import { formatMoney, formatMoneyDecimal } from '@/lib/utils/format';
-import { useSeo } from '@/lib/utils/use-seo';
-import { productJsonLd } from '@/lib/utils/seo';
-import { useCartStore } from '@/stores/cart-store';
-import { useWishlistStore } from '@/stores/wishlist-store';
+import Rating from '@/components/storefront/Rating';
+import ScrollReveal from '@/components/storefront/ScrollReveal';
+import VariantSelector from '@/components/storefront/VariantSelector';
+import SafeHTML from '@/components/ui/safe-html';
 import { useRecentlyViewed } from '@/hooks/use-recently-viewed';
-import { useStorefrontStatus } from '@/hooks/use-storefront-status';
 import {
   useProductBySlug,
   useRelatedProducts,
   useProductReviews,
   useShowSimilarProducts,
 } from '@/hooks/use-storefront-data';
-import { useCartFly } from '@/components/storefront/CartFlyProvider';
-import { useRouter } from 'next/navigation';
-import { notify } from '@/lib/notifications';
+import { useStorefrontStatus } from '@/hooks/use-storefront-status';
 import { imageUrl } from '@/lib/image-url';
-import SafeHTML from '@/components/ui/safe-html';
+import { notify } from '@/lib/notifications';
+import {
+  STORE_INFO,
+} from '@/lib/storefront/mock-data';
+import { formatMoney } from '@/lib/utils/format';
+import { productJsonLd } from '@/lib/utils/seo';
+import { useSeo } from '@/lib/utils/use-seo';
 import storefrontService from '@/services/storefrontService';
+import { useCartStore } from '@/stores/cart-store';
 import { useCustomerAuthStore } from '@/stores/customer-auth-store';
-import Rating from '@/components/storefront/Rating';
-import Badge from '@/components/storefront/Badge';
-import ProductCard from '@/components/storefront/ProductCard';
-import ScrollReveal from '@/components/storefront/ScrollReveal';
-import VariantSelector from '@/components/storefront/VariantSelector';
+import { useWishlistStore } from '@/stores/wishlist-store';
 
 export default function ProductDetailPage() {
   const { productSlug } = useParams<{ productSlug: string }>();
@@ -93,15 +93,15 @@ export default function ProductDetailPage() {
     url: `/store/products/${productSlug}`,
     jsonLd: product
       ? productJsonLd({
-          name: product.name,
-          description: product.shortDescription || product.description,
-          image: productImage,
-          url: `/store/products/${productSlug}`,
-          sku: defaultVariation?.sku,
-          price: defaultVariation?.sellingPrice,
-          availability: (defaultVariation?.stock ?? 0) > 0,
-          brand: product.brand?.name,
-        })
+        name: product.name,
+        description: product.shortDescription || product.description,
+        image: productImage,
+        url: `/store/products/${productSlug}`,
+        sku: defaultVariation?.sku,
+        price: defaultVariation?.sellingPrice,
+        availability: (defaultVariation?.stock ?? 0) > 0,
+        brand: product.brand?.name,
+      })
       : undefined,
   });
 
