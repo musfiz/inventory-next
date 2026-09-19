@@ -34,6 +34,7 @@ import { useCartFly } from '@/components/storefront/CartFlyProvider';
 import { useRouter } from 'next/navigation';
 import { notify } from '@/lib/notifications';
 import { imageUrl } from '@/lib/image-url';
+import { findVariationBySlug, productDetailHref } from '@/lib/utils/variation-slug';
 import SafeHTML from '@/components/ui/safe-html';
 import ecommerceSettingsService from '@/services/ecommerceSettingsService';
 import storefrontService from '@/services/storefrontService';
@@ -46,7 +47,11 @@ import ScrollReveal from '@/components/storefront/ScrollReveal';
 import VariantSelector from '@/components/storefront/VariantSelector';
 
 export default function ProductDetailPage() {
-  const { productSlug } = useParams<{ productSlug: string }>();
+  const { productSlug, variationSlug: variationSlugParam } = useParams<{
+    productSlug: string;
+    variationSlug?: string[];
+  }>();
+  const variationSegment = variationSlugParam?.[0] ?? '';
   const router = useRouter();
   const { trackView } = useRecentlyViewed();
 
@@ -129,21 +134,48 @@ export default function ProductDetailPage() {
 
   const productImage = product?.images?.[0];
   const defaultVariation = product?.variations?.[0];
+
+  const variation = useMemo(() => {
+    if (!product || product.variations.length === 0) return null;
+    // 1. explicit user selection  2. variation from the URL  3. first in-stock  4. default
+    const selected = product.variations.find(v => v.id === selectedVariationId);
+    if (selected) return selected;
+    const fromUrl = findVariationBySlug(product.variations, variationSegment);
+    if (fromUrl) return fromUrl;
+    return (
+      product.variations.find(v => v.isDefault && v.stock > 0) ||
+      product.variations.find(v => v.stock > 0) ||
+      product.variations.find(v => v.isDefault) ||
+      product.variations[0]
+    );
+  }, [product, selectedVariationId, variationSegment]);
+
+  // Display name mirrors the card label: "Product Name Variation Name".
+  const variationName = variation?.name?.trim();
+  const displayName =
+    variationName && product && variationName.toLowerCase() !== product.name.trim().toLowerCase()
+      ? `${product.name} ${variationName}`
+      : product?.name ?? '';
+
+  const detailUrl = product
+    ? productDetailHref(product.slug, variation ?? defaultVariation)
+    : `/store/products/${productSlug}`;
+
   useSeo({
-    title: product ? `${product.name} | ${siteName}` : `Product | ${siteName}`,
+    title: product ? `${displayName} | ${siteName}` : `Product | ${siteName}`,
     description: product?.shortDescription || product?.description?.slice(0, 160),
     image: productImage,
     type: 'product',
-    url: `/store/products/${productSlug}`,
+    url: detailUrl,
     jsonLd: product
       ? productJsonLd({
-          name: product.name,
+          name: displayName,
           description: product.shortDescription || product.description,
           image: productImage,
-          url: `/store/products/${productSlug}`,
-          sku: defaultVariation?.sku,
-          price: defaultVariation?.sellingPrice,
-          availability: (defaultVariation?.stock ?? 0) > 0,
+          url: detailUrl,
+          sku: variation?.sku ?? defaultVariation?.sku,
+          price: variation?.sellingPrice ?? defaultVariation?.sellingPrice,
+          availability: (variation?.stock ?? defaultVariation?.stock ?? 0) > 0,
           brand: product.brand?.name,
         })
       : undefined,
@@ -158,12 +190,6 @@ export default function ProductDetailPage() {
   const wishlist = useWishlistStore();
   const isWished = product ? wishlist.has(product.id) : false;
   const { flyToCart } = useCartFly();
-
-  const variation = useMemo(() => {
-    if (!product) return null;
-    const def = product.variations.find(v => v.isDefault) || product.variations[0];
-    return product.variations.find(v => v.id === selectedVariationId) || def;
-  }, [product, selectedVariationId]);
 
   if (is404) notFound();
 
@@ -203,6 +229,13 @@ export default function ProductDetailPage() {
     stars,
     count: reviewSummary ? (reviewSummary.distribution[stars] ?? 0) : reviews.filter(r => Math.round(r.rating) === stars).length,
   }));
+
+  const handleVariationChange = (variationId: string) => {
+    setSelectedVariationId(variationId);
+    if (!product) return;
+    const next = product.variations.find(v => v.id === variationId);
+    if (next) router.replace(productDetailHref(product.slug, next), { scroll: false });
+  };
 
   const handleAdd = (e: React.MouseEvent) => {
     const res = addItem(product, variation.id, qty);
@@ -255,7 +288,7 @@ export default function ProductDetailPage() {
           </Link>
           <ChevronRight className="h-3 w-3" />
           <span className="line-clamp-1 text-gray-900 dark:text-gray-100">
-            {product.name}
+            {displayName}
           </span>
         </nav>
       </div>
@@ -333,7 +366,7 @@ export default function ProductDetailPage() {
               </Link>
             )}
             <h1 className="mt-2 text-2xl font-black tracking-tight text-gray-900 dark:text-white sm:text-3xl">
-              {product.name}
+              {displayName}
             </h1>
 
             <div className="mt-3 flex flex-wrap items-center gap-4">
@@ -392,7 +425,7 @@ export default function ProductDetailPage() {
                 <VariantSelector
                   variations={product.variations}
                   value={variation.id}
-                  onChange={setSelectedVariationId}
+                  onChange={handleVariationChange}
                 />
               </div>
             )}
@@ -742,7 +775,7 @@ export default function ProductDetailPage() {
       {/* Mobile sticky add-to-cart bar */}
       <div className="fixed inset-x-0 bottom-14 z-30 flex items-center gap-3 border-t border-gray-200 bg-white/95 p-3 backdrop-blur-md lg:hidden dark:border-gray-800 dark:bg-gray-950/95">
         <div className="flex-1">
-          <p className="line-clamp-1 text-xs font-semibold text-gray-900 dark:text-gray-100">{product.name}</p>
+          <p className="line-clamp-1 text-xs font-semibold text-gray-900 dark:text-gray-100">{displayName}</p>
           <p className="text-sm font-black text-brand-600">{formatMoney(price)}</p>
         </div>
         <button

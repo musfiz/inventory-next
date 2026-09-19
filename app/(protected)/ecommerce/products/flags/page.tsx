@@ -75,7 +75,7 @@ export default function FlagsPage() {
   const tenantBusinessTypeId = (user as any)?.tenant?.business_type?.id ?? null;
 
   const [items, setItems] = useState<ProductFlagsItem[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false);
   const [total, setTotal] = useState(0);
   const [page, setPage] = useState(1);
   const [lastPage, setLastPage] = useState(1);
@@ -100,14 +100,16 @@ export default function FlagsPage() {
   const [detailsForm, setDetailsForm] = useState<Record<string, { hide_when_out_of_stock: boolean; available_from: string; available_until: string }>>({});
   const [savingDetails, setSavingDetails] = useState<Record<string, boolean>>({});
 
+  // Only fetch when a category is selected — no list on initial page load
   const fetchData = useCallback(async () => {
+    if (!selectedCategory) return;
     setLoading(true);
     try {
       const res = await productFlagsService.list({
         page,
         per_page: 20,
         ...(search ? { search } : {}),
-        ...(selectedCategory ? { category_id: Number(selectedCategory.value) } : {}),
+        category_id: Number(selectedCategory.value),
       });
       setItems(res.data);
       setTotal(res.meta.total);
@@ -118,6 +120,18 @@ export default function FlagsPage() {
       setLoading(false);
     }
   }, [page, search, selectedCategory]);
+
+  useEffect(() => {
+    if (selectedCategory) {
+      fetchData();
+      setExpandedRow(null);
+    } else {
+      setItems([]);
+      setTotal(0);
+      setLastPage(1);
+      setPage(1);
+    }
+  }, [selectedCategory]);
 
   const loadCategoryOptions = useCallback(
     async (inputValue: string): Promise<SelectOption[]> => {
@@ -166,11 +180,6 @@ export default function FlagsPage() {
     },
     [tenantBusinessTypeId]
   );
-
-  useEffect(() => {
-    fetchData();
-    setExpandedRow(null);
-  }, [fetchData]);
 
   // Group products by category, each table then lists product_variation rows.
   const grouped = useMemo(() => {
@@ -526,7 +535,7 @@ export default function FlagsPage() {
                 value={selectedCategory}
                 onChange={option => { setSelectedCategory(option); setPage(1); }}
                 loadOptions={loadCategoryOptions}
-                placeholder="All categories"
+                placeholder="Select a category to load products"
                 isClearable
                 defaultOptions
                 compact
@@ -586,9 +595,16 @@ export default function FlagsPage() {
           </div>
         </div>
         <div className="px-3 py-2 border-t border-gray-200 dark:border-gray-700 text-xs text-gray-500 dark:text-gray-400">
-          {total} products · {allVariationKeys.length} variations on this page
+          {selectedCategory ? `${total} products · ${allVariationKeys.length} variations` : 'Select a category to load products'}
         </div>
       </div>
+
+      {/* Empty state — no category selected */}
+      {!selectedCategory && !loading && (
+        <div className="bg-white dark:bg-gray-800 rounded-md shadow-sm border border-gray-200 dark:border-gray-700 px-3 py-12 text-center text-sm text-gray-500">
+          Select a category above to view and manage product flags
+        </div>
+      )}
 
       {/* Bulk action bar */}
       {selected.size > 0 && (
