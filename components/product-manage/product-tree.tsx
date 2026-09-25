@@ -11,8 +11,8 @@ import { useAuthStore } from '@/stores/auth-store';
 import type { Product } from '@/types/api.types';
 
 interface ProductTreePanelProps {
-  businessTypeId: number | null;
-  onBusinessTypeChange: (id: number | null) => void;
+  businessTypeId: string | number | null;
+  onBusinessTypeChange: (id: string | number | null) => void;
   /** Tenant scope for warehouse selection — super admin only picks one explicitly. */
   tenantId?: string | null;
   onTenantChange?: (id: string | null) => void;

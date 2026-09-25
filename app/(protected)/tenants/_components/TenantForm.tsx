@@ -199,20 +199,16 @@ export default function TenantForm({ editRef }: { editRef?: string }) {
 
   const storefrontError = methods.formState.errors.storefront_active?.message as string | undefined;
 
-  if (isEditMode && !isHydrated) {
-    return (
-      <div className="flex items-center justify-center h-40">
-        <div className="text-center">
-          <Spinner size="md" className="mb-3" />
-          <p className="text-sm text-gray-600 dark:text-gray-400">Loading...</p>
-        </div>
-      </div>
-    );
-  }
+  const showPageLoader = isEditMode && !isHydrated;
 
   return (
     <FormProvider {...methods}>
-      <div className="space-y-2">
+      <div className="relative space-y-2">
+        {showPageLoader && (
+          <div className="fixed inset-0 z-40 flex items-center justify-center bg-white/60 dark:bg-gray-900/60 backdrop-blur-sm">
+            <Spinner size="md" decorative />
+          </div>
+        )}
         <div className="flex items-center justify-between">
           <h1 className="text-base font-bold text-gray-900 dark:text-gray-100 flex items-center gap-2">
             <Building2 className="w-5 h-5 text-indigo-600 dark:text-indigo-400" />

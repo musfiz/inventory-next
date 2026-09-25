@@ -21,15 +21,15 @@ export default function ProductManageTreePage() {
   // Start null (not a pre-hydration guess) — the real scope resolves after
   // hydration via effectiveBtId below, and queries stay disabled until then,
   // so no request ever fires with a wrong/null business type.
-  const [businessTypeId, setBusinessTypeId] = useState<number | null>(null);
-  const effectiveBtId = isSuperAdmin ? businessTypeId : tenantBusinessTypeId;
+  const [businessTypeId, setBusinessTypeId] = useState<string | number | null>(null);
+  const effectiveBtId = (isSuperAdmin ? businessTypeId : tenantBusinessTypeId) as string | number | null;
 
   // Restore super admin's stored business type selection once auth is hydrated.
   useEffect(() => {
     if (!isSuperAdmin) return;
     try {
       const stored = window.localStorage.getItem('manage-selected-business-type');
-      if (stored) setBusinessTypeId(Number(stored));
+      if (stored) setBusinessTypeId(stored);
     } catch { /* storage unavailable */ }
   }, [isSuperAdmin]);
 
@@ -84,8 +84,8 @@ export default function ProductManageTreePage() {
   // the SWR keys contain the business type, so tree + categories refetch alone.
   // Tenant selection is intentionally preserved — it's a separate scope and
   // only cleared manually (or when the tab closes).
-  const handleBusinessTypeChange = (id: number | null) => {
-    setBusinessTypeId(id);
+  const handleBusinessTypeChange = (id: string | number | null) => {
+    setBusinessTypeId(id ? String(id) : null);
     setSelectedProductId(null);
   };
 

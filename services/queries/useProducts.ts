@@ -11,13 +11,13 @@ import type { Product } from '@/types/api.types';
  * as a distinct cache entry — no cross-contamination between category views.
  */
 export const productsQueryKey = (
-  businessTypeId: number | null | undefined,
+  businessTypeId: string | number | null | undefined,
   search: string,
   categoryId?: string | null
 ) => ['products', businessTypeId ?? null, search, categoryId ?? null] as const;
 
 async function fetchProducts(
-  businessTypeId: number | null | undefined,
+  businessTypeId: string | number | null | undefined,
   search: string,
   categoryId?: string | null
 ): Promise<Product[]> {
@@ -25,7 +25,7 @@ async function fetchProducts(
     per_page: number;
     lite: number;
     search?: string;
-    business_type_id?: number;
+    business_type_id?: string | number;
     category_id?: string;
   } = { per_page: 100, lite: 1 };
   if (search.trim()) params.search = search.trim();
@@ -45,7 +45,7 @@ async function fetchProducts(
  * one to list every product under the business type.
  */
 export function useProducts(
-  businessTypeId: number | null | undefined,
+  businessTypeId: string | number | null | undefined,
   search: string,
   enabled: boolean,
   categoryId?: string | null

@@ -35,7 +35,7 @@ export default function ProductsPage() {
   const [uploading, setUploading] = useState(false);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
-  const [businessTypeId, setBusinessTypeId] = useState<number | null>(null);
+  const [businessTypeId, setBusinessTypeId] = useState<string | number | null>(null);
   const [refreshKey, setRefreshKey] = useState(0);
 
   const handleFile = (file: File) => {
@@ -377,7 +377,7 @@ export default function ProductsPage() {
                 </label>
                 <BusinessTypeSelect
                   value={businessTypeId}
-                  onChange={(id) => setBusinessTypeId(id)}
+                  onChange={(id) => setBusinessTypeId(id ? String(id) : null)}
                   placeholder="Select Business Type"
                   isDisabled={uploading}
                 />

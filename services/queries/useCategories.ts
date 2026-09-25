@@ -5,10 +5,10 @@ import apiClient from '@/lib/api/axios';
 import { unwrapListResponse } from '@/lib/api/response-helpers';
 import type { Category } from '@/types/api.types';
 
-export const categoriesQueryKey = (businessTypeId: number | null | undefined) =>
+export const categoriesQueryKey = (businessTypeId: string | number | null | undefined) =>
   ['categories', businessTypeId ?? null] as const;
 
-async function fetchCategories(businessTypeId: number | null | undefined): Promise<Category[]> {
+async function fetchCategories(businessTypeId: string | number | null | undefined): Promise<Category[]> {
   const params: Record<string, unknown> = { per_page: 100 };
   if (businessTypeId) params.business_type_id = businessTypeId;
   const res = await apiClient.get('/api/v1/categories', { params });
@@ -34,7 +34,7 @@ async function fetchCategories(businessTypeId: number | null | undefined): Promi
  * Pass `enabled: false` (e.g. until auth hydrates) to skip the fetch entirely —
  * this eliminates the pre-hydration request with a wrong/null business type.
  */
-export function useCategories(businessTypeId: number | null | undefined, enabled: boolean) {
+export function useCategories(businessTypeId: string | number | null | undefined, enabled: boolean) {
   return useSWR(enabled ? categoriesQueryKey(businessTypeId) : null, () => fetchCategories(businessTypeId), {
     revalidateOnFocus: false,
     dedupingInterval: 5000,

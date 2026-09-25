@@ -12,7 +12,7 @@ import commonService from '@/services/commonService';
  * and is intentionally NOT cached here.
  */
 export function useBrandsDropdown(
-  businessTypeId: number | null | undefined,
+  businessTypeId: string | number | null | undefined,
   enabled: boolean
 ) {
   return useSWR(

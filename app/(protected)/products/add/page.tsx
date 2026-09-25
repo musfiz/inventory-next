@@ -13,6 +13,7 @@ import { useAuthStore } from '@/stores/auth-store';
 import { usePermissions } from '@/hooks/use-permissions';
 import { GiSave } from 'react-icons/gi';
 import PageLoader from '@/components/ui/page-loader';
+import Spinner from '@/components/ui/spinner';
 
 interface ProductFormData {
   name: string;
@@ -75,9 +76,9 @@ export function ProductFormPage({ editRef }: { editRef?: string }) {
 
   // Business type state — for non-super-admin, locked to their tenant's business_type
   const [businessType, setBusinessType] = useState<string>(isSuperAdmin ? '' : tenantBusinessType);
-  const [businessTypeId, setBusinessTypeId] = useState<number | null>(null);
-  // Effective business type id — admin picks it, tenant is locked to theirs
-  const effectiveBtId = isSuperAdmin ? businessTypeId : tenantBusinessTypeId;
+  const [businessTypeId, setBusinessTypeId] = useState<string | number | null>(null);
+  // Effective business type id — admin picks it, tenant is locked to theirs (UUID string)
+  const effectiveBtId = (isSuperAdmin ? businessTypeId : tenantBusinessTypeId) as string | number | null;
 
   // Edit-mode state
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -113,7 +114,7 @@ export function ProductFormPage({ editRef }: { editRef?: string }) {
   const loadCategoryOptions = useCallback(
     async (inputValue: string): Promise<SelectOption[]> => {
       try {
-        const params: { search?: string; business_type_id?: number } = {};
+        const params: { search?: string; business_type_id?: string | number } = {};
 
         if (inputValue && inputValue.trim()) {
           params.search = inputValue.trim();
@@ -141,14 +142,14 @@ export function ProductFormPage({ editRef }: { editRef?: string }) {
         return [];
       }
     },
-    [businessTypeId, isSuperAdmin]
+    [businessTypeId, isSuperAdmin, tenantBusinessTypeId]
   );
 
   // Load brands for async select with search
   const loadBrandOptions = useCallback(
     async (inputValue: string): Promise<SelectOption[]> => {
       try {
-        const params: { search?: string; business_type_id?: number } = {};
+        const params: { search?: string; business_type_id?: string | number } = {};
 
         if (inputValue && inputValue.trim()) {
           params.search = inputValue.trim();
@@ -176,7 +177,7 @@ export function ProductFormPage({ editRef }: { editRef?: string }) {
         return [];
       }
     },
-    [businessTypeId, isSuperAdmin]
+    [businessTypeId, isSuperAdmin, tenantBusinessTypeId]
   );
 
   // Load units for async select with search
@@ -228,7 +229,7 @@ export function ProductFormPage({ editRef }: { editRef?: string }) {
       loadData();
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [businessTypeId, isSuperAdmin]);
+  }, [businessTypeId, isSuperAdmin, tenantBusinessTypeId]);
 
   // Edit mode: load existing product and prefill the form
   useEffect(() => {
@@ -270,9 +271,13 @@ export function ProductFormPage({ editRef }: { editRef?: string }) {
             setBusinessType(String(p.business_type));
           }
         }
-        const resolvedBusinessTypeId = p.business_type_id ?? p.business_type?.id;
+        const resolvedBusinessTypeId = (p as any).business_type_id ?? (p as any).business_type?.id;
         if (resolvedBusinessTypeId) {
-          setBusinessTypeId(Number(resolvedBusinessTypeId));
+          setBusinessTypeId(String(resolvedBusinessTypeId));
+          // Also sync the name if we resolved via id only
+          if (!p.business_type && (p as any).business_type_id) {
+            // name will be resolved by BusinessTypeSelect fallback fetch via value
+          }
           // Reset loaded data to reload categories/brands with this business type
           hasLoadedData.current = false;
         }
@@ -365,8 +370,8 @@ export function ProductFormPage({ editRef }: { editRef?: string }) {
     }
   };
 
-  const handleBusinessTypeChange = (id: number | null) => {
-    setBusinessTypeId(id);
+  const handleBusinessTypeChange = (id: string | number | null) => {
+    setBusinessTypeId(id ? String(id) : null);
     if (!id) {
       setBusinessType('');
     }
@@ -486,6 +491,14 @@ export function ProductFormPage({ editRef }: { editRef?: string }) {
     }
   };
 
+  if (isEditMode && loadingEdit) {
+    return (
+      <div className="h-full w-full flex flex-col items-center justify-center bg-gray-50 dark:bg-gray-950 py-12">
+        <Spinner size="md" />
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-2">
       {/* Header */}
@@ -495,7 +508,6 @@ export function ProductFormPage({ editRef }: { editRef?: string }) {
             <h1 className="text-base font-bold text-gray-900 dark:text-gray-100 flex items-center gap-2">
               <Package2 className="w-5 h-5 text-indigo-600 dark:text-indigo-400" />
               {isEditMode ? 'Edit Product' : 'Add Product'}
-              {loadingEdit && <span className="text-xs text-gray-500 ml-2">Loading…</span>}
             </h1>
           </div>
         </div>

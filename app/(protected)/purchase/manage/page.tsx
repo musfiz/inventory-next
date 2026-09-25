@@ -83,16 +83,16 @@ export default function PurchaseManagePage() {
     } catch { return null; }
   };
 
-  const [businessTypeId, setBusinessTypeId] = useState<number | null>(() => {
+  const [businessTypeId, setBusinessTypeId] = useState<string | number | null>(() => {
     const stored = readStored(STORAGE_KEY_BT, LEGACY_KEY_BT);
-    return stored !== null ? Number(stored) : null;
+    return stored !== null ? stored : null;
   });
   const [treeTenantId, setTreeTenantId] = useState<string | null>(() => {
     return readStored(STORAGE_KEY_TENANT, LEGACY_KEY_TENANT);
   });
 
-  const persistedSetBusinessTypeId = (id: number | null) => {
-    setBusinessTypeId(id);
+  const persistedSetBusinessTypeId = (id: string | number | null) => {
+    setBusinessTypeId(id ? String(id) : null);
     try {
       if (id !== null) localStorage.setItem(STORAGE_KEY_BT, String(id));
       else localStorage.removeItem(STORAGE_KEY_BT);
