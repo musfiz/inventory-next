@@ -29,7 +29,12 @@ export default function ProductManageTreePage() {
     if (!isSuperAdmin) return;
     try {
       const stored = window.localStorage.getItem('manage-selected-business-type');
-      if (stored) setBusinessTypeId(stored);
+      if (stored) {
+        // Clear stale pre-UUID numeric ids (e.g. "14") that now 404
+        const isStale = /^\d+$/.test(stored) && !/^[0-9a-f]{8}-/i.test(stored);
+        if (isStale) window.localStorage.removeItem('manage-selected-business-type');
+        else setBusinessTypeId(stored);
+      }
     } catch { /* storage unavailable */ }
   }, [isSuperAdmin]);
 

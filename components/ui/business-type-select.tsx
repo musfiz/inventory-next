@@ -70,6 +70,12 @@ export default function BusinessTypeSelect({ value, onChange, onChangeDetail, pl
       setSelected(found);
       return;
     }
+    // Stale numeric id from pre-UUID storage (e.g. "14") → old integer PK no longer exists (UUID PK). Skip 404-causing fetch.
+    const isStaleNumericId = /^\d+$/.test(valueStr) && !/^[0-9a-f]{8}-[0-9a-f]{4}-/i.test(valueStr);
+    if (isStaleNumericId) {
+      setSelected(null);
+      return;
+    }
     // Fallback: value not in the preloaded list (e.g. list still loading) —
     // fetch the single item rather than the whole list, exactly once per id.
     if (fetchedFallbackIds.current.has(valueStr)) return;
@@ -85,7 +91,14 @@ export default function BusinessTypeSelect({ value, onChange, onChangeDetail, pl
         );
         setSelected(fallbackOption);
       })
-      .catch((err) => console.error('BusinessTypeSelect fallback fetch error', err));
+      .catch((err) => {
+        // 404 for stale/removed business type — treat as empty, don't loop.
+        if ((err as any)?.response?.status === 404) {
+          if (!cancelled) setSelected(null);
+          return;
+        }
+        console.error('BusinessTypeSelect fallback fetch error', err);
+      });
     return () => {
       cancelled = true;
     };

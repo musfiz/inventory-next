@@ -270,8 +270,13 @@ function AddPurchaseOrderPage() {
 
   const loadSuppliers = async (search = '') => {
     try {
-      const data: any = await supplierService.getSuppliers({ search });
-      return (data || []).map((s: any) => ({
+      const tenantId = isSuperAdmin ? formData.tenant_id : (authUser as any)?.tenant_id;
+      if (isSuperAdmin && !tenantId) return [];
+      const params: any = { search, per_page: 50 };
+      if (tenantId) params.tenant_id = tenantId;
+      const data: any = await supplierService.getSuppliers(params);
+      const list = Array.isArray(data) ? data : (data?.data || data || []);
+      return (Array.isArray(list) ? list : []).map((s: any) => ({
         value: s.id, label: s.name || s.company_name || s.id,
       }));
     } catch { return []; }
@@ -309,17 +314,29 @@ function AddPurchaseOrderPage() {
   // ─── Effects: preload dropdown defaults ───────────────────────────────────────
 
   useEffect(() => {
+    if (!isHydrated) return;
     let mounted = true;
 
     (async () => {
-      // Suppliers
+      // Suppliers — tenant-aware:
+      // - non-super-admin: filter by logged-in user's tenant
+      // - super-admin: wait for tenant selection (formData.tenant_id) — suppliers are tenant-scoped
       try {
-        const s: any = await supplierService.getSuppliers({ per_page: 50 });
-        if (mounted) setSupplierDefaults(
-          (Array.isArray(s) ? s : s.data || []).map((su: any) => ({
-            value: su.id, label: su.name || su.company_name || su.id,
-          }))
-        );
+        // Guard: super-admin suppliers are loaded only after tenant selection (see tenant-change effect)
+        if (isSuperAdmin) {
+          if (mounted) setSupplierDefaults([]);
+        } else {
+          const tenantId = (authUser as any)?.tenant_id;
+          const params: any = { per_page: 50 };
+          if (tenantId) params.tenant_id = tenantId;
+          const s: any = await supplierService.getSuppliers(params);
+          const sl = Array.isArray(s) ? s : (s?.data || s || []);
+          if (mounted) setSupplierDefaults(
+            (Array.isArray(sl) ? sl : []).map((su: any) => ({
+              value: su.id, label: su.name || su.company_name || su.id,
+            }))
+          );
+        }
       } catch { /* ignore */ }
 
       // Products
@@ -333,11 +350,11 @@ function AddPurchaseOrderPage() {
         );
       } catch { /* ignore */ }
 
-      // Warehouses (non-super-admin)
-      if (!isSuperAdmin && authUser?.tenant_id) {
+      // Warehouses (non-super-admin only here; super-admin warehouses load on tenant change)
+      if (!isSuperAdmin && (authUser as any)?.tenant_id) {
         try {
           const w: any = await commonService.getWarehousesByTenant({
-            tenant_id: authUser.tenant_id, per_page: 50,
+            tenant_id: (authUser as any).tenant_id, per_page: 50,
           });
           if (mounted) setWarehouseDefaults(
             (Array.isArray(w) ? w : w.data || []).map((wh: any) => ({
@@ -349,7 +366,7 @@ function AddPurchaseOrderPage() {
     })();
 
     return () => { mounted = false; };
-  }, []);
+  }, [isHydrated, isSuperAdmin, (authUser as any)?.tenant_id]);
 
   // Load tenant options for super admin only
   useEffect(() => {
@@ -359,24 +376,51 @@ function AddPurchaseOrderPage() {
     return () => { mounted = false; };
   }, [isSuperAdmin]);
 
-  // Refresh warehouses whenever the tenant selection changes
+  // Refresh warehouses + suppliers whenever the tenant selection changes (super-admin)
   useEffect(() => {
-    if (!formData.tenant_id) { setWarehouseDefaults([]); return; }
+    if (!isSuperAdmin) return;
+    if (!formData.tenant_id) {
+      setWarehouseDefaults([]);
+      setSupplierDefaults([]);
+      // Keep form values in sync — supplier/warehouse belong to a tenant
+      if (formData.supplier_id) setFormData(prev => ({ ...prev, supplier_id: undefined }));
+      if (formData.warehouse_id) setFormData(prev => ({ ...prev, warehouse_id: undefined }));
+      return;
+    }
     let mounted = true;
     (async () => {
+      let warehouseOpts: any[] = [];
+      // Warehouses
       try {
         const w: any = await commonService.getWarehousesByTenant({
           tenant_id: formData.tenant_id, per_page: 50,
         });
-        if (mounted) setWarehouseDefaults(
-          (Array.isArray(w) ? w : w.data || []).map((wh: any) => ({
-            value: wh.id, label: wh.name || wh.code || wh.id,
-          }))
-        );
+        const wl = Array.isArray(w) ? w : (w?.data || w || []);
+        warehouseOpts = (Array.isArray(wl) ? wl : []).map((wh: any) => ({
+          value: wh.id, label: wh.name || wh.code || wh.id,
+        }));
+        if (mounted) setWarehouseDefaults(warehouseOpts);
+      } catch { /* ignore */ }
+      // Suppliers — tenant-scoped for super-admin
+      try {
+        const s: any = await supplierService.getSuppliers({ per_page: 50, tenant_id: formData.tenant_id });
+        const sl = Array.isArray(s) ? s : (s?.data || s || []);
+        if (mounted) {
+          const opts = (Array.isArray(sl) ? sl : []).map((su: any) => ({
+            value: su.id, label: su.name || su.company_name || su.id,
+          }));
+          setSupplierDefaults(opts);
+          if (formData.supplier_id && !opts.some((o: any) => String(o.value) === String(formData.supplier_id))) {
+            setFormData(prev => ({ ...prev, supplier_id: undefined }));
+          }
+          if (formData.warehouse_id && warehouseOpts.length && !warehouseOpts.some((o: any) => String(o.value) === String(formData.warehouse_id))) {
+            setFormData(prev => ({ ...prev, warehouse_id: undefined }));
+          }
+        }
       } catch { /* ignore */ }
     })();
     return () => { mounted = false; };
-  }, [formData.tenant_id]);
+  }, [formData.tenant_id, isSuperAdmin]);
 
   // Auto-update payment status based on paid amount vs grand total
   useEffect(() => {
@@ -463,6 +507,7 @@ function AddPurchaseOrderPage() {
   const validate = (): boolean => {
     const e: Record<string, string[]> = {};
 
+    if (isSuperAdmin && !formData.tenant_id) e.tenant_id = ['Tenant is required'];
     if (!formData.supplier_id) e.supplier_id = ['Supplier is required'];
     if (!formData.warehouse_id) e.warehouse_id = ['Warehouse is required'];
     if (!formData.supplier_order_no?.trim()) e.supplier_order_no = ['Chalan no is required'];
@@ -687,7 +732,7 @@ function AddPurchaseOrderPage() {
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
 
-            {/* Supplier */}
+            {/* Supplier — tenant-scoped: super-admin requires tenant first */}
             <div>
               <label className="block text-[11px] font-medium text-gray-600 dark:text-gray-400 mb-1">
                 Supplier <span className="text-red-500">*</span>
@@ -695,21 +740,25 @@ function AddPurchaseOrderPage() {
               <CustomSelect
                 value={
                   formData.supplier_id
-                    ? (supplierDefaults.find(o => o.value === formData.supplier_id) ||
+                    ? (supplierDefaults.find(o => String(o.value) === String(formData.supplier_id)) ||
                       { value: formData.supplier_id, label: '' })
                     : null
                 }
                 onChange={(o: any) => setField('supplier_id', o?.value)}
                 loadOptions={loadSuppliers}
                 defaultOptions={supplierDefaults}
-                placeholder="Select supplier"
+                placeholder={isSuperAdmin && !formData.tenant_id ? 'Select tenant first' : 'Select supplier'}
                 isInvalid={hasErr('supplier_id')}
+                isDisabled={isSuperAdmin && !formData.tenant_id}
                 compact
               />
+              {isSuperAdmin && !formData.tenant_id && (
+                <p className="mt-1 text-xs text-amber-600 dark:text-amber-400">Select a tenant to list its suppliers.</p>
+              )}
               {hasErr('supplier_id') && <p className="mt-1 text-xs text-red-600">{err('supplier_id')}</p>}
             </div>
 
-            {/* Warehouse */}
+            {/* Warehouse — tenant-scoped */}
             <div>
               <label className="block text-[11px] font-medium text-gray-600 dark:text-gray-400 mb-1">
                 Warehouse <span className="text-red-500">*</span>
@@ -717,15 +766,16 @@ function AddPurchaseOrderPage() {
               <CustomSelect
                 value={
                   formData.warehouse_id
-                    ? (warehouseDefaults.find(o => o.value === formData.warehouse_id) ||
+                    ? (warehouseDefaults.find(o => String(o.value) === String(formData.warehouse_id)) ||
                       { value: formData.warehouse_id, label: '' })
                     : null
                 }
                 onChange={(o: any) => setField('warehouse_id', o?.value)}
                 loadOptions={loadWarehouses}
                 defaultOptions={warehouseDefaults}
-                placeholder="Select warehouse"
+                placeholder={isSuperAdmin && !formData.tenant_id ? 'Select tenant first' : 'Select warehouse'}
                 isInvalid={hasErr('warehouse_id')}
+                isDisabled={isSuperAdmin && !formData.tenant_id}
                 compact
               />
               {hasErr('warehouse_id') && <p className="mt-1 text-xs text-red-600">{err('warehouse_id')}</p>}

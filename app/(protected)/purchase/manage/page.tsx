@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useMemo, useRef, useState } from 'react';
+import useSWR from 'swr';
 import { Barcode, ClipboardList, Minus, Package, Plus, Save, Trash2, X } from 'lucide-react';
 import { ProductTreePanel } from '@/components/product-manage/product-tree';
 import CustomSelect from '@/components/ui/custom-select';
@@ -77,9 +78,16 @@ export default function PurchaseManagePage() {
   const LEGACY_KEY_BT = 'stock-manage-business-type-id';
   const LEGACY_KEY_TENANT = 'stock-manage-tenant-id';
 
+  const isStaleBusinessTypeId = (v: string) => /^\d+$/.test(v) && !/^[0-9a-f]{8}-/i.test(v);
   const readStored = (key: string, legacyKey?: string): string | null => {
     try {
-      return localStorage.getItem(key) ?? (legacyKey ? localStorage.getItem(legacyKey) : null);
+      const raw = localStorage.getItem(key) ?? (legacyKey ? localStorage.getItem(legacyKey) : null);
+      // Clear stale pre-UUID numeric business-type ids (e.g. "14") that now 404 on GET /business-types/{id}
+      if (raw !== null && key.includes('business-type') && isStaleBusinessTypeId(raw)) {
+        try { localStorage.removeItem(key); if (legacyKey) localStorage.removeItem(legacyKey); } catch {}
+        return null;
+      }
+      return raw;
     } catch { return null; }
   };
 
@@ -153,22 +161,6 @@ export default function PurchaseManagePage() {
     ? 'Select a tenant in the product tree to load warehouses'
     : 'Select warehouse';
 
-  useEffect(() => {
-    const prefetch = async () => {
-      if (!effectiveTenantId) {
-        setDefaultWarehouseOptions([]);
-        return;
-      }
-      const list = await commonService
-        .getWarehousesByTenant({ tenant_id: effectiveTenantId })
-        .catch(() => []);
-      setDefaultWarehouseOptions(
-        (list || []).map((w: any) => ({ value: String(w.id), label: `${w.name} (${w.code})` }))
-      );
-    };
-    if (isHydrated) void prefetch();
-  }, [isHydrated, effectiveTenantId]);
-
   // Tenant scope changed (tree selection) — the old warehouse no longer applies.
   useEffect(() => {
     requestAnimationFrame(() => setSelectedWarehouse(null));
@@ -182,23 +174,55 @@ export default function PurchaseManagePage() {
     return (list || []).map((w: any) => ({ value: String(w.id), label: `${w.name} (${w.code})` }));
   };
 
+  // Warehouses — SWR cached (dedupes StrictMode double-mount and tenant toggle). Single source for default list.
+  const { data: warehousesData } = useSWR(
+    isHydrated && effectiveTenantId ? (['warehouses', effectiveTenantId] as const) : null,
+    () => commonService.getWarehousesByTenant({ tenant_id: effectiveTenantId! }).catch(() => []),
+    { revalidateOnFocus: false, dedupingInterval: 5000 }
+  );
   useEffect(() => {
-    let mounted = true;
-    supplierService.getSuppliers({ per_page: 50 }).then((s: any) => {
-      if (!mounted) return;
-      setSupplierDefaults(
-        (Array.isArray(s) ? s : s.data || []).map((su: any) => ({
-          value: String(su.id), label: su.name || su.company_name || su.id,
-        }))
+    if (isSuperAdmin && !effectiveTenantId) {
+      setDefaultWarehouseOptions([]);
+      return;
+    }
+    if (!effectiveTenantId) return;
+    if (warehousesData) {
+      setDefaultWarehouseOptions(
+        (warehousesData || []).map((w: any) => ({ value: String(w.id), label: `${w.name} (${w.code})` }))
       );
-    }).catch(() => { });
-    return () => { mounted = false; };
-  }, []);
+    }
+  }, [warehousesData, effectiveTenantId, isSuperAdmin]);
+
+  // Suppliers — SWR cached to avoid duplicate calls; tenant-scoped.
+  const { data: suppliersData } = useSWR(
+    isHydrated && effectiveTenantId ? (['suppliers', effectiveTenantId] as const) : null,
+    () => supplierService.getSuppliers({ per_page: 50, tenant_id: effectiveTenantId! }).catch(() => []),
+    { revalidateOnFocus: false, dedupingInterval: 5000 }
+  );
+  useEffect(() => {
+    if (!isHydrated) return;
+    if (isSuperAdmin && !effectiveTenantId) {
+      setSupplierDefaults([]);
+      setSelectedSupplier(prev => (prev ? null : prev));
+      return;
+    }
+    if (!effectiveTenantId || !suppliersData) return;
+    const list = Array.isArray(suppliersData) ? suppliersData : (suppliersData as any)?.data || suppliersData || [];
+    const opts = (Array.isArray(list) ? list : []).map((su: any) => ({
+      value: String(su.id), label: su.name || su.company_name || su.id,
+    }));
+    setSupplierDefaults(opts);
+    setSelectedSupplier(prev => (prev && !opts.some(o => String(o.value) === String(prev.value)) ? null : prev));
+  }, [isHydrated, effectiveTenantId, isSuperAdmin, suppliersData]);
 
   const loadSuppliers = async (search = '') => {
     try {
-      const data: any = await supplierService.getSuppliers({ search });
-      return (Array.isArray(data) ? data : data.data || []).map((s: any) => ({
+      if (isSuperAdmin && !effectiveTenantId) return [];
+      const params: any = { search, per_page: 50 };
+      if (effectiveTenantId) params.tenant_id = effectiveTenantId;
+      const data: any = await supplierService.getSuppliers(params);
+      const list = Array.isArray(data) ? data : (data?.data || data || []);
+      return (Array.isArray(list) ? list : []).map((s: any) => ({
         value: String(s.id), label: s.name || s.company_name || s.id,
       }));
     } catch { return []; }
@@ -475,11 +499,15 @@ export default function PurchaseManagePage() {
                     }}
                     loadOptions={loadSuppliers}
                     defaultOptions={supplierDefaults}
-                    placeholder="Select supplier"
+                    placeholder={isSuperAdmin && !effectiveTenantId ? 'Select tenant first' : 'Select supplier'}
+                    isDisabled={isSuperAdmin && !effectiveTenantId}
                     isInvalid={!!formErrors.supplier_id}
                     compact
                     isClearable
                   />
+                  {isSuperAdmin && !effectiveTenantId && !formErrors.supplier_id && (
+                    <p className="text-amber-600 text-xs mt-1">Select a tenant in the product tree to list suppliers.</p>
+                  )}
                   {formErrors.supplier_id && (
                     <p className="text-red-600 text-xs mt-1">{formErrors.supplier_id}</p>
                   )}

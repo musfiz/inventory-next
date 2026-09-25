@@ -80,7 +80,7 @@ export function ProductTreePanel({
     return () => clearTimeout(t);
   }, [search]);
 
-  const { data: products = [], isLoading: loading } = useProducts(effectiveBtId, debounced, isHydrated);
+  const { data: products = [], isLoading: loading } = useProducts(effectiveBtId, debounced, isHydrated && !!effectiveBtId);
 
   // Reset expansion when the scope changes.
   useEffect(() => { setExpanded(new Set()); }, [effectiveBtId]);
