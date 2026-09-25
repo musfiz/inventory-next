@@ -21,7 +21,7 @@ export default function BrandsPage() {
   const router = useRouter();
 
   const tenantBusinessTypeId = (user as any)?.tenant?.business_type?.id ?? null;
-  const [businessTypeFilterId, setBusinessTypeFilterId] = useState<number | null>(
+  const [businessTypeFilterId, setBusinessTypeFilterId] = useState<string | number | null>(
     isSuperAdmin ? null : tenantBusinessTypeId
   );
 
@@ -30,7 +30,7 @@ export default function BrandsPage() {
   const [currentBrand, setCurrentBrand] = useState<Brand | null>(null);
   const [formData, setFormData] = useState({
     name: '',
-    business_type_id: null as number | null,
+    business_type_id: null as string | number | null,
     logo_url: null as File | null,
     description: '',
     is_active: true,

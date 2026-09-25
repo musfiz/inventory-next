@@ -15,7 +15,7 @@ import { usePermissions } from '@/hooks/use-permissions';
 import type { BusinessType, Tenant as TenantDetail } from '@/types/api.types';
 
 interface TenantRow {
-  id: number;
+  id: string;
   business_name: string;
   business_type?: BusinessType | null;
   email: string;
@@ -39,10 +39,10 @@ export default function TenantsPage() {
   const [detailsOpen, setDetailsOpen] = useState(false);
   const [detailsTenant, setDetailsTenant] = useState<TenantDetail | null>(null);
   const [detailsLoading, setDetailsLoading] = useState(false);
-  const [togglingStorefrontId, setTogglingStorefrontId] = useState<number | null>(null);
+  const [togglingStorefrontId, setTogglingStorefrontId] = useState<string | null>(null);
   const [refreshKey, setRefreshKey] = useState(0);
 
-  const openDetails = async (id: number) => {
+  const openDetails = async (id: string) => {
     setDetailsOpen(true);
     setDetailsTenant(null);
     setDetailsLoading(true);
@@ -88,7 +88,7 @@ export default function TenantsPage() {
           res.data?.data?.storefront_active &&
           activeTenantId !== null &&
           activeTenantId !== undefined &&
-          Number(activeTenantId) !== row.id
+          String(activeTenantId) !== String(row.id)
         ) {
           notify.error(
             'A storefront is already active',

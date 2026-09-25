@@ -55,7 +55,7 @@ export default function ProductBarcodesPage() {
     inputValue: string
   ): Promise<{ value: string; label: string }[]> => {
     try {
-      const params: { search?: string; business_type_id?: number } = {};
+      const params: { search?: string; business_type_id?: string | number } = {};
       if (inputValue && inputValue.trim()) {
         params.search = inputValue.trim();
       }

@@ -9,8 +9,8 @@ type SelectOption = { value: string; label: string };
 
 interface BusinessTypeSelectProps {
   value?: string | number | null;
-  onChange: (businessTypeId: number | null) => void;
-  onChangeDetail?: (detail: { id: number | null; name: string | null }) => void;
+  onChange: (businessTypeId: any) => void;
+  onChangeDetail?: (detail: { id: any; name: string | null }) => void;
   placeholder?: string;
   isDisabled?: boolean;
   isInvalid?: boolean;
@@ -72,12 +72,11 @@ export default function BusinessTypeSelect({ value, onChange, onChangeDetail, pl
     }
     // Fallback: value not in the preloaded list (e.g. list still loading) —
     // fetch the single item rather than the whole list, exactly once per id.
-    const id = parseInt(valueStr, 10);
-    if (Number.isNaN(id) || fetchedFallbackIds.current.has(valueStr)) return;
+    if (fetchedFallbackIds.current.has(valueStr)) return;
     fetchedFallbackIds.current.add(valueStr);
     let cancelled = false;
     businessTypeService
-      .getById(id)
+      .getById(valueStr)
       .then((item) => {
         if (cancelled || !item) return;
         const fallbackOption = { value: String(item.id), label: item.name };
@@ -97,7 +96,7 @@ export default function BusinessTypeSelect({ value, onChange, onChangeDetail, pl
       value={selected}
       onChange={(opt) => {
         setSelected(opt);
-        const id = opt ? parseInt(opt.value, 10) : null;
+        const id = opt ? String(opt.value) : null;
         const name = opt?.label ?? null;
         onChange(id);
         onChangeDetail?.({ id, name });

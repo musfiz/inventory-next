@@ -9,7 +9,7 @@ class CommonService {
   async getCategoriesForDropdown(params?: {
     search?: string;
     only_parent?: boolean;
-    business_type_id?: number;
+    business_type_id?: string | number;
   }): Promise<Category[]> {
     const response = await apiClient.get<{
       data: Category[];
@@ -25,7 +25,7 @@ class CommonService {
    */
   async getBrandsForDropdown(params?: {
     search?: string;
-    business_type_id?: number;
+    business_type_id?: string | number;
   }): Promise<Brand[]> {
     const response = await apiClient.get<{
       data: Brand[];
@@ -51,7 +51,7 @@ class CommonService {
    * Get units for dropdown (simplified)
    * GET /api/v1/dropdown/unit
    */
-  async getProductsForDropdown(params?: { search?: string; business_type_id?: number; tenant_id?: number; category_id?: number }): Promise<any[]> {
+  async getProductsForDropdown(params?: { search?: string; business_type_id?: string | number; tenant_id?: string | number; category_id?: string | number }): Promise<any[]> {
     const response = await apiClient.get<{
       data: Unit[];
     }>('/api/v1/dropdown/product', {
