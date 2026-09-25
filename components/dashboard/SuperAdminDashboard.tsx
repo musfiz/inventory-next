@@ -1,9 +1,8 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
 import {
   Building2, CreditCard, AlertTriangle, DollarSign,
-  Users, Receipt, UserPlus, TrendingUp, Crown,
+  Users, Receipt, UserPlus,
   Zap, Shield
 } from 'lucide-react';
 import {
@@ -12,13 +11,19 @@ import {
   ResponsiveContainer, Legend
 } from 'recharts';
 import ErrorBoundary from '@/components/ui/error-boundary';
-import KpiCard from './KpiCard';
+import {
+  useSuperSummary,
+  useTenantGrowth,
+  usePlanDistribution,
+  useRevenueByBusinessType,
+  useExpiryTimeline,
+  useActiveUsers,
+  useTopTenants,
+  useRecentRegistrations,
+  useExpiringSoon,
+} from '@/services/queries/useDashboard';
 import ChartCard from './ChartCard';
-import dashboardService, {
-  SuperSummary, TenantGrowthItem, PlanDistItem,
-  RevenueByType, ExpiryTimelineItem, ActiveUsersItem,
-  TopTenant, RecentRegistration, ExpiringSubscription
-} from '@/services/dashboardService';
+import KpiCard from './KpiCard';
 
 const PLAN_COLORS: Record<string, string> = {
   free: '#6B7280',
@@ -30,48 +35,26 @@ const PLAN_COLORS: Record<string, string> = {
 const BUSINESS_COLORS = ['#3B82F6', '#8B5CF6', '#10B981', '#F59E0B', '#EF4444', '#06B6D4', '#EC4899', '#84CC16'];
 
 export default function SuperAdminDashboard() {
-  const [loading, setLoading] = useState(true);
-  const [summary, setSummary] = useState<SuperSummary | null>(null);
-  const [tenantGrowth, setTenantGrowth] = useState<TenantGrowthItem[]>([]);
-  const [planDist, setPlanDist] = useState<PlanDistItem[]>([]);
-  const [revenueByType, setRevenueByType] = useState<RevenueByType[]>([]);
-  const [expiryTimeline, setExpiryTimeline] = useState<ExpiryTimelineItem[]>([]);
-  const [activeUsers, setActiveUsers] = useState<ActiveUsersItem[]>([]);
-  const [topTenants, setTopTenants] = useState<TopTenant[]>([]);
-  const [recentRegs, setRecentRegs] = useState<RecentRegistration[]>([]);
-  const [expiringSubs, setExpiringSubs] = useState<ExpiringSubscription[]>([]);
+  const { data: summary, isLoading: lSummary } = useSuperSummary();
+  const { data: tenantGrowthData, isLoading: lGrowth } = useTenantGrowth();
+  const { data: planDistData, isLoading: lPlan } = usePlanDistribution();
+  const { data: revenueByTypeData, isLoading: lRev } = useRevenueByBusinessType();
+  const { data: expiryTimelineData, isLoading: lExpiry } = useExpiryTimeline();
+  const { data: activeUsersData, isLoading: lUsers } = useActiveUsers();
+  const { data: topTenantsData, isLoading: lTop } = useTopTenants();
+  const { data: recentRegsData, isLoading: lRecent } = useRecentRegistrations();
+  const { data: expiringSubsData, isLoading: lExpSubs } = useExpiringSoon();
 
-  const loadData = useCallback(async () => {
-    setLoading(true);
-    try {
-      const [sum, growth, plan, rev, expiry, users, top, recent, expSubs] = await Promise.all([
-        dashboardService.getSuperSummary(),
-        dashboardService.getTenantGrowth(),
-        dashboardService.getPlanDistribution(),
-        dashboardService.getRevenueByBusinessType(),
-        dashboardService.getExpiryTimeline(),
-        dashboardService.getActiveUsers(),
-        dashboardService.getTopTenants(),
-        dashboardService.getRecentRegistrations(),
-        dashboardService.getExpiringSoon(),
-      ]);
-      setSummary(sum);
-      setTenantGrowth(growth);
-      setPlanDist(plan);
-      setRevenueByType(rev);
-      setExpiryTimeline(expiry);
-      setActiveUsers(users);
-      setTopTenants(top);
-      setRecentRegs(recent);
-      setExpiringSubs(expSubs);
-    } catch (e) {
-      console.error('Dashboard load error:', e);
-    } finally {
-      setLoading(false);
-    }
-  }, []);
+  const tenantGrowth = tenantGrowthData ?? [];
+  const planDist = planDistData ?? [];
+  const revenueByType = revenueByTypeData ?? [];
+  const expiryTimeline = expiryTimelineData ?? [];
+  const activeUsers = activeUsersData ?? [];
+  const topTenants = topTenantsData ?? [];
+  const recentRegs = recentRegsData ?? [];
+  const expiringSubs = expiringSubsData ?? [];
 
-  useEffect(() => { loadData(); }, [loadData]);
+  const loading = lSummary || lGrowth || lPlan || lRev || lExpiry || lUsers || lTop || lRecent || lExpSubs;
 
   const formatCurrency = (val: number) => {
     const num = Number(val) || 0;
@@ -237,14 +220,14 @@ export default function SuperAdminDashboard() {
             <BarChart data={revenueByType} layout="vertical" margin={{ left: 20 }}>
               <CartesianGrid strokeDasharray="3 3" stroke="#374151" opacity={0.3} />
               <XAxis type="number" tick={{ fontSize: 11, fill: '#9CA3AF' }} tickFormatter={v => formatCurrency(v)} />
-              <YAxis 
+              <YAxis
                 dataKey="business_type"
-                type="category" 
-                tick={{ fontSize: 11, fill: '#9CA3AF' }} 
+                type="category"
+                tick={{ fontSize: 11, fill: '#9CA3AF' }}
                 width={100}
                 tickFormatter={(value: any) => typeof value === 'object' ? value?.name || 'Unknown' : value}
               />
-                <Tooltip contentStyle={{ backgroundColor: '#1F2937', border: 'none', borderRadius: '8px', color: '#F9FAFB' }} formatter={(v: any) => formatCurrency(Number(v))} />
+              <Tooltip contentStyle={{ backgroundColor: '#1F2937', border: 'none', borderRadius: '8px', color: '#F9FAFB' }} formatter={(v: any) => formatCurrency(Number(v))} />
               <Bar dataKey="pos_revenue" stackId="a" fill="#3B82F6" name="POS Revenue" radius={[0, 0, 0, 0]} />
               <Bar dataKey="so_revenue" stackId="a" fill="#6366F1" name="SO Revenue" radius={[0, 4, 4, 0]} />
               <Legend wrapperStyle={{ fontSize: '12px' }} />
@@ -337,12 +320,11 @@ export default function SuperAdminDashboard() {
                           <td className="py-2 text-gray-900 dark:text-gray-100 font-medium">{reg.business_name}</td>
                           <td className="py-2 text-gray-600 dark:text-gray-400 capitalize">{businessTypeName || '—'}</td>
                           <td className="py-2">
-                            <span className={`px-1.5 py-0.5 rounded text-xs font-medium ${
-                              reg.subscription_plan === 'enterprise' ? 'bg-purple-100 text-purple-700 dark:bg-purple-900/40 dark:text-purple-300' :
-                              reg.subscription_plan === 'professional' ? 'bg-indigo-100 text-indigo-700 dark:bg-indigo-900/40 dark:text-indigo-300' :
-                              reg.subscription_plan === 'basic' ? 'bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300' :
-                              'bg-gray-100 text-gray-700 dark:bg-gray-700 dark:text-gray-300'
-                            }`}>
+                            <span className={`px-1.5 py-0.5 rounded text-xs font-medium ${reg.subscription_plan === 'enterprise' ? 'bg-purple-100 text-purple-700 dark:bg-purple-900/40 dark:text-purple-300' :
+                                reg.subscription_plan === 'professional' ? 'bg-indigo-100 text-indigo-700 dark:bg-indigo-900/40 dark:text-indigo-300' :
+                                  reg.subscription_plan === 'basic' ? 'bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300' :
+                                    'bg-gray-100 text-gray-700 dark:bg-gray-700 dark:text-gray-300'
+                              }`}>
                               {reg.subscription_plan}
                             </span>
                           </td>
@@ -386,11 +368,10 @@ export default function SuperAdminDashboard() {
                         <td className="py-2 text-gray-900 dark:text-gray-100 font-medium">{sub.business_name}</td>
                         <td className="py-2 capitalize text-gray-600 dark:text-gray-400">{sub.plan}</td>
                         <td className="py-2">
-                          <span className={`px-1.5 py-0.5 rounded text-xs font-bold ${
-                            sub.days_remaining <= 7 ? 'bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-300' :
-                            sub.days_remaining <= 15 ? 'bg-orange-100 text-orange-700 dark:bg-orange-900/40 dark:text-orange-300' :
-                            'bg-yellow-100 text-yellow-700 dark:bg-yellow-900/40 dark:text-yellow-300'
-                          }`}>
+                          <span className={`px-1.5 py-0.5 rounded text-xs font-bold ${sub.days_remaining <= 7 ? 'bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-300' :
+                              sub.days_remaining <= 15 ? 'bg-orange-100 text-orange-700 dark:bg-orange-900/40 dark:text-orange-300' :
+                                'bg-yellow-100 text-yellow-700 dark:bg-yellow-900/40 dark:text-yellow-300'
+                            }`}>
                             {sub.days_remaining}d
                           </span>
                         </td>
