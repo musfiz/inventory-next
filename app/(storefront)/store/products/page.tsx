@@ -6,7 +6,7 @@ import {
   ChevronDown,
 } from 'lucide-react';
 import Link from 'next/link';
-import { useState, useMemo, useEffect } from 'react';
+import { useState, useMemo } from 'react';
 import { FiGrid } from 'react-icons/fi';
 import { IoListSharp } from 'react-icons/io5';
 import ProductCardSkeleton from '@/components/storefront/ProductCardSkeleton';
@@ -15,6 +15,7 @@ import ProductVariationCards from '@/components/storefront/ProductVariationCards
 import ScrollReveal from '@/components/storefront/ScrollReveal';
 import { useStorefrontBrands } from '@/hooks/use-storefront-brands';
 import { useStorefrontCategories } from '@/hooks/use-storefront-categories';
+import { useInfinitePages } from '@/hooks/use-storefront-data';
 import storefrontService from '@/services/storefrontService';
 import type { Product } from '@/types/storefront';
 
@@ -46,12 +47,6 @@ export default function AllProductsPage() {
   const [priceStep, setPriceStep] = useState('all');
   const [minRating, setMinRating] = useState(0);
   const [inStockOnly, setInStockOnly] = useState(false);
-  const [products, setProducts] = useState<Product[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [loadingMore, setLoadingMore] = useState(false);
-  const [page, setPage] = useState(1);
-  const [totalProducts, setTotalProducts] = useState(0);
-  const [hasMorePages, setHasMorePages] = useState(false);
 
   const { categories: parentCats } = useStorefrontCategories();
   const { brands } = useStorefrontBrands();
@@ -89,9 +84,21 @@ export default function AllProductsPage() {
 
   const priceRange = PRICE_STEPS.find(s => s.id === priceStep) ?? PRICE_STEPS[0];
 
-  const fetchProducts = async (pageNum: number, append: boolean) => {
-    if (append) setLoadingMore(true); else setLoading(true);
-    try {
+  // Products — one SWR entry per (filters, page); filter/sort change resets to
+  // page 1 and keepPreviousData avoids the grid flash while page 1 reloads.
+  const filterKey = {
+    sort,
+    cats: categoryIdsForApi ?? '',
+    brands: selectedBrands.join(','),
+    priceStep,
+    minRating,
+    inStockOnly,
+  };
+
+  const grid = useInfinitePages(
+    'storefront:all-products',
+    filterKey,
+    async (pageNum) => {
       const res = await storefrontService.getProducts({
         page: pageNum,
         per_page: ITEMS_PER_PAGE,
@@ -103,27 +110,12 @@ export default function AllProductsPage() {
         in_stock: inStockOnly || undefined,
         min_rating: minRating > 0 ? minRating : undefined,
       });
-      const sorted = sortClientSide(res.data, sort);
-      setProducts(prev => (append ? prev.concat(sorted) : sorted));
-      setPage(pageNum);
-      setTotalProducts(res.meta.total);
-      setHasMorePages(res.meta.current_page < res.meta.last_page);
-    } catch {
-      if (!append) setProducts([]);
-    } finally {
-      if (append) setLoadingMore(false); else setLoading(false);
-    }
-  };
+      return { ...res, data: sortClientSide(res.data, sort) };
+    },
+  );
 
-  useEffect(() => {
-    fetchProducts(1, false);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [sort, categoryIdsForApi, selectedBrands, priceStep, minRating, inStockOnly]);
-
-  const loadMore = () => {
-    if (!hasMorePages || loadingMore) return;
-    fetchProducts(page + 1, true);
-  };
+  const products = grid.pages.flatMap(p => p.data);
+  const totalProducts = grid.meta?.total ?? 0;
 
   // Flatten all category tree items into a single array for quick lookup
   const allCategories = useMemo(() => {
@@ -339,7 +331,7 @@ export default function AllProductsPage() {
             )}
 
             {/* Grid */}
-            {loading ? (
+            {grid.loading && products.length === 0 ? (
               <div className={`grid gap-3 sm:grid-cols-3 ${view === 'list' ? 'grid-cols-1' : 'lg:grid-cols-4 xl:grid-cols-5'}`}>
                 {Array.from({ length: 10 }).map((_, i) => (
                   <ProductCardSkeleton key={i} compact={view === 'list'} />
@@ -369,14 +361,14 @@ export default function AllProductsPage() {
                     <ProductVariationCards key={p.id} product={p} variant={view === 'list' ? 'list' : 'default'} staggerIndex={i} />
                   ))}
                 </div>
-                {hasMorePages && (
+                {grid.hasMore && (
                   <div className="mt-8 text-center">
                     <button
-                      onClick={loadMore}
-                      disabled={loadingMore}
+                      onClick={grid.loadMore}
+                      disabled={grid.loadingMore}
                       className="inline-flex items-center gap-2 rounded-full border border-gray-300 bg-white px-8 py-3 text-sm font-bold text-gray-700 transition-all hover:border-brand-400 hover:text-brand-600 disabled:cursor-not-allowed disabled:opacity-60 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-300"
                     >
-                      {loadingMore ? 'Loading…' : `Load more (${totalProducts - products.length} remaining)`}
+                      {grid.loadingMore ? 'Loading…' : `Load more (${totalProducts - products.length} remaining)`}
                       <ChevronDown className="h-4 w-4" />
                     </button>
                   </div>

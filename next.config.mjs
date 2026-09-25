@@ -1,5 +1,3 @@
-import type { NextConfig } from 'next';
-
 const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL || '';
 const backendHost = (() => {
   try {
@@ -39,7 +37,8 @@ const securityHeaders = [
   },
 ];
 
-const nextConfig: NextConfig = {
+/** @type {import('next').NextConfig} */
+const nextConfig = {
   reactStrictMode: true,
   // output: 'export',
   output: 'standalone',

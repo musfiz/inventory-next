@@ -2,14 +2,14 @@
 
 import { useEffect } from 'react';
 import { ThemeContext, type StorefrontTheme } from '@/contexts/storefront-theme-context';
-import { useStorefrontSettingsStore } from '@/stores/storefront-settings-store';
+import { useStorefrontSettings } from '@/hooks/use-storefront-status';
 
 export default function StorefrontThemeProvider({
   children,
 }: {
   children: React.ReactNode;
 }) {
-  const theme = useStorefrontSettingsStore((s) => s.storefrontTheme);
+  const { storefrontTheme: theme } = useStorefrontSettings();
 
   useEffect(() => {
     document.documentElement.setAttribute('data-theme', theme);

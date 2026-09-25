@@ -9,7 +9,8 @@ import Spinner from '@/components/ui/spinner';
 import tenantService from '@/services/tenantService';
 import apiClient from '@/lib/api/axios';
 import { notify } from '@/lib/notifications';
-import { useStorefrontStatusStore } from '@/stores/storefront-status-store';
+import { mutate } from 'swr';
+import { SK } from '@/lib/storefront/keys';
 import { usePermissions } from '@/hooks/use-permissions';
 import type { BusinessType, Tenant as TenantDetail } from '@/types/api.types';
 
@@ -112,7 +113,7 @@ export default function TenantsPage() {
       });
       notify.success(next ? 'Storefront activated' : 'Storefront deactivated');
       setRefreshKey(k => k + 1);
-      useStorefrontStatusStore.getState().fetch();
+      void mutate([...SK.status]);
     } catch (error: any) {
       const message =
         error?.response?.data?.message ||

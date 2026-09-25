@@ -154,7 +154,7 @@ function RegisterForm() {
       notify.error('Please enter the captcha code');
       return;
     }
-    const { validateCaptcha } = await import('react-simple-captcha');
+    const { validateCaptcha } = await import('@/lib/captcha');
     if (!validateCaptcha(captchaInput.trim())) {
       notify.error('Captcha does not match. Please try again.');
       setCaptchaInput('');

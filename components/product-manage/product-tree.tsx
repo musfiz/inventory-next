@@ -143,7 +143,7 @@ export function ProductTreePanel({
               value={tenantId}
               onChange={(o) => {
                 handleTenantChange(o);
-                if (o?.value && formErrors.tenant && onTenantErrorClear) onTenantErrorClear();
+                if (o && formErrors.tenant && onTenantErrorClear) onTenantErrorClear();
               }}
               placeholder="Select tenant"
               compact

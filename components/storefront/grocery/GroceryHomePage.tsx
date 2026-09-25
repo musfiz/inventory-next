@@ -14,7 +14,7 @@ import {
 } from 'lucide-react';
 import Image from 'next/image';
 import Link from 'next/link';
-import { useState, useEffect, useRef } from 'react';
+import { useRef } from 'react';
 import HeroCarousel, { HeroCarouselSkeleton } from '@/components/storefront/HeroCarousel';
 import ProductCardSkeleton from '@/components/storefront/ProductCardSkeleton';
 import ProductVariationCards from '@/components/storefront/ProductVariationCards';
@@ -22,10 +22,13 @@ import ScrollReveal from '@/components/storefront/ScrollReveal';
 import { useRecentlyViewed } from '@/hooks/use-recently-viewed';
 import { useStorefrontCategories } from '@/hooks/use-storefront-categories';
 import { useStorefrontStatus } from '@/hooks/use-storefront-status';
+import {
+  useProductList,
+  useHeroSliders,
+  useOfferSlides,
+} from '@/hooks/use-storefront-data';
 import { useSeo } from '@/lib/utils/use-seo';
-import storefrontService from '@/services/storefrontService';
-import type { StorefrontHeroSlider } from '@/services/storefrontService';
-import type { StorefrontOfferSlide, Product } from '@/types/storefront';
+import type { StorefrontOfferSlide } from '@/types/storefront';
 
 const resolveImageUrl = (url?: string | null) => {
   if (!url) return '';
@@ -149,26 +152,10 @@ const GroceryCategoryStrip = () => {
 /*  Section: Daily Essentials — high-frequency grocery items         */
 /* ================================================================ */
 const DailyEssentials = () => {
-  const [products, setProducts] = useState<Product[]>([]);
-  const [loading, setLoading] = useState(true);
+  // Daily essentials (bestsellers) — SWR cache shared across renders.
+  const { products, loading } = useProductList({ is_bestseller: true, per_page: 8 });
 
-  useEffect(() => {
-    let cancelled = false;
-    storefrontService
-      .getProducts({ is_bestseller: true, per_page: 8 })
-      .then(res => {
-        if (!cancelled) setProducts(res.data ?? []);
-      })
-      .catch(() => {
-        if (!cancelled) setProducts([]);
-      })
-      .finally(() => {
-        if (!cancelled) setLoading(false);
-      });
-    return () => { cancelled = true; };
-  }, []);
-
-  if (loading) {
+  if (loading && products.length === 0) {
     return (
       <section className="py-8 sm:py-10">
         <div className="mb-6 flex items-end justify-between">
@@ -229,26 +216,10 @@ const DailyEssentials = () => {
 /*  Section: Featured Products — dynamic from API                   */
 /* ================================================================ */
 const FeaturedProducts = () => {
-  const [products, setProducts] = useState<Product[]>([]);
-  const [loading, setLoading] = useState(true);
+  // Fresh picks (featured) — SWR cache shared across renders.
+  const { products, loading } = useProductList({ is_featured: true, per_page: 8 });
 
-  useEffect(() => {
-    let cancelled = false;
-    storefrontService
-      .getProducts({ is_featured: true, per_page: 8 })
-      .then(res => {
-        if (!cancelled) setProducts(res.data ?? []);
-      })
-      .catch(() => {
-        if (!cancelled) setProducts([]);
-      })
-      .finally(() => {
-        if (!cancelled) setLoading(false);
-      });
-    return () => { cancelled = true; };
-  }, []);
-
-  if (loading) {
+  if (loading && products.length === 0) {
     return (
       <section className="py-8 sm:py-10">
         <div className="mb-6 flex items-end justify-between">
@@ -309,26 +280,10 @@ const FeaturedProducts = () => {
 /*  Section: New Arrivals — dynamic from API                        */
 /* ================================================================ */
 const NewArrivals = () => {
-  const [products, setProducts] = useState<Product[]>([]);
-  const [loading, setLoading] = useState(true);
+  // New arrivals — SWR cache shared across renders.
+  const { products, loading } = useProductList({ is_new: true, per_page: 8 });
 
-  useEffect(() => {
-    let cancelled = false;
-    storefrontService
-      .getProducts({ is_new: true, per_page: 8 })
-      .then(res => {
-        if (!cancelled) setProducts(res.data ?? []);
-      })
-      .catch(() => {
-        if (!cancelled) setProducts([]);
-      })
-      .finally(() => {
-        if (!cancelled) setLoading(false);
-      });
-    return () => { cancelled = true; };
-  }, []);
-
-  if (loading) {
+  if (loading && products.length === 0) {
     return (
       <section className="py-8 sm:py-10">
         <div className="mb-6 flex items-end justify-between">
@@ -549,9 +504,9 @@ const RecentlyViewed = () => {
 /*  Main Grocery Homepage                                           */
 /* ================================================================ */
 export default function GroceryHomePage() {
-  const [heroSliders, setHeroSliders] = useState<StorefrontHeroSlider[]>([]);
-  const [heroLoading, setHeroLoading] = useState(true);
-  const [offerSlides, setOfferSlides] = useState<StorefrontOfferSlide[]>([]);
+  // Hero + offer slides — SWR (deduped; no double fetch in StrictMode).
+  const { sliders: heroSliders, loading: heroLoading } = useHeroSliders();
+  const { slides: offerSlides } = useOfferSlides();
   const { storeName } = useStorefrontStatus();
   const siteName = storeName || 'Grocery Store';
 
@@ -561,18 +516,6 @@ export default function GroceryHomePage() {
       `Order fresh groceries, vegetables, meat, dairy and more. Same-day delivery at ${siteName}.`,
     url: '/store',
   });
-
-  useEffect(() => {
-    storefrontService
-      .getHeroSliders()
-      .then(setHeroSliders)
-      .catch(() => { })
-      .finally(() => setHeroLoading(false));
-    storefrontService
-      .getOfferSlides()
-      .then(setOfferSlides)
-      .catch(() => { });
-  }, []);
 
   return (
     <div className="bg-green-50/50 dark:bg-gray-950">

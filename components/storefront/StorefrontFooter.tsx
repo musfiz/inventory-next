@@ -6,9 +6,8 @@ import { useState, useEffect } from 'react';
 import { useBranding } from '@/hooks/use-branding';
 import { useStorefrontCategories } from '@/hooks/use-storefront-categories';
 import { useStorefrontStatus } from '@/hooks/use-storefront-status';
+import { useFooterConfig, useProductCount } from '@/hooks/use-storefront-data';
 import ScrollReveal from '@/components/storefront/ScrollReveal';
-import footerService from '@/services/footerService';
-import storefrontService from '@/services/storefrontService';
 import type { FooterConfig, SocialLink } from '@/types/api.types';
 import {
   Mail,
@@ -162,27 +161,18 @@ export default function StorefrontFooter() {
   const { storeName } = useStorefrontStatus();
   const siteName = storeName || 'Our Store';
   const [subscribed, setSubscribed] = useState(false);
-  const [config, setConfig] = useState<FooterConfig | null>(null);
-  const [storeStats, setStoreStats] = useState<{ productCount: number; categoryCount: number } | null>(null);
 
-  // Category data is shared via the storefront categories store (fetched once),
+  // Footer config + product count — SWR shared cache (both footers, one fetch).
+  const { config: loadedConfig, error: configError } = useFooterConfig();
+  const config = loadedConfig ?? (configError ? FALLBACK_CONFIG : null);
+  const productCount = useProductCount();
+
+  // Category data is shared via the storefront categories SWR cache,
   // so we reuse it here instead of firing a second /storefront/categories call.
   const { categories, ready: catsReady } = useStorefrontCategories();
 
-  useEffect(() => {
-    footerService.get().then(setConfig).catch(() => setConfig(FALLBACK_CONFIG));
-  }, []);
-
   // Live product & category counts (from dashboard-managed catalog).
-  const [productCount, setProductCount] = useState(0);
-  useEffect(() => {
-    let cancelled = false;
-    storefrontService
-      .getProducts({ per_page: 1 })
-      .then((res) => { if (!cancelled) setProductCount(res?.meta?.total ?? 0); })
-      .catch(() => {});
-    return () => { cancelled = true; };
-  }, []);
+  const [storeStats, setStoreStats] = useState<{ productCount: number; categoryCount: number } | null>(null);
 
   useEffect(() => {
     if (!catsReady) return;

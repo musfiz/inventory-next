@@ -1,9 +1,10 @@
 import type { Metadata } from 'next';
 import { Noto_Sans } from 'next/font/google';
 import './globals.css';
-import { ThemeProvider } from '@/contexts/ThemeContext';
 import NumberScrollGuard from '@/components/ui/number-scroll-guard';
 import TopProgressBar from '@/components/ui/top-progress-bar';
+import { ThemeProvider } from '@/contexts/ThemeContext';
+import { SwrProvider } from '@/lib/storefront/swr';
 
 const notoSans = Noto_Sans({
   variable: '--font-noto-sans',
@@ -40,11 +41,13 @@ export default function RootLayout({
       <body
         className={`font-sans antialiased bg-white dark:bg-gray-950 text-gray-900 dark:text-gray-100`}
       >
-          <ThemeProvider>
+        <ThemeProvider>
+          <SwrProvider>
             <TopProgressBar />
             <NumberScrollGuard />
             {children}
-          </ThemeProvider>
+          </SwrProvider>
+        </ThemeProvider>
       </body>
     </html>
   );

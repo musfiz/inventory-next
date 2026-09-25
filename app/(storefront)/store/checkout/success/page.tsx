@@ -1,10 +1,9 @@
 'use client';
 
-import { useState, useEffect, Suspense } from 'react';
+import { Suspense } from 'react';
 import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
-import checkoutService from '@/services/checkoutService';
-import type { StorefrontOrder } from '@/services/checkoutService';
+import { useOrder } from '@/hooks/use-storefront-data';
 import {
   CheckCircle2,
   Package,
@@ -22,11 +21,8 @@ function SuccessContent() {
   const email = params.get('email') || '';
   const eta = `Wed, ${new Date(Date.now() + 3 * 86400000).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}`;
 
-  const [order, setOrder] = useState<StorefrontOrder | null>(null);
-  useEffect(() => {
-    if (!orderId || orderId === 'ORD-000000') return;
-    checkoutService.getOrder(orderId).then(setOrder).catch(() => {});
-  }, [orderId]);
+  // Order confirmation — SWR; the placeholder id means "no real order yet", skip the fetch.
+  const { order } = useOrder(orderId && orderId !== 'ORD-000000' ? orderId : undefined);
 
   const displayId = order?.invoice_number || order?.order_number || orderId;
 

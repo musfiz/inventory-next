@@ -1033,7 +1033,11 @@ export const SAMPLE_ORDERS: Order[] = USE_MOCK ? [
   },
 ]: [];
 
-export const SHIPPING_METHODS: ShippingMethod[] = USE_MOCK ? [
+// TEMPORARY: static checkout options. The IDs must stay in sync with what
+// StorefrontCheckoutController validates (ship-standard, ship-express, pm-cod).
+// TODO: replace with GET /api/v1/storefront/checkout/methods (active ShippingZone
+// rates + enabled gateways) served per tenant.
+export const SHIPPING_METHODS: ShippingMethod[] = [
   {
     id: 'ship-standard',
     name: 'Standard Delivery',
@@ -1056,9 +1060,10 @@ export const SHIPPING_METHODS: ShippingMethod[] = USE_MOCK ? [
     estimatedDays: 'Same day',
     isFree: true,
   },
-]: [];
+];
 
-export const PAYMENT_METHODS: PaymentMethod[] = USE_MOCK ? [
+// TEMPORARY: static payment options — see note on SHIPPING_METHODS.
+export const PAYMENT_METHODS: PaymentMethod[] = [
   {
     id: 'pm-cod',
     name: 'Cash on Delivery',
@@ -1096,7 +1101,7 @@ export const PAYMENT_METHODS: PaymentMethod[] = USE_MOCK ? [
     description: 'Pay with any local payment method',
     icon: 'Shield',
   },
-]: [];
+];
 
 export const COUPONS: Coupon[] = USE_MOCK ? [
   {
