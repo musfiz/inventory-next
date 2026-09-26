@@ -11,7 +11,7 @@ export const POLL_INTERVAL_MS = 2000;
 export const FULL_DB_HEADER_PATTERN = 'UIMS Full Database Backup';
 export const TENANT_HEADER_PATTERN = 'UIMS Tenant Export';
 
-export const ACCEPTED_EXTENSIONS = ['.sql'];
+export const ACCEPTED_EXTENSIONS = ['.sql', '.zip'];
 
 export const FORMATTING = {
   humanFileSize(bytes: number | null | undefined): string {

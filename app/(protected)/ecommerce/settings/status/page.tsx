@@ -117,7 +117,8 @@ export default function SettingsPage() {
         </h1>
       </div>
 
-      {/* Status & Activation */}
+      {/* Status & Activation — superadmin only */}
+      {isSuperAdmin && (
       <div className="space-y-2">
         <div className="flex items-center justify-between">
           <h2 className="text-lg font-bold text-gray-900 dark:text-gray-100 flex items-center gap-2">
@@ -184,6 +185,7 @@ export default function SettingsPage() {
           </div>
         </div>
       </div>
+      )}
 
       {/* Express Checkout */}
       <div className="space-y-2">
