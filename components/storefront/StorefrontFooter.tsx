@@ -155,7 +155,10 @@ const FALLBACK_CONFIG: FooterConfig = {
 
 export default function StorefrontFooter() {
   const { isGrocery } = useStorefrontTheme();
-  if (isGrocery) return <GroceryFooter />;
+  return isGrocery ? <GroceryFooter /> : <DefaultStorefrontFooter />;
+}
+
+function DefaultStorefrontFooter() {
   const [email, setEmail] = useState('');
   const { footerLogo, ready } = useBranding();
   const { storeName } = useStorefrontStatus();

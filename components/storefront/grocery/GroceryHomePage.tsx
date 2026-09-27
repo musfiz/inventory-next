@@ -9,7 +9,6 @@ import {
   ArrowRight,
   Clock,
   Leaf,
-  Truck,
   ShoppingBasket,
 } from 'lucide-react';
 import Image from 'next/image';
@@ -520,14 +519,6 @@ export default function GroceryHomePage() {
   return (
     <div className="bg-green-50/50 dark:bg-gray-950">
       <div className="mx-auto max-w-screen-2xl px-4 py-6">
-        {/* Delivery banner */}
-        <div className="mb-4 flex items-center justify-center gap-2 rounded-lg bg-green-600 px-4 py-2 text-sm text-white">
-          <Truck className="h-4 w-4" />
-          <span className="font-semibold">Free delivery on orders over ₹500</span>
-          <span className="text-green-200">•</span>
-          <span>Order before 2PM for same-day delivery</span>
-        </div>
-
         {/* Hero Carousel */}
         {heroLoading ? <HeroCarouselSkeleton /> : <HeroCarousel slides={heroSliders} />}
 

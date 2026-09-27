@@ -7,7 +7,7 @@ import CustomSelect from '@/components/ui/custom-select';
 import { stockService, commonService } from '@/services';
 import { useRouter } from 'next/navigation';
 import { usePermissions } from '@/hooks/use-permissions';
-import { Package2, RefreshCcw } from 'lucide-react';
+import { Package2, RefreshCcw, X } from 'lucide-react';
 import { GiSave } from 'react-icons/gi';
 
 export default function StockAddPage() {
@@ -44,6 +44,9 @@ export default function StockAddPage() {
     if (!selectedWarehouse) return false;
     return true;
   };
+
+  const inputCls = (right = false) =>
+    `w-full px-2 py-1 text-xs bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-1 focus:ring-indigo-500${right ? ' text-right' : ''}`;
 
   const loadTenantOptions = async (input: string) => {
     if (!isSuperAdmin) return [];
@@ -159,7 +162,6 @@ export default function StockAddPage() {
       }
     };
     load();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedProduct, selectedWarehouse, productByBrand]);
 
   const handleStockChange = (index: number, field: string, value: any) => {
@@ -176,6 +178,13 @@ export default function StockAddPage() {
     }
     copy[index] = { ...copy[index], [field]: newValue };
     setStocks(copy);
+  };
+
+  const resetSelection = () => {
+    setSelectedProduct(null);
+    setVariations([]);
+    setStocks([]);
+    setFormErrors({});
   };
 
   const handleSave = async (e: any) => {
@@ -317,156 +326,160 @@ export default function StockAddPage() {
   };
 
   return (
-    <div className="space-y-2">
+    <div className="space-y-3">
+      {/* Header */}
       <div className="flex items-center justify-between">
-        <h1 className="text-xl font-bold">Add Stocks</h1>
+        <h1 className="text-xl font-bold text-gray-900 dark:text-gray-100 flex items-center gap-2">
+          <Package2 className="w-5 h-5 text-indigo-600 dark:text-indigo-400" />
+          Add Stocks
+          <span className="text-xs font-normal text-gray-500 dark:text-gray-400 ml-1 hidden sm:inline">
+            Warehouse → Product → Variations
+          </span>
+        </h1>
+        <button
+          type="button"
+          onClick={() => router.push('/stock')}
+          className="flex items-center gap-2 px-3 py-1.5 text-xs rounded border border-gray-300 dark:border-gray-600 text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors cursor-pointer"
+        >
+          <X className="w-4 h-4" />
+          Back to Stock
+        </button>
       </div>
 
-      <form onSubmit={handleSave} className="bg-white dark:bg-gray-800 rounded-md border border-gray-200 dark:border-gray-700 p-3 space-y-3">
-        {isSuperAdmin && (
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
-            <div>
-              <label className="block text-[11px] font-medium text-gray-600 dark:text-gray-400 mb-1">
-                Tenant <span className="text-red-500">*</span>
-              </label>
-              <CustomSelect
-                value={selectedTenant}
-                onChange={(o: any) => {
-                  setSelectedTenant(o);
-                  if (o?.value && formErrors.tenant_id) {
-                    const { tenant_id, ...rest } = formErrors;
-                    setFormErrors(rest);
-                  }
-                  setSelectedWarehouse(null);
-                  setSelectedProduct(null);
-                  setVariations([]);
-                  setStocks([]);
-                }}
-                loadOptions={loadTenantOptions}
-                defaultOptions={defaultTenantOptions}
-                placeholder="Select tenant"
-                className="text-sm"
-                isInvalid={!!formErrors.tenant_id}
-              />
-              {formErrors.tenant_id && (
-                <p className="text-red-600 text-xs mt-1">{formErrors.tenant_id}</p>
-              )}
-            </div>
-          </div>
-        )}
-
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
-          <div>
-            <label className="block text-[11px] font-medium text-gray-600 dark:text-gray-400 mb-1">
-              Warehouse <span className="text-red-500">*</span>
-            </label>
-            <CustomSelect
-              value={selectedWarehouse}
-              onChange={(o: any) => {
-                setSelectedWarehouse(o);
-                if (o?.value && formErrors.warehouse_id) {
-                  const { warehouse_id, ...rest } = formErrors;
-                  setFormErrors(rest);
-                }
-                setSelectedProduct(null);
-                setVariations([]);
-                setStocks([]);
-              }}
-              loadOptions={loadWarehouseOptions}
-              defaultOptions={defaultWarehouseOptions}
-              placeholder="Select warehouse"
-              className="text-sm"
-              isInvalid={!!formErrors.warehouse_id}
-            />
-            {formErrors.warehouse_id && (
-              <p className="text-red-600 text-xs mt-1">{formErrors.warehouse_id}</p>
-            )}
-          </div>
-
-          <div>
-            <label className="block text-[11px] font-medium text-gray-600 dark:text-gray-400 mb-1">
-              Product <span className="text-red-500">*</span>
-            </label>
-            <div className="flex gap-2">
-              <div className="flex-1">
+      <form onSubmit={handleSave} className="space-y-3" autoComplete="off">
+        {/* Stock Entry Details */}
+        <div className="bg-white dark:bg-gray-800 rounded-md shadow-sm border border-gray-200 dark:border-gray-700 p-3">
+          <h3 className="text-xs font-semibold text-gray-700 dark:text-gray-300 mb-3">
+            Stock Entry Details
+          </h3>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-x-4 gap-y-2">
+            {isSuperAdmin && (
+              <FormRow label="Tenant" required labelWidth="w-32" error={formErrors.tenant_id}>
                 <CustomSelect
-                  value={selectedProduct}
+                  value={selectedTenant}
                   onChange={(o: any) => {
-                    setSelectedProduct(o);
-                    if (o?.value && formErrors.product_id) {
-                      const { product_id, ...rest } = formErrors;
+                    setSelectedTenant(o);
+                    if (o?.value && formErrors.tenant_id) {
+                      const { tenant_id, ...rest } = formErrors;
                       setFormErrors(rest);
                     }
-                  }}
-                  loadOptions={loadProductOptions}
-                  defaultOptions={defaultProductOptions}
-                  placeholder={
-                    !canSelectProduct()
-                      ? isSuperAdmin && !selectedTenant
-                        ? 'Select tenant first'
-                        : 'Select warehouse first'
-                      : 'Select product'
-                  }
-                  className="text-sm"
-                  isInvalid={!!formErrors.product_id}
-                  isDisabled={!canSelectProduct()}
-                />
-              </div>
-              {selectedProduct && (
-                <button
-                  type="button"
-                  onClick={() => {
+                    setSelectedWarehouse(null);
                     setSelectedProduct(null);
                     setVariations([]);
                     setStocks([]);
                   }}
-                  className="px-3 py-1.5 bg-gray-500 hover:bg-gray-600 text-white text-sm font-medium rounded-sm transition-colors flex items-center gap-1 shrink-0"
-                  title="Clear Product"
-                >
-                  <RefreshCcw className="w-5 h-5 cursor-pointer" />
-                </button>
-              )}
-            </div>
-            {formErrors.product_id && (
-              <p className="text-red-600 text-xs mt-1">{formErrors.product_id}</p>
+                  loadOptions={loadTenantOptions}
+                  defaultOptions={defaultTenantOptions}
+                  placeholder="Select tenant"
+                  isInvalid={!!formErrors.tenant_id}
+                  compact
+                />
+              </FormRow>
             )}
-            {!canSelectProduct() && (
-              <p className="text-amber-600 text-xs mt-1">
-                {isSuperAdmin && !selectedTenant
-                  ? '⚠ Please select a tenant before choosing a product'
-                  : '⚠ Please select a warehouse before choosing a product'}
-              </p>
-            )}
-          </div>
-        </div>
 
-        {/* Product By Brand Row */}
-        <div className="flex items-center gap-3">
-          <label className="flex items-center text-sm cursor-pointer">
-            <input
-              type="checkbox"
-              checked={productByBrand}
-              onChange={e => setproductByBrand(e.target.checked)}
-              disabled={!canSelectProduct()}
-              className="mr-2 w-4 h-4 disabled:opacity-50 disabled:cursor-not-allowed"
-            />
-            <span className={!canSelectProduct() ? 'text-gray-400 dark:text-gray-500' : 'text-gray-700 dark:text-gray-300 font-medium'}>
-              Product By Brand
-            </span>
-          </label>
-          {productByBrand && (
-            <span className="text-xs text-cyan-600 dark:text-cyan-400">
-              Loads all variations from products with the same brand
-            </span>
-          )}
+            <FormRow label="Warehouse" required labelWidth="w-32" error={formErrors.warehouse_id}>
+              <CustomSelect
+                value={selectedWarehouse}
+                onChange={(o: any) => {
+                  setSelectedWarehouse(o);
+                  if (o?.value && formErrors.warehouse_id) {
+                    const { warehouse_id, ...rest } = formErrors;
+                    setFormErrors(rest);
+                  }
+                  setSelectedProduct(null);
+                  setVariations([]);
+                  setStocks([]);
+                }}
+                loadOptions={loadWarehouseOptions}
+                defaultOptions={defaultWarehouseOptions}
+                placeholder="Select warehouse"
+                isInvalid={!!formErrors.warehouse_id}
+                compact
+              />
+            </FormRow>
+
+            <FormRow label="Product" required labelWidth="w-32" error={formErrors.product_id}>
+              <div className="flex items-center gap-1.5">
+                <div className="flex-1 min-w-0">
+                  <CustomSelect
+                    value={selectedProduct}
+                    onChange={(o: any) => {
+                      setSelectedProduct(o);
+                      if (o?.value && formErrors.product_id) {
+                        const { product_id, ...rest } = formErrors;
+                        setFormErrors(rest);
+                      }
+                    }}
+                    loadOptions={loadProductOptions}
+                    defaultOptions={defaultProductOptions}
+                    placeholder={
+                      !canSelectProduct()
+                        ? isSuperAdmin && !selectedTenant
+                          ? 'Select tenant first'
+                          : 'Select warehouse first'
+                        : 'Select product'
+                    }
+                    isInvalid={!!formErrors.product_id}
+                    isDisabled={!canSelectProduct()}
+                    compact
+                  />
+                </div>
+                {selectedProduct && (
+                  <button
+                    type="button"
+                    onClick={resetSelection}
+                    className="shrink-0 inline-flex items-center justify-center h-8 w-8 bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 text-gray-700 dark:text-gray-300 rounded border border-gray-300 dark:border-gray-600 transition-colors cursor-pointer"
+                    title="Clear Product"
+                  >
+                    <RefreshCcw className="w-3.5 h-3.5" />
+                  </button>
+                )}
+              </div>
+              {!canSelectProduct() && (
+                <p className="text-[10px] text-amber-600 dark:text-amber-400 mt-0.5 ml-[8.5rem]">
+                  {isSuperAdmin && !selectedTenant
+                    ? 'Please select a tenant before choosing a product'
+                    : 'Please select a warehouse before choosing a product'}
+                </p>
+              )}
+            </FormRow>
+
+            <FormRow label="Options" labelWidth="w-32">
+              <div className="flex flex-wrap items-center gap-2">
+                <label className="inline-flex items-center gap-1.5 cursor-pointer rounded-full px-2.5 py-1 hover:bg-gray-50 dark:hover:bg-gray-700/50 border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800">
+                  <input
+                    type="checkbox"
+                    checked={productByBrand}
+                    onChange={e => setproductByBrand(e.target.checked)}
+                    disabled={!canSelectProduct()}
+                    className="h-3.5 w-3.5 accent-indigo-600 disabled:opacity-50"
+                  />
+                  <span
+                    className={`text-xs whitespace-nowrap ${
+                      !canSelectProduct()
+                        ? 'text-gray-400 dark:text-gray-500'
+                        : 'text-gray-700 dark:text-gray-300'
+                    }`}
+                  >
+                    Product By Brand
+                  </span>
+                </label>
+                {productByBrand && (
+                  <span className="text-[11px] text-indigo-600 dark:text-indigo-400">
+                    Loads all variations from products sharing the same brand
+                  </span>
+                )}
+              </div>
+            </FormRow>
+          </div>
         </div>
 
         {/* Variations table */}
         {variations.length > 0 && (
-          <div className="mt-3">
-            <div className="flex items-center justify-between mb-1.5">
-              <h3 className="text-sm font-semibold text-gray-900 dark:text-gray-100 flex items-center gap-1.5">
-                <Package2 className="w-4 h-4 text-indigo-500" />
+          <div className="bg-white dark:bg-gray-800 rounded-md shadow-sm border border-gray-200 dark:border-gray-700 p-3">
+            <div className="flex items-center justify-between mb-2">
+              <h3 className="text-xs font-semibold text-gray-700 dark:text-gray-300 flex items-center gap-1.5">
+                <Package2 className="w-3.5 h-3.5 text-indigo-500" />
                 Product Variations ({variations.length})
               </h3>
               <span className="text-[11px] text-gray-500 dark:text-gray-400">
@@ -474,19 +487,19 @@ export default function StockAddPage() {
               </span>
             </div>
             <div className="border border-gray-200 dark:border-gray-600 rounded overflow-hidden">
-              <div className="overflow-x-auto min-h-[500px] max-h-[70vh] overflow-y-auto">
+              <div className="overflow-x-auto max-h-[70vh] overflow-y-auto">
                 <table className="w-full text-sm">
                   <thead className="bg-gray-100 dark:bg-gray-700 sticky top-0 z-10">
                     <tr>
-                      <th className="px-2 py-2 text-left text-[11px] font-semibold text-gray-700 dark:text-gray-300 border-b border-gray-300 dark:border-gray-600 w-10">#</th>
-                      <th className="px-2 py-2 text-left text-[11px] font-semibold text-gray-700 dark:text-gray-300 border-b border-gray-300 dark:border-gray-600 min-w-[200px]">Variation (SKU / Name)</th>
-                      <th className="px-2 py-2 text-left text-[11px] font-semibold text-gray-700 dark:text-gray-300 border-b border-gray-300 dark:border-gray-600 w-32">Current Stock</th>
-                      <th className="px-2 py-2 text-left text-[11px] font-semibold text-gray-700 dark:text-gray-300 border-b border-gray-300 dark:border-gray-600 w-32">Add Quantity</th>
-                      <th className="px-2 py-2 text-left text-[11px] font-semibold text-gray-700 dark:text-gray-300 border-b border-gray-300 dark:border-gray-600 w-28">Reserved</th>
-                      <th className="px-2 py-2 text-left text-[11px] font-semibold text-gray-700 dark:text-gray-300 border-b border-gray-300 dark:border-gray-600 w-28">Min Qty</th>
-                      <th className="px-2 py-2 text-left text-[11px] font-semibold text-gray-700 dark:text-gray-300 border-b border-gray-300 dark:border-gray-600 w-28">Max Qty</th>
-                      <th className="px-2 py-2 text-left text-[11px] font-semibold text-gray-700 dark:text-gray-300 border-b border-gray-300 dark:border-gray-600 w-28">Reorder Point</th>
-                      <th className="px-2 py-2 text-left text-[11px] font-semibold text-gray-700 dark:text-gray-300 border-b border-gray-300 dark:border-gray-600 w-32">Last Cost</th>
+                      <th className="px-2 py-2 text-left text-[11px] font-semibold text-gray-600 dark:text-gray-400 border-b border-gray-300 dark:border-gray-600 w-10">#</th>
+                      <th className="px-2 py-2 text-left text-[11px] font-semibold text-gray-600 dark:text-gray-400 border-b border-gray-300 dark:border-gray-600 min-w-[200px]">Variation (SKU / Name)</th>
+                      <th className="px-2 py-2 text-left text-[11px] font-semibold text-gray-600 dark:text-gray-400 border-b border-gray-300 dark:border-gray-600 w-32">Current Stock</th>
+                      <th className="px-2 py-2 text-left text-[11px] font-semibold text-gray-600 dark:text-gray-400 border-b border-gray-300 dark:border-gray-600 w-32">Add Quantity</th>
+                      <th className="px-2 py-2 text-left text-[11px] font-semibold text-gray-600 dark:text-gray-400 border-b border-gray-300 dark:border-gray-600 w-28">Reserved</th>
+                      <th className="px-2 py-2 text-left text-[11px] font-semibold text-gray-600 dark:text-gray-400 border-b border-gray-300 dark:border-gray-600 w-28">Min Qty</th>
+                      <th className="px-2 py-2 text-left text-[11px] font-semibold text-gray-600 dark:text-gray-400 border-b border-gray-300 dark:border-gray-600 w-28">Max Qty</th>
+                      <th className="px-2 py-2 text-left text-[11px] font-semibold text-gray-600 dark:text-gray-400 border-b border-gray-300 dark:border-gray-600 w-28">Reorder Point</th>
+                      <th className="px-2 py-2 text-left text-[11px] font-semibold text-gray-600 dark:text-gray-400 border-b border-gray-300 dark:border-gray-600 w-32">Last Cost</th>
                     </tr>
                   </thead>
                   <tbody className="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
@@ -541,7 +554,7 @@ export default function StockAddPage() {
                               handleStockChange(idx, 'quantity', e.target.value)
                             }
                             onFocus={e => e.target.select()}
-                            className="w-full px-2.5 py-1.5 text-right text-sm border border-gray-300 dark:border-gray-600 rounded-sm focus:outline-none focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400 focus:border-transparent dark:bg-gray-700 dark:text-gray-100 transition-all"
+                            className={inputCls(true)}
                             placeholder="0"
                           />
                         </td>
@@ -554,7 +567,7 @@ export default function StockAddPage() {
                               handleStockChange(idx, 'reserved_quantity', e.target.value)
                             }
                             onFocus={e => e.target.select()}
-                            className="w-full px-2.5 py-1.5 text-right text-sm border border-gray-300 dark:border-gray-600 rounded-sm focus:outline-none focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400 focus:border-transparent dark:bg-gray-700 dark:text-gray-100 transition-all"
+                            className={inputCls(true)}
                             placeholder="0"
                           />
                         </td>
@@ -565,7 +578,7 @@ export default function StockAddPage() {
                             value={stocks[idx]?.min_quantity !== undefined && stocks[idx]?.min_quantity !== null ? Math.round(stocks[idx].min_quantity) : 1}
                             onChange={e => handleStockChange(idx, 'min_quantity', e.target.value)}
                             onFocus={e => e.target.select()}
-                            className="w-full px-2.5 py-1.5 text-right text-sm border border-gray-300 dark:border-gray-600 rounded-sm focus:outline-none focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400 focus:border-transparent dark:bg-gray-700 dark:text-gray-100 transition-all"
+                            className={inputCls(true)}
                             placeholder="Opt."
                           />
                         </td>
@@ -576,7 +589,7 @@ export default function StockAddPage() {
                             value={stocks[idx]?.max_quantity !== undefined && stocks[idx]?.max_quantity !== null ? Math.round(stocks[idx].max_quantity) : ''}
                             onChange={e => handleStockChange(idx, 'max_quantity', e.target.value)}
                             onFocus={e => e.target.select()}
-                            className="w-full px-2.5 py-1.5 text-right text-sm border border-gray-300 dark:border-gray-600 rounded-sm focus:outline-none focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400 focus:border-transparent dark:bg-gray-700 dark:text-gray-100 transition-all"
+                            className={inputCls(true)}
                             placeholder="Opt."
                           />
                         </td>
@@ -587,7 +600,7 @@ export default function StockAddPage() {
                             value={stocks[idx]?.reorder_point !== undefined && stocks[idx]?.reorder_point !== null ? Math.round(stocks[idx].reorder_point) : ''}
                             onChange={e => handleStockChange(idx, 'reorder_point', e.target.value)}
                             onFocus={e => e.target.select()}
-                            className="w-full px-2.5 py-1.5 text-sm border border-gray-300 dark:border-gray-600 rounded-sm focus:outline-none focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400 focus:border-transparent dark:bg-gray-700 dark:text-gray-100 transition-all"
+                            className={inputCls()}
                             placeholder="Opt."
                           />
                         </td>
@@ -599,7 +612,7 @@ export default function StockAddPage() {
                             value={stocks[idx]?.last_cost !== undefined && stocks[idx]?.last_cost !== null && stocks[idx]?.last_cost !== '' ? stocks[idx].last_cost : ''}
                             onChange={e => handleStockChange(idx, 'last_cost', e.target.value)}
                             onFocus={e => e.target.select()}
-                            className="w-full px-2.5 py-1.5 text-right text-sm border border-gray-300 dark:border-gray-600 rounded-sm focus:outline-none focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400 focus:border-transparent dark:bg-gray-700 dark:text-gray-100 transition-all"
+                            className={inputCls(true)}
                             placeholder="Opt."
                           />
                         </td>
@@ -609,19 +622,27 @@ export default function StockAddPage() {
                 </table>
               </div>
             </div>
-            <div className="mt-2 text-xs text-gray-500 dark:text-gray-400">
+            <div className="mt-2 text-[11px] text-gray-500 dark:text-gray-400">
               <span className="font-medium">Note:</span> Scroll within the table to view all
               variations. All values are auto-selected on focus for quick editing.
             </div>
           </div>
         )}
 
-        <div className="flex items-center gap-2 mt-3">
+        {/* Action Buttons */}
+        <div className="flex justify-end gap-2">
+          <button
+            type="button"
+            onClick={resetSelection}
+            className="px-3 py-1.5 text-xs rounded border border-gray-300 dark:border-gray-600 text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors cursor-pointer"
+          >
+            Reset
+          </button>
           <button
             type="submit"
-            className="flex items-center justify-center gap-2 px-5 py-1.5 text-sm bg-indigo-600 hover:bg-indigo-700 disabled:bg-gray-400 text-white rounded-sm transition-colors cursor-pointer"
+            className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs bg-indigo-600 hover:bg-indigo-700 disabled:opacity-60 text-white rounded transition-colors cursor-pointer"
           >
-            <GiSave className="w-4 h-4" />
+            <GiSave className="w-3.5 h-3.5" />
             Save Stocks
           </button>
         </div>
@@ -674,22 +695,53 @@ export default function StockAddPage() {
                   setPendingPayload(null);
                   setConfirmItems([]);
                 }}
-                className="px-4 py-1.5 bg-gray-200 hover:bg-gray-300 dark:bg-gray-700 dark:hover:bg-gray-600 text-gray-800 dark:text-gray-200 text-sm font-medium rounded-sm transition-colors"
+                className="px-3 py-1.5 text-xs rounded border border-gray-300 dark:border-gray-600 text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors cursor-pointer"
               >
                 Cancel
               </button>
               <button
                 type="button"
                 onClick={handleConfirmSave}
-                className="flex items-center justify-center gap-2 px-5 py-1.5 text-sm bg-indigo-600 hover:bg-indigo-700 disabled:bg-gray-400 text-white rounded-sm transition-colors cursor-pointer"
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs bg-indigo-600 hover:bg-indigo-700 disabled:opacity-60 text-white rounded transition-colors cursor-pointer"
               >
-                <GiSave className="w-4 h-4" />
+                <GiSave className="w-3.5 h-3.5" />
                 Confirm &amp; Save
               </button>
             </div>
           </div>
         </div>
       )}
+    </div>
+  );
+}
+
+function FormRow({
+  label,
+  required,
+  error,
+  children,
+  labelWidth = 'w-20',
+  className = '',
+}: {
+  label: string;
+  required?: boolean;
+  error?: string | null;
+  children: React.ReactNode;
+  labelWidth?: string;
+  className?: string;
+}) {
+  const errorMl =
+    labelWidth === 'w-32' ? 'ml-[8.5rem]' : labelWidth === 'w-20' ? 'ml-[5.5rem]' : 'ml-[4.375rem]';
+  return (
+    <div className={className}>
+      <div className="flex items-center gap-1.5">
+        <label className={`${labelWidth} shrink-0 text-[11px] font-medium text-gray-600 dark:text-gray-400 text-right`}>
+          {label}
+          {required && <span className="text-red-500">*</span>}:
+        </label>
+        <div className="flex-1 min-w-0">{children}</div>
+      </div>
+      {error && <p className={`text-[10px] text-red-500 mt-0.5 ${errorMl}`}>{error}</p>}
     </div>
   );
 }

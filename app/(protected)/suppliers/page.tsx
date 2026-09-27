@@ -1,7 +1,7 @@
 'use client';
 
 import { ColumnDef } from '@tanstack/react-table';
-import { List, Plus, Edit, X, Trash2 } from 'lucide-react';
+import { List, Plus, Edit, Trash2 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
 import { GiSave } from 'react-icons/gi';
@@ -10,6 +10,25 @@ import DataTable from '@/components/ui/datatable';
 import { usePermissions } from '@/hooks/use-permissions';
 import { notify, confirm } from '@/lib/notifications';
 import { supplierService, commonService } from '@/services';
+
+const inputCls = (hasError?: boolean) =>
+  `w-full px-2.5 py-1 text-xs bg-white dark:bg-gray-700 border ${hasError ? 'border-red-500' : 'border-gray-300 dark:border-gray-600'} rounded text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-1 focus:ring-indigo-500`;
+
+function FormRow({ label, required, error, children, className = '', labelWidth = 'w-20', fieldWidth = 'flex-1 min-w-0' }: { label: string; required?: boolean; error?: string | null; children: React.ReactNode; className?: string; labelWidth?: string; fieldWidth?: string }) {
+  const errorMl =
+    labelWidth === 'w-32' ? 'ml-[8.5rem]' : labelWidth === 'w-20' ? 'ml-[5.5rem]' : 'ml-[4.375rem]';
+  return (
+    <div className={className}>
+      <div className="flex items-center gap-1.5">
+        <label className={`${labelWidth} shrink-0 text-[11px] font-medium text-gray-600 dark:text-gray-400 text-right`}>
+          {label}{required && <span className="text-red-500">*</span>}:
+        </label>
+        <div className={fieldWidth}>{children}</div>
+      </div>
+      {error && <p className={`text-[10px] text-red-500 mt-0.5 ${errorMl}`}>{error}</p>}
+    </div>
+  );
+}
 
 export default function SupplierListPage() {
   const [refreshKey, setRefreshKey] = useState(0);
@@ -238,8 +257,9 @@ export default function SupplierListPage() {
   return (
     <div className="space-y-2">
       <div className="flex items-center justify-between">
-        <h1 className="text-xl font-bold flex items-center gap-2">
-          <List className="w-5 h-5 text-blue-600" /> Suppliers
+        <h1 className="text-xl font-bold text-gray-900 dark:text-gray-100 flex items-center gap-2">
+          <List className="w-5 h-5 text-blue-600 dark:text-blue-400" />
+          {showForm ? (isEditing ? 'Edit Supplier' : 'Add Supplier') : 'Supplier'}
         </h1>
         <button
           onClick={() => {
@@ -276,260 +296,293 @@ export default function SupplierListPage() {
       </div>
 
       {showForm && (
-        <form
-          onSubmit={handleSubmit}
-          className="bg-white dark:bg-gray-800 rounded-md p-3 space-y-3"
-        >
-          {isSuperAdmin && (
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Tenant</label>
-              <CustomSelect
-                className={'w-64 text-xs'}
-                value={selectedTenant}
-                onChange={(o: any) => {
-                  setSelectedTenant(o);
-                  setFormData({ ...formData, tenant_id: o?.value });
-                  if (formErrors.tenant_id) {
-                    const { tenant_id, ...rest } = formErrors;
-                    setFormErrors(rest);
-                  }
-                }}
-                loadOptions={loadTenantOptions}
-                defaultOptions={defaultTenantOptions}
-                placeholder="Select tenant"
-                isInvalid={!!formErrors.tenant_id}
-              />
-              {formErrors.tenant_id && (
-                <p className="text-red-600 text-xs mt-1">{formErrors.tenant_id}</p>
+        <div className="space-y-3">
+          <form onSubmit={handleSubmit} className="space-y-3" autoComplete="off">
+            {/* Basic Information */}
+            <div className="bg-white dark:bg-gray-800 rounded-md shadow-sm border border-gray-200 dark:border-gray-700 p-3">
+              <h3 className="text-xs font-semibold text-gray-700 dark:text-gray-300 mb-3">Basic Information</h3>
+
+              {isSuperAdmin && (
+                <div className="mb-2">
+                  <FormRow label="Tenant" required labelWidth="w-32" error={formErrors.tenant_id}>
+                    <CustomSelect
+                      value={selectedTenant}
+                      onChange={(o: any) => {
+                        setSelectedTenant(o);
+                        setFormData({ ...formData, tenant_id: o?.value });
+                        if (formErrors.tenant_id) {
+                          setFormErrors((prev: any) => {
+                            const next = { ...prev };
+                            delete next.tenant_id;
+                            return next;
+                          });
+                        }
+                      }}
+                      loadOptions={loadTenantOptions}
+                      defaultOptions={defaultTenantOptions.length > 0 ? defaultTenantOptions : true}
+                      placeholder="Select tenant"
+                      isInvalid={!!formErrors.tenant_id}
+                      compact
+                    />
+                  </FormRow>
+                </div>
               )}
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-x-4 gap-y-2">
+                <FormRow label="Name" required labelWidth="w-32" error={formErrors.name}>
+                  <input
+                    type="text"
+                    value={formData.name ?? ''}
+                    onChange={e => {
+                      setFormData({ ...formData, name: e.target.value });
+                      if (formErrors.name) {
+                        setFormErrors((prev: any) => {
+                          const next = { ...prev };
+                          delete next.name;
+                          return next;
+                        });
+                      }
+                    }}
+                    placeholder="Enter supplier name"
+                    className={inputCls(!!formErrors.name)}
+                  />
+                </FormRow>
+
+                <FormRow label="Phone" required labelWidth="w-32" error={formErrors.phone}>
+                  <input
+                    type="text"
+                    value={formData.phone ?? ''}
+                    onChange={e => {
+                      setFormData({ ...formData, phone: e.target.value });
+                      if (formErrors.phone) {
+                        setFormErrors((prev: any) => {
+                          const next = { ...prev };
+                          delete next.phone;
+                          return next;
+                        });
+                      }
+                    }}
+                    placeholder="Enter phone number"
+                    className={inputCls(!!formErrors.phone)}
+                  />
+                </FormRow>
+
+                <FormRow label="Contact Person" labelWidth="w-32">
+                  <input
+                    type="text"
+                    value={formData.contact_person ?? ''}
+                    onChange={e => setFormData({ ...formData, contact_person: e.target.value })}
+                    placeholder="Enter contact person name"
+                    className={inputCls(false)}
+                  />
+                </FormRow>
+
+                <FormRow label="Company" labelWidth="w-32">
+                  <input
+                    type="text"
+                    value={formData.company_name ?? ''}
+                    onChange={e => setFormData({ ...formData, company_name: e.target.value })}
+                    placeholder="Enter company name"
+                    className={inputCls(false)}
+                  />
+                </FormRow>
+
+                <FormRow label="Email" labelWidth="w-32" error={formErrors.email}>
+                  <input
+                    type="email"
+                    value={formData.email ?? ''}
+                    onChange={e => setFormData({ ...formData, email: e.target.value })}
+                    placeholder="Enter email address"
+                    className={inputCls(!!formErrors.email)}
+                  />
+                </FormRow>
+
+                <FormRow label="Website" labelWidth="w-32">
+                  <input
+                    type="text"
+                    value={formData.website ?? ''}
+                    onChange={e => setFormData({ ...formData, website: e.target.value })}
+                    placeholder="Enter website URL"
+                    className={inputCls(false)}
+                  />
+                </FormRow>
+              </div>
             </div>
-          )}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
-            <div>
-              <label className="block text-sm">Name</label>
-              <input
-                type="text"
-                value={formData.name ?? ''}
-                onChange={e => {
-                  setFormData({ ...formData, name: e.target.value });
-                  if (formErrors.name) {
-                    const { name, ...rest } = formErrors;
-                    setFormErrors(rest);
-                  }
+
+            {/* Address */}
+            <div className="bg-white dark:bg-gray-800 rounded-md shadow-sm border border-gray-200 dark:border-gray-700 p-3">
+              <h3 className="text-xs font-semibold text-gray-700 dark:text-gray-300 mb-3">Address</h3>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-x-4 gap-y-2">
+                <FormRow label="City" labelWidth="w-32">
+                  <input
+                    type="text"
+                    value={formData.city ?? ''}
+                    onChange={e => setFormData({ ...formData, city: e.target.value })}
+                    placeholder="Enter city"
+                    className={inputCls(false)}
+                  />
+                </FormRow>
+
+                <FormRow label="State/Province" labelWidth="w-32">
+                  <input
+                    type="text"
+                    value={formData.state ?? ''}
+                    onChange={e => setFormData({ ...formData, state: e.target.value })}
+                    placeholder="Enter state"
+                    className={inputCls(false)}
+                  />
+                </FormRow>
+
+                <FormRow label="Postal Code" labelWidth="w-32">
+                  <input
+                    type="text"
+                    value={formData.postal_code ?? ''}
+                    onChange={e => setFormData({ ...formData, postal_code: e.target.value })}
+                    placeholder="Enter postal code"
+                    className={inputCls(false)}
+                  />
+                </FormRow>
+
+                <FormRow label="Country" labelWidth="w-32">
+                  <input
+                    type="text"
+                    value={formData.country ?? ''}
+                    onChange={e => setFormData({ ...formData, country: e.target.value })}
+                    placeholder="Bangladesh"
+                    className={inputCls(false)}
+                  />
+                </FormRow>
+
+                <FormRow label="Address" labelWidth="w-32" className="md:col-span-2">
+                  <input
+                    type="text"
+                    value={formData.address ?? ''}
+                    onChange={e => setFormData({ ...formData, address: e.target.value })}
+                    placeholder="Street address, building, floor"
+                    className={inputCls(false)}
+                  />
+                </FormRow>
+              </div>
+            </div>
+
+            {/* Tax & Compliance */}
+            <div className="bg-white dark:bg-gray-800 rounded-md shadow-sm border border-gray-200 dark:border-gray-700 p-3">
+              <h3 className="text-xs font-semibold text-gray-700 dark:text-gray-300 mb-3">Tax &amp; Compliance</h3>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-x-4 gap-y-2">
+                <FormRow label="VAT Number" labelWidth="w-32">
+                  <input
+                    type="text"
+                    value={formData.vat_number ?? ''}
+                    onChange={e => setFormData({ ...formData, vat_number: e.target.value })}
+                    placeholder="Enter VAT number"
+                    className={inputCls(false)}
+                  />
+                </FormRow>
+
+                <FormRow label="TIN Number" labelWidth="w-32">
+                  <input
+                    type="text"
+                    value={formData.tin_number ?? ''}
+                    onChange={e => setFormData({ ...formData, tin_number: e.target.value })}
+                    placeholder="Enter TIN number"
+                    className={inputCls(false)}
+                  />
+                </FormRow>
+
+                <FormRow label="Trade License" labelWidth="w-32">
+                  <input
+                    type="text"
+                    value={formData.trade_license ?? ''}
+                    onChange={e => setFormData({ ...formData, trade_license: e.target.value })}
+                    placeholder="Enter trade license number"
+                    className={inputCls(false)}
+                  />
+                </FormRow>
+              </div>
+            </div>
+
+            {/* Business Terms */}
+            <div className="bg-white dark:bg-gray-800 rounded-md shadow-sm border border-gray-200 dark:border-gray-700 p-3">
+              <h3 className="text-xs font-semibold text-gray-700 dark:text-gray-300 mb-3">Business Terms</h3>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-x-4 gap-y-2">
+                <FormRow label="Payment Terms" labelWidth="w-32">
+                  <input
+                    type="text"
+                    value={formData.payment_terms ?? ''}
+                    onChange={e => setFormData({ ...formData, payment_terms: e.target.value })}
+                    placeholder="Enter payment terms"
+                    className={inputCls(false)}
+                  />
+                </FormRow>
+
+                <FormRow label="Credit Limit" labelWidth="w-32" fieldWidth="w-40" error={formErrors.credit_limit}>
+                  <input
+                    type="number"
+                    step="0.01"
+                    value={formData.credit_limit ?? ''}
+                    onChange={e => setFormData({ ...formData, credit_limit: e.target.value })}
+                    placeholder="0.00"
+                    className={inputCls(!!formErrors.credit_limit)}
+                  />
+                </FormRow>
+
+                <FormRow label="Status" labelWidth="w-32" fieldWidth="w-40" error={formErrors.status}>
+                  <select
+                    value={formData.status ?? 'active'}
+                    onChange={e => setFormData({ ...formData, status: e.target.value })}
+                    className={inputCls(!!formErrors.status)}
+                  >
+                    <option value="active">Active</option>
+                    <option value="inactive">Inactive</option>
+                  </select>
+                </FormRow>
+              </div>
+            </div>
+
+            {/* Form Actions */}
+            <div className="flex justify-end gap-2">
+              <button
+                type="button"
+                onClick={() => {
+                  setShowForm(false);
+                  setIsEditing(false);
+                  setFormErrors({});
+                  setSelectedTenant(null);
+                  setFormData({
+                    tenant_id: undefined,
+                    name: '',
+                    company_name: '',
+                    contact_person: '',
+                    phone: '',
+                    email: '',
+                    address: '',
+                    city: '',
+                    state: '',
+                    country: 'Bangladesh',
+                    postal_code: '',
+                    vat_number: '',
+                    tin_number: '',
+                    trade_license: '',
+                    website: '',
+                    payment_terms: '',
+                    credit_limit: 0,
+                    status: 'active',
+                  });
                 }}
-                placeholder="Enter supplier name"
-                className={`w-full px-2 py-1.25 text-sm border rounded-sm focus:outline-none focus:ring-1 focus:ring-blue-500 dark:focus:ring-blue-400 focus:border-transparent dark:bg-gray-700 dark:text-gray-100 ${formErrors.name ? 'border-red-500' : 'border-gray-300'}`}
-              />
-              {formErrors.name && <p className="text-red-600 text-xs mt-1">{formErrors.name}</p>}
-            </div>
-
-            <div>
-              <label className="block text-sm">Phone</label>
-              <input
-                type="text"
-                value={formData.phone ?? ''}
-                onChange={e => {
-                  setFormData({ ...formData, phone: e.target.value });
-                  if (formErrors.phone) {
-                    const { phone, ...rest } = formErrors;
-                    setFormErrors(rest);
-                  }
-                }}
-                placeholder="Enter phone number"
-                className={`w-full px-2 py-1.25 text-sm border rounded-sm focus:outline-none focus:ring-1 focus:ring-blue-500 dark:focus:ring-blue-400 focus:border-transparent dark:bg-gray-700 dark:text-gray-100 ${formErrors.phone ? 'border-red-500' : 'border-gray-300'}`}
-              />
-              {formErrors.phone && <p className="text-red-600 text-xs mt-1">{formErrors.phone}</p>}
-            </div>
-            <div>
-              <label className="block text-sm">Contact Person</label>
-              <input
-                type="text"
-                value={formData.contact_person ?? ''}
-                onChange={e => setFormData({ ...formData, contact_person: e.target.value })}
-                placeholder="Enter contact person name"
-                className={`w-full px-2 py-1.25 text-sm border rounded-sm focus:outline-none focus:ring-1 focus:ring-blue-500 dark:focus:ring-blue-400 focus:border-transparent dark:bg-gray-700 dark:text-gray-100 ${formErrors.contact_person ? 'border-red-500' : 'border-gray-300'}`}
-              />
-            </div>
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
-            <div>
-              <label className="block text-sm">Company</label>
-              <input
-                type="text"
-                value={formData.company_name ?? ''}
-                onChange={e => setFormData({ ...formData, company_name: e.target.value })}
-                placeholder="Enter company name"
-                className={`w-full px-2 py-1.25 text-sm border rounded-sm focus:outline-none focus:ring-1 focus:ring-blue-500 dark:focus:ring-blue-400 focus:border-transparent dark:bg-gray-700 dark:text-gray-100 ${formErrors.company_name ? 'border-red-500' : 'border-gray-300'}`}
-              />
-            </div>
-
-            <div>
-              <label className="block text-sm">Email</label>
-              <input
-                type="email"
-                value={formData.email ?? ''}
-                onChange={e => setFormData({ ...formData, email: e.target.value })}
-                placeholder="Enter email address"
-                className={`w-full px-2 py-1.25 text-sm border rounded-sm focus:outline-none focus:ring-1 focus:ring-blue-500 dark:focus:ring-blue-400 focus:border-transparent dark:bg-gray-700 dark:text-gray-100 ${formErrors.email ? 'border-red-500' : 'border-gray-300'}`}
-              />
-            </div>
-            <div>
-              <label className="block text-sm">Website</label>
-              <input
-                type="text"
-                value={formData.website ?? ''}
-                onChange={e => setFormData({ ...formData, website: e.target.value })}
-                placeholder="Enter website URL"
-                className={`w-full px-2 py-1.25 text-sm border rounded-sm focus:outline-none focus:ring-1 focus:ring-blue-500 dark:focus:ring-blue-400 focus:border-transparent dark:bg-gray-700 dark:text-gray-100 ${formErrors.website ? 'border-red-500' : 'border-gray-300'}`}
-              />
-            </div>
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
-            <div>
-              <label className="block text-sm">City</label>
-              <input
-                type="text"
-                value={formData.city ?? ''}
-                onChange={e => setFormData({ ...formData, city: e.target.value })}
-                placeholder="Enter city"
-                className={`w-full px-2 py-1.25 text-sm border rounded-sm focus:outline-none focus:ring-1 focus:ring-blue-500 dark:focus:ring-blue-400 focus:border-transparent dark:bg-gray-700 dark:text-gray-100 ${formErrors.city ? 'border-red-500' : 'border-gray-300'}`}
-              />
-            </div>
-            <div>
-              <label className="block text-sm">State</label>
-              <input
-                type="text"
-                value={formData.state ?? ''}
-                onChange={e => setFormData({ ...formData, state: e.target.value })}
-                placeholder="Enter state"
-                className={`w-full px-2 py-1.25 text-sm border rounded-sm focus:outline-none focus:ring-1 focus:ring-blue-500 dark:focus:ring-blue-400 focus:border-transparent dark:bg-gray-700 dark:text-gray-100 ${formErrors.state ? 'border-red-500' : 'border-gray-300'}`}
-              />
-            </div>
-            <div>
-              <label className="block text-sm">Postal Code</label>
-              <input
-                type="text"
-                value={formData.postal_code ?? ''}
-                onChange={e => setFormData({ ...formData, postal_code: e.target.value })}
-                placeholder="Enter postal code"
-                className={`w-full px-2 py-1.25 text-sm border rounded-sm focus:outline-none focus:ring-1 focus:ring-blue-500 dark:focus:ring-blue-400 focus:border-transparent dark:bg-gray-700 dark:text-gray-100 ${formErrors.postal_code ? 'border-red-500' : 'border-gray-300'}`}
-              />
-            </div>
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
-            <div>
-              <label className="block text-sm">VAT Number</label>
-              <input
-                type="text"
-                value={formData.vat_number ?? ''}
-                onChange={e => setFormData({ ...formData, vat_number: e.target.value })}
-                placeholder="Enter VAT number"
-                className={`w-full px-2 py-1.25 text-sm border rounded-sm focus:outline-none focus:ring-1 focus:ring-blue-500 dark:focus:ring-blue-400 focus:border-transparent dark:bg-gray-700 dark:text-gray-100 ${formErrors.vat_number ? 'border-red-500' : 'border-gray-300'}`}
-              />
-            </div>
-            <div>
-              <label className="block text-sm">TIN Number</label>
-              <input
-                type="text"
-                value={formData.tin_number ?? ''}
-                onChange={e => setFormData({ ...formData, tin_number: e.target.value })}
-                placeholder="Enter TIN number"
-                className={`w-full px-2 py-1.25 text-sm border rounded-sm focus:outline-none focus:ring-1 focus:ring-blue-500 dark:focus:ring-blue-400 focus:border-transparent dark:bg-gray-700 dark:text-gray-100 ${formErrors.tin_number ? 'border-red-500' : 'border-gray-300'}`}
-              />
-            </div>
-            <div>
-              <label className="block text-sm">Trade License</label>
-              <input
-                type="text"
-                value={formData.trade_license ?? ''}
-                onChange={e => setFormData({ ...formData, trade_license: e.target.value })}
-                placeholder="Enter trade license number"
-                className={`w-full px-2 py-1.25 text-sm border rounded-sm focus:outline-none focus:ring-1 focus:ring-blue-500 dark:focus:ring-blue-400 focus:border-transparent dark:bg-gray-700 dark:text-gray-100 ${formErrors.trade_license ? 'border-red-500' : 'border-gray-300'}`}
-              />
-            </div>
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
-            <div>
-              <label className="block text-sm">Payment Terms</label>
-              <input
-                type="text"
-                value={formData.payment_terms ?? ''}
-                onChange={e => setFormData({ ...formData, payment_terms: e.target.value })}
-                placeholder="Enter payment terms"
-                className={`w-full px-2 py-1.25 text-sm border rounded-sm focus:outline-none focus:ring-1 focus:ring-blue-500 dark:focus:ring-blue-400 focus:border-transparent dark:bg-gray-700 dark:text-gray-100 ${formErrors.payment_terms ? 'border-red-500' : 'border-gray-300'}`}
-              />
-            </div>
-            <div>
-              <label className="block text-sm">Credit Limit</label>
-              <input
-                type="number"
-                step="0.01"
-                value={formData.credit_limit ?? ''}
-                onChange={e => setFormData({ ...formData, credit_limit: e.target.value })}
-                placeholder="Enter credit limit"
-                className={`w-full px-2 py-1.25 text-sm border rounded-sm focus:outline-none focus:ring-1 focus:ring-blue-500 dark:focus:ring-blue-400 focus:border-transparent dark:bg-gray-700 dark:text-gray-100 ${formErrors.credit_limit ? 'border-red-500' : 'border-gray-300'}`}
-              />
-            </div>
-            <div>
-              <label className="block text-sm">Status</label>
-              <select
-                value={formData.status ?? 'active'}
-                onChange={e => setFormData({ ...formData, status: e.target.value })}
-                className={`w-full px-2 py-1.25 text-sm border rounded-sm focus:outline-none focus:ring-1 focus:ring-blue-500 dark:focus:ring-blue-400 focus:border-transparent dark:bg-gray-700 dark:text-gray-100 ${formErrors.status ? 'border-red-500' : 'border-gray-300'}`}
+                className="px-3 py-1.5 text-xs rounded border border-gray-300 dark:border-gray-600 text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700"
               >
-                <option value="active">Active</option>
-                <option value="inactive">Inactive</option>
-              </select>
+                Cancel
+              </button>
+              <button
+                type="submit"
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs bg-indigo-600 hover:bg-indigo-700 disabled:opacity-60 text-white rounded"
+              >
+                <GiSave className="w-3.5 h-3.5" />
+                {isEditing ? 'Update Supplier' : 'Create Supplier'}
+              </button>
             </div>
-          </div>
-
-          <div className="flex gap-2 pt-2">
-            <button
-              type="submit"
-              className="flex items-center justify-center gap-2 px-5 py-1.5 text-sm bg-indigo-600 hover:bg-indigo-700 disabled:bg-gray-400 text-white rounded-sm transition-colors cursor-pointer"
-            >
-              <GiSave className="w-4 h-4" />
-              {isEditing ? 'Update Supplier' : 'Save Supplier'}
-            </button>
-            <button
-              type="button"
-              onClick={() => {
-                setShowForm(false);
-                setIsEditing(false);
-                setFormErrors({});
-                setSelectedTenant(null);
-                setFormData({
-                  tenant_id: undefined,
-                  name: '',
-                  company_name: '',
-                  contact_person: '',
-                  phone: '',
-                  email: '',
-                  address: '',
-                  city: '',
-                  state: '',
-                  country: 'Bangladesh',
-                  postal_code: '',
-                  vat_number: '',
-                  tin_number: '',
-                  trade_license: '',
-                  website: '',
-                  payment_terms: '',
-                  credit_limit: 0,
-                  status: 'active',
-                });
-              }}
-              className="px-3 py-1.5 bg-gray-600 text-white text-sm font-medium rounded-sm hover:bg-gray-700 transition-colors flex items-center gap-2 cursor-pointer"
-            >
-              <X className="w-4 h-4" />
-              Cancel
-            </button>
-          </div>
-        </form>
+          </form>
+        </div>
       )}
 
       <DataTable

@@ -12,7 +12,6 @@ import { usePermissions } from '@/hooks/use-permissions';
 import { notify } from '@/lib/notifications';
 import { productService } from '@/services';
 import commonService from '@/services/commonService';
-import { useBrandsDropdown } from '@/services/queries/useBrandsDropdown';
 import { useCategories } from '@/services/queries/useCategories';
 import { useProduct } from '@/services/queries/useProduct';
 import { useUnitsDropdown } from '@/services/queries/useUnitsDropdown';
@@ -22,7 +21,6 @@ interface ProductFormData {
   name: string;
   description: string;
   category_id: string;
-  brand_id: string;
   unit_id: string;
   type: 'simple' | 'variable' | 'composite' | 'digital' | 'service';
   status: 'active' | 'inactive' | 'discontinued' | 'archived';
@@ -64,7 +62,6 @@ export function ProductForm({ editRef }: { editRef?: string }) {
   const [isLoading, setIsLoading] = useState(false);
   const [errors, setErrors] = useState<Record<string, string[]>>({});
   const [selectedCategory, setSelectedCategory] = useState<SelectOption | null>(null);
-  const [selectedBrand, setSelectedBrand] = useState<SelectOption | null>(null);
   const [selectedUnit, setSelectedUnit] = useState<SelectOption | null>(null);
 
   const [businessType, setBusinessType] = useState<string>(isSuperAdmin ? '' : tenantBusinessType);
@@ -75,7 +72,6 @@ export function ProductForm({ editRef }: { editRef?: string }) {
   const [editingId, setEditingId] = useState<string | null>(null);
 
   const { data: categoriesData } = useCategories(effectiveBtId, isHydrated && !!effectiveBtId);
-  const { data: preloadedBrands } = useBrandsDropdown(effectiveBtId, !!effectiveBtId);
   const { data: preloadedUnits, isLoading: loadingUnits } = useUnitsDropdown(isHydrated);
 
   const categoryOptions = useMemo(
@@ -89,11 +85,6 @@ export function ProductForm({ editRef }: { editRef?: string }) {
     [categoriesData]
   );
 
-  const brandOptions = useMemo(
-    () => (preloadedBrands || []).map((b: any) => ({ value: String(b.id), label: b.name })),
-    [preloadedBrands]
-  );
-
   const unitOptions = useMemo(
     () => (preloadedUnits || []).map((u: any) => ({ value: String(u.id), label: `${u.name} (${u.short_name})` })),
     [preloadedUnits]
@@ -103,7 +94,6 @@ export function ProductForm({ editRef }: { editRef?: string }) {
     name: '',
     description: '',
     category_id: '',
-    brand_id: '',
     unit_id: '',
     type: 'simple',
     status: 'active',
@@ -133,7 +123,6 @@ export function ProductForm({ editRef }: { editRef?: string }) {
       name: p.name || '',
       description: p.description || '',
       category_id: p.category_id ? String(p.category_id) : '',
-      brand_id: p.brand_id ? String(p.brand_id) : '',
       unit_id: p.unit_id ? String(p.unit_id) : '',
       type: p.type || 'simple',
       status: p.status || 'active',
@@ -157,8 +146,6 @@ export function ProductForm({ editRef }: { editRef?: string }) {
     const resolvedBusinessTypeId = (p as any).business_type_id ?? (p as any).business_type?.id;
     if (resolvedBusinessTypeId) setBusinessTypeId(String(resolvedBusinessTypeId));
     if (p.category) setSelectedCategory({ value: String(p.category.id), label: p.category.name });
-    if (p.brand) setSelectedBrand({ value: String(p.brand.id), label: p.brand.name });
-    else if (p.brand_id) setSelectedBrand({ value: String(p.brand_id), label: `Brand #${p.brand_id}` });
     if (p.unit) setSelectedUnit({ value: String(p.unit.id), label: `${p.unit.name} (${p.unit.short_name})` });
   }, [editId, loadedProduct, syncedId]);
 
@@ -169,17 +156,6 @@ export function ProductForm({ editRef }: { editRef?: string }) {
     if (!matched) return;
     if (!selectedCategory || selectedCategory.value !== matched.value) setSelectedCategory(matched);
   }, [formData.category_id, categoryOptions, selectedCategory]);
-
-  useEffect(() => {
-    if (!formData.brand_id) {
-      if (selectedBrand) setSelectedBrand(null);
-      return;
-    }
-    if (brandOptions.length === 0) return;
-    const matched = brandOptions.find(o => o.value === formData.brand_id);
-    if (!matched) return;
-    if (!selectedBrand || selectedBrand.value !== matched.value || selectedBrand.label !== matched.label) setSelectedBrand(matched);
-  }, [formData.brand_id, brandOptions, selectedBrand]);
 
   useEffect(() => {
     if (!formData.unit_id) {
@@ -204,18 +180,6 @@ export function ProductForm({ editRef }: { editRef?: string }) {
     }
   };
 
-  const loadBrandOptions = async (inputValue: string): Promise<SelectOption[]> => {
-    const q = inputValue.trim();
-    if (!q) return brandOptions;
-    try {
-      const btId = effectiveBtId;
-      const data = await commonService.getBrandsForDropdown({ search: q, business_type_id: btId || undefined });
-      return data.map((b: any) => ({ value: String(b.id), label: b.name }));
-    } catch {
-      return [];
-    }
-  };
-
   const loadUnitOptions = async (inputValue: string): Promise<SelectOption[]> => {
     const q = inputValue.trim();
     if (!q) return unitOptions;
@@ -233,12 +197,6 @@ export function ProductForm({ editRef }: { editRef?: string }) {
     if (errors['category_id']) setErrors(prev => { const n = { ...prev }; delete n['category_id']; return n; });
   };
 
-  const handleBrandChange = (option: SelectOption | null) => {
-    setSelectedBrand(option);
-    setFormData(prev => ({ ...prev, brand_id: option?.value || '' }));
-    if (errors['brand_id']) setErrors(prev => { const n = { ...prev }; delete n['brand_id']; return n; });
-  };
-
   const handleUnitChange = (option: SelectOption | null) => {
     setSelectedUnit(option);
     setFormData(prev => ({ ...prev, unit_id: option?.value || '' }));
@@ -249,8 +207,7 @@ export function ProductForm({ editRef }: { editRef?: string }) {
     setBusinessTypeId(id ? String(id) : null);
     if (!id) setBusinessType('');
     setSelectedCategory(null);
-    setSelectedBrand(null);
-    setFormData(prev => ({ ...prev, category_id: '', brand_id: '' }));
+    setFormData(prev => ({ ...prev, category_id: '' }));
     if (errors['business_type']) setErrors(prev => { const n = { ...prev }; delete n['business_type']; return n; });
   };
 
@@ -356,16 +313,12 @@ export function ProductForm({ editRef }: { editRef?: string }) {
           <h3 className="text-xs font-semibold text-gray-700 dark:text-gray-300 mb-3">Categorization</h3>
           {isSuperAdmin && !businessTypeId && (
             <div className="mb-3 p-2 bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded text-xs text-yellow-700 dark:text-yellow-300">
-              Please select a business type to see available categories and brands
+              Please select a business type to see available categories
             </div>
           )}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-x-4 gap-y-2">
             <FormRow label="Category" required labelWidth="w-20" error={getFieldError('category_id')}>
               <CustomSelect value={selectedCategory} onChange={handleCategoryChange} loadOptions={loadCategoryOptions} defaultOptions={categoryOptions.length > 0 ? categoryOptions : true} placeholder="Search category..." isInvalid={hasFieldError('category_id')} isDisabled={!effectiveBtId} compact />
-            </FormRow>
-
-            <FormRow label="Brand" required labelWidth="w-20" error={getFieldError('brand_id')}>
-              <CustomSelect value={selectedBrand} onChange={handleBrandChange} loadOptions={loadBrandOptions} defaultOptions={brandOptions.length > 0 ? brandOptions : true} placeholder="Search brand..." isInvalid={hasFieldError('brand_id')} isDisabled={!effectiveBtId} compact />
             </FormRow>
 
             <FormRow label="Unit" labelWidth="w-20" error={getFieldError('unit_id')}>

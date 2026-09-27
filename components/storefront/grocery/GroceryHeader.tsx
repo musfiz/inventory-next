@@ -8,10 +8,9 @@ import {
   User,
   Heart,
   Menu,
-  ChevronDown,
-  MapPin,
-  Clock,
   Phone,
+  Truck,
+  BadgePercent,
 } from 'lucide-react';
 import { ImCart } from 'react-icons/im';
 import { useCartStore } from '@/stores/cart-store';
@@ -19,36 +18,27 @@ import { useWishlistStore } from '@/stores/wishlist-store';
 import { useCustomerAuthStore } from '@/stores/customer-auth-store';
 import { formatMoney } from '@/lib/utils/format';
 import { useBranding } from '@/hooks/use-branding';
+import { useHeaderMenu } from '@/hooks/use-header-menu';
 import { useStorefrontStatus } from '@/hooks/use-storefront-status';
 import { SearchBar } from '@/components/storefront/navigation/SearchBar';
 import { AccountMenu } from '@/components/storefront/navigation/AccountMenu';
 import { MobileMenu } from '@/components/storefront/navigation/MobileMenu';
+import { StorefrontCategoryNav } from '@/components/storefront/navigation/StorefrontCategoryNav';
 
 export default function GroceryHeader() {
   const [accountOpen, setAccountOpen] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
   const [scrolled, setScrolled] = useState(false);
   const accountRef = useRef<HTMLDivElement>(null);
-  const navScrollRef = useRef<HTMLDivElement>(null);
   const itemCount = useCartStore(s => s.getItemCount());
   const subtotal = useCartStore(s => s.getSubtotal());
   const wishlistCount = useWishlistStore(s => s.items.length);
   const openCart = useCartStore(s => s.openDrawer);
   const { headerLogo, ready } = useBranding();
+  const { config: menu, ready: menuReady } = useHeaderMenu();
   const { storeName } = useStorefrontStatus();
   const user = useCustomerAuthStore(s => s.user);
   const router = useRouter();
-
-  const groceryCategories = [
-    { name: 'Vegetables', slug: 'vegetables', emoji: '🥬' },
-    { name: 'Fruits', slug: 'fruits', emoji: '🍎' },
-    { name: 'Meat & Fish', slug: 'meat-fish', emoji: '🥩' },
-    { name: 'Dairy & Eggs', slug: 'dairy-eggs', emoji: '🥛' },
-    { name: 'Bakery', slug: 'bakery', emoji: '🍞' },
-    { name: 'Beverages', slug: 'beverages', emoji: '🥤' },
-    { name: 'Snacks', slug: 'snacks', emoji: '🍿' },
-    { name: 'Cleaning', slug: 'cleaning', emoji: '🧹' },
-  ];
 
   useEffect(() => {
     const handleScroll = () => setScrolled(window.scrollY > 60);
@@ -66,24 +56,46 @@ export default function GroceryHeader() {
 
   return (
     <>
-      {/* Top delivery info bar */}
-      <div className="hidden bg-green-700 text-xs text-white lg:block">
-        <div className="mx-auto flex max-w-screen-2xl items-center justify-between px-4 py-2">
-          <div className="flex items-center gap-6">
-            <span className="flex items-center gap-1.5 font-medium">
-              <MapPin className="h-3 w-3" /> Deliver to: Dhaka 1205
-            </span>
-            <span className="flex items-center gap-1.5 font-medium">
-              <Clock className="h-3 w-3" /> Order before 2PM for same-day delivery
-            </span>
-          </div>
-          <div className="flex items-center gap-5">
-            <span className="flex items-center gap-1.5 font-medium">
-              <Phone className="h-3 w-3" /> +880 1700-000000
-            </span>
+      {/* Top info bar — same admin-configured content as the default theme, grocery skin */}
+      {menuReady && menu.utility_bar_enabled && (
+        <div className="hidden bg-green-700 text-xs text-white lg:block">
+          <div className="mx-auto flex max-w-screen-2xl items-center justify-between px-4 py-2">
+            <div className="flex items-center gap-6">
+              {menu.utility_bar_phone && (
+                <span className="flex items-center gap-1.5 font-medium">
+                  <Phone className="h-3 w-3" /> {menu.utility_bar_phone}
+                </span>
+              )}
+              {menu.utility_bar_text_free_shipping && (
+                <span className="flex items-center gap-1.5 font-medium">
+                  <Truck className="h-3 w-3" /> {menu.utility_bar_text_free_shipping}
+                </span>
+              )}
+              {menu.utility_bar_text_discount && (
+                <span className="flex items-center gap-1.5 font-medium">
+                  <BadgePercent className="h-3 w-3" /> {menu.utility_bar_text_discount}
+                </span>
+              )}
+            </div>
+            <div className="flex items-center gap-5">
+              <Link
+                href="/order/track"
+                className="flex items-center gap-1 font-medium text-white/80 transition-colors hover:text-white"
+              >
+                <Truck className="h-3 w-3" />
+                Track Order
+              </Link>
+              <Link
+                href="/help"
+                className="flex items-center gap-1 font-medium text-white/80 transition-colors hover:text-white"
+              >
+                <span className="flex h-3.5 w-3.5 items-center justify-center rounded-full border border-current text-[9px] font-bold leading-none">?</span>
+                Help Center
+              </Link>
+            </div>
           </div>
         </div>
-      </div>
+      )}
 
       <header className={`sticky top-0 z-40 transition-all duration-300 ${scrolled
         ? 'bg-white/90 shadow-lg shadow-black/5 backdrop-blur-xl dark:bg-gray-950/90'
@@ -187,30 +199,8 @@ export default function GroceryHeader() {
           </div>
         </div>
 
-        {/* Grocery category nav */}
-        <nav className={`hidden border-t border-gray-100 bg-white/50 backdrop-blur-sm lg:block dark:border-gray-800 dark:bg-gray-950/50 ${scrolled ? 'hidden' : ''}`}>
-          <div className="mx-auto max-w-screen-2xl px-4">
-            <div className="flex items-center gap-1 overflow-x-auto scrollbar-none py-1">
-              <Link
-                href="/store"
-                className="flex shrink-0 items-center gap-1.5 whitespace-nowrap rounded-lg bg-green-600 px-4 py-2 text-sm font-bold text-white transition-colors hover:bg-green-700"
-              >
-                <Menu className="h-4 w-4" />
-                All Categories
-              </Link>
-              {groceryCategories.map((cat) => (
-                <Link
-                  key={cat.slug}
-                  href={`/store/category/${cat.slug}`}
-                  className="flex shrink-0 items-center gap-1.5 whitespace-nowrap rounded-lg px-3 py-2 text-sm font-semibold text-gray-700 transition-colors hover:bg-green-50 hover:text-green-700 dark:text-gray-200 dark:hover:bg-green-950/30"
-                >
-                  <span>{cat.emoji}</span>
-                  {cat.name}
-                </Link>
-              ))}
-            </div>
-          </div>
-        </nav>
+        {/* Category nav — same data as the default theme, grocery skin */}
+        <StorefrontCategoryNav variant="grocery" scrolled={scrolled} />
       </header>
 
       <MobileMenu open={mobileOpen} onClose={() => setMobileOpen(false)} headerLogo={headerLogo} ready={ready} storeName={storeName} />

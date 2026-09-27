@@ -2,23 +2,17 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
-import { Package, Plus, X, RefreshCw } from 'lucide-react';
+import { Package2, RefreshCw, Loader2 } from 'lucide-react';
 import { notify } from '@/lib/notifications';
 import productVariationService from '@/services/productVariationService';
-import attributeService from '@/services/attributeService';
-import attributeValueService from '@/services/attributeValueService';
 import CustomSelect, { SelectOption } from '@/components/ui/custom-select';
-import type {
-  Product,
-  Attribute,
-  AttributeValue,
-  VariationAttributeInput,
-} from '@/types/api.types';
+import type { Product } from '@/types/api.types';
 import commonService from '@/services/commonService';
-import { GiSave } from "react-icons/gi";
+import { GiSave } from 'react-icons/gi';
 
 interface VariationFormData {
   product_id: string;
+  brand_id: string;
   sku: string;
   product_code: string;
   name: string;
@@ -31,27 +25,22 @@ interface VariationFormData {
   display_order: string;
 }
 
-interface SelectedAttribute {
-  attribute: Attribute;
-  value: AttributeValue;
-  display_order: number;
-}
+type PriceMode = 'dp' | 'mrp';
 
 export default function AddProductVariationPage() {
   const router = useRouter();
   const [isLoading, setIsLoading] = useState(false);
   const [errors, setErrors] = useState<Record<string, string[]>>({});
-  const [attributes, setAttributes] = useState<Attribute[]>([]);
   const [selectedProduct, setSelectedProduct] = useState<SelectOption | null>(null);
-  const [selectedAttributes, setSelectedAttributes] = useState<SelectedAttribute[]>([]);
-  const [selectedAttributeForAdd, setSelectedAttributeForAdd] = useState<SelectOption | null>(null);
-  const [selectedValueForAdd, setSelectedValueForAdd] = useState<SelectOption | null>(null);
+  const [selectedBrand, setSelectedBrand] = useState<SelectOption | null>(null);
   const [generatingSku, setGeneratingSku] = useState(false);
   const [defaultProductOptions, setDefaultProductOptions] = useState<SelectOption[]>([]);
-  const [businessType, setBusinessType] = useState<string>('');
+  const [defaultBrandOptions, setDefaultBrandOptions] = useState<SelectOption[]>([]);
+  const [priceMode, setPriceMode] = useState<PriceMode>('dp');
 
   const [formData, setFormData] = useState<VariationFormData>({
     product_id: '',
+    brand_id: '',
     sku: '',
     product_code: '',
     name: '',
@@ -65,68 +54,6 @@ export default function AddProductVariationPage() {
   });
 
   const [statusValue, setStatusValue] = useState<string>('1'); // 1 = Active, 0 = Inactive
-
-  // Auto-generate variation name from attributes
-  useEffect(() => {
-    if (selectedAttributes.length > 0) {
-      const name = selectedAttributes
-        .sort((a, b) => a.display_order - b.display_order)
-        .map(sa => sa.value.display_value || sa.value.value)
-        .join(' - ');
-      setFormData(prev => ({ ...prev, name }));
-    }
-  }, [selectedAttributes]);
-
-  const loadAttributes = useCallback(async () => {
-    try {
-      const attributesData = await productVariationService.getAttributes();
-      setAttributes(attributesData);
-    } catch (error) {
-      notify.error('Failed to load attributes');
-    }
-  }, []);
-
-  const loadProductAndAttributes = useCallback(async () => {
-    if (!selectedProduct?.value) return;
-
-    try {
-      // Fetch the product details to get business_type
-      const params = { search: selectedProduct.label };
-      const productsData: Product[] = await commonService.getProductsForDropdown(params);
-      const product = productsData.find((p: Product) => p.id === selectedProduct.value);
-
-      if (product?.business_type) {
-        setBusinessType(product.business_type.name);
-        await loadAttributes();
-      }
-    } catch (error) {
-      console.error('Error loading product details:', error);
-    }
-  }, [selectedProduct, loadAttributes]);
-
-  // Load attributes for async select with search
-  const loadAttributeOptions = useCallback(
-    async (inputValue: string): Promise<SelectOption[]> => {
-      try {
-        const attributesData = await attributeService.searchAttributes(inputValue || undefined, 10);
-
-        // Filter out already selected attributes
-        const usedAttributeIds = selectedAttributes.map(sa => sa.attribute.id);
-        const availableAttrs = attributesData.filter(attr => !usedAttributeIds.includes(attr.id));
-
-        const options = availableAttrs.map((attribute: Attribute) => ({
-          value: attribute.id,
-          label: attribute.name,
-        }));
-
-        return options;
-      } catch (error) {
-        console.error('Failed to load attributes:', error);
-        return [];
-      }
-    },
-    [businessType, selectedAttributes]
-  );
 
   // Load products for async select with search
   const loadProductOptions = useCallback(async (inputValue: string): Promise<SelectOption[]> => {
@@ -152,6 +79,23 @@ export default function AddProductVariationPage() {
     }
   }, []);
 
+  const loadBrandOptions = useCallback(async (inputValue: string): Promise<SelectOption[]> => {
+    try {
+      const params: { search?: string } = {};
+      if (inputValue && inputValue.trim()) {
+        params.search = inputValue.trim();
+      }
+      const brandsData = await commonService.getBrandsForDropdown(params);
+      return brandsData.map((brand: any) => ({
+        value: String(brand.id),
+        label: brand.name,
+      }));
+    } catch (error) {
+      console.error('Failed to load brands:', error);
+      return [];
+    }
+  }, []);
+
   // Load default product options on mount
   useEffect(() => {
     const loadDefaultProducts = async () => {
@@ -162,12 +106,15 @@ export default function AddProductVariationPage() {
     loadDefaultProducts();
   }, [loadProductOptions]);
 
-  // Load product details and attributes when product is selected
+  // Load default brand options on mount
   useEffect(() => {
-    if (selectedProduct) {
-      loadProductAndAttributes();
-    }
-  }, [selectedProduct, loadProductAndAttributes]);
+    const loadDefaultBrands = async () => {
+      const options = await loadBrandOptions('');
+      setDefaultBrandOptions(options);
+    };
+
+    loadDefaultBrands();
+  }, [loadBrandOptions]);
 
   const handleProductChange = (option: SelectOption | null) => {
     setSelectedProduct(option);
@@ -175,8 +122,6 @@ export default function AddProductVariationPage() {
       ...prev,
       product_id: option?.value || '',
     }));
-    // Reset attributes when product changes
-    setSelectedAttributes([]);
     setErrors(prev => {
       const newErrors = { ...prev };
       delete newErrors['product_id'];
@@ -184,12 +129,25 @@ export default function AddProductVariationPage() {
     });
   };
 
+  const handleBrandChange = (option: SelectOption | null) => {
+    setSelectedBrand(option);
+    setFormData(prev => ({
+      ...prev,
+      brand_id: option?.value || '',
+    }));
+    setErrors(prev => {
+      const newErrors = { ...prev };
+      delete newErrors['brand_id'];
+      return newErrors;
+    });
+  };
+
   /**
-   * Generate SKU based on product name and selected attributes
-   * Format: PRODUCT-INITIALS-ATTRIBUTE1-INITIALS-NUMBERS
-   * Example: Ceiling Fan with Royal Blue and 48 Inch -> CF-RB-48
+   * Generate SKU based on the product name and the free-text attribute name.
+   * Format: PRODUCT-INITIALS-ATTRIBUTE-SEQ
+   * Example: Ceiling Fan + Royal Blue -> CFAN-RB-001
    */
-  const handleGenerateSku = async () => {
+  const handleGenerateSku = useCallback(async () => {
     if (!formData.product_id) {
       notify.error('Please select a product first');
       return;
@@ -197,20 +155,13 @@ export default function AddProductVariationPage() {
 
     setGeneratingSku(true);
     try {
-      // Get product name from selected product
       const productName = selectedProduct?.label || '';
+      const attributeName = formData.name.trim();
 
-      // Get attribute values as text array (display_value or value)
-      // Filter out any undefined/empty values to ensure string[]
-      const attributeValues = selectedAttributes
-        .map(sa => sa.value.value || sa.value.display_value || '')
-        .filter(val => val.trim() !== '');
-
-      // Generate SKU with product name and attribute values as text
       const sku = await productVariationService.generateSku(
         formData.product_id,
         productName,
-        attributeValues.length > 0 ? attributeValues : undefined
+        attributeName ? [attributeName] : undefined
       );
 
       setFormData(prev => ({ ...prev, sku }));
@@ -224,99 +175,7 @@ export default function AddProductVariationPage() {
     } finally {
       setGeneratingSku(false);
     }
-  };
-
-  const handleAddAttribute = () => {
-    if (!selectedAttributeForAdd || !selectedValueForAdd) {
-      notify.error('Please select both attribute and value');
-      return;
-    }
-
-    const attribute = attributes.find(a => a.id === selectedAttributeForAdd.value);
-    const value = attribute?.values?.find(v => v.id === selectedValueForAdd.value);
-
-    if (!attribute || !value) return;
-
-    // Check if attribute already added
-    if (selectedAttributes.some(sa => sa.attribute.id === attribute.id)) {
-      notify.error('This attribute is already added');
-      return;
-    }
-
-    setSelectedAttributes(prev => [
-      ...prev,
-      {
-        attribute,
-        value,
-        display_order: prev.length,
-      },
-    ]);
-
-    // Reset selections to blank state
-    setSelectedValueForAdd(null);
-    setSelectedAttributeForAdd(null);
-  };
-
-  // Handle attribute selection change: reset value and load attribute values
-  useEffect(() => {
-    // Reset value when attribute changes
-    setSelectedValueForAdd(null);
-
-    // Load attribute values if an attribute is selected
-    const loadAttributeValues = async () => {
-      if (!selectedAttributeForAdd?.value) return;
-
-      try {
-        // Fetch attribute values
-        const attributeValues = await attributeValueService.getAttributeValues(
-          selectedAttributeForAdd.value
-        );
-
-        // Update or create attribute in state with values
-        setAttributes(prev => {
-          // Check if we already have this attribute with values
-          const existingIndex = prev.findIndex(a => a.id === selectedAttributeForAdd.value);
-
-          if (existingIndex >= 0) {
-            // Skip if already has values
-            if (prev[existingIndex].values && prev[existingIndex].values!.length > 0) {
-              return prev;
-            }
-            // Update existing attribute with values
-            const updated = [...prev];
-            updated[existingIndex] = {
-              ...updated[existingIndex],
-              values: attributeValues,
-            };
-            return updated;
-          } else {
-            // Create minimal attribute object with values
-            return [
-              ...prev,
-              {
-                id: selectedAttributeForAdd.value,
-                name: selectedAttributeForAdd.label,
-                values: attributeValues,
-              } as Attribute,
-            ];
-          }
-        });
-      } catch (error) {
-        console.error('Error loading attribute values:', error);
-        notify.error('Failed to load attribute values');
-      }
-    };
-
-    loadAttributeValues();
-  }, [selectedAttributeForAdd]);
-
-  const handleRemoveAttribute = (attributeId: string) => {
-    setSelectedAttributes(prev =>
-      prev
-        .filter(sa => sa.attribute.id !== attributeId)
-        .map((sa, index) => ({ ...sa, display_order: index }))
-    );
-  };
+  }, [formData.product_id, formData.name, selectedProduct]);
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     const { name, value, type } = e.target;
@@ -344,32 +203,32 @@ export default function AddProductVariationPage() {
     return !!errors[fieldName];
   };
 
+  const inputCls = (hasError?: boolean) =>
+    `w-full px-2.5 py-1 text-xs bg-white dark:bg-gray-700 border ${
+      hasError ? 'border-red-500' : 'border-gray-300 dark:border-gray-600'
+    } rounded text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-1 focus:ring-indigo-500`;
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
     setErrors({});
 
     try {
-      // Prepare attributes data
-      const attributes: VariationAttributeInput[] = selectedAttributes.map(sa => ({
-        attribute_id: sa.attribute.id,
-        attribute_value_id: sa.value.id,
-        display_order: sa.display_order,
-      }));
-
       const submitData = {
         product_id: formData.product_id,
+        brand_id: formData.brand_id || undefined,
         sku: formData.sku,
         product_code: formData.product_code?.trim() || undefined,
-        name: formData.name,
+        name: formData.name.trim(),
         cost_price: parseFloat(formData.cost_price) || 0,
         selling_price: parseFloat(formData.selling_price) || 0,
-        dp: formData.dp ? parseFloat(formData.dp) : undefined,
-        mrp: formData.mrp ? parseFloat(formData.mrp) : undefined,
+        // Only the active price tier is submitted; the other is left untouched.
+        dp: priceMode === 'dp' && formData.dp !== '' ? parseFloat(formData.dp) : undefined,
+        mrp: priceMode === 'mrp' && formData.mrp !== '' ? parseFloat(formData.mrp) : undefined,
+        price_mode: priceMode,
         is_active: statusValue === '1',
         is_default: formData.is_default,
         // display_order will be set automatically by backend (last row + 1)
-        attributes: attributes.length > 0 ? attributes : undefined,
       };
 
       await productVariationService.createVariation(submitData);
@@ -390,6 +249,7 @@ export default function AddProductVariationPage() {
   const clearForm = () => {
     setFormData({
       product_id: '',
+      brand_id: '',
       sku: '',
       product_code: '',
       name: '',
@@ -403,385 +263,299 @@ export default function AddProductVariationPage() {
     });
 
     setSelectedProduct(null);
-    setSelectedAttributes([]);
-    setSelectedAttributeForAdd(null);
-    setSelectedValueForAdd(null);
+    setSelectedBrand(null);
     setGeneratingSku(false);
+    setPriceMode('dp');
     setStatusValue('1');
     setErrors({});
   };
 
-  // Find selected attribute from both loaded attributes and the selectedAttributeForAdd
-  const getSelectedAttribute = (): Attribute | undefined => {
-    if (!selectedAttributeForAdd?.value) return undefined;
-
-    // First try to find in already loaded attributes
-    let attr = attributes.find(a => a.id === selectedAttributeForAdd.value);
-
-    // If not found, check in selected attributes
-    if (!attr) {
-      attr = selectedAttributes.find(
-        sa => sa.attribute.id === selectedAttributeForAdd.value
-      )?.attribute;
-    }
-
-    return attr;
-  };
-
-  const selectedAttribute = getSelectedAttribute();
-
-  const valueOptions: SelectOption[] =
-    selectedAttribute?.values?.map(v => ({
-      value: v.id,
-      label: v.display_value || v.value,
-    })) || [];
-
   return (
-    <div className="space-y-2">
+    <div className="space-y-3">
       {/* Header */}
       <div className="flex items-center justify-between">
-        <div className="flex items-center gap-2">
-          <div>
-            <h1 className="text-base font-bold text-gray-900 dark:text-gray-100 flex items-center gap-2">
-              <Package className="w-5 h-5 text-indigo-600 dark:text-indigo-400" />
-              Add Product Variation
-            </h1>
-          </div>
-        </div>
+        <h1 className="text-xl font-bold text-gray-900 dark:text-gray-100 flex items-center gap-2">
+          <Package2 className="w-5 h-5 text-indigo-600 dark:text-indigo-400" />
+          Add Product Variation
+          <span className="text-xs font-normal text-gray-500 dark:text-gray-400 ml-1 hidden sm:inline">
+            Product → Variation
+          </span>
+        </h1>
       </div>
 
-      <form onSubmit={handleSubmit} className="space-y-1" autoComplete="off">
-        {/* Product Selection */}
+      <form onSubmit={handleSubmit} className="space-y-3" autoComplete="off">
+        {/* Product Information */}
         <div className="bg-white dark:bg-gray-800 rounded-md shadow-sm border border-gray-200 dark:border-gray-700 p-3">
-          <div className="mb-2">
-            <h3 className="text-base font-semibold text-gray-900 dark:text-gray-100 mb-2">
-              Product Information
-            </h3>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-              <div>
-                <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-2">
-                  Product <span className="text-red-500">*</span>
-                </label>
-                <CustomSelect
-                  value={selectedProduct}
-                  onChange={handleProductChange}
-                  loadOptions={loadProductOptions}
-                  defaultOptions={defaultProductOptions.length > 0 ? defaultProductOptions : true}
-                  placeholder="Search product..."
-                  isInvalid={hasFieldError('product_id')}
-                />
-                {hasFieldError('product_id') && (
-                  <p className="mt-1 text-xs text-red-600 dark:text-red-400">
-                    {getFieldError('product_id')}
-                  </p>
-                )}
-              </div>
+          <h3 className="text-xs font-semibold text-gray-700 dark:text-gray-300 mb-3">
+            Product Information
+          </h3>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-x-4 gap-y-2">
+            <FormRow label="Product" required error={getFieldError('product_id')} labelWidth="w-32">
+              <CustomSelect
+                value={selectedProduct}
+                onChange={handleProductChange}
+                loadOptions={loadProductOptions}
+                defaultOptions={defaultProductOptions.length > 0 ? defaultProductOptions : true}
+                placeholder="Search product..."
+                isInvalid={hasFieldError('product_id')}
+                compact
+              />
+            </FormRow>
 
-              <div>
-                <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-2">
-                  Status <span className="text-red-500">*</span>
-                </label>
-                <select
-                  name="status"
-                  value={statusValue}
-                  onChange={e => setStatusValue(e.target.value)}
-                  className="w-full px-2.5 py-1 text-sm bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 focus:border-indigo-500 dark:focus:border-indigo-400 rounded-sm text-gray-900 dark:text-gray-100 focus:outline-none"
-                >
-                  <option value="1">Active</option>
-                  <option value="0">Inactive</option>
-                </select>
-              </div>
-            </div>
+            <FormRow label="Brand" labelWidth="w-32" error={getFieldError('brand_id')}>
+              <CustomSelect
+                value={selectedBrand}
+                onChange={handleBrandChange}
+                loadOptions={loadBrandOptions}
+                defaultOptions={defaultBrandOptions.length > 0 ? defaultBrandOptions : true}
+                placeholder="Search brand..."
+                isInvalid={hasFieldError('brand_id')}
+                compact
+              />
+            </FormRow>
 
-            {/* Status & Options */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mt-3">
-              <div className="flex items-center">
+            <FormRow label="Status" required labelWidth="w-32" error={getFieldError('is_active')}>
+              <select
+                name="status"
+                value={statusValue}
+                onChange={e => setStatusValue(e.target.value)}
+                className={inputCls(hasFieldError('is_active'))}
+              >
+                <option value="1">Active</option>
+                <option value="0">Inactive</option>
+              </select>
+            </FormRow>
+
+            <FormRow label="Options" labelWidth="w-32">
+              <label className="inline-flex items-center gap-1.5 cursor-pointer rounded-full px-2.5 py-1 hover:bg-gray-50 dark:hover:bg-gray-700/50 border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800">
                 <input
                   type="checkbox"
                   name="is_default"
                   checked={formData.is_default}
                   onChange={handleInputChange}
-                  className="w-4 h-4 text-indigo-600 border-gray-300 rounded focus:ring-indigo-500"
+                  className="h-3.5 w-3.5 accent-indigo-600"
                 />
-                <label className="ml-2 text-xs text-gray-700 dark:text-gray-300">
+                <span className="text-xs text-gray-700 dark:text-gray-300 whitespace-nowrap">
                   Set as Default
-                </label>
-              </div>
-            </div>
+                </span>
+              </label>
+            </FormRow>
           </div>
         </div>
 
-        {/* Attributes Section */}
+        {/* Variation Attribute */}
         <div className="bg-white dark:bg-gray-800 rounded-md shadow-sm border border-gray-200 dark:border-gray-700 p-3">
-          <div className="mb-2">
-            <h3 className="text-base font-semibold text-gray-900 dark:text-gray-100 mb-2">
-              Variation Attributes
-            </h3>
-
-            {/* Add Attribute Controls */}
-            {selectedProduct && (
-              <div className="mb-3 p-2.5 bg-gray-50 dark:bg-gray-900 rounded-sm">
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-                  <div>
-                    <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-2">
-                      Attribute
-                    </label>
-                    <CustomSelect
-                      value={selectedAttributeForAdd}
-                      onChange={setSelectedAttributeForAdd}
-                      loadOptions={loadAttributeOptions}
-                      defaultOptions={true}
-                      placeholder="Search attributes..."
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-2">
-                      Value
-                    </label>
-                    <CustomSelect
-                      value={selectedValueForAdd}
-                      onChange={setSelectedValueForAdd}
-                      options={valueOptions}
-                      placeholder={
-                        !selectedAttributeForAdd
-                          ? 'Select attribute first...'
-                          : valueOptions.length === 0
-                            ? 'Loading values...'
-                            : 'Select value...'
-                      }
-                      isDisabled={!selectedAttributeForAdd}
-                    />
-                  </div>
-                  <div className="flex items-end">
-                    <button
-                      type="button"
-                      onClick={handleAddAttribute}
-                      disabled={!selectedAttributeForAdd || !selectedValueForAdd}
-                      className="flex items-center justify-center gap-2 px-5 py-1.5 text-sm bg-indigo-600 hover:bg-indigo-700 disabled:bg-gray-400 text-white rounded-sm transition-colors cursor-pointer"
-                    >
-                      <GiSave className="w-4 h-4" />
-                      Add Attribute
-                    </button>
-                  </div>
-                </div>
-              </div>
-            )}
-
-            {/* Selected Attributes (Pills) */}
-            <div className="flex flex-wrap gap-2">
-              {selectedAttributes.length === 0 ? (
-                <p className="text-xs text-gray-500 dark:text-gray-400 italic">
-                  No attributes added yet
-                </p>
-              ) : (
-                selectedAttributes.map(sa => (
-                  <div
-                    key={sa.attribute.id}
-                    className="inline-flex items-center gap-2 px-2 py-1 bg-teal-100 text-teal-800 dark:bg-teal-900 dark:text-teal-200 rounded-full text-xs font-medium"
-                  >
-                    <span>
-                      {sa.attribute.name}: {sa.value.display_value || sa.value.value}
-                    </span>
-                    <button
-                      type="button"
-                      onClick={() => handleRemoveAttribute(sa.attribute.id)}
-                      className="hover:text-indigo-900 dark:hover:text-indigo-100"
-                    >
-                      <X className="w-4 h-4" />
-                    </button>
-                  </div>
-                ))
-              )}
-            </div>
-
-            {/* Auto-generated Name */}
-            {formData.name && (
-              <div className="mt-2 p-2 bg-blue-50 dark:bg-blue-900/20 rounded-sm">
-                <p className="text-xs text-blue-800 dark:text-blue-200">
-                  <strong>Attribute Name:</strong> {formData.name}
-                </p>
-              </div>
-            )}
+          <h3 className="text-xs font-semibold text-gray-700 dark:text-gray-300 mb-3">
+            Variation Attribute
+          </h3>
+          <div className="grid grid-cols-1 gap-y-2">
+            <FormRow label="Attribute Name" labelWidth="w-32" error={getFieldError('name')}>
+              <input
+                type="text"
+                name="name"
+                value={formData.name}
+                onChange={handleInputChange}
+                onBlur={() => {
+                  if (formData.product_id && !generatingSku) {
+                    handleGenerateSku();
+                  }
+                }}
+                className={inputCls(hasFieldError('name'))}
+                placeholder="e.g. Color: Red or Royal Blue"
+              />
+            </FormRow>
           </div>
+          <p className="mt-2 ml-[8.5rem] text-[11px] text-gray-500 dark:text-gray-400">
+            Enter the variation attribute directly (e.g. <span className="font-medium">Color: Red</span>).
+            The SKU is generated automatically when you leave this field.
+          </p>
         </div>
 
-        {/* SKU + Product Code Section */}
+        {/* Codes */}
         <div className="bg-white dark:bg-gray-800 rounded-md shadow-sm border border-gray-200 dark:border-gray-700 p-3">
-          <div className="mb-2">
-            <h3 className="text-base font-semibold text-gray-900 dark:text-gray-100 mb-2">
-              Codes
-            </h3>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-              <div>
-                <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-2">
-                  SKU <span className="text-red-500">*</span>
-                </label>
-                <div className="flex gap-2">
-                  <input
-                    type="text"
-                    name="sku"
-                    value={formData.sku}
-                    onChange={handleInputChange}
-                    className={`flex-1 px-2.5 py-1 text-sm bg-white dark:bg-gray-700 border ${hasFieldError('sku')
-                        ? 'border-red-500 focus:border-red-500'
-                        : 'border-gray-300 dark:border-gray-600 focus:border-indigo-500 dark:focus:border-indigo-400'
-                      } rounded-sm text-gray-900 dark:text-gray-100 focus:outline-none`}
-                    placeholder="Enter SKU or generate one"
-                  />
-                  <button
-                    type="button"
-                    onClick={handleGenerateSku}
-                    disabled={generatingSku}
-                    className="px-2.5 py-1 bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 text-gray-700 dark:text-gray-300 rounded-sm transition-colors disabled:opacity-50 text-sm  cursor-pointer"
-                    title="Generate SKU"
-                  >
-                    <RefreshCw
-                      className={`w-3.5 h-3.5 ${generatingSku ? 'animate-spin' : ''}`}
-                      aria-label={generatingSku ? 'Generating SKU…' : 'Generate SKU'}
-                    />
-                  </button>
-                </div>
-                {hasFieldError('sku') && (
-                  <p className="mt-1 text-xs text-red-600 dark:text-red-400">
-                    {getFieldError('sku')}
-                  </p>
-                )}
-              </div>
-              <div>
-                <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-2">
-                  Product Code
-                  <span className="ml-1 text-[11px] font-normal text-gray-400">(company barcode)</span>
-                </label>
+          <h3 className="text-xs font-semibold text-gray-700 dark:text-gray-300 mb-3">Codes</h3>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-x-4 gap-y-2">
+            <FormRow label="SKU" required error={getFieldError('sku')} labelWidth="w-32">
+              <div className="flex items-center gap-1.5">
                 <input
                   type="text"
-                  name="product_code"
-                  value={formData.product_code}
+                  name="sku"
+                  value={formData.sku}
                   onChange={handleInputChange}
-                  className={`w-full px-2.5 py-1 text-sm bg-white dark:bg-gray-700 border font-mono ${hasFieldError('product_code')
-                      ? 'border-red-500 focus:border-red-500'
-                      : 'border-gray-300 dark:border-gray-600 focus:border-indigo-500 dark:focus:border-indigo-400'
-                    } rounded-sm text-gray-900 dark:text-gray-100 focus:outline-none`}
-                  placeholder="Scan or enter company barcode"
+                  className={inputCls(hasFieldError('sku'))}
+                  placeholder="Enter SKU or generate one"
                 />
-                {hasFieldError('product_code') && (
-                  <p className="mt-1 text-xs text-red-600 dark:text-red-400">
-                    {getFieldError('product_code')}
-                  </p>
-                )}
+                <button
+                  type="button"
+                  onClick={handleGenerateSku}
+                  disabled={generatingSku}
+                  className="shrink-0 inline-flex items-center justify-center h-8 w-8 bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 text-gray-700 dark:text-gray-300 rounded border border-gray-300 dark:border-gray-600 transition-colors disabled:opacity-50 cursor-pointer"
+                  title="Generate SKU"
+                >
+                  {generatingSku ? (
+                    <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                  ) : (
+                    <RefreshCw className="w-3.5 h-3.5" />
+                  )}
+                </button>
               </div>
-            </div>
+            </FormRow>
+
+            <FormRow label="Product Code" labelWidth="w-32" error={getFieldError('product_code')}>
+              <input
+                type="text"
+                name="product_code"
+                value={formData.product_code}
+                onChange={handleInputChange}
+                className={`${inputCls(hasFieldError('product_code'))} font-mono`}
+                placeholder="Scan or enter company barcode"
+              />
+            </FormRow>
           </div>
         </div>
 
         {/* Pricing */}
         <div className="bg-white dark:bg-gray-800 rounded-md shadow-sm border border-gray-200 dark:border-gray-700 p-3">
-          <div className="mb-2">
-            <h3 className="text-base font-semibold text-gray-900 dark:text-gray-100 mb-2">
-              Pricing
-            </h3>
-            <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
-              <div>
-                <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-2">
-                  Cost Price <span className="text-red-500">*</span>
-                </label>
-                <input
-                  type="number"
-                  name="cost_price"
-                  value={formData.cost_price}
-                  onChange={handleInputChange}
-                  step="0.01"
-                  min="0.01"
-                  className={`w-full px-2.5 py-1 text-sm bg-white dark:bg-gray-700 border ${hasFieldError('cost_price')
-                      ? 'border-red-500 focus:border-red-500'
-                      : 'border-gray-300 dark:border-gray-600 focus:border-indigo-500 dark:focus:border-indigo-400'
-                    } rounded-sm text-gray-900 dark:text-gray-100 focus:outline-none`}
-                  placeholder="0.00"
-                />
-                {hasFieldError('cost_price') && (
-                  <p className="mt-1 text-xs text-red-600 dark:text-red-400">
-                    {getFieldError('cost_price')}
-                  </p>
-                )}
-              </div>
+          <h3 className="text-xs font-semibold text-gray-700 dark:text-gray-300 mb-3">Pricing</h3>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-x-4 gap-y-2">
+            <FormRow label="Cost Price" required error={getFieldError('cost_price')} labelWidth="w-32">
+              <input
+                type="number"
+                name="cost_price"
+                value={formData.cost_price}
+                onChange={handleInputChange}
+                step="0.01"
+                min="0.01"
+                className={inputCls(hasFieldError('cost_price'))}
+                placeholder="0.00"
+              />
+            </FormRow>
 
-              <div>
-                <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-2">
-                  Selling Price <span className="text-red-500">*</span>
-                </label>
-                <input
-                  type="number"
-                  name="selling_price"
-                  value={formData.selling_price}
-                  onChange={handleInputChange}
-                  step="0.01"
-                  min="0.01"
-                  className={`w-full px-2.5 py-1 text-sm bg-white dark:bg-gray-700 border ${hasFieldError('selling_price')
-                      ? 'border-red-500 focus:border-red-500'
-                      : 'border-gray-300 dark:border-gray-600 focus:border-indigo-500 dark:focus:border-indigo-400'
-                    } rounded-sm text-gray-900 dark:text-gray-100 focus:outline-none`}
-                  placeholder="0.00"
-                />
-                {hasFieldError('selling_price') && (
-                  <p className="mt-1 text-xs text-red-600 dark:text-red-400">
-                    {getFieldError('selling_price')}
-                  </p>
-                )}
-              </div>
+            <FormRow label="Selling Price" required error={getFieldError('selling_price')} labelWidth="w-32">
+              <input
+                type="number"
+                name="selling_price"
+                value={formData.selling_price}
+                onChange={handleInputChange}
+                step="0.01"
+                min="0.01"
+                className={inputCls(hasFieldError('selling_price'))}
+                placeholder="0.00"
+              />
+            </FormRow>
+          </div>
 
-              <div>
-                <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-2">
-                  DP
-                </label>
-                <input
-                  type="number"
-                  name="dp"
-                  value={formData.dp}
-                  onChange={handleInputChange}
-                  step="0.01"
-                  min="0"
-                  className="w-full px-2.5 py-1 text-sm bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-sm text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                  placeholder="0.00"
-                />
-              </div>
+          {/* Price tier switcher — DP or MRP is active at a time */}
+          <div className="mt-3 pt-3 border-t border-gray-200 dark:border-gray-700">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-x-4 gap-y-2">
+              <FormRow label="Price Type" labelWidth="w-32">
+                <div className="inline-flex rounded border border-gray-300 dark:border-gray-600 overflow-hidden">
+                  <button
+                    type="button"
+                    onClick={() => setPriceMode('dp')}
+                    className={`px-3 py-1 text-xs font-medium transition-colors cursor-pointer ${
+                      priceMode === 'dp'
+                        ? 'bg-indigo-600 text-white'
+                        : 'bg-white dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-600'
+                    }`}
+                  >
+                    DP Price
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setPriceMode('mrp')}
+                    className={`px-3 py-1 text-xs font-medium border-l border-gray-300 dark:border-gray-600 transition-colors cursor-pointer ${
+                      priceMode === 'mrp'
+                        ? 'bg-indigo-600 text-white'
+                        : 'bg-white dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-600'
+                    }`}
+                  >
+                    MRP Price
+                  </button>
+                </div>
+              </FormRow>
 
-              <div>
-                <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-2">
-                  MRP
-                </label>
-                <input
-                  type="number"
-                  name="mrp"
-                  value={formData.mrp}
-                  onChange={handleInputChange}
-                  step="0.01"
-                  min="0"
-                  className="w-full px-2.5 py-1 text-sm bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-sm text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                  placeholder="0.00"
-                />
-              </div>
+              {priceMode === 'dp' ? (
+                <FormRow label="DP Price" error={getFieldError('dp')} labelWidth="w-32">
+                  <input
+                    type="number"
+                    name="dp"
+                    value={formData.dp}
+                    onChange={handleInputChange}
+                    step="0.01"
+                    min="0"
+                    className={inputCls(hasFieldError('dp'))}
+                    placeholder="0.00"
+                  />
+                </FormRow>
+              ) : (
+                <FormRow label="MRP Price" error={getFieldError('mrp')} labelWidth="w-32">
+                  <input
+                    type="number"
+                    name="mrp"
+                    value={formData.mrp}
+                    onChange={handleInputChange}
+                    step="0.01"
+                    min="0"
+                    className={inputCls(hasFieldError('mrp'))}
+                    placeholder="0.00"
+                  />
+                </FormRow>
+              )}
             </div>
           </div>
         </div>
 
         {/* Action Buttons */}
-        <div className="flex justify-start gap-2 pt-2">
-          <button
-            type="submit"
-            disabled={isLoading}
-            className="flex items-center justify-center gap-2 px-5 py-1.5 text-sm bg-indigo-600 hover:bg-indigo-700 disabled:bg-gray-400 text-white rounded-sm transition-colors cursor-pointer"
-          >
-            <GiSave className="w-4 h-4" />
-            {isLoading ? 'Saving...' : 'Save Variation'}
-          </button>
+        <div className="flex justify-end gap-2">
           <button
             type="button"
             onClick={() => router.back()}
-            className="px-4 py-1.5 text-sm border border-gray-300 dark:border-gray-600 rounded-sm text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors cursor-pointer"
+            className="px-3 py-1.5 text-xs rounded border border-gray-300 dark:border-gray-600 text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors cursor-pointer"
           >
             Cancel
           </button>
+          <button
+            type="submit"
+            disabled={isLoading}
+            className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs bg-indigo-600 hover:bg-indigo-700 disabled:opacity-60 text-white rounded transition-colors cursor-pointer"
+          >
+            {isLoading ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <GiSave className="w-3.5 h-3.5" />}
+            {isLoading ? 'Saving...' : 'Save Variation'}
+          </button>
         </div>
       </form>
+    </div>
+  );
+}
+
+function FormRow({
+  label,
+  required,
+  error,
+  children,
+  labelWidth = 'w-20',
+  className = '',
+}: {
+  label: string;
+  required?: boolean;
+  error?: string | null;
+  children: React.ReactNode;
+  labelWidth?: string;
+  className?: string;
+}) {
+  const errorMl =
+    labelWidth === 'w-32' ? 'ml-[8.5rem]' : labelWidth === 'w-20' ? 'ml-[5.5rem]' : 'ml-[4.375rem]';
+  return (
+    <div className={className}>
+      <div className="flex items-center gap-1.5">
+        <label className={`${labelWidth} shrink-0 text-[11px] font-medium text-gray-600 dark:text-gray-400 text-right`}>
+          {label}
+          {required && <span className="text-red-500">*</span>}:
+        </label>
+        <div className="flex-1 min-w-0">{children}</div>
+      </div>
+      {error && <p className={`text-[10px] text-red-500 mt-0.5 ${errorMl}`}>{error}</p>}
     </div>
   );
 }

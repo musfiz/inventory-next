@@ -93,6 +93,32 @@ function fmtNum(n?: string | number | null) {
   return Number(n).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 }
 
+// ─── Shared field decoration ──────────────────────────────────────────────────
+
+const inputCls = (hasError?: boolean) =>
+  `w-full px-2.5 py-1 text-xs bg-white dark:bg-gray-700 border ${hasError ? 'border-red-500' : 'border-gray-300 dark:border-gray-600'} rounded-sm text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-1 focus:ring-indigo-500`;
+
+const amountInputCls = (hasError?: boolean) => `${inputCls(hasError)} text-right`;
+
+function FormRow({ label, required, error, children, className = '', labelWidth = 'w-32', fieldWidth = 'flex-1 min-w-0' }: { label: string; required?: boolean; error?: string | null; children: React.ReactNode; className?: string; labelWidth?: string; fieldWidth?: string }) {
+  const errorMl =
+    labelWidth === 'w-32' ? 'ml-[8.5rem]' : labelWidth === 'w-20' ? 'ml-[5.5rem]' : 'ml-[4.375rem]';
+  return (
+    <div className={className}>
+      <div className="flex items-start gap-1.5">
+        <label className={`${labelWidth} shrink-0 pt-1 text-[11px] font-medium text-gray-600 dark:text-gray-400 text-left`}>
+          {label}{required && <span className="text-red-500">*</span>}:
+        </label>
+        <div className={fieldWidth}>{children}</div>
+      </div>
+      {error && <p className={`text-[10px] text-red-500 mt-0.5 ${errorMl}`}>{error}</p>}
+    </div>
+  );
+}
+
+const sectionCardCls = 'bg-white dark:bg-gray-800 rounded-md shadow-sm border border-gray-200 dark:border-gray-700 p-3';
+const sectionTitleCls = 'text-xs font-semibold text-gray-700 dark:text-gray-300 mb-3';
+
 // ─── Page ─────────────────────────────────────────────────────────────────────
 
 export default function PosSessionPage() {
@@ -419,39 +445,30 @@ export default function PosSessionPage() {
     },
   ];
 
-  // ── Shared styles ─────────────────────────────────────────────────────────
-
-  const inputCls = 'w-full px-2 py-1.5 text-sm border rounded-sm focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-transparent border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100';
-  const amountInputCls = `${inputCls} text-right`;
-  const labelCls = 'block text-sm font-medium text-gray-700 dark:text-gray-300 mb-0.5';
-  const errCls = 'text-xs text-red-500 mt-0.5';
-  const sectionCls = 'pt-3 pb-1 border-b border-gray-200 dark:border-gray-600 mb-2 text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400';
-
   // ── Add form body (only fields accepted by openPosSession()) ────────────
 
   const renderAddFormBody = () => (
-    <>
-      {/* Tenant — SuperAdmin only, own row matching register page */}
+    <div className={sectionCardCls}>
+      <h3 className={sectionTitleCls}>Session Details</h3>
+
+      {/* Tenant — SuperAdmin only, single field on top */}
       {isSuperAdmin && (
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-1.5">
-          <div>
+        <div className="mb-2 md:w-1/2">
+          <FormRow label="Tenant" error={errors.tenant_id || null}>
             <CustomSelect
               value={selectedTenant}
               onChange={handleTenantChange}
               loadOptions={loadTenantOptions}
               defaultOptions={defaultTenantOptions}
               placeholder="Select tenant"
-              className="text-sm"
+              compact
             />
-            {errors.tenant_id && <p className={errCls}>{errors.tenant_id}</p>}
-          </div>
+          </FormRow>
         </div>
       )}
 
-      {/* Register · Opening Balance · Closing Balance */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
-        <div>
-          <label className={labelCls}>Register <span className="text-red-500">*</span></label>
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-x-4 gap-y-2">
+        <FormRow label="Register" required error={errors.register_id || null}>
           <CustomSelect
             key={form.tenant_id || 'no-tenant'}
             value={selectedRegister}
@@ -459,194 +476,177 @@ export default function PosSessionPage() {
             loadOptions={loadRegisterOptions}
             defaultOptions={isSuperAdmin ? tenantRegisterOptions : defaultRegisterOptions}
             placeholder={isSuperAdmin && !form.tenant_id ? 'Select tenant first' : 'Select register'}
-            className="text-sm"
+            compact
           />
-          {errors.register_id && <p className={errCls}>{errors.register_id}</p>}
-        </div>
-        <div>
-          <label className={`${labelCls} text-right block`}>Opening Balance <span className="text-red-500">*</span></label>
-          <input type="number" step="0.01" min="0" value={form.opening_balance} onChange={sf('opening_balance')} onFocus={selectAmountInput} onClick={selectAmountInput} className={amountInputCls} />
-          {errors.opening_balance && <p className={errCls}>{errors.opening_balance}</p>}
-        </div>
-        <div>
-          <label className={`${labelCls} text-right block`}>Closing Balance</label>
-          <input type="number" step="0.01" min="0" value={form.closing_balance} onChange={sf('closing_balance')} onFocus={selectAmountInput} onClick={selectAmountInput} className={amountInputCls} />
-        </div>
-      </div>
+        </FormRow>
 
-      {/* Start Time · End Time */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
-        <div>
-          <label className={labelCls}>Start Time</label>
+        <FormRow label="Opening Balance" required error={errors.opening_balance || null}>
+          <input type="number" step="0.01" min="0" value={form.opening_balance} onChange={sf('opening_balance')} onFocus={selectAmountInput} onClick={selectAmountInput} className={amountInputCls(!!errors.opening_balance)} />
+        </FormRow>
+
+        <FormRow label="Closing Balance">
+          <input type="number" step="0.01" min="0" value={form.closing_balance} onChange={sf('closing_balance')} onFocus={selectAmountInput} onClick={selectAmountInput} className={amountInputCls()} />
+        </FormRow>
+
+        <FormRow label="Start Time">
           <DateTimePicker value={form.start_time} onChange={v => setForm(f => ({ ...f, start_time: v }))} placeholder="Defaults to now" />
-        </div>
-        <div>
-          <label className={labelCls}>End Time</label>
-          <DateTimePicker value={form.end_time} onChange={v => setForm(f => ({ ...f, end_time: v }))} placeholder="Leave blank if open" />
-        </div>
-      </div>
+        </FormRow>
 
-      {/* Opening Notes */}
-      <div>
-        <label className={labelCls}>Opening Notes</label>
-        <textarea rows={2} value={form.opening_notes} onChange={sf('opening_notes')} className={inputCls} placeholder="Notes about opening this session..." />
+        <FormRow label="End Time">
+          <DateTimePicker value={form.end_time} onChange={v => setForm(f => ({ ...f, end_time: v }))} placeholder="Leave blank if open" />
+        </FormRow>
+
+        <FormRow label="Opening Notes" className="md:col-span-2">
+          <textarea rows={2} value={form.opening_notes} onChange={sf('opening_notes')} className={inputCls()} placeholder="Notes about opening this session..." />
+        </FormRow>
       </div>
-    </>
+    </div>
   );
 
   // ── Edit form body (all fields — for admin reconciliation) ───────────────
 
   const renderEditFormBody = () => (
     <>
-      {/* Tenant — SuperAdmin only, own row */}
-      {isSuperAdmin && (
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-1.5">
-          <div>
+      {/* ── Session Details ── */}
+      <div className={sectionCardCls}>
+        <h3 className={sectionTitleCls}>Session Details</h3>
+
+        {isSuperAdmin && (
+          <div className="mb-2 md:w-1/2">
+            <FormRow label="Tenant" error={errors.tenant_id || null}>
+              <CustomSelect
+                value={selectedTenant}
+                onChange={handleTenantChange}
+                loadOptions={loadTenantOptions}
+                defaultOptions={defaultTenantOptions}
+                placeholder="Select tenant"
+                compact
+              />
+            </FormRow>
+          </div>
+        )}
+
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-x-4 gap-y-2">
+          <FormRow label="Register" required error={errors.register_id || null}>
             <CustomSelect
-              value={selectedTenant}
-              onChange={handleTenantChange}
-              loadOptions={loadTenantOptions}
-              defaultOptions={defaultTenantOptions}
-              placeholder="Select tenant"
-              className="text-sm"
+              key={form.tenant_id || 'no-tenant'}
+              value={selectedRegister}
+              onChange={opt => { setSelectedRegister(opt); setForm(f => ({ ...f, register_id: opt?.value ?? '' })); }}
+              loadOptions={loadRegisterOptions}
+              defaultOptions={isSuperAdmin ? tenantRegisterOptions : defaultRegisterOptions}
+              placeholder={isSuperAdmin && !form.tenant_id ? 'Select tenant first' : 'Select register'}
+              compact
             />
-            {errors.tenant_id && <p className={errCls}>{errors.tenant_id}</p>}
-          </div>
-        </div>
-      )}
+          </FormRow>
 
-      {/* Register · Status */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
-        <div>
-          <label className={labelCls}>Register <span className="text-red-500">*</span></label>
-          <CustomSelect
-            key={form.tenant_id || 'no-tenant'}
-            value={selectedRegister}
-            onChange={opt => { setSelectedRegister(opt); setForm(f => ({ ...f, register_id: opt?.value ?? '' })); }}
-            loadOptions={loadRegisterOptions}
-            defaultOptions={isSuperAdmin ? tenantRegisterOptions : defaultRegisterOptions}
-            placeholder={isSuperAdmin && !form.tenant_id ? 'Select tenant first' : 'Select register'}
-            className="text-sm"
-          />
-          {errors.register_id && <p className={errCls}>{errors.register_id}</p>}
-        </div>
-        <div>
-          <label className={labelCls}>Status</label>
-          <select value={form.status} onChange={sf('status')} className={inputCls}>
-            <option value="open">Open</option>
-            <option value="closed">Closed</option>
-            <option value="paused">Paused</option>
-            <option value="suspended">Suspended</option>
-          </select>
+          <FormRow label="Status">
+            <select value={form.status} onChange={sf('status')} className={inputCls()}>
+              <option value="open">Open</option>
+              <option value="closed">Closed</option>
+              <option value="paused">Paused</option>
+              <option value="suspended">Suspended</option>
+            </select>
+          </FormRow>
+
+          <FormRow label="Start Time">
+            <DateTimePicker value={form.start_time} onChange={v => setForm(f => ({ ...f, start_time: v }))} placeholder="Select start time" />
+          </FormRow>
+
+          <FormRow label="End Time">
+            <DateTimePicker value={form.end_time} onChange={v => setForm(f => ({ ...f, end_time: v }))} placeholder="Select end time" />
+          </FormRow>
         </div>
       </div>
 
-      {/* Time */}
-      <p className={sectionCls}>Time</p>
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
-        <div>
-          <label className={labelCls}>Start Time</label>
-          <DateTimePicker value={form.start_time} onChange={v => setForm(f => ({ ...f, start_time: v }))} placeholder="Select start time" />
-        </div>
-        <div>
-          <label className={labelCls}>End Time</label>
-          <DateTimePicker value={form.end_time} onChange={v => setForm(f => ({ ...f, end_time: v }))} placeholder="Select end time" />
-        </div>
-      </div>
-
-      {/* Balances */}
-      <p className={sectionCls}>Balances</p>
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
-        <div>
-          <label className={labelCls}>Opening Balance <span className="text-red-500">*</span></label>
-          <input type="number" step="0.01" min="0" value={form.opening_balance} onChange={sf('opening_balance')} onFocus={selectAmountInput} onClick={selectAmountInput} className={amountInputCls} />
-          {errors.opening_balance && <p className={errCls}>{errors.opening_balance}</p>}
-        </div>
-        <div>
-          <label className={labelCls}>Closing Balance</label>
-          <input type="number" step="0.01" min="0" value={form.closing_balance} onChange={sf('closing_balance')} onFocus={selectAmountInput} onClick={selectAmountInput} className={amountInputCls} />
-        </div>
-        <div>
-          <label className={labelCls}>Actual Cash</label>
-          <input type="number" step="0.01" min="0" value={form.actual_cash} onChange={sf('actual_cash')} onFocus={selectAmountInput} onClick={selectAmountInput} className={amountInputCls} />
-        </div>
-      </div>
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
-        <div>
-          <label className={labelCls}>Cash In</label>
-          <input type="number" step="0.01" min="0" value={form.cash_in} onChange={sf('cash_in')} onFocus={selectAmountInput} onClick={selectAmountInput} className={amountInputCls} />
-        </div>
-        <div>
-          <label className={labelCls}>Cash Out</label>
-          <input type="number" step="0.01" min="0" value={form.cash_out} onChange={sf('cash_out')} onFocus={selectAmountInput} onClick={selectAmountInput} className={amountInputCls} />
+      {/* ── Balances ── */}
+      <div className={sectionCardCls}>
+        <h3 className={sectionTitleCls}>Balances</h3>
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-x-4 gap-y-2">
+          <FormRow label="Opening Balance" required error={errors.opening_balance || null}>
+            <input type="number" step="0.01" min="0" value={form.opening_balance} onChange={sf('opening_balance')} onFocus={selectAmountInput} onClick={selectAmountInput} className={amountInputCls(!!errors.opening_balance)} />
+          </FormRow>
+          <FormRow label="Closing Balance">
+            <input type="number" step="0.01" min="0" value={form.closing_balance} onChange={sf('closing_balance')} onFocus={selectAmountInput} onClick={selectAmountInput} className={amountInputCls()} />
+          </FormRow>
+          <FormRow label="Actual Cash">
+            <input type="number" step="0.01" min="0" value={form.actual_cash} onChange={sf('actual_cash')} onFocus={selectAmountInput} onClick={selectAmountInput} className={amountInputCls()} />
+          </FormRow>
+          <FormRow label="Cash In">
+            <input type="number" step="0.01" min="0" value={form.cash_in} onChange={sf('cash_in')} onFocus={selectAmountInput} onClick={selectAmountInput} className={amountInputCls()} />
+          </FormRow>
+          <FormRow label="Cash Out">
+            <input type="number" step="0.01" min="0" value={form.cash_out} onChange={sf('cash_out')} onFocus={selectAmountInput} onClick={selectAmountInput} className={amountInputCls()} />
+          </FormRow>
         </div>
       </div>
 
-      {/* Sales Totals */}
-      <p className={sectionCls}>Sales Totals</p>
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
-        {([
-          ['total_sales', 'Total Sales'],
-          ['total_refunds', 'Total Refunds'],
-          ['total_discount', 'Total Discount'],
-          ['total_tax', 'Total Tax'],
-        ] as [keyof SessionFormData, string][]).map(([key, lbl]) => (
-          <div key={key}>
-            <label className={labelCls}>{lbl}</label>
-            <input type="number" step="0.01" min="0" value={form[key] as string} onChange={sf(key)} onFocus={selectAmountInput} onClick={selectAmountInput} className={amountInputCls} />
-          </div>
-        ))}
-      </div>
-
-      {/* Payment Methods */}
-      <p className={sectionCls}>Payment Methods</p>
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
-        {([
-          ['cash_sales', 'Cash'],
-          ['card_sales', 'Card'],
-          ['bkash_sales', 'bKash'],
-          ['nagad_sales', 'Nagad'],
-          ['rocket_sales', 'Rocket'],
-          ['bank_transfer_sales', 'Bank Transfer'],
-          ['credit_sales', 'Credit'],
-        ] as [keyof SessionFormData, string][]).map(([key, lbl]) => (
-          <div key={key}>
-            <label className={labelCls}>{lbl}</label>
-            <input type="number" step="0.01" min="0" value={form[key] as string} onChange={sf(key)} onFocus={selectAmountInput} onClick={selectAmountInput} className={amountInputCls} />
-          </div>
-        ))}
-      </div>
-
-      {/* Counts */}
-      <p className={sectionCls}>Counts</p>
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
-        {([
-          ['sale_count', 'Sale Count'],
-          ['refund_count', 'Refund Count'],
-          ['item_count', 'Item Count'],
-          ['customer_count', 'Customer Count'],
-        ] as [keyof SessionFormData, string][]).map(([key, lbl]) => (
-          <div key={key}>
-            <label className={labelCls}>{lbl}</label>
-            <input type="number" min="0" value={form[key] as string} onChange={sf(key)} onFocus={selectAmountInput} onClick={selectAmountInput} className={amountInputCls} />
-          </div>
-        ))}
-      </div>
-
-      {/* Notes */}
-      <p className={sectionCls}>Notes</p>
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
-        <div>
-          <label className={labelCls}>Opening Notes</label>
-          <textarea rows={3} value={form.opening_notes} onChange={sf('opening_notes')} className={inputCls} placeholder="Notes about opening..." />
+      {/* ── Sales Totals ── */}
+      <div className={sectionCardCls}>
+        <h3 className={sectionTitleCls}>Sales Totals</h3>
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-x-4 gap-y-2">
+          {([
+            ['total_sales', 'Total Sales'],
+            ['total_refunds', 'Total Refunds'],
+            ['total_discount', 'Total Discount'],
+            ['total_tax', 'Total Tax'],
+          ] as [keyof SessionFormData, string][]).map(([key, lbl]) => (
+            <FormRow key={key} label={lbl} labelWidth="w-24">
+              <input type="number" step="0.01" min="0" value={form[key] as string} onChange={sf(key)} onFocus={selectAmountInput} onClick={selectAmountInput} className={amountInputCls()} />
+            </FormRow>
+          ))}
         </div>
-        <div>
-          <label className={labelCls}>Closing Notes</label>
-          <textarea rows={3} value={form.closing_notes} onChange={sf('closing_notes')} className={inputCls} placeholder="Notes about closing..." />
+      </div>
+
+      {/* ── Payment Methods ── */}
+      <div className={sectionCardCls}>
+        <h3 className={sectionTitleCls}>Payment Methods</h3>
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-x-4 gap-y-2">
+          {([
+            ['cash_sales', 'Cash'],
+            ['card_sales', 'Card'],
+            ['bkash_sales', 'bKash'],
+            ['nagad_sales', 'Nagad'],
+            ['rocket_sales', 'Rocket'],
+            ['bank_transfer_sales', 'Bank Transfer'],
+            ['credit_sales', 'Credit'],
+          ] as [keyof SessionFormData, string][]).map(([key, lbl]) => (
+            <FormRow key={key} label={lbl} labelWidth="w-24">
+              <input type="number" step="0.01" min="0" value={form[key] as string} onChange={sf(key)} onFocus={selectAmountInput} onClick={selectAmountInput} className={amountInputCls()} />
+            </FormRow>
+          ))}
         </div>
-        <div>
-          <label className={labelCls}>Closing Reason</label>
-          <textarea rows={3} value={form.closing_reason} onChange={sf('closing_reason')} className={inputCls} placeholder="Reason for closing..." />
+      </div>
+
+      {/* ── Counts ── */}
+      <div className={sectionCardCls}>
+        <h3 className={sectionTitleCls}>Counts</h3>
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-x-4 gap-y-2">
+          {([
+            ['sale_count', 'Sale Count'],
+            ['refund_count', 'Refund Count'],
+            ['item_count', 'Item Count'],
+            ['customer_count', 'Customer Count'],
+          ] as [keyof SessionFormData, string][]).map(([key, lbl]) => (
+            <FormRow key={key} label={lbl} labelWidth="w-24">
+              <input type="number" min="0" value={form[key] as string} onChange={sf(key)} onFocus={selectAmountInput} onClick={selectAmountInput} className={amountInputCls()} />
+            </FormRow>
+          ))}
+        </div>
+      </div>
+
+      {/* ── Notes ── */}
+      <div className={sectionCardCls}>
+        <h3 className={sectionTitleCls}>Notes</h3>
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-x-4 gap-y-2">
+          <FormRow label="Opening Notes">
+            <textarea rows={3} value={form.opening_notes} onChange={sf('opening_notes')} className={inputCls()} placeholder="Notes about opening..." />
+          </FormRow>
+          <FormRow label="Closing Notes">
+            <textarea rows={3} value={form.closing_notes} onChange={sf('closing_notes')} className={inputCls()} placeholder="Notes about closing..." />
+          </FormRow>
+          <FormRow label="Closing Reason">
+            <textarea rows={3} value={form.closing_reason} onChange={sf('closing_reason')} className={inputCls()} placeholder="Reason for closing..." />
+          </FormRow>
         </div>
       </div>
     </>
@@ -658,7 +658,9 @@ export default function PosSessionPage() {
     <div className="space-y-2">
       {/* Header */}
       <div className="flex items-center justify-between">
-        <h1 className="text-xl font-bold text-gray-900 dark:text-gray-100">POS Sessions</h1>
+        <h1 className="text-xl font-bold text-gray-900 dark:text-gray-100">
+          {mode === 'open' ? 'Add Session' : mode === 'edit' ? 'Edit Session' : mode === 'close' ? 'Close Session' : 'POS Sessions'}
+        </h1>
         {hasPermission('create-pos-session') && (
           <button
             onClick={handleOpenNew}
@@ -671,111 +673,93 @@ export default function PosSessionPage() {
 
       {/* ── Open Session Form ── */}
       {mode === 'open' && (
-        <div className="bg-white dark:bg-gray-800 rounded-md shadow-sm p-4">
-          <div className="flex items-center justify-between mb-3">
-            <h2 className="text-base font-semibold text-gray-900 dark:text-gray-100">Add New Session</h2>
-            <button onClick={handleCancel} className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 cursor-pointer"><X className="w-5 h-5" /></button>
+        <form onSubmit={handleSubmitOpen} className="space-y-3" autoComplete="off">
+          {renderAddFormBody()}
+          <div className="flex justify-end gap-2">
+            <button type="button" onClick={handleCancel} className="px-3 py-1.5 text-xs rounded border border-gray-300 dark:border-gray-600 text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 cursor-pointer">Cancel</button>
+            <button type="submit" disabled={submitting} className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs bg-indigo-600 hover:bg-indigo-700 disabled:opacity-60 text-white rounded cursor-pointer">
+              <GiSave className="w-3.5 h-3.5" />
+              {submitting ? 'Saving…' : 'Save Session'}
+            </button>
           </div>
-          <form onSubmit={handleSubmitOpen} className="space-y-2">
-            {renderAddFormBody()}
-            <div className="flex gap-2 pt-2">
-              <button type="submit" disabled={submitting} className="flex items-center justify-center gap-2 px-5 py-1.5 text-sm bg-indigo-600 hover:bg-indigo-700 disabled:bg-gray-400 text-white rounded-sm transition-colors cursor-pointer disabled:opacity-60">
-                <GiSave className="w-4 h-4" />
-                {submitting ? 'Saving…' : 'Save Session'}
-              </button>
-              <button type="button" onClick={handleCancel} className="px-4 py-1.5 bg-gray-500 text-white text-sm font-medium rounded-sm hover:bg-gray-600 transition-colors cursor-pointer">Cancel</button>
-            </div>
-          </form>
-        </div>
+        </form>
       )}
 
       {/* ── Edit Session Form ── */}
       {mode === 'edit' && activeSession && (
-        <div className="bg-white dark:bg-gray-800 rounded-md shadow-sm p-4">
-          <div className="flex items-center justify-between mb-3">
-            <h2 className="text-base font-semibold text-gray-900 dark:text-gray-100">
-              Edit Session — <span className="font-mono text-blue-600">{activeSession.session_number}</span>
-            </h2>
-            <button onClick={handleCancel} className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 cursor-pointer"><X className="w-5 h-5" /></button>
+        <form onSubmit={handleSubmitEdit} className="space-y-3" autoComplete="off">
+          <div className="text-xs text-gray-500 dark:text-gray-400">
+            Session <span className="font-mono font-semibold text-indigo-600 dark:text-indigo-400">{activeSession.session_number}</span>
           </div>
-          <form onSubmit={handleSubmitEdit} className="space-y-2">
-            {renderEditFormBody()}
-            <div className="flex gap-2 pt-2">
-              <button type="submit" disabled={submitting} className="flex items-center justify-center gap-2 px-5 py-1.5 text-sm bg-indigo-600 hover:bg-indigo-700 disabled:bg-gray-400 text-white rounded-sm transition-colors cursor-pointer disabled:opacity-60">
-                <GiSave className="w-4 h-4" />
-                {submitting ? 'Saving…' : 'Save Changes'}
-              </button>
-              <button type="button" onClick={handleCancel} className="px-4 py-1.5 bg-gray-500 text-white text-sm font-medium rounded-sm hover:bg-gray-600 transition-colors cursor-pointer">Cancel</button>
-            </div>
-          </form>
-        </div>
+          {renderEditFormBody()}
+          <div className="flex justify-end gap-2">
+            <button type="button" onClick={handleCancel} className="px-3 py-1.5 text-xs rounded border border-gray-300 dark:border-gray-600 text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 cursor-pointer">Cancel</button>
+            <button type="submit" disabled={submitting} className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs bg-indigo-600 hover:bg-indigo-700 disabled:opacity-60 text-white rounded cursor-pointer">
+              <GiSave className="w-3.5 h-3.5" />
+              {submitting ? 'Saving…' : 'Save Changes'}
+            </button>
+          </div>
+        </form>
       )}
 
       {/* ── Close Session Form ── */}
       {mode === 'close' && activeSession && (
-        <div className="bg-white dark:bg-gray-800 rounded-md shadow-sm p-4">
-          <div className="flex items-center justify-between mb-3">
-            <div>
-              <h2 className="text-base font-semibold text-gray-900 dark:text-gray-100">
-                Close Session — <span className="font-mono text-orange-600">{activeSession.session_number}</span>
-              </h2>
-              <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
+        <div className="space-y-3">
+          <div className="bg-white dark:bg-gray-800 rounded-md shadow-sm border border-gray-200 dark:border-gray-700 p-3">
+            <div className="mb-3">
+              <h3 className="text-xs font-semibold text-gray-700 dark:text-gray-300">
+                Close Session — <span className="font-mono text-orange-600 dark:text-orange-400">{activeSession.session_number}</span>
+              </h3>
+              <p className="text-[11px] text-gray-500 dark:text-gray-400 mt-0.5">
                 Register: {(activeSession as any).register?.name ?? '-'} &nbsp;|&nbsp;
                 Opened: {fmtDate(activeSession.start_time)} &nbsp;|&nbsp;
                 Opening Balance: <strong>{fmtNum(activeSession.opening_balance)}</strong>
               </p>
             </div>
-            <button onClick={handleCancel} className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 cursor-pointer"><X className="w-5 h-5" /></button>
+
+            {/* Session summary */}
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-2 mb-3 p-2.5 rounded-sm bg-gray-50 dark:bg-gray-700/50 text-xs">
+              {[
+                ['Total Sales', fmtNum(activeSession.total_sales)],
+                ['Total Refunds', fmtNum(activeSession.total_refunds)],
+                ['Cash Sales', fmtNum(activeSession.cash_sales)],
+                ['Sale Count', String(activeSession.sale_count ?? 0)],
+                ['Total Discount', fmtNum(activeSession.total_discount)],
+                ['Total Tax', fmtNum(activeSession.total_tax)],
+                ['Cash In', fmtNum(activeSession.cash_in)],
+                ['Cash Out', fmtNum(activeSession.cash_out)],
+              ].map(([label, val]) => (
+                <div key={label}>
+                  <p className="text-[10px] text-gray-500 dark:text-gray-400">{label}</p>
+                  <p className="font-mono font-semibold text-gray-900 dark:text-gray-100">{val}</p>
+                </div>
+              ))}
+            </div>
+
+            <form onSubmit={handleSubmitClose} className="space-y-2">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-x-4 gap-y-2">
+                <FormRow label="Actual Cash" required error={errors.actual_cash || null}>
+                  <input type="number" step="0.01" min="0" value={closeForm.actual_cash} onChange={e => setCloseForm(f => ({ ...f, actual_cash: e.target.value }))} onFocus={selectAmountInput} onClick={selectAmountInput} placeholder="Physical cash in drawer" className={amountInputCls(!!errors.actual_cash)} />
+                </FormRow>
+                <FormRow label="Closing Balance" error={errors.closing_balance || null}>
+                  <input type="number" step="0.01" min="0" value={closeForm.closing_balance} onChange={e => setCloseForm(f => ({ ...f, closing_balance: e.target.value }))} onFocus={selectAmountInput} onClick={selectAmountInput} placeholder="Cash to keep for next session" className={amountInputCls(!!errors.closing_balance)} />
+                </FormRow>
+                <FormRow label="Closing Notes">
+                  <textarea rows={3} value={closeForm.closing_notes} onChange={e => setCloseForm(f => ({ ...f, closing_notes: e.target.value }))} className={inputCls()} placeholder="Notes about this session closure..." />
+                </FormRow>
+                <FormRow label="Closing Reason">
+                  <textarea rows={3} value={closeForm.closing_reason} onChange={e => setCloseForm(f => ({ ...f, closing_reason: e.target.value }))} className={inputCls()} placeholder="Reason for closing (e.g. end of shift)..." />
+                </FormRow>
+              </div>
+              <div className="flex justify-end gap-2">
+                <button type="button" onClick={handleCancel} className="px-3 py-1.5 text-xs rounded border border-gray-300 dark:border-gray-600 text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 cursor-pointer">Cancel</button>
+                <button type="submit" disabled={submitting} className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs bg-orange-600 hover:bg-orange-700 disabled:opacity-60 text-white rounded cursor-pointer">
+                  <Lock className="w-3.5 h-3.5" />
+                  {submitting ? 'Closing…' : 'Close Session'}
+                </button>
+              </div>
+            </form>
           </div>
-          {/* Session summary */}
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-2 mb-4 p-3 rounded-sm bg-gray-50 dark:bg-gray-700/50 text-sm">
-            {[
-              ['Total Sales', fmtNum(activeSession.total_sales)],
-              ['Total Refunds', fmtNum(activeSession.total_refunds)],
-              ['Cash Sales', fmtNum(activeSession.cash_sales)],
-              ['Sale Count', String(activeSession.sale_count ?? 0)],
-              ['Total Discount', fmtNum(activeSession.total_discount)],
-              ['Total Tax', fmtNum(activeSession.total_tax)],
-              ['Cash In', fmtNum(activeSession.cash_in)],
-              ['Cash Out', fmtNum(activeSession.cash_out)],
-            ].map(([label, val]) => (
-              <div key={label}>
-                <p className="text-xs text-gray-500 dark:text-gray-400">{label}</p>
-                <p className="font-mono font-semibold text-gray-900 dark:text-gray-100">{val}</p>
-              </div>
-            ))}
-          </div>
-          <form onSubmit={handleSubmitClose} className="space-y-3">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-              <div>
-                <label className={labelCls}>Actual Cash Count</label>
-                <input type="number" step="0.01" min="0" value={closeForm.actual_cash} onChange={e => setCloseForm(f => ({ ...f, actual_cash: e.target.value }))} onFocus={selectAmountInput} onClick={selectAmountInput} placeholder="Physical cash in drawer" className={amountInputCls} />
-                {errors.actual_cash && <p className={errCls}>{errors.actual_cash}</p>}
-              </div>
-              <div>
-                <label className={labelCls}>Closing Balance</label>
-                <input type="number" step="0.01" min="0" value={closeForm.closing_balance} onChange={e => setCloseForm(f => ({ ...f, closing_balance: e.target.value }))} onFocus={selectAmountInput} onClick={selectAmountInput} placeholder="Cash to keep for next session" className={amountInputCls} />
-                {errors.closing_balance && <p className={errCls}>{errors.closing_balance}</p>}
-              </div>
-            </div>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-              <div>
-                <label className={labelCls}>Closing Notes</label>
-                <textarea rows={3} value={closeForm.closing_notes} onChange={e => setCloseForm(f => ({ ...f, closing_notes: e.target.value }))} className={inputCls} placeholder="Notes about this session closure..." />
-              </div>
-              <div>
-                <label className={labelCls}>Closing Reason</label>
-                <textarea rows={3} value={closeForm.closing_reason} onChange={e => setCloseForm(f => ({ ...f, closing_reason: e.target.value }))} className={inputCls} placeholder="Reason for closing (e.g. end of shift)..." />
-              </div>
-            </div>
-            <div className="flex gap-2 pt-1">
-              <button type="submit" disabled={submitting} className="flex items-center gap-2 px-4 py-1.5 bg-orange-600 text-white text-sm font-medium rounded-sm hover:bg-orange-700 transition-colors cursor-pointer disabled:opacity-60">
-                <Lock className="w-4 h-4" />
-                {submitting ? 'Closing…' : 'Close Session'}
-              </button>
-              <button type="button" onClick={handleCancel} className="px-4 py-1.5 bg-gray-500 text-white text-sm font-medium rounded-sm hover:bg-gray-600 transition-colors cursor-pointer">Cancel</button>
-            </div>
-          </form>
         </div>
       )}
 

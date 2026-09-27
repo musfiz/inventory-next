@@ -25,8 +25,10 @@ import GroceryCartDrawer from '@/components/storefront/grocery/GroceryCartDrawer
 
 export default function CartDrawer() {
   const { isGrocery } = useStorefrontTheme();
-  if (isGrocery) return <GroceryCartDrawer />;
+  return isGrocery ? <GroceryCartDrawer /> : <DefaultCartDrawer />;
+}
 
+function DefaultCartDrawer() {
   const {
     items,
     drawerOpen,

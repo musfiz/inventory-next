@@ -74,10 +74,10 @@ const FALLBACK_CONFIG: FooterConfig = {
     {
       id: 'c1', title: 'Shop', sort_order: 1,
       links: [
-        { id: 'l1', label: 'Fresh Vegetables', url: '/store/category/vegetables', sort_order: 1, open_in_new_tab: false, is_active: true },
-        { id: 'l2', label: 'Fruits', url: '/store/category/fruits', sort_order: 1, open_in_new_tab: false, is_active: true },
-        { id: 'l3', label: 'Meat & Fish', url: '/store/category/meat-fish', sort_order: 2, open_in_new_tab: false, is_active: true },
-        { id: 'l4', label: 'Dairy & Eggs', url: '/store/category/dairy-eggs', sort_order: 3, open_in_new_tab: false, is_active: true },
+        { id: 'l1', label: 'All Categories', url: '/store/products', sort_order: 1, open_in_new_tab: false, is_active: true },
+        { id: 'l2', label: 'New Arrivals', url: '/store/products?filter=new', sort_order: 1, open_in_new_tab: false, is_active: true },
+        { id: 'l3', label: 'Best Sellers', url: '/store/products?filter=bestseller', sort_order: 2, open_in_new_tab: false, is_active: true },
+        { id: 'l4', label: 'Featured Products', url: '/store/products?filter=featured', sort_order: 3, open_in_new_tab: false, is_active: true },
         { id: 'l5', label: 'Daily Essentials', url: '/store/products?filter=essential', sort_order: 4, open_in_new_tab: false, is_active: true },
       ],
     },

@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { Package, Search, RefreshCw, Check, X, Loader2, Sparkles } from 'lucide-react';
 import { GiSave } from 'react-icons/gi';
@@ -17,6 +17,7 @@ interface VariationRow {
   productId: string;
   productName: string;
   categoryName: string;
+  brandId: string;
   sku: string;
   name: string;
   costPrice: string;
@@ -39,6 +40,7 @@ export default function BulkVariationAddPage() {
   const effectiveBusinessTypeId = isSuperAdmin ? businessTypeFilterId : tenantBusinessTypeId;
 
   const [selectedCategory, setSelectedCategory] = useState<SelectOption | null>(null);
+  const [defaultBrandOptions, setDefaultBrandOptions] = useState<SelectOption[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
 
   const [productsLoading, setProductsLoading] = useState(false);
@@ -54,6 +56,11 @@ export default function BulkVariationAddPage() {
     errors: any[];
   } | null>(null);
 
+  const inputCls = (hasError?: boolean) =>
+    `w-full px-2.5 py-1 text-xs bg-white dark:bg-gray-700 border ${
+      hasError ? 'border-red-500' : 'border-gray-300 dark:border-gray-600'
+    } rounded text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-1 focus:ring-indigo-500`;
+
   const loadCategoryOptions = useCallback(async (inputValue: string) => {
     const params: any = {};
     if (effectiveBusinessTypeId) params.business_type_id = effectiveBusinessTypeId;
@@ -65,6 +72,22 @@ export default function BulkVariationAddPage() {
       return [];
     }
   }, [effectiveBusinessTypeId]);
+
+  const loadBrandOptions = useCallback(async (inputValue: string) => {
+    const params: any = {};
+    if (effectiveBusinessTypeId) params.business_type_id = effectiveBusinessTypeId;
+    if (inputValue) params.search = inputValue;
+    try {
+      const brands = await commonService.getBrandsForDropdown(params);
+      return brands.map((b: any) => ({ value: String(b.id), label: b.name }));
+    } catch {
+      return [];
+    }
+  }, [effectiveBusinessTypeId]);
+
+  useEffect(() => {
+    loadBrandOptions('').then(setDefaultBrandOptions);
+  }, [loadBrandOptions]);
 
   const generateSkuForRowByIndex = async (
     index: number,
@@ -108,6 +131,7 @@ export default function BulkVariationAddPage() {
         productId: product.id,
         productName: product.name,
         categoryName: product.category?.name || '',
+        brandId: '',
         sku: '',
         name: 'Default',
         costPrice: '',
@@ -188,6 +212,13 @@ export default function BulkVariationAddPage() {
     notify.success('SKUs generated for all rows');
   };
 
+  const applyAverageCost = () => {
+    const avgCost = variationRows.reduce((s, r) => s + (parseFloat(r.costPrice) || 0), 0) / variationRows.length || 0;
+    variationRows.forEach(r => {
+      if (!r.costPrice) updateRow(r.productId, 'costPrice', String(Math.round(avgCost * 100) / 100 || ''));
+    });
+  };
+
   const handleSubmit = async () => {
     if (variationRows.length === 0) {
       notify.warning('No products to save');
@@ -236,6 +267,7 @@ export default function BulkVariationAddPage() {
     try {
       const payload = variationRows.map(r => ({
         product_id: r.productId,
+        brand_id: r.brandId || undefined,
         sku: r.sku.trim(),
         name: r.name.trim() || 'Default',
         cost_price: parseFloat(r.costPrice),
@@ -294,85 +326,81 @@ export default function BulkVariationAddPage() {
   };
 
   return (
-    <div className="space-y-2">
+    <div className="space-y-3">
+      {/* Header */}
       <div className="flex items-center justify-between">
         <h1 className="text-xl font-bold text-gray-900 dark:text-gray-100 flex items-center gap-2">
           <Package className="w-5 h-5 text-indigo-600 dark:text-indigo-400" />
           Bulk Add Variations
+          <span className="text-xs font-normal text-gray-500 dark:text-gray-400 ml-1 hidden sm:inline">
+            Product → Variations
+          </span>
         </h1>
-        <div className="flex items-center gap-2">
-          <button
-            onClick={() => router.push('/product-variations')}
-            className="flex items-center gap-2 px-3 py-1.5 text-sm bg-gray-500 hover:bg-gray-600 text-white rounded-sm transition-colors cursor-pointer"
-          >
-            <X className="w-4 h-4" />
-            Back to Variations
-          </button>
-        </div>
+        <button
+          onClick={() => router.push('/product-variations')}
+          className="flex items-center gap-2 px-3 py-1.5 text-xs rounded border border-gray-300 dark:border-gray-600 text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors cursor-pointer"
+        >
+          <X className="w-4 h-4" />
+          Back to Variations
+        </button>
       </div>
 
       {/* Filter Section */}
       <div className="bg-white dark:bg-gray-800 rounded-md shadow-sm border border-gray-200 dark:border-gray-700 p-3">
-        <h3 className="text-base font-semibold text-gray-900 dark:text-gray-100 mb-2">
+        <h3 className="text-xs font-semibold text-gray-700 dark:text-gray-300 mb-1">
           Search Simple Products
         </h3>
-        <p className="text-xs text-gray-500 dark:text-gray-400 mb-3">
+        <p className="text-[11px] text-gray-500 dark:text-gray-400 mb-3">
           Find products with no variations to add variation data.
         </p>
-        <div className="space-y-3">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-x-4 gap-y-2">
           {isSuperAdmin && (
-            <div className="w-full md:w-80">
-              <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">
-                Business Type
-              </label>
+            <FormRow label="Business Type" labelWidth="w-32">
               <BusinessTypeSelect
                 value={businessTypeFilterId}
                 onChange={setBusinessTypeFilterId}
                 placeholder="All Business Types"
                 isClearable
+                compact
               />
-            </div>
+            </FormRow>
           )}
 
-          <div className="flex flex-col md:flex-row md:items-end gap-3">
-            <div className="w-full md:basis-2/5">
-              <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">
-                Category
-              </label>
-              <CustomSelect
-                key={effectiveBusinessTypeId || 'all-categories'}
-                value={selectedCategory}
-                onChange={(opt) => setSelectedCategory(opt)}
-                loadOptions={loadCategoryOptions}
-                placeholder="All Categories"
-                isClearable
-                defaultOptions
+          <FormRow label="Category" labelWidth="w-32">
+            <CustomSelect
+              key={effectiveBusinessTypeId || 'all-categories'}
+              value={selectedCategory}
+              onChange={(opt) => setSelectedCategory(opt)}
+              loadOptions={loadCategoryOptions}
+              placeholder="All Categories"
+              isClearable
+              defaultOptions
+              compact
+            />
+          </FormRow>
+
+          <FormRow label="Search Product" labelWidth="w-32">
+            <div className="relative">
+              <input
+                type="text"
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
+                placeholder="Search by product name..."
+                className={`${inputCls(false)} pl-8`}
               />
+              <Search className="absolute left-2 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
             </div>
-            <div className="w-full md:basis-1/2">
-              <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">
-                Search Product
-              </label>
-              <div className="relative">
-                <input
-                  type="text"
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                  onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
-                  placeholder="Search by product name..."
-                  className="w-full px-2.5 py-1.5 pl-8 text-sm bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 focus:border-indigo-500 rounded-sm text-gray-900 dark:text-gray-100 focus:outline-none"
-                />
-                <Search className="absolute left-2 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
-              </div>
-            </div>
-            <button
-              onClick={handleSearch}
-              className="flex items-center justify-center gap-2 px-3 py-1.5 text-sm bg-indigo-600 hover:bg-indigo-700 text-white rounded-sm transition-colors cursor-pointer h-8 w-full md:w-auto"
-            >
-              <Search className="w-4 h-4" />
-              Search
-            </button>
-          </div>
+          </FormRow>
+        </div>
+        <div className="mt-3 flex justify-end">
+          <button
+            onClick={handleSearch}
+            className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs bg-indigo-600 hover:bg-indigo-700 text-white rounded transition-colors cursor-pointer"
+          >
+            <Search className="w-3.5 h-3.5" />
+            Search
+          </button>
         </div>
       </div>
 
@@ -392,153 +420,151 @@ export default function BulkVariationAddPage() {
         </div>
       )}
 
-      {/* Variation Table */}
+      {/* Variation Cards */}
       {!productsLoading && !productsError && variationRows.length > 0 && (
-        <div className="bg-white dark:bg-gray-800 rounded-md shadow-sm border border-gray-200 dark:border-gray-700 p-3">
-          <div className="flex items-center justify-between mb-2">
-            <h3 className="text-base font-semibold text-gray-900 dark:text-gray-100">
-              Variation Details ({variationRows.length})
+        <div className="space-y-3">
+          <div className="flex items-center justify-between">
+            <h3 className="text-sm font-semibold text-gray-900 dark:text-gray-100">
+              Selected Products ({variationRows.length})
             </h3>
             <div className="flex items-center gap-2">
               <button
                 onClick={generateAllSkus}
                 disabled={isGeneratingAll}
-                className="flex items-center gap-1.5 px-2.5 py-1 text-xs bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 text-gray-700 dark:text-gray-300 rounded-sm transition-colors cursor-pointer disabled:opacity-50"
+                className="flex items-center gap-1.5 px-2.5 py-1 text-xs bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 text-gray-700 dark:text-gray-300 rounded transition-colors cursor-pointer disabled:opacity-50"
               >
                 <Sparkles className="w-3.5 h-3.5" />
                 {isGeneratingAll ? 'Generating...' : 'Generate All SKUs'}
               </button>
               <button
-                onClick={() => {
-                  const avgCost = variationRows.reduce((s, r) => s + (parseFloat(r.costPrice) || 0), 0) / variationRows.length || 0;
-                  variationRows.forEach(r => {
-                    if (!r.costPrice) updateRow(r.productId, 'costPrice', String(Math.round(avgCost * 100) / 100 || ''));
-                  });
-                }}
-                className="flex items-center gap-1.5 px-2.5 py-1 text-xs bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 text-gray-700 dark:text-gray-300 rounded-sm transition-colors cursor-pointer"
+                onClick={applyAverageCost}
+                className="flex items-center gap-1.5 px-2.5 py-1 text-xs bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 text-gray-700 dark:text-gray-300 rounded transition-colors cursor-pointer"
               >
                 Apply Avg Cost
               </button>
             </div>
           </div>
 
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="border-b border-gray-200 dark:border-gray-700">
-                  <th className="px-2 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-400 w-8"></th>
-                  <th className="px-2 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-400">Product</th>
-                  <th className="px-2 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-400">
-                    SKU <span className="text-red-500">*</span>
-                  </th>
-                  <th className="px-2 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-400">Name</th>
-                  <th className="px-2 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-400">
-                    Cost Price <span className="text-red-500">*</span>
-                  </th>
-                  <th className="px-2 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-400">
-                    Selling Price <span className="text-red-500">*</span>
-                  </th>
-                </tr>
-              </thead>
-              <tbody>
-                {variationRows.map((row) => (
-                  <tr key={row.productId} className={`border-b border-gray-100 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700/30 ${errors[row.productId] ? 'bg-red-50 dark:bg-red-900/10' : ''
-                    }`}>
-                    <td className="px-2 py-2">
-                      <button
-                        onClick={() => removeProduct(row.productId)}
-                        className="p-1 text-red-500 hover:text-red-700 hover:bg-red-50 dark:hover:bg-red-900/20 rounded cursor-pointer"
-                        title="Remove"
-                      >
-                        <X className="w-3.5 h-3.5" />
-                      </button>
-                    </td>
-                    <td className="px-2 py-2">
-                      <div className="text-xs font-medium text-gray-900 dark:text-gray-100">
-                        {row.productName}
-                      </div>
-                      {row.categoryName && (
-                        <span className="text-xs text-gray-500 dark:text-gray-400">
-                          {row.categoryName}
-                        </span>
-                      )}
-                      {errors[row.productId] && (
-                        <div className="mt-1 text-xs text-red-600">
-                          {errors[row.productId].map((e, i) => <div key={i}>{e}</div>)}
-                        </div>
-                      )}
-                    </td>
-                    <td className="px-2 py-2">
-                      <div className="flex items-center gap-1">
-                        <input
-                          type="text"
-                          value={row.sku}
-                          onChange={(e) => updateRow(row.productId, 'sku', e.target.value)}
-                          className={`w-36 px-2 py-1 text-xs bg-white dark:bg-gray-700 border ${errors[row.productId]?.some(e => e.toLowerCase().includes('sku'))
-                              ? 'border-red-500'
-                              : 'border-gray-300 dark:border-gray-600'
-                            } focus:border-indigo-500 rounded-sm text-gray-900 dark:text-gray-100 focus:outline-none`}
-                          placeholder="Auto-generated"
-                        />
-                        <button
-                          onClick={() => {
-                            const idx = variationRows.findIndex(r => r.productId === row.productId);
-                            if (idx >= 0) generateSkuForRow(row, idx);
-                          }}
-                          disabled={row.isGeneratingSku}
-                          className="p-1 text-indigo-600 hover:text-indigo-800 hover:bg-indigo-50 dark:hover:bg-indigo-900/20 rounded cursor-pointer disabled:opacity-50"
-                          title="Generate SKU"
-                        >
-                          {row.isGeneratingSku ? (
-                            <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                          ) : (
-                            <RefreshCw className="w-3.5 h-3.5" />
-                          )}
-                        </button>
-                      </div>
-                    </td>
-                    <td className="px-2 py-2">
+          {variationRows.map((row) => {
+            const rowErrors = errors[row.productId] || [];
+            const skuError = rowErrors.find(e => e.toLowerCase().includes('sku')) || null;
+            const costError = rowErrors.find(e => e.toLowerCase().includes('cost')) || null;
+            const sellingError = rowErrors.find(e => e.toLowerCase().includes('selling')) || null;
+            const otherErrors = rowErrors.filter(
+              e =>
+                !e.toLowerCase().includes('sku') &&
+                !e.toLowerCase().includes('cost') &&
+                !e.toLowerCase().includes('selling')
+            );
+
+            return (
+              <div
+                key={row.productId}
+                className="bg-white dark:bg-gray-800 rounded-md shadow-sm border border-gray-200 dark:border-gray-700 p-3"
+              >
+                {/* Card header */}
+                <div className="flex items-start justify-between gap-2 mb-3">
+                  <div className="min-w-0">
+                    <div className="flex items-center gap-1.5 text-sm font-medium text-gray-900 dark:text-gray-100">
+                      <Package className="w-4 h-4 text-indigo-600 dark:text-indigo-400 shrink-0" />
+                      <span className="truncate">{row.productName}</span>
+                    </div>
+                    {row.categoryName && (
+                      <span className="text-xs text-gray-500 dark:text-gray-400">{row.categoryName}</span>
+                    )}
+                  </div>
+                  <button
+                    onClick={() => removeProduct(row.productId)}
+                    className="p-1 text-red-500 hover:text-red-700 hover:bg-red-50 dark:hover:bg-red-900/20 rounded cursor-pointer"
+                    title="Remove"
+                  >
+                    <X className="w-4 h-4" />
+                  </button>
+                </div>
+
+                {otherErrors.length > 0 && (
+                  <div className="mb-2 text-xs text-red-600 dark:text-red-400">
+                    {otherErrors.map((e, i) => <div key={i}>{e}</div>)}
+                  </div>
+                )}
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-x-4 gap-y-2">
+                  <FormRow label="Attribute Name" labelWidth="w-32">
+                    <input
+                      type="text"
+                      value={row.name}
+                      onChange={(e) => updateRow(row.productId, 'name', e.target.value)}
+                      className={inputCls(false)}
+                      placeholder="e.g. Default"
+                    />
+                  </FormRow>
+
+                  <FormRow label="Brand" labelWidth="w-32">
+                    <CustomSelect
+                      value={defaultBrandOptions.find(o => o.value === row.brandId) || null}
+                      onChange={(opt) => updateRow(row.productId, 'brandId', opt?.value || '')}
+                      loadOptions={loadBrandOptions}
+                      defaultOptions={defaultBrandOptions.length > 0 ? defaultBrandOptions : true}
+                      placeholder="Search brand..."
+                      isClearable
+                      compact
+                    />
+                  </FormRow>
+
+                  <FormRow label="SKU" required labelWidth="w-32" error={skuError}>
+                    <div className="flex items-center gap-1.5">
                       <input
                         type="text"
-                        value={row.name}
-                        onChange={(e) => updateRow(row.productId, 'name', e.target.value)}
-                        className="w-28 px-2 py-1 text-xs bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 focus:border-indigo-500 rounded-sm text-gray-900 dark:text-gray-100 focus:outline-none"
-                        placeholder="Default"
+                        value={row.sku}
+                        onChange={(e) => updateRow(row.productId, 'sku', e.target.value)}
+                        className={inputCls(!!skuError)}
+                        placeholder="Auto-generated"
                       />
-                    </td>
-                    <td className="px-2 py-2">
-                      <input
-                        type="number"
-                        value={row.costPrice}
-                        onChange={(e) => updateRow(row.productId, 'costPrice', e.target.value)}
-                        step="0.01"
-                        min="0"
-                        className={`w-28 px-2 py-1 text-xs bg-white dark:bg-gray-700 border ${errors[row.productId]?.some(e => e.toLowerCase().includes('cost'))
-                            ? 'border-red-500'
-                            : 'border-gray-300 dark:border-gray-600'
-                          } focus:border-indigo-500 rounded-sm text-gray-900 dark:text-gray-100 focus:outline-none`}
-                        placeholder="0.00"
-                      />
-                    </td>
-                    <td className="px-2 py-2">
-                      <input
-                        type="number"
-                        value={row.sellingPrice}
-                        onChange={(e) => updateRow(row.productId, 'sellingPrice', e.target.value)}
-                        step="0.01"
-                        min="0"
-                        className={`w-28 px-2 py-1 text-xs bg-white dark:bg-gray-700 border ${errors[row.productId]?.some(e => e.toLowerCase().includes('selling'))
-                            ? 'border-red-500'
-                            : 'border-gray-300 dark:border-gray-600'
-                          } focus:border-indigo-500 rounded-sm text-gray-900 dark:text-gray-100 focus:outline-none`}
-                        placeholder="0.00"
-                      />
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+                      <button
+                        onClick={() => {
+                          const idx = variationRows.findIndex(r => r.productId === row.productId);
+                          if (idx >= 0) generateSkuForRow(row, idx);
+                        }}
+                        disabled={row.isGeneratingSku}
+                        className="shrink-0 inline-flex items-center justify-center h-8 w-8 bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 text-gray-700 dark:text-gray-300 rounded border border-gray-300 dark:border-gray-600 transition-colors disabled:opacity-50 cursor-pointer"
+                        title="Generate SKU"
+                      >
+                        {row.isGeneratingSku ? (
+                          <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                        ) : (
+                          <RefreshCw className="w-3.5 h-3.5" />
+                        )}
+                      </button>
+                    </div>
+                  </FormRow>
+
+                  <FormRow label="Cost Price" required labelWidth="w-32" error={costError}>
+                    <input
+                      type="number"
+                      value={row.costPrice}
+                      onChange={(e) => updateRow(row.productId, 'costPrice', e.target.value)}
+                      step="0.01"
+                      min="0"
+                      className={inputCls(!!costError)}
+                      placeholder="0.00"
+                    />
+                  </FormRow>
+
+                  <FormRow label="Selling Price" required labelWidth="w-32" error={sellingError}>
+                    <input
+                      type="number"
+                      value={row.sellingPrice}
+                      onChange={(e) => updateRow(row.productId, 'sellingPrice', e.target.value)}
+                      step="0.01"
+                      min="0"
+                      className={inputCls(!!sellingError)}
+                      placeholder="0.00"
+                    />
+                  </FormRow>
+                </div>
+              </div>
+            );
+          })}
         </div>
       )}
 
@@ -581,32 +607,62 @@ export default function BulkVariationAddPage() {
 
       {/* Submit / Reset */}
       {variationRows.length > 0 && (
-        <div className="flex items-center gap-3">
-          <button
-            onClick={handleSubmit}
-            disabled={isSubmitting}
-            className="flex items-center gap-2 px-5 py-1.5 text-sm bg-indigo-600 hover:bg-indigo-700 disabled:bg-gray-400 text-white rounded-sm transition-colors cursor-pointer"
-          >
-            {isSubmitting ? (
-              <Loader2 className="w-4 h-4 animate-spin" />
-            ) : (
-              <GiSave className="w-4 h-4" />
-            )}
-            {isSubmitting ? 'Saving...' : `Save ${variationRows.length} Variation(s)`}
-          </button>
+        <div className="flex justify-end gap-2">
           <button
             onClick={() => {
               setVariationRows([]);
               setErrors({});
               setResultSummary(null);
             }}
-            className="flex items-center gap-2 px-4 py-1.5 text-sm bg-gray-500 hover:bg-gray-600 text-white rounded-sm transition-colors cursor-pointer"
+            className="px-3 py-1.5 text-xs rounded border border-gray-300 dark:border-gray-600 text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors cursor-pointer"
           >
-            <X className="w-4 h-4" />
             Reset
+          </button>
+          <button
+            onClick={handleSubmit}
+            disabled={isSubmitting}
+            className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs bg-indigo-600 hover:bg-indigo-700 disabled:opacity-60 text-white rounded transition-colors cursor-pointer"
+          >
+            {isSubmitting ? (
+              <Loader2 className="w-3.5 h-3.5 animate-spin" />
+            ) : (
+              <GiSave className="w-3.5 h-3.5" />
+            )}
+            {isSubmitting ? 'Saving...' : `Save ${variationRows.length} Variation(s)`}
           </button>
         </div>
       )}
+    </div>
+  );
+}
+
+function FormRow({
+  label,
+  required,
+  error,
+  children,
+  labelWidth = 'w-20',
+  className = '',
+}: {
+  label: string;
+  required?: boolean;
+  error?: string | null;
+  children: React.ReactNode;
+  labelWidth?: string;
+  className?: string;
+}) {
+  const errorMl =
+    labelWidth === 'w-32' ? 'ml-[8.5rem]' : labelWidth === 'w-20' ? 'ml-[5.5rem]' : 'ml-[4.375rem]';
+  return (
+    <div className={className}>
+      <div className="flex items-center gap-1.5">
+        <label className={`${labelWidth} shrink-0 text-[11px] font-medium text-gray-600 dark:text-gray-400 text-right`}>
+          {label}
+          {required && <span className="text-red-500">*</span>}:
+        </label>
+        <div className="flex-1 min-w-0">{children}</div>
+      </div>
+      {error && <p className={`text-[10px] text-red-500 mt-0.5 ${errorMl}`}>{error}</p>}
     </div>
   );
 }

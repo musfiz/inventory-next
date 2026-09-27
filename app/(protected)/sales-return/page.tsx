@@ -82,6 +82,24 @@ function methodLabel(v?: string) {
   return REFUND_METHODS.find(r => r.value === v)?.label ?? v ?? '-';
 }
 
+// ─── Form row (left-aligned label) used by the redesigned create-return form ──
+
+function FormRow({ label, required, error, children, className = '', labelWidth = 'w-32' }: { label: string; required?: boolean; error?: string | null; children: React.ReactNode; className?: string; labelWidth?: string }) {
+  const errorMl =
+    labelWidth === 'w-32' ? 'ml-[8.5rem]' : labelWidth === 'w-20' ? 'ml-[5.5rem]' : 'ml-[4.375rem]';
+  return (
+    <div className={className}>
+      <div className="flex items-center gap-1.5">
+        <label className={`${labelWidth} shrink-0 text-[11px] font-medium text-gray-600 dark:text-gray-400 text-left`}>
+          {label}{required && <span className="text-red-500">*</span>}:
+        </label>
+        <div className="flex-1 min-w-0">{children}</div>
+      </div>
+      {error && <p className={`text-[10px] text-red-500 mt-0.5 ${errorMl}`}>{error}</p>}
+    </div>
+  );
+}
+
 // ─── Types ────────────────────────────────────────────────────────────────────
 
 interface OrderItem {
@@ -602,12 +620,12 @@ export default function SalesReturnsPage() {
 
   // ── Styles ────────────────────────────────────────────────────────────────
 
-  const inputCls = 'w-full px-2 py-1.5 text-sm border rounded-sm focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-transparent border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100';
-  const labelCls = 'block text-sm font-medium text-gray-700 dark:text-gray-300 mb-0.5';
+  // 30px-tall fields, matching the Add Sales Order input height
+  const inputCls = 'w-full h-[30px] px-2.5 py-1 text-sm border rounded-sm focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-transparent border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100';
+  const fldCls = (hasError?: boolean) =>
+    `w-full h-[30px] px-2.5 py-1 text-sm border ${hasError ? 'border-red-500' : 'border-gray-300 dark:border-gray-600'} rounded-sm bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-transparent`;
   const errCls = 'text-xs text-red-500 mt-0.5';
-  const sectionCls =
-    'text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide ' +
-    'flex items-center gap-1.5 mt-4 mb-2';
+  const labelCls = 'block text-sm font-medium text-gray-700 dark:text-gray-300 mb-0.5';
 
   // ── Render ────────────────────────────────────────────────────────────────
 
@@ -616,7 +634,8 @@ export default function SalesReturnsPage() {
       {/* Header */}
       <div className="flex items-center justify-between">
         <h1 className="text-base font-bold text-gray-900 dark:text-gray-100 flex items-center gap-2">
-          <Undo2 className="w-5 h-5 text-blue-600 dark:text-blue-400" /> Sales Returns
+          <Undo2 className="w-5 h-5 text-blue-600 dark:text-blue-400" />
+          {showForm ? (form.id ? 'Edit Return' : 'Create Return') : 'Sales Returns'}
         </h1>
         {hasPermission('create-sales-returns') && (
           <button
@@ -630,40 +649,31 @@ export default function SalesReturnsPage() {
 
       {/* Form */}
       {showForm && (
-        <div className="bg-white dark:bg-gray-800 rounded-md shadow-sm border border-gray-200 dark:border-gray-700 p-3">
-          <div className="flex items-center justify-between mb-2">
-            <h2 className="text-base font-semibold text-gray-900 dark:text-gray-100 flex items-center gap-2">
-              <FileText className="w-4 h-4 text-blue-600 dark:text-blue-400" />
-              {form.id ? `Edit Return — ${form.id}` : 'Create New Return'}
-            </h2>
-            <button onClick={handleCancel} className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 cursor-pointer">
-              <X className="w-5 h-5" />
-            </button>
-          </div>
+        <div className="space-y-3">
+          <form onSubmit={handleSubmit} className="space-y-3" autoComplete="off">
 
-          <form onSubmit={handleSubmit} className="space-y-2">
+            {/* ── Original Sales Order ── */}
+            <div className="bg-white dark:bg-gray-800 rounded-md shadow-sm border border-gray-200 dark:border-gray-700 p-3">
+              <h3 className="text-xs font-semibold text-gray-700 dark:text-gray-300 mb-3 flex items-center gap-1.5">
+                <Receipt className="w-3.5 h-3.5" /> Original Sales Order
+              </h3>
 
-            {/* ── Tenant Selection - Only for Super Admin ── */}
-            {isSuperAdmin && !form.id && (
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
-                <div>
-                  <label className={labelCls}>Tenant <span className="text-red-500">*</span></label>
-                  <TenantSelect
-                    value={form.tenant_id}
-                    onChange={(tid) => setForm(f => ({ ...f, tenant_id: tid || '' }))}
-                    placeholder="Select tenant"
-                    isInvalid={!!errors.tenant_id}
-                  />
-                  {errors.tenant_id && <p className={errCls}>{errors.tenant_id}</p>}
+              {/* Tenant — super admin only, single field on top */}
+              {isSuperAdmin && !form.id && (
+                <div className="mb-2 md:w-1/2">
+                  <FormRow label="Tenant" required error={errors.tenant_id || null}>
+                    <TenantSelect
+                      value={form.tenant_id}
+                      onChange={(tid) => setForm(f => ({ ...f, tenant_id: tid || '' }))}
+                      placeholder="Select tenant"
+                      isInvalid={!!errors.tenant_id}
+                      compact
+                    />
+                  </FormRow>
                 </div>
-              </div>
-            )}
+              )}
 
-            {/* ── Order Selection ── */}
-            <p className={sectionCls}><Receipt className="w-3.5 h-3.5" /> Original Sales Order</p>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
-              <div className="md:col-span-2">
-                <label className={labelCls}>Sales Order <span className="text-red-500">*</span></label>
+              <FormRow label="Sales Order" required error={errors.sales_order_id || null}>
                 <CustomSelect
                   key={`so-${soKey}`}
                   value={selectedOrder}
@@ -671,19 +681,20 @@ export default function SalesReturnsPage() {
                   loadOptions={loadOrderOptions}
                   defaultOptions={soDefaultOpts}
                   placeholder="Search by invoice # or customer…"
-                  className="text-sm"
                   isDisabled={!!form.id}
+                  compact
                 />
-                {errors.sales_order_id && <p className={errCls}>{errors.sales_order_id}</p>}
-              </div>
+              </FormRow>
             </div>
 
-            {/* ── Return Items ── */}
+            {/* ── Items to Return ── */}
             {(loadingItems || returnLines.length > 0) && (
-              <>
-                <p className={sectionCls}><ListChecks className="w-3.5 h-3.5" /> Items to Return</p>
+              <div className="bg-white dark:bg-gray-800 rounded-md shadow-sm border border-gray-200 dark:border-gray-700 p-3">
+                <h3 className="text-xs font-semibold text-gray-700 dark:text-gray-300 mb-3 flex items-center gap-1.5">
+                  <ListChecks className="w-3.5 h-3.5" /> Items to Return
+                </h3>
                 {/* Caution banner — same UX as POS refund */}
-                <div className="flex items-start gap-2 p-2.5 rounded-md bg-rose-50 dark:bg-rose-900/20 border border-rose-200 dark:border-rose-800 text-rose-800 dark:text-rose-200 text-xs">
+                <div className="flex items-start gap-2 p-2.5 mb-2 rounded-md bg-rose-50 dark:bg-rose-900/20 border border-rose-200 dark:border-rose-800 text-rose-800 dark:text-rose-200 text-xs">
                   <AlertTriangle className="w-4 h-4 mt-0.5 shrink-0" />
                   <div>
                     <strong className="font-semibold">Caution:</strong>{' '}
@@ -787,45 +798,44 @@ export default function SalesReturnsPage() {
                   </div>
                 )}
                 {errors.items && <p className={errCls}>{errors.items}</p>}
-              </>
+              </div>
             )}
 
             {/* ── Return Details ── */}
-            <p className={sectionCls}><Info className="w-3.5 h-3.5" /> Return Details</p>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
-              <div>
-                <label className={labelCls}>Return Reason <span className="text-red-500">*</span></label>
-                <select value={form.reason} onChange={sf('reason')} className={inputCls}>
-                  {RETURN_REASONS.map(r => <option key={r.value} value={r.value}>{r.label}</option>)}
-                </select>
-                {errors.reason && <p className={errCls}>{errors.reason}</p>}
-              </div>
+            <div className="bg-white dark:bg-gray-800 rounded-md shadow-sm border border-gray-200 dark:border-gray-700 p-3">
+              <h3 className="text-xs font-semibold text-gray-700 dark:text-gray-300 mb-3 flex items-center gap-1.5">
+                <Info className="w-3.5 h-3.5" /> Return Details
+              </h3>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-x-4 gap-y-2">
+                <FormRow label="Return Reason" required error={errors.reason || null}>
+                  <select value={form.reason} onChange={sf('reason')} className={fldCls(!!errors.reason)}>
+                    {RETURN_REASONS.map(r => <option key={r.value} value={r.value}>{r.label}</option>)}
+                  </select>
+                </FormRow>
 
-              <div>
-                <label className={labelCls}>Refund Method <span className="text-red-500">*</span></label>
-                <select value={form.refund_method} onChange={sf('refund_method')} className={inputCls}>
-                  {REFUND_METHODS.map(m => <option key={m.value} value={m.value}>{m.label}</option>)}
-                </select>
-                {errors.refund_method && <p className={errCls}>{errors.refund_method}</p>}
-              </div>
+                <FormRow label="Refund Method" required error={errors.refund_method || null}>
+                  <select value={form.refund_method} onChange={sf('refund_method')} className={fldCls(!!errors.refund_method)}>
+                    {REFUND_METHODS.map(m => <option key={m.value} value={m.value}>{m.label}</option>)}
+                  </select>
+                </FormRow>
 
-              <div>
-                <label className={labelCls}>Notes</label>
-                <textarea rows={1} value={form.notes} onChange={sf('notes')}
-                  className={inputCls} placeholder="Additional notes…" />
+                <FormRow label="Notes" className="md:col-span-2">
+                  <textarea rows={1} value={form.notes} onChange={sf('notes')}
+                    className={`${inputCls} resize-none`} placeholder="Additional notes…" />
+                </FormRow>
               </div>
             </div>
 
-            {/* Buttons */}
-            <div className="flex gap-2 pt-3">
-              <button type="submit" disabled={submitting}
-                className="flex items-center justify-center gap-2 px-5 py-1.5 text-sm bg-blue-600 hover:bg-blue-700 disabled:bg-gray-400 text-white rounded-sm transition-colors cursor-pointer disabled:opacity-60 disabled:cursor-not-allowed">
-                <GiSave className="w-4 h-4" />
-                {submitting ? 'Saving…' : form.id ? 'Update Return' : 'Submit Return'}
-              </button>
+            {/* Actions */}
+            <div className="flex justify-end gap-2">
               <button type="button" onClick={handleCancel}
-                className="px-4 py-1.5 bg-gray-500 text-white text-sm font-medium rounded-sm hover:bg-gray-600 transition-colors cursor-pointer">
+                className="px-3 py-1.5 text-xs rounded border border-gray-300 dark:border-gray-600 text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 cursor-pointer">
                 Cancel
+              </button>
+              <button type="submit" disabled={submitting}
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs bg-indigo-600 hover:bg-indigo-700 disabled:opacity-60 text-white rounded cursor-pointer">
+                <GiSave className="w-3.5 h-3.5" />
+                {submitting ? 'Saving…' : form.id ? 'Update Return' : 'Submit Return'}
               </button>
             </div>
           </form>

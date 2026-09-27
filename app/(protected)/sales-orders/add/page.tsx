@@ -78,13 +78,35 @@ const inputCls =
   'rounded-sm text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-1 ' +
   'focus:ring-blue-500 dark:focus:ring-blue-400 focus:border-transparent';
 
-const selectCls = inputCls; // same visual as text input
-
 // Shared class for the small numeric inputs inside the order summary card
 const summaryInputCls =
   'w-24 px-2 py-1 text-xs text-right border border-gray-300 dark:border-gray-600 rounded-sm ' +
   'bg-white dark:bg-gray-700 dark:text-gray-100 focus:outline-none focus:ring-1 focus:ring-blue-500 ' +
   '[&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none';
+
+// Compact field class + left-label row used by the redesigned Order Details card
+const fldCls = (hasError?: boolean) =>
+  `w-full px-2.5 py-1 text-xs bg-white dark:bg-gray-700 border ${hasError ? 'border-red-500' : 'border-gray-300 dark:border-gray-600'} rounded text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-1 focus:ring-indigo-500`;
+
+function FormRow({ label, required, error, children, className = '', labelWidth = 'w-32' }: { label: string; required?: boolean; error?: string | null; children: React.ReactNode; className?: string; labelWidth?: string }) {
+  const errorMl =
+    labelWidth === 'w-32' ? 'ml-[8.5rem]'
+      : labelWidth === 'w-28' ? 'ml-[7.5rem]'
+        : labelWidth === 'w-24' ? 'ml-[6.5rem]'
+          : labelWidth === 'w-20' ? 'ml-[5.5rem]'
+            : 'ml-[4.375rem]';
+  return (
+    <div className={className}>
+      <div className="flex items-center gap-1.5">
+        <label className={`${labelWidth} shrink-0 text-[11px] font-medium text-gray-600 dark:text-gray-400 text-left`}>
+          {label}{required && <span className="text-red-500">*</span>}:
+        </label>
+        <div className="flex-1 min-w-0">{children}</div>
+      </div>
+      {error && <p className={`text-[10px] text-red-500 mt-0.5 ${errorMl}`}>{error}</p>}
+    </div>
+  );
+}
 
 // ─── Component ────────────────────────────────────────────────────────────────
 
@@ -775,13 +797,12 @@ export default function AddSalesOrderPage() {
 
         {/* ── Section 1: Order Details ──────────────────────────────────────────── */}
         <div className="bg-white dark:bg-gray-800 rounded-md shadow-sm border border-gray-200 dark:border-gray-700 p-3">
-          {/* Tenant row — super admin only, rendered above the main fields */}
+          <h3 className="text-xs font-semibold text-gray-700 dark:text-gray-300 mb-3">Order Details</h3>
+
+          {/* Tenant — super admin only. Sits on top of the section as a single field. */}
           {isSuperAdmin && (
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-3 mb-2">
-              <div>
-                <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">
-                  Tenant
-                </label>
+            <div className="mb-2 md:w-1/2">
+              <FormRow label="Tenant" required error={hasErr('tenant_id') ? err('tenant_id') : null}>
                 <CustomSelect
                   value={selectedTenant}
                   onChange={(o: any) => {
@@ -792,19 +813,16 @@ export default function AddSalesOrderPage() {
                   defaultOptions={tenantDefaults}
                   placeholder="Select tenant"
                   isInvalid={hasErr('tenant_id')}
+                  compact
                 />
-                {hasErr('tenant_id') && <p className="mt-1 text-xs text-red-600">{err('tenant_id')}</p>}
-              </div>
+              </FormRow>
             </div>
           )}
 
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-x-4 gap-y-2">
 
             {/* Customer */}
-            <div>
-              <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">
-                Customer <span className="text-red-500">*</span>
-              </label>
+            <FormRow label="Customer" required error={hasErr('customer_id') ? err('customer_id') : null}>
               <CustomSelect
                 value={selectedCustomer}
                 onChange={(o: any) => {
@@ -815,15 +833,12 @@ export default function AddSalesOrderPage() {
                 defaultOptions={customerDefaults}
                 placeholder="Select customer"
                 isInvalid={hasErr('customer_id')}
+                compact
               />
-              {hasErr('customer_id') && <p className="mt-1 text-xs text-red-600">{err('customer_id')}</p>}
-            </div>
+            </FormRow>
 
             {/* Warehouse */}
-            <div>
-              <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">
-                Warehouse <span className="text-red-500">*</span>
-              </label>
+            <FormRow label="Warehouse" required error={hasErr('warehouse_id') ? err('warehouse_id') : null}>
               <CustomSelect
                 value={selectedWarehouse}
                 onChange={(o: any) => {
@@ -834,66 +849,58 @@ export default function AddSalesOrderPage() {
                 defaultOptions={warehouseDefaults}
                 placeholder="Select warehouse"
                 isInvalid={hasErr('warehouse_id')}
+                compact
               />
-              {hasErr('warehouse_id') && <p className="mt-1 text-xs text-red-600">{err('warehouse_id')}</p>}
-            </div>
+            </FormRow>
 
             {/* Order Date */}
-            <div>
-              <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">
-                Order Date <span className="text-red-500">*</span>
-              </label>
+            <FormRow label="Order Date" required error={hasErr('order_date') ? err('order_date') : null}>
               <CustomDatePicker
                 value={formData.order_date}
                 onChange={v => setField('order_date', v)}
                 className={hasErr('order_date') ? 'border-red-500' : ''}
               />
-              {hasErr('order_date') && <p className="mt-1 text-xs text-red-600">{err('order_date')}</p>}
-            </div>
+            </FormRow>
+
+          </div>
+
+          {/* Due Date / Status / Payment Status — one row */}
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-x-4 gap-y-2 mt-2">
 
             {/* Due Date */}
-            <div>
-              <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">
-                Due Date
-              </label>
+            <FormRow label="Due Date">
               <CustomDatePicker
                 value={formData.due_date}
                 onChange={v => setField('due_date', v)}
               />
-            </div>
+            </FormRow>
 
             {/* Order Status */}
-            <div>
-              <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">
-                Status
-              </label>
+            <FormRow label="Status">
               <select
                 value={formData.status}
                 onChange={e => setField('status', e.target.value)}
                 disabled={isLockedForNonAdmin}
-                className={`${selectCls} ${isLockedForNonAdmin ? 'opacity-50 cursor-not-allowed' : ''}`}
+                className={`${fldCls(false)} ${isLockedForNonAdmin ? 'opacity-50 cursor-not-allowed' : ''}`}
               >
                 {STATUS_LIST.map(s => (
                   <option key={s} value={s}>{s.charAt(0).toUpperCase() + s.slice(1)}</option>
                 ))}
               </select>
-            </div>
+            </FormRow>
 
             {/* Payment Status */}
-            <div>
-              <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">
-                Payment Status
-              </label>
+            <FormRow label="Payment Status">
               <select
                 value={paymentStatus}
                 onChange={e => setPaymentStatus(e.target.value as PaymentStatus)}
-                className={selectCls}
+                className={fldCls(false)}
               >
                 {PAYMENT_STATUS_LIST.map(o => (
                   <option key={o.value} value={o.value}>{o.label}</option>
                 ))}
               </select>
-            </div>
+            </FormRow>
 
           </div>
         </div>
@@ -1190,8 +1197,8 @@ export default function AddSalesOrderPage() {
 
         {/* ── Section 3: Payment Details ────────────────────────────────────────── */}
         <div className="bg-white dark:bg-gray-800 rounded-md shadow-sm border border-gray-200 dark:border-gray-700 p-3">
-          <h3 className="text-sm font-semibold text-gray-900 dark:text-gray-100 mb-3 flex items-center gap-2">
-            <DollarSign className="w-4 h-4 text-green-600 dark:text-green-400" />
+          <h3 className="text-xs font-semibold text-gray-700 dark:text-gray-300 mb-3 flex items-center gap-2">
+            <DollarSign className="w-3.5 h-3.5 text-green-600 dark:text-green-400" />
             Payment Details
           </h3>
 
@@ -1240,7 +1247,7 @@ export default function AddSalesOrderPage() {
                     onKeyDown={preventMinus}
                     onFocus={e => e.target.select()}
                     placeholder="0.00"
-                    className="w-full px-2 py-1.5 text-sm font-semibold text-right text-blue-700 dark:text-blue-300 bg-blue-50 dark:bg-blue-900/20 border-2 border-blue-400 dark:border-blue-500 rounded-sm focus:outline-none [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                    className="w-full h-[30px] px-2 py-1.5 text-sm font-semibold text-right text-blue-700 dark:text-blue-300 bg-blue-50 dark:bg-blue-900/20 border-2 border-blue-400 dark:border-blue-500 rounded-sm focus:outline-none [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
                   />
                   {grandTotal > 0 && (
                     <p className="mt-0.5 text-xs text-gray-500 dark:text-gray-400">
@@ -1285,14 +1292,14 @@ export default function AddSalesOrderPage() {
                       onKeyDown={preventMinus}
                       onFocus={e => e.target.select()}
                       placeholder="0.00"
-                      className="w-full px-2 py-1.5 text-sm font-semibold text-right text-amber-700 dark:text-amber-300 bg-amber-50 dark:bg-amber-900/20 border-2 border-amber-400 dark:border-amber-500 rounded-sm focus:outline-none [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                      className="w-full h-[30px] px-2 py-1.5 text-sm font-semibold text-right text-amber-700 dark:text-amber-300 bg-amber-50 dark:bg-amber-900/20 border-2 border-amber-400 dark:border-amber-500 rounded-sm focus:outline-none [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
                     />
                   </div>
                   <div>
                     <label className="block text-xs font-semibold text-green-600 dark:text-green-400 mb-1">
                       Change
                     </label>
-                    <div className={`w-full px-2 py-1.5 text-sm font-bold text-right rounded-sm border-2 pointer-events-none ${changeAmount > 0
+                    <div className={`w-full h-[30px] px-2 py-1.5 text-sm font-bold text-right rounded-sm border-2 pointer-events-none ${changeAmount > 0
                       ? 'text-green-700 dark:text-green-300 bg-green-50 dark:bg-green-900/20 border-green-400 dark:border-green-500'
                       : 'text-gray-400 dark:text-gray-500 bg-gray-50 dark:bg-gray-700/50 border-gray-200 dark:border-gray-600'
                       }`}>
@@ -1315,7 +1322,7 @@ export default function AddSalesOrderPage() {
                       value={cardLastFour}
                       onChange={e => setCardLastFour(e.target.value.replace(/\D/g, '').slice(0, 4))}
                       placeholder="1234"
-                      className="w-full px-2 py-1.5 text-sm font-semibold text-blue-700 dark:text-blue-300 bg-blue-50 dark:bg-blue-900/20 border-2 border-blue-400 dark:border-blue-500 rounded-sm focus:outline-none"
+                      className="w-full h-[30px] px-2 py-1.5 text-sm font-semibold text-blue-700 dark:text-blue-300 bg-blue-50 dark:bg-blue-900/20 border-2 border-blue-400 dark:border-blue-500 rounded-sm focus:outline-none"
                     />
                   </div>
                   <div>
@@ -1331,7 +1338,7 @@ export default function AddSalesOrderPage() {
                       onKeyDown={preventMinus}
                       onFocus={e => e.target.select()}
                       placeholder="0.00"
-                      className="w-full px-2 py-1.5 text-sm font-semibold text-right text-blue-700 dark:text-blue-300 bg-blue-50 dark:bg-blue-900/20 border-2 border-blue-400 dark:border-blue-500 rounded-sm focus:outline-none [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                      className="w-full h-[30px] px-2 py-1.5 text-sm font-semibold text-right text-blue-700 dark:text-blue-300 bg-blue-50 dark:bg-blue-900/20 border-2 border-blue-400 dark:border-blue-500 rounded-sm focus:outline-none [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
                     />
                   </div>
                   <div>
@@ -1343,7 +1350,7 @@ export default function AddSalesOrderPage() {
                       value={txnReference}
                       onChange={e => setTxnReference(e.target.value)}
                       placeholder="TXN-XXXX"
-                      className="w-full px-2 py-1.5 text-sm font-semibold text-blue-700 dark:text-blue-300 bg-blue-50 dark:bg-blue-900/20 border-2 border-blue-400 dark:border-blue-500 rounded-sm focus:outline-none"
+                      className="w-full h-[30px] px-2 py-1.5 text-sm font-semibold text-blue-700 dark:text-blue-300 bg-blue-50 dark:bg-blue-900/20 border-2 border-blue-400 dark:border-blue-500 rounded-sm focus:outline-none"
                     />
                   </div>
                 </div>
@@ -1361,7 +1368,7 @@ export default function AddSalesOrderPage() {
                       value={mobileNumber}
                       onChange={e => setMobileNumber(e.target.value)}
                       placeholder="01XXXXXXXXX"
-                      className="w-full px-2 py-1.5 text-sm font-semibold text-pink-700 dark:text-pink-300 bg-pink-50 dark:bg-pink-900/20 border-2 border-pink-400 dark:border-pink-500 rounded-sm focus:outline-none"
+                      className="w-full h-[30px] px-2 py-1.5 text-sm font-semibold text-pink-700 dark:text-pink-300 bg-pink-50 dark:bg-pink-900/20 border-2 border-pink-400 dark:border-pink-500 rounded-sm focus:outline-none"
                     />
                   </div>
                   <div>
@@ -1373,7 +1380,7 @@ export default function AddSalesOrderPage() {
                       value={mobileTxnId}
                       onChange={e => setMobileTxnId(e.target.value)}
                       placeholder="TXN ID"
-                      className="w-full px-2 py-1.5 text-sm font-semibold text-pink-700 dark:text-pink-300 bg-pink-50 dark:bg-pink-900/20 border-2 border-pink-400 dark:border-pink-500 rounded-sm focus:outline-none"
+                      className="w-full h-[30px] px-2 py-1.5 text-sm font-semibold text-pink-700 dark:text-pink-300 bg-pink-50 dark:bg-pink-900/20 border-2 border-pink-400 dark:border-pink-500 rounded-sm focus:outline-none"
                     />
                   </div>
                 </div>
@@ -1391,7 +1398,7 @@ export default function AddSalesOrderPage() {
                       value={bankName}
                       onChange={e => setBankName(e.target.value)}
                       placeholder="e.g. Dutch Bangla Bank"
-                      className="w-full px-2 py-1.5 text-sm font-semibold text-teal-700 dark:text-teal-300 bg-teal-50 dark:bg-teal-900/20 border-2 border-teal-400 dark:border-teal-500 rounded-sm focus:outline-none"
+                      className="w-full h-[30px] px-2 py-1.5 text-sm font-semibold text-teal-700 dark:text-teal-300 bg-teal-50 dark:bg-teal-900/20 border-2 border-teal-400 dark:border-teal-500 rounded-sm focus:outline-none"
                     />
                   </div>
                   <div>
@@ -1403,7 +1410,7 @@ export default function AddSalesOrderPage() {
                       value={bankAccount}
                       onChange={e => setBankAccount(e.target.value)}
                       placeholder="Account number"
-                      className="w-full px-2 py-1.5 text-sm font-semibold text-teal-700 dark:text-teal-300 bg-teal-50 dark:bg-teal-900/20 border-2 border-teal-400 dark:border-teal-500 rounded-sm focus:outline-none"
+                      className="w-full h-[30px] px-2 py-1.5 text-sm font-semibold text-teal-700 dark:text-teal-300 bg-teal-50 dark:bg-teal-900/20 border-2 border-teal-400 dark:border-teal-500 rounded-sm focus:outline-none"
                     />
                   </div>
                   <div>
@@ -1415,7 +1422,7 @@ export default function AddSalesOrderPage() {
                       value={txnReference}
                       onChange={e => setTxnReference(e.target.value)}
                       placeholder="TXN-XXXX"
-                      className="w-full px-2 py-1.5 text-sm font-semibold text-teal-700 dark:text-teal-300 bg-teal-50 dark:bg-teal-900/20 border-2 border-teal-400 dark:border-teal-500 rounded-sm focus:outline-none"
+                      className="w-full h-[30px] px-2 py-1.5 text-sm font-semibold text-teal-700 dark:text-teal-300 bg-teal-50 dark:bg-teal-900/20 border-2 border-teal-400 dark:border-teal-500 rounded-sm focus:outline-none"
                     />
                   </div>
                 </div>
@@ -1433,7 +1440,7 @@ export default function AddSalesOrderPage() {
                       value={checkNumber}
                       onChange={e => setCheckNumber(e.target.value)}
                       placeholder="CHK-XXXX"
-                      className="w-full px-2 py-1.5 text-sm font-semibold text-amber-700 dark:text-amber-300 bg-amber-50 dark:bg-amber-900/20 border-2 border-amber-400 dark:border-amber-500 rounded-sm focus:outline-none"
+                      className="w-full h-[30px] px-2 py-1.5 text-sm font-semibold text-amber-700 dark:text-amber-300 bg-amber-50 dark:bg-amber-900/20 border-2 border-amber-400 dark:border-amber-500 rounded-sm focus:outline-none"
                     />
                   </div>
                   <div>
@@ -1458,7 +1465,7 @@ export default function AddSalesOrderPage() {
                   onChange={e => setPaymentNotes(e.target.value)}
                   placeholder="Add any notes for this payment..."
                   rows={1}
-                  className={`${inputCls} resize-none`}
+                  className={`${inputCls} resize-none h-[30px] py-1`}
                 />
               </div>
 
@@ -1467,7 +1474,7 @@ export default function AddSalesOrderPage() {
         </div>
 
         {/* ── Action buttons ────────────────────────────────────────────────────── */}
-        <div className="flex items-center gap-2 pt-1">
+        <div className="flex justify-end items-center gap-2 pt-1">
           <button
             type="submit"
             disabled={isLoading || !formData.warehouse_id || items.some(it => it.stockQty === 0)}

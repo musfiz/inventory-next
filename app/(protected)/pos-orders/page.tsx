@@ -26,6 +26,21 @@ const PAYMENT_METHOD_OPTIONS = [
   { value: 'other', label: 'Other' },
 ];
 
+// ─── Form row (left-aligned label) matching the redesigned forms ──────────────
+
+function FormRow({ label, required, children, className = '', labelWidth = 'w-32', fieldWidth = 'flex-1 min-w-0' }: { label: string; required?: boolean; children: React.ReactNode; className?: string; labelWidth?: string; fieldWidth?: string }) {
+  return (
+    <div className={className}>
+      <div className="flex items-start gap-1.5">
+        <label className={`${labelWidth} shrink-0 pt-1 text-[11px] font-medium text-gray-600 dark:text-gray-400 text-left`}>
+          {label}{required && <span className="text-red-500">*</span>}:
+        </label>
+        <div className={fieldWidth}>{children}</div>
+      </div>
+    </div>
+  );
+}
+
 export default function PosOrdersPage() {
   const { isSuperAdmin, isHydrated } = usePermissions();
   const { user } = useAuthStore();
@@ -364,13 +379,13 @@ export default function PosOrdersPage() {
       </div>
 
       {/* Tenant / Register Filter */}
-      <div className="bg-white border border-gray-200 rounded-sm p-3">
-        <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2 flex items-center gap-1">
+      <div className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-md shadow-sm p-3">
+        <p className="text-xs font-semibold text-gray-700 dark:text-gray-300 mb-3 flex items-center gap-1.5">
           <Building2 className="w-3.5 h-3.5" /> Filter by {isSuperAdmin ? 'Tenant & Register' : 'Register'}
         </p>
-        <div className="flex flex-wrap gap-3">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-x-4 gap-y-2 max-w-3xl">
           {isSuperAdmin && (
-            <div className="w-72">
+            <FormRow label="Tenant">
               <CustomSelect
                 value={selectedTenant}
                 onChange={handleTenantChange}
@@ -382,11 +397,11 @@ export default function PosOrdersPage() {
                   return (list || []).map((t: any) => ({ value: t.id, label: t.business_name }));
                 }}
                 placeholder="All Tenants"
-                className="text-sm"
+                compact
               />
-            </div>
+            </FormRow>
           )}
-          <div className="w-72">
+          <FormRow label="Register">
             <CustomSelect
               key={isSuperAdmin ? `reg-${selectedTenant?.value ?? 'none'}` : 'reg-non-super'}
               value={selectedRegister}
@@ -395,9 +410,9 @@ export default function PosOrdersPage() {
               isLoading={registerLoading}
               placeholder={isSuperAdmin && !selectedTenant ? 'Select tenant first' : 'All Registers'}
               isDisabled={isSuperAdmin && !selectedTenant}
-              className="text-sm"
+              compact
             />
-          </div>
+          </FormRow>
         </div>
       </div>
 

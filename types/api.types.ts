@@ -172,6 +172,7 @@ export interface ProductVariation {
   selling_price: number;
   dp?: number;
   mrp?: number;
+  price_mode?: 'dp' | 'mrp';
   is_active: boolean;
   is_default: boolean;
   display_order: number;
@@ -572,6 +573,7 @@ export interface CreateProductVariationRequest {
   selling_price: number;
   dp?: number;
   mrp?: number;
+  price_mode?: 'dp' | 'mrp';
   is_active?: boolean;
   is_default?: boolean;
   display_order?: number;

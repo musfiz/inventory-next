@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { Warehouse as WarehouseIcon, Plus, Edit, Trash2, X, MapPin } from 'lucide-react';
+import { Warehouse as WarehouseIcon, Plus, Edit, Trash2, MapPin } from 'lucide-react';
 import { GiSave } from 'react-icons/gi';
 import { ColumnDef } from '@tanstack/react-table';
 import { notify, confirm } from '@/lib/notifications';
@@ -11,6 +11,25 @@ import DataTable from '@/components/ui/datatable';
 import CustomSelect from '@/components/ui/custom-select';
 import { useRouter } from 'next/navigation';
 import { usePermissions } from '@/hooks/use-permissions';
+
+const inputCls = (hasError?: boolean) =>
+  `w-full px-2.5 py-1 text-xs bg-white dark:bg-gray-700 border ${hasError ? 'border-red-500' : 'border-gray-300 dark:border-gray-600'} rounded text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-1 focus:ring-indigo-500`;
+
+function FormRow({ label, required, error, children, className = '', labelWidth = 'w-20' }: { label: string; required?: boolean; error?: string | null; children: React.ReactNode; className?: string; labelWidth?: string }) {
+  const errorMl =
+    labelWidth === 'w-32' ? 'ml-[8.5rem]' : labelWidth === 'w-20' ? 'ml-[5.5rem]' : 'ml-[4.375rem]';
+  return (
+    <div className={className}>
+      <div className="flex items-center gap-1.5">
+        <label className={`${labelWidth} shrink-0 text-[11px] font-medium text-gray-600 dark:text-gray-400 text-right`}>
+          {label}{required && <span className="text-red-500">*</span>}:
+        </label>
+        <div className="flex-1 min-w-0">{children}</div>
+      </div>
+      {error && <p className={`text-[10px] text-red-500 mt-0.5 ${errorMl}`}>{error}</p>}
+    </div>
+  );
+}
 
 export default function WarehousePage() {
   const { isSuperAdmin, hasPermission, hasAnyPermission, isHydrated } = usePermissions();
@@ -402,7 +421,7 @@ export default function WarehousePage() {
         <div>
           <h1 className="text-xl font-bold text-gray-900 dark:text-gray-100 flex items-center gap-2">
             <WarehouseIcon className="w-5 h-5 text-blue-600 dark:text-blue-400" />
-            Warehouses
+            {showForm ? (isEditing ? 'Edit Warehouse' : 'Add Warehouse') : 'Warehouse'}
           </h1>
         </div>
         {(isSuperAdmin || hasPermission('create-warehouse')) && (
@@ -418,280 +437,220 @@ export default function WarehousePage() {
 
       {/* Add/Edit Warehouse Form */}
       {showForm && (
-        <div className="bg-white dark:bg-gray-800 rounded-md shadow-sm border border-gray-200 dark:border-gray-700 p-1.5 mb-1">
-          <h2 className="text-lg font-semibold mb-1.5 text-gray-900 dark:text-gray-100">
-            {isEditing ? 'Edit Warehouse' : 'Add Warehouse'}
-          </h2>
-          <form onSubmit={handleFormSubmit} className="space-y-3">
-            {/* Tenant Selection - Only for Super Admin */}
-            {isSuperAdmin && (
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-1.5">
-                <div>
-                  <CustomSelect
-                    value={selectedTenant}
-                    onChange={option => {
-                      setFormData({ ...formData, tenant_id: option?.value || undefined });
-                      setSelectedTenant(option);
-                      // Clear tenant error when selection is made
-                      if (option?.value && formErrors.tenant_id) {
-                        const { tenant_id, ...rest } = formErrors;
-                        setFormErrors(rest);
+        <div className="space-y-3">
+          <form onSubmit={handleFormSubmit} className="space-y-3" autoComplete="off">
+            {/* Basic Information */}
+            <div className="bg-white dark:bg-gray-800 rounded-md shadow-sm border border-gray-200 dark:border-gray-700 p-3">
+              <h3 className="text-xs font-semibold text-gray-700 dark:text-gray-300 mb-3">Basic Information</h3>
+
+              {isSuperAdmin && (
+                <div className="mb-2">
+                  <FormRow label="Tenant" required labelWidth="w-32" error={formErrors.tenant_id}>
+                    <CustomSelect
+                      value={selectedTenant}
+                      onChange={option => {
+                        setFormData({ ...formData, tenant_id: option?.value || undefined });
+                        setSelectedTenant(option);
+                        // Clear tenant error when selection is made
+                        if (option?.value && formErrors.tenant_id) {
+                          setFormErrors(prev => {
+                            const next = { ...prev };
+                            delete next.tenant_id;
+                            return next;
+                          });
+                        }
+                      }}
+                      loadOptions={loadTenantOptions}
+                      defaultOptions={defaultTenantOptions.length > 0 ? defaultTenantOptions : true}
+                      placeholder="Select tenant"
+                      isInvalid={!!formErrors.tenant_id}
+                      compact
+                    />
+                  </FormRow>
+                </div>
+              )}
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-x-4 gap-y-2">
+                <FormRow label="Name" required labelWidth="w-32" error={formErrors.name}>
+                  <input
+                    type="text"
+                    placeholder="Main Warehouse"
+                    value={formData.name}
+                    onChange={e => {
+                      setFormData({ ...formData, name: e.target.value });
+                      // Clear name error when user types
+                      if (e.target.value.trim() && formErrors.name) {
+                        setFormErrors(prev => {
+                          const next = { ...prev };
+                          delete next.name;
+                          return next;
+                        });
                       }
                     }}
-                    loadOptions={loadTenantOptions}
-                    defaultOptions={defaultTenantOptions}
-                    placeholder="Select tenant"
-                    className="text-sm"
-                    isInvalid={!!formErrors.tenant_id}
+                    className={inputCls(!!formErrors.name)}
                   />
-                  {formErrors.tenant_id && (
-                    <p className="text-red-600 text-xs mt-1">{formErrors.tenant_id}</p>
-                  )}
-                </div>
-              </div>
-            )}
+                </FormRow>
 
-            {/* Basic Information */}
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-1.5">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-0.5">
-                  Warehouse Name <span className="text-red-500">*</span>
-                </label>
-                <input
-                  type="text"
-                  placeholder="Main Warehouse"
-                  value={formData.name}
-                  onChange={e => {
-                    setFormData({ ...formData, name: e.target.value });
-                    // Clear name error when user types
-                    if (e.target.value.trim() && formErrors.name) {
-                      const { name, ...rest } = formErrors;
-                      setFormErrors(rest);
-                    }
-                  }}
-                  className={`w-full px-2 py-1.25 text-sm border rounded-sm focus:outline-none focus:ring-1 focus:ring-blue-500 dark:focus:ring-blue-400 focus:border-transparent dark:bg-gray-700 dark:text-gray-100 ${formErrors.name ? 'border-red-500' : 'border-gray-300 dark:border-gray-600'
-                    }`}
-                />
-                {formErrors.name && <p className="text-red-600 text-xs mt-1">{formErrors.name}</p>}
-              </div>
+                <FormRow label="Code" required labelWidth="w-32" error={formErrors.code}>
+                  <input
+                    type="text"
+                    placeholder="WH001"
+                    value={formData.code}
+                    onChange={e => {
+                      setFormData({ ...formData, code: e.target.value });
+                      // Clear code error when user types
+                      if (e.target.value.trim() && formErrors.code) {
+                        setFormErrors(prev => {
+                          const next = { ...prev };
+                          delete next.code;
+                          return next;
+                        });
+                      }
+                    }}
+                    className={inputCls(!!formErrors.code)}
+                  />
+                </FormRow>
 
-              <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-0.5">
-                  Code <span className="text-red-500">*</span>
-                </label>
-                <input
-                  type="text"
-                  placeholder="WH001"
-                  value={formData.code}
-                  onChange={e => {
-                    setFormData({ ...formData, code: e.target.value });
-                    // Clear code error when user types
-                    if (e.target.value.trim() && formErrors.code) {
-                      const { code, ...rest } = formErrors;
-                      setFormErrors(rest);
-                    }
-                  }}
-                  className={`w-full px-2 py-1.25 text-sm border rounded-sm focus:outline-none focus:ring-1 focus:ring-blue-500 dark:focus:ring-blue-400 focus:border-transparent dark:bg-gray-700 dark:text-gray-100 ${formErrors.code ? 'border-red-500' : 'border-gray-300 dark:border-gray-600'
-                    }`}
-                />
-                {formErrors.code && <p className="text-red-600 text-xs mt-1">{formErrors.code}</p>}
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-0.5">
-                  Contact Person
-                </label>
-                <input
-                  type="text"
-                  placeholder="John Doe"
-                  value={formData.contact_person}
-                  onChange={e => setFormData({ ...formData, contact_person: e.target.value })}
-                  className="w-full px-2 py-1.25 text-sm border border-gray-300 dark:border-gray-600 rounded-sm focus:outline-none focus:ring-1 focus:ring-blue-500 dark:focus:ring-blue-400 focus:border-transparent dark:bg-gray-700 dark:text-gray-100"
-                />
+                <FormRow label="Contact Person" labelWidth="w-32">
+                  <input
+                    type="text"
+                    placeholder="John Doe"
+                    value={formData.contact_person}
+                    onChange={e => setFormData({ ...formData, contact_person: e.target.value })}
+                    className={inputCls(false)}
+                  />
+                </FormRow>
               </div>
             </div>
 
-            {/* Contact Information */}
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-1.5">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-0.5">
-                  Phone
-                </label>
-                <input
-                  type="text"
-                  placeholder="+880 1234567890"
-                  value={formData.phone}
-                  onChange={e => setFormData({ ...formData, phone: e.target.value })}
-                  className="w-full px-2 py-1.25 text-sm border border-gray-300 dark:border-gray-600 rounded-sm focus:outline-none focus:ring-1 focus:ring-blue-500 dark:focus:ring-blue-400 focus:border-transparent dark:bg-gray-700 dark:text-gray-100"
-                />
-              </div>
+            {/* Contact & Address */}
+            <div className="bg-white dark:bg-gray-800 rounded-md shadow-sm border border-gray-200 dark:border-gray-700 p-3">
+              <h3 className="text-xs font-semibold text-gray-700 dark:text-gray-300 mb-3">Contact & Address</h3>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-x-4 gap-y-2">
+                <FormRow label="Phone" labelWidth="w-32">
+                  <input
+                    type="text"
+                    placeholder="+880 1234567890"
+                    value={formData.phone}
+                    onChange={e => setFormData({ ...formData, phone: e.target.value })}
+                    className={inputCls(false)}
+                  />
+                </FormRow>
 
-              <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-0.5">
-                  Email
-                </label>
-                <input
-                  type="email"
-                  placeholder="warehouse@example.com"
-                  value={formData.email}
-                  onChange={e => {
-                    setFormData({ ...formData, email: e.target.value });
-                    // Clear email error when valid email is entered
-                    if (
-                      e.target.value &&
-                      /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(e.target.value) &&
-                      formErrors.email
-                    ) {
-                      const { email, ...rest } = formErrors;
-                      setFormErrors(rest);
-                    }
-                  }}
-                  className={`w-full px-2 py-1.25 text-sm border rounded-sm focus:outline-none focus:ring-1 focus:ring-blue-500 dark:focus:ring-blue-400 focus:border-transparent dark:bg-gray-700 dark:text-gray-100 ${formErrors.email ? 'border-red-500' : 'border-gray-300 dark:border-gray-600'
-                    }`}
-                />
-                {formErrors.email && (
-                  <p className="text-red-600 text-xs mt-1">{formErrors.email}</p>
-                )}
-              </div>
+                <FormRow label="Email" labelWidth="w-32" error={formErrors.email}>
+                  <input
+                    type="email"
+                    placeholder="warehouse@example.com"
+                    value={formData.email}
+                    onChange={e => {
+                      setFormData({ ...formData, email: e.target.value });
+                      // Clear email error when valid email is entered
+                      if (
+                        e.target.value &&
+                        /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(e.target.value) &&
+                        formErrors.email
+                      ) {
+                        setFormErrors(prev => {
+                          const next = { ...prev };
+                          delete next.email;
+                          return next;
+                        });
+                      }
+                    }}
+                    className={inputCls(!!formErrors.email)}
+                  />
+                </FormRow>
 
-              <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-0.5">
-                  City
-                </label>
-                <input
-                  type="text"
-                  placeholder="Dhaka"
-                  value={formData.city}
-                  onChange={e => setFormData({ ...formData, city: e.target.value })}
-                  className="w-full px-2 py-1.25 text-sm border border-gray-300 dark:border-gray-600 rounded-sm focus:outline-none focus:ring-1 focus:ring-blue-500 dark:focus:ring-blue-400 focus:border-transparent dark:bg-gray-700 dark:text-gray-100"
-                />
-              </div>
+                <FormRow label="City" labelWidth="w-32">
+                  <input
+                    type="text"
+                    placeholder="Dhaka"
+                    value={formData.city}
+                    onChange={e => setFormData({ ...formData, city: e.target.value })}
+                    className={inputCls(false)}
+                  />
+                </FormRow>
 
-              <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-0.5">
-                  State/Province
-                </label>
-                <input
-                  type="text"
-                  placeholder="Dhaka Division"
-                  value={formData.state}
-                  onChange={e => setFormData({ ...formData, state: e.target.value })}
-                  className="w-full px-2 py-1.25 text-sm border border-gray-300 dark:border-gray-600 rounded-sm focus:outline-none focus:ring-1 focus:ring-blue-500 dark:focus:ring-blue-400 focus:border-transparent dark:bg-gray-700 dark:text-gray-100"
-                />
-              </div>
-            </div>
+                <FormRow label="State/Province" labelWidth="w-32">
+                  <input
+                    type="text"
+                    placeholder="Dhaka Division"
+                    value={formData.state}
+                    onChange={e => setFormData({ ...formData, state: e.target.value })}
+                    className={inputCls(false)}
+                  />
+                </FormRow>
 
-            {/* Address and Location */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-1.5">
-              <div className="md:col-span-2">
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-0.5">
-                  Address
-                </label>
-                <input
-                  type="text"
-                  placeholder="Street address, building, floor"
-                  value={formData.address}
-                  onChange={e => setFormData({ ...formData, address: e.target.value })}
-                  className="w-full px-2 py-1.25 text-sm border border-gray-300 dark:border-gray-600 rounded-sm focus:outline-none focus:ring-1 focus:ring-blue-500 dark:focus:ring-blue-400 focus:border-transparent dark:bg-gray-700 dark:text-gray-100"
-                />
-              </div>
-
-              <div className="grid grid-cols-2 gap-1.5">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-0.5">
-                    Country
-                  </label>
+                <FormRow label="Country" labelWidth="w-32">
                   <input
                     type="text"
                     placeholder="Bangladesh"
                     value={formData.country}
                     onChange={e => setFormData({ ...formData, country: e.target.value })}
-                    className="w-full px-2 py-1.25 text-sm border border-gray-300 dark:border-gray-600 rounded-sm focus:outline-none focus:ring-1 focus:ring-blue-500 dark:focus:ring-blue-400 focus:border-transparent dark:bg-gray-700 dark:text-gray-100"
+                    className={inputCls(false)}
                   />
-                </div>
+                </FormRow>
 
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-0.5">
-                    Postal Code
-                  </label>
+                <FormRow label="Postal Code" labelWidth="w-32">
                   <input
                     type="text"
                     placeholder="1207"
                     value={formData.postal_code}
                     onChange={e => setFormData({ ...formData, postal_code: e.target.value })}
-                    className="w-full px-2 py-1.25 text-sm border border-gray-300 dark:border-gray-600 rounded-sm focus:outline-none focus:ring-1 focus:ring-blue-500 dark:focus:ring-blue-400 focus:border-transparent dark:bg-gray-700 dark:text-gray-100"
+                    className={inputCls(false)}
                   />
-                </div>
+                </FormRow>
+
+                <FormRow label="Address" labelWidth="w-32" className="md:col-span-2">
+                  <input
+                    type="text"
+                    placeholder="Street address, building, floor"
+                    value={formData.address}
+                    onChange={e => setFormData({ ...formData, address: e.target.value })}
+                    className={inputCls(false)}
+                  />
+                </FormRow>
               </div>
             </div>
 
             {/* Settings */}
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-3 pt-2 border-t border-gray-200 dark:border-gray-700">
-              <label className="flex items-center gap-2 cursor-pointer">
-                <input
-                  type="checkbox"
-                  checked={formData.is_active}
-                  onChange={e => setFormData({ ...formData, is_active: e.target.checked })}
-                  className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500 dark:focus:ring-blue-600 dark:ring-offset-gray-800 focus:ring-2 cursor-pointer"
-                />
-                <span className="text-sm font-medium text-gray-700 dark:text-gray-300">Active</span>
-              </label>
-
-              <label className="flex items-center gap-2 cursor-pointer">
-                <input
-                  type="checkbox"
-                  checked={formData.is_default}
-                  onChange={e => setFormData({ ...formData, is_default: e.target.checked })}
-                  className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500 dark:focus:ring-blue-600 dark:ring-offset-gray-800 focus:ring-2 cursor-pointer"
-                />
-                <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
-                  Set as Default
-                </span>
-              </label>
-
-              <label className="flex items-center gap-2 cursor-pointer">
-                <input
-                  type="checkbox"
-                  checked={formData.is_sales_location}
-                  onChange={e => setFormData({ ...formData, is_sales_location: e.target.checked })}
-                  className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500 dark:focus:ring-blue-600 dark:ring-offset-gray-800 focus:ring-2 cursor-pointer"
-                />
-                <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
-                  Sales Location
-                </span>
-              </label>
-
-              <label className="flex items-center gap-2 cursor-pointer">
-                <input
-                  type="checkbox"
-                  checked={formData.is_purchase_location}
-                  onChange={e =>
-                    setFormData({ ...formData, is_purchase_location: e.target.checked })
-                  }
-                  className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500 dark:focus:ring-blue-600 dark:ring-offset-gray-800 focus:ring-2 cursor-pointer"
-                />
-                <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
-                  Purchase Location
-                </span>
-              </label>
+            <div className="bg-white dark:bg-gray-800 rounded-md shadow-sm border border-gray-200 dark:border-gray-700 p-3">
+              <h3 className="text-xs font-semibold text-gray-700 dark:text-gray-300 mb-3">Settings</h3>
+              <div className="flex flex-wrap gap-2">
+                {[
+                  { key: 'is_active', label: 'Active' },
+                  { key: 'is_default', label: 'Set as Default' },
+                  { key: 'is_sales_location', label: 'Sales Location' },
+                  { key: 'is_purchase_location', label: 'Purchase Location' },
+                ].map(f => (
+                  <label key={f.key} className="inline-flex items-center gap-1.5 cursor-pointer rounded-full px-2.5 py-1 hover:bg-gray-50 dark:hover:bg-gray-700/50 border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800">
+                    <input
+                      type="checkbox"
+                      checked={(formData as any)[f.key]}
+                      onChange={e => setFormData({ ...formData, [f.key]: e.target.checked })}
+                      className="h-3.5 w-3.5 accent-indigo-600"
+                    />
+                    <span className="text-xs text-gray-700 dark:text-gray-300 whitespace-nowrap">{f.label}</span>
+                  </label>
+                ))}
+              </div>
             </div>
 
             {/* Form Actions */}
-            <div className="flex gap-2 pt-2">
-              <button
-                type="submit"
-                className="flex items-center justify-center gap-2 px-5 py-1.5 text-sm bg-indigo-600 hover:bg-indigo-700 disabled:bg-gray-400 text-white rounded-sm transition-colors cursor-pointer"
-              >
-                <GiSave className="w-4 h-4" />
-                {isEditing ? 'Update Warehouse' : 'Save Warehouse'}
-              </button>
+            <div className="flex justify-end gap-2">
               <button
                 type="button"
                 onClick={() => setShowForm(false)}
-                className="px-3 py-1.5 bg-gray-600 text-white text-sm font-medium rounded-sm hover:bg-gray-700 transition-colors flex items-center gap-2 cursor-pointer"
+                className="px-3 py-1.5 text-xs rounded border border-gray-300 dark:border-gray-600 text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700"
               >
-                <X className="w-4 h-4" />
                 Cancel
+              </button>
+              <button
+                type="submit"
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs bg-indigo-600 hover:bg-indigo-700 disabled:opacity-60 text-white rounded"
+              >
+                <GiSave className="w-3.5 h-3.5" />
+                {isEditing ? 'Update Warehouse' : 'Create Warehouse'}
               </button>
             </div>
           </form>

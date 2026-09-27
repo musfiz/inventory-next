@@ -34,14 +34,16 @@ const discount = (mrp?: number, price?: number) => {
 const hasValidBrand = (name?: string) =>
   !!name && !['no brand', 'unknown', 'n/a', 'none', ''].includes(name.trim().toLowerCase());
 
-export default function ProductCard({
+export default function ProductCard(props: ProductCardProps) {
+  const { isGrocery } = useStorefrontTheme();
+  return isGrocery ? <GroceryProductCard {...props} /> : <DefaultProductCard {...props} />;
+}
+
+function DefaultProductCard({
   product,
   variant = 'default',
   showWishlist = true,
 }: ProductCardProps) {
-  const { isGrocery } = useStorefrontTheme();
-  if (isGrocery) return <GroceryProductCard product={product} variant={variant} showWishlist={showWishlist} />;
-
   const defaultVariation =
     product.variations.find(v => v.isDefault) || product.variations[0];
   const price = defaultVariation.sellingPrice;

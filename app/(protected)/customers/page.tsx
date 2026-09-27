@@ -14,6 +14,25 @@ import { usePermissions } from '@/hooks/use-permissions';
 import TenantSelect from '@/components/ui/tenant-select';
 import { useAuthStore } from '@/stores/auth-store';
 
+const inputCls = (hasError?: boolean) =>
+  `w-full px-2.5 py-1 text-xs bg-white dark:bg-gray-700 border ${hasError ? 'border-red-500' : 'border-gray-300 dark:border-gray-600'} rounded text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-1 focus:ring-indigo-500`;
+
+function FormRow({ label, required, error, children, className = '', labelWidth = 'w-20', fieldWidth = 'flex-1 min-w-0' }: { label: string; required?: boolean; error?: string | null; children: React.ReactNode; className?: string; labelWidth?: string; fieldWidth?: string }) {
+  const errorMl =
+    labelWidth === 'w-32' ? 'ml-[8.5rem]' : labelWidth === 'w-20' ? 'ml-[5.5rem]' : 'ml-[4.375rem]';
+  return (
+    <div className={className}>
+      <div className="flex items-start gap-1.5">
+        <label className={`${labelWidth} shrink-0 pt-1 text-[11px] font-medium text-gray-600 dark:text-gray-400 text-right`}>
+          {label}{required && <span className="text-red-500">*</span>}:
+        </label>
+        <div className={fieldWidth}>{children}</div>
+      </div>
+      {error && <p className={`text-[10px] text-red-500 mt-0.5 ${errorMl}`}>{error}</p>}
+    </div>
+  );
+}
+
 export default function CustomersPage() {
   const { isSuperAdmin, hasPermission, isHydrated } = usePermissions();
   const router = useRouter();
@@ -388,8 +407,8 @@ export default function CustomersPage() {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-xl font-bold text-gray-900 dark:text-gray-100 flex items-center gap-2">
-            <UsersIcon className="w-5 h-5 text-blue-600" />
-            Customers
+            <UsersIcon className="w-5 h-5 text-blue-600 dark:text-blue-400" />
+            {showForm ? (isEditing ? 'Edit Customer' : 'Add Customer') : 'Customer'}
           </h1>
         </div>
         <button
@@ -403,148 +422,221 @@ export default function CustomersPage() {
 
       {/* Add/Edit Customer Form */}
       {showForm && (
-        <div className="bg-white dark:bg-gray-800 rounded-md shadow-sm border border-gray-200 dark:border-gray-700 p-1.5 mb-1">
-          <h2 className="text-lg font-semibold mb-1.5 text-gray-900 dark:text-gray-100">
-            {isEditing ? 'Edit Customer' : 'Add Customer'}
-          </h2>
-          <form onSubmit={handleFormSubmit} className="space-y-3">
-            {/* Tenant Selection - Only for Super Admin */}
-            {isSuperAdmin && (
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-1.5">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-0.5">Tenant <span className="text-red-500">*</span></label>
-                  <TenantSelect
-                    value={formData.tenant_id}
-                    onChange={(tid) => {
-                      setFormData({ ...formData, tenant_id: tid || '' });
-                      if (tid && formErrors.tenant_id) {
-                        const { tenant_id, ...rest } = formErrors;
-                        setFormErrors(rest);
+        <div className="space-y-3">
+          <form onSubmit={handleFormSubmit} className="space-y-3" autoComplete="off">
+            {/* Basic Information */}
+            <div className="bg-white dark:bg-gray-800 rounded-md shadow-sm border border-gray-200 dark:border-gray-700 p-3">
+              <h3 className="text-xs font-semibold text-gray-700 dark:text-gray-300 mb-3">Basic Information</h3>
+
+              {isSuperAdmin && (
+                <div className="mb-2">
+                  <FormRow label="Tenant" required labelWidth="w-32" error={formErrors.tenant_id}>
+                    <TenantSelect
+                      value={formData.tenant_id}
+                      onChange={(tid) => {
+                        setFormData({ ...formData, tenant_id: tid || '' });
+                        if (tid && formErrors.tenant_id) {
+                          setFormErrors(prev => {
+                            const next = { ...prev };
+                            delete next.tenant_id;
+                            return next;
+                          });
+                        }
+                      }}
+                      placeholder="Select tenant"
+                      isInvalid={!!formErrors.tenant_id}
+                      compact
+                    />
+                  </FormRow>
+                </div>
+              )}
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-x-4 gap-y-2">
+                <FormRow label="Customer Name" required labelWidth="w-32" error={formErrors.name}>
+                  <input
+                    type="text"
+                    placeholder="Customer Name"
+                    value={formData.name}
+                    onChange={e => {
+                      setFormData({ ...formData, name: e.target.value });
+                      if (e.target.value.trim() && formErrors.name) {
+                        setFormErrors(prev => {
+                          const next = { ...prev };
+                          delete next.name;
+                          return next;
+                        });
                       }
                     }}
-                    placeholder="Select tenant"
-                    isInvalid={!!formErrors.tenant_id}
+                    className={inputCls(!!formErrors.name)}
                   />
-                  {formErrors.tenant_id && <p className="text-red-600 text-xs mt-1">{formErrors.tenant_id}</p>}
-                </div>
-              </div>
-            )}
+                </FormRow>
 
-            {/* Basic Information */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-1.5">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-0.5">Customer Name <span className="text-red-500">*</span></label>
-                <input
-                  type="text"
-                  placeholder="Customer Name"
-                  value={formData.name}
-                  onChange={e => {
-                    setFormData({ ...formData, name: e.target.value });
-                    if (e.target.value.trim() && formErrors.name) {
-                      const { name, ...rest } = formErrors;
-                      setFormErrors(rest);
-                    }
-                  }}
-                  className={`w-full px-2 py-1.25 text-sm border rounded-sm focus:outline-none focus:ring-1 focus:ring-blue-500 dark:focus:ring-blue-400 focus:border-transparent dark:bg-gray-700 dark:text-gray-100 ${formErrors.name ? 'border-red-500' : 'border-gray-300 dark:border-gray-600'}`}
-                />
-                {formErrors.name && <p className="text-red-600 text-xs mt-1">{formErrors.name}</p>}
-              </div>
+                <FormRow label="Phone" required labelWidth="w-32" error={formErrors.phone}>
+                  <input
+                    type="text"
+                    placeholder="+880 1..."
+                    value={formData.phone}
+                    onChange={e => setFormData({ ...formData, phone: e.target.value })}
+                    className={inputCls(!!formErrors.phone)}
+                  />
+                </FormRow>
 
-              <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-0.5">Phone <span className="text-red-500">*</span></label>
-                <input
-                  type="text"
-                  placeholder="+880 1..."
-                  value={formData.phone}
-                  onChange={e => setFormData({ ...formData, phone: e.target.value })}
-                  className={`w-full px-2 py-1.25 text-sm border rounded-sm focus:outline-none focus:ring-1 focus:ring-blue-500 dark:focus:ring-blue-400 focus:border-transparent dark:bg-gray-700 dark:text-gray-100 ${formErrors.phone ? 'border-red-500' : 'border-gray-300 dark:border-gray-600'}`}
-                />
-                {formErrors.phone && <p className="text-red-600 text-xs mt-1">{formErrors.phone}</p>}
-              </div>
+                <FormRow label="Email" labelWidth="w-32" error={formErrors.email}>
+                  <input
+                    type="email"
+                    placeholder="customer@example.com"
+                    value={formData.email}
+                    onChange={e => {
+                      setFormData({ ...formData, email: e.target.value });
+                      if (e.target.value && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(e.target.value) && formErrors.email) {
+                        setFormErrors(prev => {
+                          const next = { ...prev };
+                          delete next.email;
+                          return next;
+                        });
+                      }
+                    }}
+                    className={inputCls(!!formErrors.email)}
+                  />
+                </FormRow>
 
-              <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-0.5">Email</label>
-                <input
-                  type="email"
-                  placeholder="customer@example.com"
-                  value={formData.email}
-                  onChange={e => { setFormData({ ...formData, email: e.target.value }); if (e.target.value && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(e.target.value) && formErrors.email) { const { email, ...rest } = formErrors; setFormErrors(rest); } }}
-                  className={`w-full px-2 py-1.25 text-sm border rounded-sm focus:outline-none focus:ring-1 focus:ring-blue-500 dark:focus:ring-blue-400 focus:border-transparent dark:bg-gray-700 dark:text-gray-100 ${formErrors.email ? 'border-red-500' : 'border-gray-300 dark:border-gray-600'}`}
-                />
-                {formErrors.email && <p className="text-red-600 text-xs mt-1">{formErrors.email}</p>}
-              </div>
-            </div>
+                <FormRow label="Contact Person" labelWidth="w-32">
+                  <input
+                    type="text"
+                    placeholder="Contact person name"
+                    value={formData.contact_person}
+                    onChange={e => setFormData({ ...formData, contact_person: e.target.value })}
+                    className={inputCls(false)}
+                  />
+                </FormRow>
 
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-1.5">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-0.5">Company</label>
-                <input
-                  type="text"
-                  placeholder="Company Ltd"
-                  value={formData.company_name}
-                  onChange={e => setFormData({ ...formData, company_name: e.target.value })}
-                  className="w-full px-2 py-1.25 text-sm border border-gray-300 dark:border-gray-600 rounded-sm focus:outline-none focus:ring-1 focus:ring-blue-500 dark:focus:ring-blue-400 focus:border-transparent dark:bg-gray-700 dark:text-gray-100"
-                />
-              </div>
+                <FormRow label="Company" labelWidth="w-32">
+                  <input
+                    type="text"
+                    placeholder="Company Ltd"
+                    value={formData.company_name}
+                    onChange={e => setFormData({ ...formData, company_name: e.target.value })}
+                    className={inputCls(false)}
+                  />
+                </FormRow>
 
-              <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-0.5">Type</label>
-                <select
-                  value={formData.type}
-                  onChange={e => setFormData({ ...formData, type: e.target.value })}
-                  className={`w-full px-2 py-1.25 text-sm border rounded-sm focus:outline-none focus:ring-1 focus:ring-blue-500 dark:focus:ring-blue-400 focus:border-transparent bg-white dark:bg-gray-700 dark:text-gray-100 ${formErrors.type ? 'border-red-500' : 'border-gray-300 dark:border-gray-600'}`}
-                >
-                  <option value="own">Own</option>
-                  <option value="retail">Retail</option>
-                  <option value="wholesale">Wholesale</option>
-                  <option value="corporate">Corporate</option>
-                  <option value="dealer">Dealer</option>
-                </select>
-                {formErrors.type && <p className="text-red-600 text-xs mt-1">{formErrors.type}</p>}
-              </div>
+                <FormRow label="Type" labelWidth="w-32" fieldWidth="w-40" error={formErrors.type}>
+                  <select
+                    value={formData.type}
+                    onChange={e => setFormData({ ...formData, type: e.target.value })}
+                    className={inputCls(!!formErrors.type)}
+                  >
+                    <option value="own">Own</option>
+                    <option value="retail">Retail</option>
+                    <option value="wholesale">Wholesale</option>
+                    <option value="corporate">Corporate</option>
+                    <option value="dealer">Dealer</option>
+                  </select>
+                </FormRow>
 
-              <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-0.5">Status</label>
-                <select
-                  value={formData.status}
-                  onChange={e => setFormData({ ...formData, status: e.target.value })}
-                  className={`w-full px-2 py-1.25 text-sm border rounded-sm focus:outline-none focus:ring-1 focus:ring-blue-500 dark:focus:ring-blue-400 focus:border-transparent bg-white dark:bg-gray-700 dark:text-gray-100 ${formErrors.status ? 'border-red-500' : 'border-gray-300 dark:border-gray-600'}`}
-                >
-                  <option value="active">Active</option>
-                  <option value="inactive">Inactive</option>
-                  <option value="blacklisted">Blacklisted</option>
-                </select>
+                <FormRow label="Status" labelWidth="w-32" fieldWidth="w-40" error={formErrors.status}>
+                  <select
+                    value={formData.status}
+                    onChange={e => setFormData({ ...formData, status: e.target.value })}
+                    className={inputCls(!!formErrors.status)}
+                  >
+                    <option value="active">Active</option>
+                    <option value="inactive">Inactive</option>
+                    <option value="blacklisted">Blacklisted</option>
+                  </select>
+                </FormRow>
               </div>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-1.5">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-0.5">Address</label>
-                <textarea
-                  placeholder="Dhaka"
-                  rows={3}
-                  value={formData.address}
-                  onChange={e => setFormData({ ...formData, address: e.target.value })}
-                  className={`w-full px-2 py-1.25 text-sm border rounded-sm focus:outline-none focus:ring-1 focus:ring-blue-500 dark:focus:ring-blue-400 focus:border-transparent dark:bg-gray-700 dark:text-gray-100 ${formErrors.address ? 'border-red-500' : 'border-gray-300 dark:border-gray-600'}`}
-                />
-              </div>
+            {/* Address */}
+            <div className="bg-white dark:bg-gray-800 rounded-md shadow-sm border border-gray-200 dark:border-gray-700 p-3">
+              <h3 className="text-xs font-semibold text-gray-700 dark:text-gray-300 mb-3">Address</h3>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-x-4 gap-y-2">
+                <FormRow label="City" labelWidth="w-32">
+                  <input
+                    type="text"
+                    placeholder="Dhaka"
+                    value={formData.city}
+                    onChange={e => setFormData({ ...formData, city: e.target.value })}
+                    className={inputCls(false)}
+                  />
+                </FormRow>
 
-              <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-0.5">Notes</label>
-                <textarea
-                  placeholder="Optional notes"
-                  rows={3}
-                  value={formData.notes}
-                  onChange={e => setFormData({ ...formData, notes: e.target.value })}
-                  className={`w-full px-2 py-1.25 text-sm border rounded-sm focus:outline-none focus:ring-1 focus:ring-blue-500 dark:focus:ring-blue-400 focus:border-transparent dark:bg-gray-700 dark:text-gray-100 ${formErrors.notes ? 'border-red-500' : 'border-gray-300 dark:border-gray-600'}`}
-                />
-                {formErrors.notes && <p className="text-red-600 text-xs mt-1">{formErrors.notes}</p>}
+                <FormRow label="State/Province" labelWidth="w-32">
+                  <input
+                    type="text"
+                    placeholder="Dhaka Division"
+                    value={formData.state}
+                    onChange={e => setFormData({ ...formData, state: e.target.value })}
+                    className={inputCls(false)}
+                  />
+                </FormRow>
+
+                <FormRow label="Country" labelWidth="w-32">
+                  <input
+                    type="text"
+                    placeholder="Bangladesh"
+                    value={formData.country}
+                    onChange={e => setFormData({ ...formData, country: e.target.value })}
+                    className={inputCls(false)}
+                  />
+                </FormRow>
+
+                <FormRow label="Address" labelWidth="w-32" error={formErrors.address}>
+                  <textarea
+                    placeholder="Street address, building, floor"
+                    rows={2}
+                    value={formData.address}
+                    onChange={e => setFormData({ ...formData, address: e.target.value })}
+                    className={inputCls(!!formErrors.address)}
+                  />
+                </FormRow>
               </div>
             </div>
 
-            <div className="flex gap-2 pt-2">
-              <button type="submit" className="flex items-center justify-center gap-2 px-5 py-1.5 text-sm bg-indigo-600 hover:bg-indigo-700 disabled:bg-gray-400 text-white rounded-sm transition-colors cursor-pointer"> <GiSave className="w-4 h-4" /> {isEditing ? 'Update Customer' : 'Save Customer'}</button>
-              <button type="button" onClick={() => setShowForm(false)} className="px-3 py-1.5 bg-gray-600 text-white text-sm font-medium rounded-sm hover:bg-gray-700 transition-colors flex items-center gap-2"> <X className="w-4 h-4" /> Cancel</button>
+            {/* Additional Information */}
+            <div className="bg-white dark:bg-gray-800 rounded-md shadow-sm border border-gray-200 dark:border-gray-700 p-3">
+              <h3 className="text-xs font-semibold text-gray-700 dark:text-gray-300 mb-3">Additional Information</h3>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-x-4 gap-y-2">
+                <FormRow label="Credit Limit" labelWidth="w-32" fieldWidth="w-40" error={formErrors.credit_limit}>
+                  <input
+                    type="number"
+                    step="0.01"
+                    placeholder="0.00"
+                    value={formData.credit_limit}
+                    onChange={e => setFormData({ ...formData, credit_limit: e.target.value })}
+                    className={inputCls(!!formErrors.credit_limit)}
+                  />
+                </FormRow>
+
+                <FormRow label="Notes" labelWidth="w-32" error={formErrors.notes}>
+                  <textarea
+                    placeholder="Optional notes"
+                    rows={2}
+                    value={formData.notes}
+                    onChange={e => setFormData({ ...formData, notes: e.target.value })}
+                    className={inputCls(!!formErrors.notes)}
+                  />
+                </FormRow>
+              </div>
+            </div>
+
+            {/* Form Actions */}
+            <div className="flex justify-end gap-2">
+              <button
+                type="button"
+                onClick={() => setShowForm(false)}
+                className="px-3 py-1.5 text-xs rounded border border-gray-300 dark:border-gray-600 text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700"
+              >
+                Cancel
+              </button>
+              <button
+                type="submit"
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs bg-indigo-600 hover:bg-indigo-700 disabled:opacity-60 text-white rounded"
+              >
+                <GiSave className="w-3.5 h-3.5" />
+                {isEditing ? 'Update Customer' : 'Create Customer'}
+              </button>
             </div>
           </form>
         </div>

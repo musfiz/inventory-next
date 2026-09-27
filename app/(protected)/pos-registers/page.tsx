@@ -1,11 +1,11 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { Plus, Edit, Trash2, X } from 'lucide-react';
+import { Plus, Edit, Trash2 } from 'lucide-react';
 import { GiSave } from 'react-icons/gi';
 import { ColumnDef } from '@tanstack/react-table';
 import { notify, confirm } from '@/lib/notifications';
-import { posRegisterService, commonService, customerService, warehouseService } from '@/services';
+import { posRegisterService, commonService, customerService } from '@/services';
 import type { PosRegister } from '@/services/posRegisterService';
 import DataTable from '@/components/ui/datatable';
 import CustomSelect from '@/components/ui/custom-select';
@@ -13,6 +13,25 @@ import TenantSelect from '@/components/ui/tenant-select';
 import { useRouter } from 'next/navigation';
 import { usePermissions } from '@/hooks/use-permissions';
 import { useAuthStore } from '@/stores/auth-store';
+
+const inputCls = (hasError?: boolean) =>
+  `w-full px-2.5 py-1 text-xs bg-white dark:bg-gray-700 border ${hasError ? 'border-red-500' : 'border-gray-300 dark:border-gray-600'} rounded text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-1 focus:ring-indigo-500`;
+
+function FormRow({ label, required, error, children, className = '', labelWidth = 'w-32', fieldWidth = 'flex-1 min-w-0' }: { label: string; required?: boolean; error?: string | null; children: React.ReactNode; className?: string; labelWidth?: string; fieldWidth?: string }) {
+  const errorMl =
+    labelWidth === 'w-32' ? 'ml-[8.5rem]' : labelWidth === 'w-20' ? 'ml-[5.5rem]' : 'ml-[4.375rem]';
+  return (
+    <div className={className}>
+      <div className="flex items-start gap-1.5">
+        <label className={`${labelWidth} shrink-0 pt-1 text-[11px] font-medium text-gray-600 dark:text-gray-400 text-left`}>
+          {label}{required && <span className="text-red-500">*</span>}:
+        </label>
+        <div className={fieldWidth}>{children}</div>
+      </div>
+      {error && <p className={`text-[10px] text-red-500 mt-0.5 ${errorMl}`}>{error}</p>}
+    </div>
+  );
+}
 
 export default function PosRegisterPage() {
   const { isSuperAdmin, hasPermission, isHydrated } = usePermissions();
@@ -356,7 +375,9 @@ export default function PosRegisterPage() {
   return (
     <div className="space-y-2">
       <div className="flex items-center justify-between">
-        <h1 className="text-xl font-bold">POS Registers</h1>
+        <h1 className="text-xl font-bold text-gray-900 dark:text-gray-100">
+          {showForm ? (isEditing ? 'Edit Register' : 'Add Register') : 'POS Registers'}
+        </h1>
         {hasPermission('create-pos-register') && (
           <button onClick={handleAdd} className="flex items-center gap-2 px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium rounded-sm transition-colors duration-200 cursor-pointer">
             <Plus className="w-4 h-4" /> Add Register
@@ -365,233 +386,248 @@ export default function PosRegisterPage() {
       </div>
 
       {showForm && (
-        <div className="bg-white dark:bg-gray-800 rounded-md shadow-sm p-3">
-          <h2 className="text-base font-semibold mb-3 text-gray-900 dark:text-gray-100">{isEditing ? 'Edit Register' : 'Add Register'}</h2>
-          <form onSubmit={handleSubmit} className="space-y-3">
-            {isSuperAdmin && (
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-1.5">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-0.5">Tenant <span className="text-red-500">*</span></label>
-                  <TenantSelect
-                    value={formData.tenant_id ?? null}
-                    onChange={(tenantId) => {
-                      const nextTenantId = tenantId ? String(tenantId) : undefined;
-                      setFormData({ ...formData, tenant_id: nextTenantId });
-                      setSelectedTenant(nextTenantId ? { value: nextTenantId, label: '' } : null);
-                      if (nextTenantId && formErrors.tenant_id) {
-                        const { tenant_id, ...rest } = formErrors;
-                        setFormErrors(rest);
+        <div className="space-y-3">
+          <form onSubmit={handleSubmit} className="space-y-3" autoComplete="off">
+
+            {/* ── Basic Information ── */}
+            <div className="bg-white dark:bg-gray-800 rounded-md shadow-sm border border-gray-200 dark:border-gray-700 p-3">
+              <h3 className="text-xs font-semibold text-gray-700 dark:text-gray-300 mb-3">Basic Information</h3>
+
+              {isSuperAdmin && (
+                <div className="mb-2 md:w-1/2">
+                  <FormRow label="Tenant" required error={formErrors.tenant_id || null}>
+                    <TenantSelect
+                      value={formData.tenant_id ?? null}
+                      onChange={(tenantId) => {
+                        const nextTenantId = tenantId ? String(tenantId) : undefined;
+                        setFormData({ ...formData, tenant_id: nextTenantId });
+                        setSelectedTenant(nextTenantId ? { value: nextTenantId, label: '' } : null);
+                        if (nextTenantId && formErrors.tenant_id) {
+                          setFormErrors(prev => {
+                            const next = { ...prev };
+                            delete next.tenant_id;
+                            return next;
+                          });
+                        }
+                      }}
+                      placeholder="Select tenant"
+                      isInvalid={!!formErrors.tenant_id}
+                      compact
+                    />
+                  </FormRow>
+                </div>
+              )}
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-x-4 gap-y-2">
+                <FormRow label="Warehouse" required error={formErrors.warehouse_id || null}>
+                  <CustomSelect
+                    value={selectedWarehouse}
+                    onChange={opt => {
+                      setFormData({ ...formData, warehouse_id: opt?.value });
+                      setSelectedWarehouse(opt);
+                      if (opt?.value && formErrors.warehouse_id) {
+                        setFormErrors(prev => {
+                          const next = { ...prev };
+                          delete next.warehouse_id;
+                          return next;
+                        });
                       }
                     }}
-                    placeholder="Select tenant"
-                    isInvalid={!!formErrors.tenant_id}
+                    loadOptions={loadWarehouseOptions}
+                    defaultOptions={defaultWarehouseOptions}
+                    placeholder="Select warehouse"
+                    isInvalid={!!formErrors.warehouse_id}
+                    compact
                   />
-                  {formErrors.tenant_id && <p className="text-red-600 text-xs mt-1">{formErrors.tenant_id}</p>}
-                </div>
-              </div>
-            )}
+                </FormRow>
 
-            {/* Top row: small warehouse selector, name, code */}
-            <div className="grid grid-cols-1 md:grid-cols-4 gap-2">
-              <div className="md:col-span-1">
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-0.5">Warehouse <span className="text-red-500">*</span></label>
-                <CustomSelect
-                  value={selectedWarehouse}
-                  onChange={opt => {
-                    setFormData({ ...formData, warehouse_id: opt?.value });
-                    setSelectedWarehouse(opt);
-                    if (opt?.value && formErrors.warehouse_id) {
-                      const { warehouse_id, ...rest } = formErrors;
-                      setFormErrors(rest);
-                    }
-                  }}
-                  loadOptions={loadWarehouseOptions}
-                  defaultOptions={defaultWarehouseOptions}
-                  placeholder="Select warehouse"
-                  className="text-sm"
-                  isInvalid={!!formErrors.warehouse_id}
-                />
-                {formErrors.warehouse_id && <p className="text-red-600 text-xs mt-1">{formErrors.warehouse_id}</p>}
-              </div>
+                <FormRow label="Register Name" required error={formErrors.name || null}>
+                  <input
+                    type="text"
+                    value={formData.name}
+                    onChange={e => {
+                      setFormData({ ...formData, name: e.target.value });
+                      if (e.target.value && formErrors.name) {
+                        setFormErrors(prev => {
+                          const next = { ...prev };
+                          delete next.name;
+                          return next;
+                        });
+                      }
+                    }}
+                    placeholder="e.g. Main Counter"
+                    className={inputCls(!!formErrors.name)}
+                  />
+                </FormRow>
 
-              <div className="md:col-span-2">
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-0.5">Register Name <span className="text-red-500">*</span></label>
-                <input
-                  type="text"
-                  value={formData.name}
-                  onChange={e => {
-                    setFormData({ ...formData, name: e.target.value });
-                    if (e.target.value && formErrors.name) {
-                      const { name, ...rest } = formErrors;
-                      setFormErrors(rest);
-                    }
-                  }}
-                  className={`w-full px-2 py-1.5 text-sm border rounded-sm focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-transparent dark:bg-gray-700 dark:text-gray-100 dark:border-gray-600 ${formErrors.name ? 'border-red-500' : 'border-gray-300'}`}
-                />
-                {formErrors.name && <p className="text-red-600 text-xs mt-1">{formErrors.name}</p>}
-              </div>
+                <FormRow label="Code">
+                  <input
+                    type="text"
+                    value={formData.code}
+                    onChange={e => setFormData({ ...formData, code: e.target.value })}
+                    placeholder="e.g. REG-01 (auto if blank)"
+                    className={inputCls(false)}
+                  />
+                </FormRow>
 
-              <div className="md:col-span-1">
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-0.5">Code <span className="text-xs text-gray-400">(auto if blank)</span></label>
-                <input
-                  type="text"
-                  value={formData.code}
-                  onChange={e => setFormData({ ...formData, code: e.target.value })}
-                  className="w-full px-2 py-1.5 text-sm border border-gray-300 dark:border-gray-600 rounded-sm focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-transparent dark:bg-gray-700 dark:text-gray-100"
-                  placeholder="e.g. REG-01"
-                />
+                <FormRow label="Location">
+                  <input
+                    type="text"
+                    value={formData.location}
+                    onChange={e => setFormData({ ...formData, location: e.target.value })}
+                    placeholder="e.g. Ground Floor - Counter 1"
+                    className={inputCls(false)}
+                  />
+                </FormRow>
+
+                <FormRow label="Terminal ID">
+                  <input
+                    type="text"
+                    value={formData.terminal_id}
+                    onChange={e => setFormData({ ...formData, terminal_id: e.target.value })}
+                    placeholder="e.g. TERM-001"
+                    className={inputCls(false)}
+                  />
+                </FormRow>
               </div>
             </div>
 
-            {/* Second row: location, terminal id, default customer */}
-            <div className="grid grid-cols-1 md:grid-cols-4 gap-2">
-              <div className="md:col-span-2">
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-0.5">Location</label>
-                <input
-                  type="text"
-                  value={formData.location}
-                  onChange={e => setFormData({ ...formData, location: e.target.value })}
-                  className="w-full px-2 py-1.5 text-sm border border-gray-300 dark:border-gray-600 rounded-sm focus:outline-none focus:ring-1 focus:ring-blue-500 dark:bg-gray-700 dark:text-gray-100"
-                  placeholder="e.g. Ground Floor - Counter 1"
-                />
-              </div>
+            {/* ── Defaults ── */}
+            <div className="bg-white dark:bg-gray-800 rounded-md shadow-sm border border-gray-200 dark:border-gray-700 p-3">
+              <h3 className="text-xs font-semibold text-gray-700 dark:text-gray-300 mb-3">Defaults</h3>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-x-4 gap-y-2">
+                <FormRow label="Default Customer">
+                  <CustomSelect
+                    value={selectedCustomer}
+                    onChange={opt => {
+                      setFormData({ ...formData, default_customer_id: opt?.value ? String(opt.value) : undefined });
+                      setSelectedCustomer(opt || null);
+                    }}
+                    loadOptions={loadCustomerOptions}
+                    defaultOptions={defaultCustomerOptions}
+                    placeholder="Select customer"
+                    compact
+                  />
+                </FormRow>
 
-              <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-0.5">Terminal ID</label>
-                <input type="text" value={formData.terminal_id} onChange={e => setFormData({ ...formData, terminal_id: e.target.value })} className="w-full px-2 py-1.5 text-sm border border-gray-300 dark:border-gray-600 rounded-sm focus:outline-none focus:ring-1 focus:ring-blue-500 dark:bg-gray-700 dark:text-gray-100" placeholder="e.g. TERM-001" />
-              </div>
+                <FormRow label="Payment Method">
+                  <select
+                    value={formData.default_payment_method}
+                    onChange={e => setFormData({ ...formData, default_payment_method: e.target.value })}
+                    className={inputCls(false)}
+                  >
+                    <option value="cash">Cash</option>
+                    <option value="card">Card</option>
+                    <option value="bkash">bKash</option>
+                    <option value="nagad">Nagad</option>
+                    <option value="rocket">Rocket</option>
+                    <option value="bank_transfer">Bank Transfer</option>
+                  </select>
+                </FormRow>
 
-              <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-0.5">Default Customer</label>
-                <CustomSelect
-                  value={selectedCustomer}
-                  onChange={opt => {
-                    setFormData({ ...formData, default_customer_id: opt?.value ? String(opt.value) : undefined });
-                    setSelectedCustomer(opt || null);
-                  }}
-                  loadOptions={loadCustomerOptions}
-                  defaultOptions={defaultCustomerOptions}
-                  placeholder="Select customer"
-                  className="text-sm"
-                />
-              </div>
-            </div>
+                <FormRow label="Tax Rate (%)" fieldWidth="w-40">
+                  <input
+                    type="number"
+                    min="0"
+                    max="100"
+                    step="0.01"
+                    value={formData.default_tax_rate}
+                    onChange={e => setFormData({ ...formData, default_tax_rate: e.target.value })}
+                    placeholder="0.00"
+                    className={inputCls(false)}
+                  />
+                </FormRow>
 
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Default Payment Method</label>
-                <select value={formData.default_payment_method} onChange={e => setFormData({ ...formData, default_payment_method: e.target.value })} className="w-full px-2 py-1.5 text-sm border border-gray-300 dark:border-gray-600 rounded-sm focus:outline-none focus:ring-1 focus:ring-blue-500 dark:bg-gray-700 dark:text-gray-100">
-                  <option value="cash">Cash</option>
-                  <option value="card">Card</option>
-                  <option value="bkash">bKash</option>
-                  <option value="nagad">Nagad</option>
-                  <option value="rocket">Rocket</option>
-                  <option value="bank_transfer">Bank Transfer</option>
-                </select>
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Default Tax Rate (%)</label>
-                <input type="number" min="0" max="100" step="0.01" value={formData.default_tax_rate} onChange={e => setFormData({ ...formData, default_tax_rate: e.target.value })} className="w-full px-2 py-1.5 text-sm border border-gray-300 dark:border-gray-600 rounded-sm focus:outline-none focus:ring-1 focus:ring-blue-500 dark:bg-gray-700 dark:text-gray-100" placeholder="0.00" />
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Receipt Logo URL</label>
-                <input type="text" value={formData.receipt_logo_url} onChange={e => setFormData({ ...formData, receipt_logo_url: e.target.value })} className="w-full px-2 py-1.5 text-sm border border-gray-300 dark:border-gray-600 rounded-sm focus:outline-none focus:ring-1 focus:ring-blue-500 dark:bg-gray-700 dark:text-gray-100" placeholder="https://..." />
-              </div>
-            </div>
-
-            {/* Receipt Footer, Device Info, Header in same row */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-2 mt-0">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Receipt Header</label>
-                <textarea value={formData.receipt_header} onChange={e => setFormData({ ...formData, receipt_header: e.target.value })} className="w-full px-2 py-1.5 text-sm border border-gray-300 dark:border-gray-600 rounded-sm focus:outline-none focus:ring-1 focus:ring-blue-500 dark:bg-gray-700 dark:text-gray-100" rows={3} placeholder="e.g. Welcome to our store!" />
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Receipt Footer</label>
-                <textarea value={formData.receipt_footer} onChange={e => setFormData({ ...formData, receipt_footer: e.target.value })} className="w-full px-2 py-1.5 text-sm border border-gray-300 dark:border-gray-600 rounded-sm focus:outline-none focus:ring-1 focus:ring-blue-500 dark:bg-gray-700 dark:text-gray-100" rows={3} placeholder="e.g. Thank you for shopping!" />
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Device Info (JSON)</label>
-                <textarea value={formData.device_info} onChange={e => setFormData({ ...formData, device_info: e.target.value })} className="w-full px-2 py-1.5 text-sm border border-gray-300 dark:border-gray-600 rounded-sm focus:outline-none focus:ring-1 focus:ring-blue-500 dark:bg-gray-700 dark:text-gray-100" rows={3} placeholder='{"model":"..."}' />
+                <FormRow label="Receipt Logo URL">
+                  <input
+                    type="text"
+                    value={formData.receipt_logo_url}
+                    onChange={e => setFormData({ ...formData, receipt_logo_url: e.target.value })}
+                    placeholder="https://..."
+                    className={inputCls(false)}
+                  />
+                </FormRow>
               </div>
             </div>
 
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
-              <div>
-                <label className="flex items-center gap-2 mt-1 cursor-pointer">
-                  <input type="checkbox" checked={!!formData.allow_price_override} onChange={e => setFormData({ ...formData, allow_price_override: e.target.checked })} className="w-4 h-4" />
-                  <span className="text-sm text-gray-700 dark:text-gray-300">Allow Price Override</span>
-                </label>
-              </div>
+            {/* ── Receipt & Device ── */}
+            <div className="bg-white dark:bg-gray-800 rounded-md shadow-sm border border-gray-200 dark:border-gray-700 p-3">
+              <h3 className="text-xs font-semibold text-gray-700 dark:text-gray-300 mb-3">Receipt &amp; Device</h3>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-x-4 gap-y-2">
+                <FormRow label="Receipt Header">
+                  <textarea
+                    value={formData.receipt_header}
+                    onChange={e => setFormData({ ...formData, receipt_header: e.target.value })}
+                    rows={3}
+                    placeholder="e.g. Welcome to our store!"
+                    className={`${inputCls(false)} resize-none`}
+                  />
+                </FormRow>
 
-              <div>
-                <label className="flex items-center gap-2 mt-1 cursor-pointer">
-                  <input type="checkbox" checked={!!formData.allow_discount} onChange={e => setFormData({ ...formData, allow_discount: e.target.checked })} className="w-4 h-4" />
-                  <span className="text-sm text-gray-700 dark:text-gray-300">Allow Discount</span>
-                </label>
-              </div>
+                <FormRow label="Receipt Footer">
+                  <textarea
+                    value={formData.receipt_footer}
+                    onChange={e => setFormData({ ...formData, receipt_footer: e.target.value })}
+                    rows={3}
+                    placeholder="e.g. Thank you for shopping!"
+                    className={`${inputCls(false)} resize-none`}
+                  />
+                </FormRow>
 
-              <div>
-                <label className="flex items-center gap-2 mt-1 cursor-pointer">
-                  <input type="checkbox" checked={!!formData.allow_negative_stock} onChange={e => setFormData({ ...formData, allow_negative_stock: e.target.checked })} className="w-4 h-4" />
-                  <span className="text-sm text-gray-700 dark:text-gray-300">Allow Negative Stock</span>
-                </label>
-              </div>
-
-              <div>
-                <label className="flex items-center gap-2 mt-1 cursor-pointer">
-                  <input type="checkbox" checked={!!formData.require_customer} onChange={e => setFormData({ ...formData, require_customer: e.target.checked })} className="w-4 h-4" />
-                  <span className="text-sm text-gray-700 dark:text-gray-300">Require Customer</span>
-                </label>
-              </div>
-
-              <div>
-                <label className="flex items-center gap-2 mt-1 cursor-pointer">
-                  <input type="checkbox" checked={!!formData.show_tax_details} onChange={e => setFormData({ ...formData, show_tax_details: e.target.checked })} className="w-4 h-4" />
-                  <span className="text-sm text-gray-700 dark:text-gray-300">Show Tax Details</span>
-                </label>
-              </div>
-
-              <div>
-                <label className="flex items-center gap-2 mt-1 cursor-pointer">
-                  <input type="checkbox" checked={!!formData.show_barcode} onChange={e => setFormData({ ...formData, show_barcode: e.target.checked })} className="w-4 h-4" />
-                  <span className="text-sm text-gray-700 dark:text-gray-300">Show Barcode</span>
-                </label>
-              </div>
-
-              <div>
-                <label className="flex items-center gap-2 mt-1 cursor-pointer">
-                  <input type="checkbox" checked={!!formData.is_online} onChange={e => setFormData({ ...formData, is_online: e.target.checked })} className="w-4 h-4" />
-                  <span className="text-sm text-gray-700 dark:text-gray-300">Is Online</span>
-                </label>
-              </div>
-
-              <div>
-                <label className="flex items-center gap-2 mt-1 cursor-pointer">
-                  <input type="checkbox" checked={!!formData.is_active} onChange={e => setFormData({ ...formData, is_active: e.target.checked })} className="w-4 h-4" />
-                  <span className="text-sm text-gray-700 dark:text-gray-300">Is Active</span>
-                </label>
+                <FormRow label="Device Info (JSON)" className="md:col-span-2">
+                  <textarea
+                    value={formData.device_info}
+                    onChange={e => setFormData({ ...formData, device_info: e.target.value })}
+                    rows={3}
+                    placeholder='{"model":"..."}'
+                    className={`${inputCls(false)} resize-none`}
+                  />
+                </FormRow>
               </div>
             </div>
 
-            <div className="flex gap-2 pt-2">
-              <button
-                type="submit"
-                className="flex items-center justify-center gap-2 px-5 py-1.5 text-sm bg-indigo-600 hover:bg-indigo-700 disabled:bg-gray-400 text-white rounded-sm transition-colors cursor-pointer"
-              >
-                <GiSave className="w-4 h-4" />
-                {isEditing ? 'Update Register' : 'Save Register'}
-              </button>
+            {/* ── Settings ── */}
+            <div className="bg-white dark:bg-gray-800 rounded-md shadow-sm border border-gray-200 dark:border-gray-700 p-3">
+              <h3 className="text-xs font-semibold text-gray-700 dark:text-gray-300 mb-3">Settings</h3>
+              <div className="flex flex-wrap gap-2">
+                {([
+                  { key: 'allow_price_override', label: 'Allow Price Override' },
+                  { key: 'allow_discount', label: 'Allow Discount' },
+                  { key: 'allow_negative_stock', label: 'Allow Negative Stock' },
+                  { key: 'require_customer', label: 'Require Customer' },
+                  { key: 'show_tax_details', label: 'Show Tax Details' },
+                  { key: 'show_barcode', label: 'Show Barcode' },
+                  { key: 'is_online', label: 'Is Online' },
+                  { key: 'is_active', label: 'Is Active' },
+                ] as const).map(f => (
+                  <label key={f.key} className="inline-flex items-center gap-1.5 cursor-pointer rounded-full px-2.5 py-1 hover:bg-gray-50 dark:hover:bg-gray-700/50 border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800">
+                    <input
+                      type="checkbox"
+                      checked={!!(formData as any)[f.key]}
+                      onChange={e => setFormData({ ...formData, [f.key]: e.target.checked })}
+                      className="h-3.5 w-3.5 accent-indigo-600"
+                    />
+                    <span className="text-xs text-gray-700 dark:text-gray-300 whitespace-nowrap">{f.label}</span>
+                  </label>
+                ))}
+              </div>
+            </div>
+
+            {/* ── Form Actions ── */}
+            <div className="flex justify-end gap-2">
               <button
                 type="button"
                 onClick={() => setShowForm(false)}
-                className="px-3 py-1.5 bg-gray-500 text-white text-sm font-medium rounded-sm hover:bg-gray-600 transition-colors flex items-center gap-2 cursor-pointer"
+                className="px-3 py-1.5 text-xs rounded border border-gray-300 dark:border-gray-600 text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 cursor-pointer"
               >
-                <X className="w-4 h-4" />
                 Cancel
+              </button>
+              <button
+                type="submit"
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs bg-indigo-600 hover:bg-indigo-700 disabled:opacity-60 text-white rounded cursor-pointer"
+              >
+                <GiSave className="w-3.5 h-3.5" />
+                {isEditing ? 'Update Register' : 'Create Register'}
               </button>
             </div>
           </form>

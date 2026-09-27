@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
-import { Plus, X, CheckCircle, Check, RefreshCw, AlertTriangle, Ban, Undo2, FileText, Receipt, ListChecks, Info } from 'lucide-react';
+import { Plus, X, CheckCircle, Check, RefreshCw, AlertTriangle, Ban, Undo2 } from 'lucide-react';
 import { ColumnDef } from '@tanstack/react-table';
 import { notify, confirm, info as notifyInfo } from '@/lib/notifications';
 import { posRefundService } from '@/services';
@@ -80,6 +80,32 @@ function reasonLabel(v?: string) {
 function methodLabel(v?: string) {
   return REFUND_METHODS.find(r => r.value === v)?.label ?? v ?? '-';
 }
+
+// ─── Shared field decoration (matches the redesigned forms) ───────────────────
+
+const inputCls = (hasError?: boolean) =>
+  `w-full px-2.5 py-1 text-xs bg-white dark:bg-gray-700 border ${hasError ? 'border-red-500' : 'border-gray-300 dark:border-gray-600'} rounded-sm text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-1 focus:ring-indigo-500`;
+
+const errCls = 'mt-1 text-[10px] text-red-600 dark:text-red-400';
+
+function FormRow({ label, required, error, children, className = '', labelWidth = 'w-32', fieldWidth = 'flex-1 min-w-0' }: { label: string; required?: boolean; error?: string | null; children: React.ReactNode; className?: string; labelWidth?: string; fieldWidth?: string }) {
+  const errorMl =
+    labelWidth === 'w-32' ? 'ml-[8.5rem]' : labelWidth === 'w-20' ? 'ml-[5.5rem]' : 'ml-[4.375rem]';
+  return (
+    <div className={className}>
+      <div className="flex items-start gap-1.5">
+        <label className={`${labelWidth} shrink-0 pt-1 text-[11px] font-medium text-gray-600 dark:text-gray-400 text-left`}>
+          {label}{required && <span className="text-red-500">*</span>}:
+        </label>
+        <div className={fieldWidth}>{children}</div>
+      </div>
+      {error && <p className={`text-[10px] text-red-500 mt-0.5 ${errorMl}`}>{error}</p>}
+    </div>
+  );
+}
+
+const sectionCardCls = 'bg-white dark:bg-gray-800 rounded-md shadow-sm border border-gray-200 dark:border-gray-700 p-3';
+const sectionTitleCls = 'text-xs font-semibold text-gray-700 dark:text-gray-300 mb-3';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -710,20 +736,8 @@ export default function PosRefundsPage() {
 
   // ── Styles ────────────────────────────────────────────────────────────────
 
-  // Inputs/selects/textarea — match the tenant-registration form style: tight,
-  // rounded-sm, indigo focus border. Mirrors the rest of the app's register
-  // pages so cashiers get a consistent feel across modules.
-  const inputCls =
-    'w-full px-2.5 py-1 text-sm bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 ' +
-    'rounded-sm text-gray-900 dark:text-gray-100 focus:outline-none focus:border-indigo-500 ' +
-    'dark:focus:border-indigo-400 transition-colors';
+  // Kept for the Settle Payment dialog (form fields use FormRow instead).
   const labelCls = 'block text-xs font-medium text-gray-700 dark:text-gray-300 mb-2';
-  const errCls = 'mt-1 text-xs text-red-600 dark:text-red-400';
-  // Section header — same icon+label pattern as the POS Orders filter card
-  // so the form feels native to the rest of the project.
-  const sectionCls =
-    'text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide ' +
-    'flex items-center gap-1.5 mt-4 mb-2';
 
   // ── Render ────────────────────────────────────────────────────────────────
 
@@ -731,8 +745,9 @@ export default function PosRefundsPage() {
     <div className="space-y-2">
       {/* Header */}
       <div className="flex items-center justify-between">
-        <h1 className="text-base font-bold text-gray-900 dark:text-gray-100 flex items-center gap-2">
-          <Undo2 className="w-5 h-5 text-indigo-600 dark:text-indigo-400" /> POS Refunds
+        <h1 className="text-xl font-bold text-gray-900 dark:text-gray-100 flex items-center gap-2">
+          <Undo2 className="w-5 h-5 text-indigo-600 dark:text-indigo-400" />
+          {showForm ? 'Create Refund' : 'POS Refunds'}
         </h1>
         <div className="flex items-center gap-2">
           <button
@@ -747,243 +762,220 @@ export default function PosRefundsPage() {
 
       {/* Form */}
       {showForm && (
-        <div className="bg-white dark:bg-gray-800 rounded-md shadow-sm border border-gray-200 dark:border-gray-700 p-3">
-          {/* Form header — flat, matches tenant registration card style */}
-          <div className="flex items-center justify-between mb-2">
-            <h2 className="text-base font-semibold text-gray-900 dark:text-gray-100 flex items-center gap-2">
-              <FileText className="w-4 h-4 text-indigo-600 dark:text-indigo-400" /> Create Refund
-            </h2>
-            <button
-              onClick={handleCancel}
-              aria-label="Close create refund form"
-              className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 cursor-pointer"
-            >
-              <X className="w-5 h-5" />
-            </button>
-          </div>
+        <form onSubmit={handleSubmit} className="space-y-3" autoComplete="off">
 
-          <form onSubmit={handleSubmit} className="space-y-2">
+          {/* ── POS Order ── */}
+          <div className={sectionCardCls}>
+            <h3 className={sectionTitleCls}>POS Order</h3>
 
-            {/* ── Tenant Selection - Only for Super Admin ── */}
             {isSuperAdmin && (
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
-                <div>
-                  <label className={labelCls}>Tenant <span className="text-red-500">*</span></label>
+              <div className="mb-2 md:w-1/2">
+                <FormRow label="Tenant" required error={errors.tenant_id || null}>
                   <TenantSelect
                     value={tenantId}
                     onChange={(tid) => setTenantId(tid || '')}
                     placeholder="Select tenant"
                     isInvalid={!!errors.tenant_id}
+                    compact
                   />
-                  {errors.tenant_id && <p className={errCls}>{errors.tenant_id}</p>}
-                </div>
+                </FormRow>
               </div>
             )}
 
-            {/* ── Order Selection ── */}
-            <p className={sectionCls}><Receipt className="w-3.5 h-3.5" /> POS Order</p>
-            <div className="grid grid-cols-1 gap-2">
-              <div>
-                <label className={labelCls}>POS Order <span className="text-red-500">*</span></label>
-                <div className="flex items-end gap-2">
-                  <div className="w-1/2">
-                    <CustomSelect
-                      key={`pos-so-${soKey}`}
-                      value={selectedOrder}
-                      onChange={handleOrderChange}
-                      loadOptions={loadOrderOptions}
-                      defaultOptions={soDefaultOpts}
-                      placeholder="Search by order / invoice #…"
-                      className="text-sm"
-                    />
-                    {errors.pos_order_id && <p className={errCls}>{errors.pos_order_id}</p>}
-                  </div>
-                  {/* P0-6: manual refresh of the order items. The cashier
-                      can re-pull a fresh server snapshot of in-flight
-                      refunds before submitting. Same code path as
-                      selecting the order again. */}
-                  {selectedOrder?.value && (
-                    <>
-                      <button
-                        type="button"
-                        onClick={() => handleOrderChange(selectedOrder)}
-                        disabled={loadingItems}
-                        title="Re-check available quantities"
-                        aria-label="Re-check available quantities"
-                        className="inline-flex items-center justify-center gap-2 h-[34px] px-2 rounded-sm border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors cursor-pointer"
-                      >
-                        <RefreshCw
-                          className={`w-4 h-4 ${loadingItems ? 'animate-spin' : ''}`}
-                          aria-hidden="true"
-                        />
-                        <span className="text-sm font-medium">Refresh</span>
-                      </button>
-                      {/* Cancel selection: wipes the chosen order and any
-                          loaded items/lines so the cashier can re-pick
-                          without closing the whole form. Same gray style
-                          as the bottom-of-form Cancel button. */}
-                      <button
-                        type="button"
-                        onClick={handleOrderClear}
-                        title="Clear order selection"
-                        aria-label="Clear order selection"
-                        className="inline-flex items-center justify-center gap-2 h-[34px] px-2 rounded-sm bg-gray-500 text-white text-sm font-medium hover:bg-gray-600 transition-colors cursor-pointer"
-                      >
-                        <Ban className="w-4 h-4" />
-                        <span>Cancel</span>
-                      </button>
-                    </>
-                  )}
+            <FormRow label="POS Order" required error={errors.pos_order_id || null}>
+              <div className="flex items-center gap-2">
+                <div className="flex-1 min-w-0">
+                  <CustomSelect
+                    key={`pos-so-${soKey}`}
+                    value={selectedOrder}
+                    onChange={handleOrderChange}
+                    loadOptions={loadOrderOptions}
+                    defaultOptions={soDefaultOpts}
+                    placeholder="Search by order / invoice #…"
+                    compact
+                  />
                 </div>
-              </div>
-            </div>
-
-            {/* ── Items to Refund ── */}
-            {(loadingItems || refundLines.length > 0) && (
-              <>
-                <p className={sectionCls}><ListChecks className="w-3.5 h-3.5" /> Items to Refund</p>
-                {/* P0-6: persistent in-flight refunds warning. Shown when
-                    the server reports `current_pending_refunds > 0` on
-                    any line. Stays visible while the cashier composes
-                    the form so they know numbers may shift. */}
-                {orderItems.some(i => (i.current_pending_refunds ?? 0) > 0) && (
-                  <div
-                    className="flex items-start gap-2 p-2.5 rounded-md bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 text-amber-800 dark:text-amber-200 text-xs"
-                    role="status"
-                    aria-live="polite"
-                  >
-                    <AlertTriangle className="w-4 h-4 mt-0.5 shrink-0" />
-                    <div>
-                      <strong className="font-semibold">Refunds in progress:</strong>{' '}
-                      Another cashier is processing a refund on this order. Available
-                      quantities may change — re-select the order to refresh before submitting.
-                    </div>
-                  </div>
+                {/* P0-6: manual refresh of the order items. The cashier
+                    can re-pull a fresh server snapshot of in-flight
+                    refunds before submitting. Same code path as
+                    selecting the order again. */}
+                {selectedOrder?.value && (
+                  <>
+                    <button
+                      type="button"
+                      onClick={() => handleOrderChange(selectedOrder)}
+                      disabled={loadingItems}
+                      title="Re-check available quantities"
+                      aria-label="Re-check available quantities"
+                      className="inline-flex items-center justify-center gap-1.5 h-[28px] px-2.5 text-xs rounded border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors cursor-pointer"
+                    >
+                      <RefreshCw
+                        className={`w-3.5 h-3.5 ${loadingItems ? 'animate-spin' : ''}`}
+                        aria-hidden="true"
+                      />
+                      <span className="font-medium">Refresh</span>
+                    </button>
+                    {/* Cancel selection: wipes the chosen order and any
+                        loaded items/lines so the cashier can re-pick
+                        without closing the whole form. */}
+                    <button
+                      type="button"
+                      onClick={handleOrderClear}
+                      title="Clear order selection"
+                      aria-label="Clear order selection"
+                      className="inline-flex items-center justify-center gap-1.5 h-[28px] px-2.5 text-xs rounded border border-gray-300 dark:border-gray-600 text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors cursor-pointer"
+                    >
+                      <Ban className="w-3.5 h-3.5" />
+                      <span>Cancel</span>
+                    </button>
+                  </>
                 )}
-                {/* Caution: the cashier is about to refund these items.
-                    Restock happens on completion (P0-1) but the user
-                    should double-check qty before submitting. */}
-                <div className="flex items-start gap-2 p-2.5 rounded-md bg-rose-50 dark:bg-rose-900/20 border border-rose-200 dark:border-rose-800 text-rose-800 dark:text-rose-200 text-xs">
+              </div>
+            </FormRow>
+          </div>
+
+          {/* ── Items to Refund ── */}
+          {(loadingItems || refundLines.length > 0) && (
+            <div className={sectionCardCls}>
+              <h3 className={sectionTitleCls}>Items to Refund</h3>
+              {/* P0-6: persistent in-flight refunds warning. Shown when
+                  the server reports `current_pending_refunds > 0` on
+                  any line. Stays visible while the cashier composes
+                  the form so they know numbers may shift. */}
+              {orderItems.some(i => (i.current_pending_refunds ?? 0) > 0) && (
+                <div
+                  className="mb-2 flex items-start gap-2 p-2.5 rounded-md bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 text-amber-800 dark:text-amber-200 text-xs"
+                  role="status"
+                  aria-live="polite"
+                >
                   <AlertTriangle className="w-4 h-4 mt-0.5 shrink-0" />
                   <div>
-                    <strong className="font-semibold">Caution:</strong>{' '}
-                    The items shown on this page will be refunded once you submit. Please verify the
-                    quantities carefully before confirming — refunds restore stock to inventory and
-                    cannot be easily undone.
+                    <strong className="font-semibold">Refunds in progress:</strong>{' '}
+                    Another cashier is processing a refund on this order. Available
+                    quantities may change — re-select the order to refresh before submitting.
                   </div>
                 </div>
-                {loadingItems ? (
-                  <div className="flex items-center justify-center py-6 text-sm text-gray-500">
-                    <Spinner size="sm" className="mr-2" />
-                    Loading order items…
-                  </div>
-                ) : (
-                  <div className="overflow-x-auto rounded-lg border border-gray-200 dark:border-gray-600">
-                    <table className="w-full text-xs border-collapse">
-                      <thead>
-                        <tr className="bg-linear-to-r from-blue-600 to-indigo-600 text-white">
-                          <th className="text-left px-3 py-2 font-semibold">Item</th>
-                          <th className="text-center px-3 py-2 font-semibold w-40">Max Returnable</th>
-                          <th className="text-center px-3 py-2 font-semibold w-28">Refund Qty <span className="text-red-200">*</span></th>
-                          <th className="text-right px-3 py-2 font-semibold w-24">Unit Price</th>
-                          <th className="text-right px-3 py-2 font-semibold w-24">Line Total</th>
-                          <th className="px-3 py-2 font-semibold w-10"></th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {refundLines.map((line, i) => (
-                          <tr key={`${line.variation_id}-${i}`} className={i % 2 === 0 ? 'bg-white dark:bg-gray-800' : 'bg-blue-50/50 dark:bg-gray-700/30'}>
-                            <td className="px-3 py-2 border-t border-gray-200 dark:border-gray-600">{line.item_name}</td>
-                            <td className="px-3 py-2 border-t border-gray-200 dark:border-gray-600 text-center text-gray-500">
-                              {line.max_returnable}
-                            </td>
-                            <td className="px-3 py-2 border-t border-gray-200 dark:border-gray-600">
-                              <input
-                                ref={el => { qtyInputRefs.current[i] = el; }}
-                                type="number" step="0.001" min="0" max={line.max_returnable}
-                                value={line.quantity}
-                                onFocus={e => e.target.select()}
-                                onChange={e => updateLine(i, Number(e.target.value))}
-                                onKeyDown={e => { if (e.key === 'Enter') e.preventDefault(); }}
-                                className={`${inputCls} text-center`}
-                              />
-                              {errors[`items.${i}.qty`] && <p className={errCls}>{errors[`items.${i}.qty`]}</p>}
-                            </td>
-                            <td className="px-3 py-2 border-t border-gray-200 dark:border-gray-600 text-right font-mono">
-                              {Number(line.unit_price).toFixed(2)}
-                            </td>
-                            <td className="px-3 py-2 border-t border-gray-200 dark:border-gray-600 text-right font-mono font-semibold">
-                              {(Number(line.quantity) * Number(line.unit_price)).toFixed(2)}
-                            </td>
-                            <td className="px-3 py-2 border-t border-gray-200 dark:border-gray-600 text-center">
-                              <button type="button" onClick={() => removeLine(i)}
-                                className="text-red-500 hover:text-red-700 hover:bg-red-50 dark:hover:bg-red-900/20 rounded p-1 cursor-pointer"
-                                title="Remove line"
-                                aria-label="Remove refund line">
-                                <X className="w-3.5 h-3.5" />
-                              </button>
-                            </td>
-                          </tr>
-                        ))}
-                      </tbody>
-                      <tfoot>
-                        <tr className="bg-blue-50 dark:bg-blue-900/20 font-semibold">
-                          <td colSpan={4} className="px-3 py-2 text-right text-xs border-t border-gray-200 dark:border-gray-600">
-                            Refund Total
+              )}
+              {/* Caution: the cashier is about to refund these items.
+                  Restock happens on completion (P0-1) but the user
+                  should double-check qty before submitting. */}
+              <div className="mb-2 flex items-start gap-2 p-2.5 rounded-md bg-rose-50 dark:bg-rose-900/20 border border-rose-200 dark:border-rose-800 text-rose-800 dark:text-rose-200 text-xs">
+                <AlertTriangle className="w-4 h-4 mt-0.5 shrink-0" />
+                <div>
+                  <strong className="font-semibold">Caution:</strong>{' '}
+                  The items shown on this page will be refunded once you submit. Please verify the
+                  quantities carefully before confirming — refunds restore stock to inventory and
+                  cannot be easily undone.
+                </div>
+              </div>
+              {loadingItems ? (
+                <div className="flex items-center justify-center py-6 text-sm text-gray-500">
+                  <Spinner size="sm" className="mr-2" />
+                  Loading order items…
+                </div>
+              ) : (
+                <div className="overflow-x-auto rounded-md border border-gray-200 dark:border-gray-600">
+                  <table className="w-full text-xs border-collapse">
+                    <thead>
+                      <tr className="bg-gray-50 dark:bg-gray-700/50 text-gray-600 dark:text-gray-300">
+                        <th className="text-left px-3 py-2 font-semibold border-b border-gray-200 dark:border-gray-600">Item</th>
+                        <th className="text-center px-3 py-2 font-semibold w-40 border-b border-gray-200 dark:border-gray-600">Max Returnable</th>
+                        <th className="text-center px-3 py-2 font-semibold w-28 border-b border-gray-200 dark:border-gray-600">Refund Qty <span className="text-red-500">*</span></th>
+                        <th className="text-right px-3 py-2 font-semibold w-24 border-b border-gray-200 dark:border-gray-600">Unit Price</th>
+                        <th className="text-right px-3 py-2 font-semibold w-24 border-b border-gray-200 dark:border-gray-600">Line Total</th>
+                        <th className="px-3 py-2 font-semibold w-10 border-b border-gray-200 dark:border-gray-600"></th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {refundLines.map((line, i) => (
+                        <tr key={`${line.variation_id}-${i}`} className={i % 2 === 0 ? 'bg-white dark:bg-gray-800' : 'bg-gray-50/60 dark:bg-gray-700/20'}>
+                          <td className="px-3 py-2 border-t border-gray-200 dark:border-gray-600">{line.item_name}</td>
+                          <td className="px-3 py-2 border-t border-gray-200 dark:border-gray-600 text-center text-gray-500">
+                            {line.max_returnable}
                           </td>
-                          <td className="px-3 py-2 text-right font-mono text-sm border-t border-gray-200 dark:border-gray-600 text-blue-700 dark:text-blue-300">
-                            {totalRefund.toFixed(2)}
+                          <td className="px-3 py-2 border-t border-gray-200 dark:border-gray-600">
+                            <input
+                              ref={el => { qtyInputRefs.current[i] = el; }}
+                              type="number" step="0.001" min="0" max={line.max_returnable}
+                              value={line.quantity}
+                              onFocus={e => e.target.select()}
+                              onChange={e => updateLine(i, Number(e.target.value))}
+                              onKeyDown={e => { if (e.key === 'Enter') e.preventDefault(); }}
+                              className={`${inputCls()} text-center`}
+                            />
+                            {errors[`items.${i}.qty`] && <p className={errCls}>{errors[`items.${i}.qty`]}</p>}
                           </td>
-                          <td className="border-t border-gray-200 dark:border-gray-600"></td>
+                          <td className="px-3 py-2 border-t border-gray-200 dark:border-gray-600 text-right font-mono">
+                            {Number(line.unit_price).toFixed(2)}
+                          </td>
+                          <td className="px-3 py-2 border-t border-gray-200 dark:border-gray-600 text-right font-mono font-semibold">
+                            {(Number(line.quantity) * Number(line.unit_price)).toFixed(2)}
+                          </td>
+                          <td className="px-3 py-2 border-t border-gray-200 dark:border-gray-600 text-center">
+                            <button type="button" onClick={() => removeLine(i)}
+                              className="text-red-500 hover:text-red-700 hover:bg-red-50 dark:hover:bg-red-900/20 rounded p-1 cursor-pointer"
+                              title="Remove line"
+                              aria-label="Remove refund line">
+                              <X className="w-3.5 h-3.5" />
+                            </button>
+                          </td>
                         </tr>
-                      </tfoot>
-                    </table>
-                  </div>
-                )}
-                {errors.items && <p className={errCls}>{errors.items}</p>}
-              </>
-            )}
+                      ))}
+                    </tbody>
+                    <tfoot>
+                      <tr className="bg-gray-50 dark:bg-gray-700/40 font-semibold">
+                        <td colSpan={4} className="px-3 py-2 text-right text-xs border-t border-gray-200 dark:border-gray-600">
+                          Refund Total
+                        </td>
+                        <td className="px-3 py-2 text-right font-mono text-sm border-t border-gray-200 dark:border-gray-600 text-indigo-700 dark:text-indigo-300">
+                          {totalRefund.toFixed(2)}
+                        </td>
+                        <td className="border-t border-gray-200 dark:border-gray-600"></td>
+                      </tr>
+                    </tfoot>
+                  </table>
+                </div>
+              )}
+              {errors.items && <p className={errCls}>{errors.items}</p>}
+            </div>
+          )}
 
-            {/* ── Refund Details ── */}
-            <p className={sectionCls}><Info className="w-3.5 h-3.5" /> Refund Details</p>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
-              <div>
-                <label className={labelCls}>Refund Reason <span className="text-red-500">*</span></label>
-                <select value={refundReason} onChange={e => setRefundReason(e.target.value)} className={inputCls}>
+          {/* ── Refund Details ── */}
+          <div className={sectionCardCls}>
+            <h3 className={sectionTitleCls}>Refund Details</h3>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-x-4 gap-y-2">
+              <FormRow label="Refund Reason" required error={errors.refund_reason || null}>
+                <select value={refundReason} onChange={e => setRefundReason(e.target.value)} className={inputCls(!!errors.refund_reason)}>
                   {REFUND_REASONS.map(r => <option key={r.value} value={r.value}>{r.label}</option>)}
                 </select>
-                {errors.refund_reason && <p className={errCls}>{errors.refund_reason}</p>}
-              </div>
+              </FormRow>
 
-              <div>
-                <label className={labelCls}>Refund Method <span className="text-red-500">*</span></label>
-                <select value={refundMethod} onChange={e => setRefundMethod(e.target.value)} className={inputCls}>
+              <FormRow label="Refund Method" required error={errors.refund_method || null}>
+                <select value={refundMethod} onChange={e => setRefundMethod(e.target.value)} className={inputCls(!!errors.refund_method)}>
                   {REFUND_METHODS.map(m => <option key={m.value} value={m.value}>{m.label}</option>)}
                 </select>
-                {errors.refund_method && <p className={errCls}>{errors.refund_method}</p>}
-              </div>
+              </FormRow>
 
-              <div>
-                <label className={labelCls}>Reason Details</label>
-                <textarea rows={1} value={reasonDetails} onChange={e => setReasonDetails(e.target.value)}
-                  className={inputCls} placeholder="Additional details…" />
-              </div>
+              <FormRow label="Reason Details" className="md:col-span-2">
+                <textarea rows={2} value={reasonDetails} onChange={e => setReasonDetails(e.target.value)}
+                  className={inputCls()} placeholder="Additional details…" />
+              </FormRow>
             </div>
+          </div>
 
-            {/* Buttons */}
-            <div className="flex gap-2 pt-3">
-              <button type="submit" disabled={submitting}
-                className="flex items-center justify-center gap-2 px-5 py-1.5 text-sm bg-indigo-600 hover:bg-indigo-700 disabled:bg-gray-400 text-white rounded-sm transition-colors cursor-pointer disabled:opacity-60 disabled:cursor-not-allowed">
-                <GiSave className="w-4 h-4" />
-                {submitting ? 'Saving…' : 'Submit Refund'}
-              </button>
-              <button type="button" onClick={handleCancel}
-                className="px-4 py-1.5 bg-gray-500 text-white text-sm font-medium rounded-sm hover:bg-gray-600 transition-colors cursor-pointer">
-                Cancel
-              </button>
-            </div>
-          </form>
-        </div>
+          {/* ── Form Actions ── */}
+          <div className="flex justify-end gap-2">
+            <button type="button" onClick={handleCancel}
+              className="px-3 py-1.5 text-xs rounded border border-gray-300 dark:border-gray-600 text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 cursor-pointer">
+              Cancel
+            </button>
+            <button type="submit" disabled={submitting}
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs bg-indigo-600 hover:bg-indigo-700 disabled:opacity-60 text-white rounded cursor-pointer disabled:cursor-not-allowed">
+              <GiSave className="w-3.5 h-3.5" />
+              {submitting ? 'Saving…' : 'Submit Refund'}
+            </button>
+          </div>
+        </form>
       )}
 
       {/* Data Table */}
@@ -1064,7 +1056,7 @@ export default function PosRefundsPage() {
                       <label className={labelCls}>Action</label>
                       <select value={settleForm.action}
                         onChange={e => setSettleForm(f => ({ ...f, action: e.target.value }))}
-                        className={inputCls}>
+                        className={inputCls()}>
                         <option value="collect">Collect Payment from Customer</option>
                         <option value="refund">Issue Refund to Customer</option>
                       </select>
@@ -1075,7 +1067,7 @@ export default function PosRefundsPage() {
                         max={Math.abs(balance) || undefined}
                         value={settleForm.amount}
                         onChange={e => setSettleForm(f => ({ ...f, amount: e.target.value }))}
-                        className={inputCls} />
+                        className={inputCls()} />
                       <p className="text-[10px] text-gray-500 mt-0.5">
                         Max: ৳{(Math.abs(balance) || 0).toFixed(2)}
                         {settleLoading ? ' · loading fresh balance…' : ''}
@@ -1085,7 +1077,7 @@ export default function PosRefundsPage() {
                       <label className={labelCls}>Payment Method</label>
                       <select value={settleForm.payment_method}
                         onChange={e => setSettleForm(f => ({ ...f, payment_method: e.target.value }))}
-                        className={inputCls}>
+                        className={inputCls()}>
                         {REFUND_METHODS.map(m => <option key={m.value} value={m.value}>{m.label}</option>)}
                       </select>
                     </div>
@@ -1093,7 +1085,7 @@ export default function PosRefundsPage() {
                       <label className={labelCls}>Notes <span className="text-gray-400 font-normal">(optional)</span></label>
                       <input type="text" value={settleForm.notes}
                         onChange={e => setSettleForm(f => ({ ...f, notes: e.target.value }))}
-                        className={inputCls} placeholder="e.g. Refunded via cash" />
+                        className={inputCls()} placeholder="e.g. Refunded via cash" />
                     </div>
                   </div>
                 )}

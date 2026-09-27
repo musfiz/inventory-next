@@ -3,7 +3,6 @@
 import { useEffect, useState } from 'react';
 import { CreditCard, FileText, Filter, Search, X } from 'lucide-react';
 import { ColumnDef } from '@tanstack/react-table';
-import { paymentService } from '@/services';
 import type {
   Payment,
   PaymentMethod,
@@ -79,6 +78,24 @@ function fmtNum(n?: string | number | null) {
 
 function methodLabel(v?: string) {
   return PAYMENT_METHODS.find(m => m.value === v)?.label ?? v ?? '-';
+}
+
+// ─── Form row (left-aligned label) matching the redesigned forms ──────────────
+
+function FormRow({ label, required, error, children, className = '', labelWidth = 'w-32' }: { label: string; required?: boolean; error?: string | null; children: React.ReactNode; className?: string; labelWidth?: string }) {
+  const errorMl =
+    labelWidth === 'w-32' ? 'ml-[8.5rem]' : labelWidth === 'w-20' ? 'ml-[5.5rem]' : 'ml-[4.375rem]';
+  return (
+    <div className={className}>
+      <div className="flex items-center gap-1.5">
+        <label className={`${labelWidth} shrink-0 text-[11px] font-medium text-gray-600 dark:text-gray-400 text-left`}>
+          {label}{required && <span className="text-red-500">*</span>}:
+        </label>
+        <div className="flex-1 min-w-0">{children}</div>
+      </div>
+      {error && <p className={`text-[10px] text-red-500 mt-0.5 ${errorMl}`}>{error}</p>}
+    </div>
+  );
 }
 
 // ─── Page ─────────────────────────────────────────────────────────────────────
@@ -210,14 +227,6 @@ export default function PaymentsListPage() {
 
   // ── Styles ────────────────────────────────────────────────────────────────
 
-  // Match the new tenant-registration / pos-refunds style: tight,
-  // rounded-sm, indigo focus border.
-  const inputCls =
-    'w-full px-2.5 py-1 text-sm bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 ' +
-    'rounded-sm text-gray-900 dark:text-gray-100 focus:outline-none focus:border-indigo-500 ' +
-    'dark:focus:border-indigo-400 transition-colors';
-  const labelCls = 'block text-xs font-medium text-gray-700 dark:text-gray-300 mb-2';
-
   const hasFilters =
     !!applied.tenantId ||
     !!applied.referenceType ||
@@ -250,79 +259,72 @@ export default function PaymentsListPage() {
           )}
         </div>
 
-        {/* Row 1 — Tenant (super admin only). Other roles skip this row. */}
+        {/* Tenant (super admin only) — single field on top */}
         {isSuperAdmin && (
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-3 mb-3">
-            <div>
-              <label className={labelCls}>Tenant</label>
+          <div className="mb-2 md:w-1/2">
+            <FormRow label="Tenant">
               <TenantSelect
                 value={tenantId}
                 onChange={(tid) => setTenantId(tid || '')}
                 placeholder="All Tenants"
                 isInvalid={false}
+                compact
               />
-            </div>
+            </FormRow>
           </div>
         )}
 
-        {/* Row 2 — Reference Type + Method + Status + From + To + buttons */}
-        <div className="grid grid-cols-1 md:grid-cols-5 gap-3 items-end">
+        {/* Filter fields */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-x-4 gap-y-2">
           {/* Reference type — links to POS / Sales / etc. */}
-          <div>
-            <label className={labelCls}>Reference Type</label>
+          <FormRow label="Reference Type">
             <CustomSelect
               value={referenceTypeOpt}
               onChange={(opt) => setReferenceTypeOpt(opt)}
               defaultOptions={[{ value: '', label: 'All Types' } as any, ...REFERENCE_TYPES]}
               placeholder="All Types"
-              className="text-sm"
+              compact
             />
-          </div>
+          </FormRow>
 
           {/* Payment method */}
-          <div>
-            <label className={labelCls}>Method</label>
+          <FormRow label="Method">
             <CustomSelect
               value={methodOpt}
               onChange={(opt) => setMethodOpt(opt)}
               defaultOptions={[{ value: '', label: 'All Methods' } as any, ...PAYMENT_METHODS]}
               placeholder="All Methods"
-              className="text-sm"
+              compact
             />
-          </div>
+          </FormRow>
 
           {/* Status */}
-          <div>
-            <label className={labelCls}>Status</label>
+          <FormRow label="Status">
             <CustomSelect
               value={statusOpt}
               onChange={(opt) => setStatusOpt(opt)}
               defaultOptions={[{ value: '', label: 'All Statuses' } as any, ...PAYMENT_STATUSES]}
               placeholder="All Statuses"
-              className="text-sm"
+              compact
             />
-          </div>
+          </FormRow>
 
-          {/* Date from */}
-          <div>
-            <label className={labelCls}>From</label>
-            <CustomDatePicker
-              value={dateFrom}
-              onChange={setDateFrom}
-              placeholder="DD/MM/YYYY"
-            />
-          </div>
-
-          {/* Date to + buttons */}
-          <div>
-            <label className={labelCls}>To</label>
-            <CustomDatePicker
-              value={dateTo}
-              onChange={setDateTo}
-              placeholder="DD/MM/YYYY"
-              minDate={dateFrom ? new Date(dateFrom + 'T00:00:00') : undefined}
-            />
-          </div>
+          {/* Date range: From + To share the remaining cell */}
+          <FormRow label="Date Range">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+              <CustomDatePicker
+                value={dateFrom}
+                onChange={setDateFrom}
+                placeholder="From"
+              />
+              <CustomDatePicker
+                value={dateTo}
+                onChange={setDateTo}
+                placeholder="To"
+                minDate={dateFrom ? new Date(dateFrom + 'T00:00:00') : undefined}
+              />
+            </div>
+          </FormRow>
         </div>
 
         {/* Buttons row */}
