@@ -15,6 +15,7 @@ import { useCartFly } from '@/components/storefront/CartFlyProvider';
 import { useStorefrontStatus } from '@/hooks/use-storefront-status';
 import { notify } from '@/lib/notifications';
 import { imageUrl } from '@/lib/image-url';
+import { productDetailHref } from '@/lib/utils/variation-slug';
 import Badge from '../Badge';
 
 interface GroceryProductCardProps {
@@ -64,6 +65,9 @@ export default function GroceryProductCard({
   const pct = discount(mrp, price);
   const inStock = product.variations.some(v => v.stock > 0);
   const totalStock = product.variations.reduce((s, v) => s + v.stock, 0);
+  // Link to the variation this card represents so the detail page opens on the
+  // same price/stock instead of falling back to the (possibly out-of-stock) default.
+  const detailHref = productDetailHref(product.slug, defaultVariation);
   const [hovered, setHovered] = useState(false);
 
   const addItem = useCartStore(s => s.addItem);
@@ -108,7 +112,7 @@ export default function GroceryProductCard({
   if (variant === 'list') {
     return (
       <Link
-        href={`/store/products/${product.slug}`}
+        href={detailHref}
         onClick={() => trackView(product.id)}
         className="group flex gap-4 rounded-lg border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 p-4 transition-all hover:border-green-300 dark:hover:border-green-700 hover:shadow-md"
       >
@@ -226,7 +230,7 @@ export default function GroceryProductCard({
 
   return (
     <Link
-      href={`/store/products/${product.slug}`}
+      href={detailHref}
       onClick={() => trackView(product.id)}
       className="group relative flex h-full flex-col overflow-hidden rounded-lg border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 transition-shadow duration-200 hover:border-green-300 hover:shadow-[0_8px_25px_rgba(0,0,0,0.08)] dark:hover:border-green-700"
     >

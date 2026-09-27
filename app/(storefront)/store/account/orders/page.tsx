@@ -13,10 +13,9 @@ import {
   Filter,
   Loader2,
 } from 'lucide-react';
-import { useEffect, useState } from 'react';
-import { notify } from '@/lib/notifications';
+import { useState } from 'react';
+import { useOrders } from '@/hooks/use-storefront-data';
 import { formatMoney } from '@/lib/utils/format';
-import checkoutService from '@/services/checkoutService';
 import type { Order } from '@/types/storefront';
 
 const STATUS_CONFIG: Record<string, { color: string; bg: string; icon: any; label: string }> = {
@@ -33,29 +32,11 @@ const STATUS_CONFIG: Record<string, { color: string; bg: string; icon: any; labe
 const FILTERS = ['All', 'In transit', 'Delivered', 'Cancelled'];
 
 export default function OrdersPage() {
-  const [orders, setOrders] = useState<Order[]>([]);
-  const [loading, setLoading] = useState(true);
+  // Orders list — SWR (cached across account pages, deduped in StrictMode).
+  const { orders: rawOrders, loading } = useOrders();
+  const orders = rawOrders as Order[];
   const [filter, setFilter] = useState('All');
   const [search, setSearch] = useState('');
-
-  useEffect(() => {
-    let active = true;
-    setLoading(true);
-    checkoutService
-      .listOrders()
-      .then(list => {
-        if (active) setOrders(list as Order[]);
-      })
-      .catch(() => {
-        if (active) setOrders([]);
-      })
-      .finally(() => {
-        if (active) setLoading(false);
-      });
-    return () => {
-      active = false;
-    };
-  }, []);
 
   const filtered = orders.filter(o => {
     if (filter === 'In transit')

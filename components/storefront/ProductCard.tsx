@@ -15,6 +15,7 @@ import { useCartFly } from '@/components/storefront/CartFlyProvider';
 import { useStorefrontStatus } from '@/hooks/use-storefront-status';
 import { notify } from '@/lib/notifications';
 import { imageUrl } from '@/lib/image-url';
+import { productDetailHref } from '@/lib/utils/variation-slug';
 import Badge from './Badge';
 import { useStorefrontTheme } from '@/contexts/storefront-theme-context';
 import GroceryProductCard from '@/components/storefront/grocery/GroceryProductCard';
@@ -51,6 +52,9 @@ export default function ProductCard({
   const inStock = product.variations.some(v => v.stock > 0);
   const hasManyVariations = product.variations.length > 1;
   const totalStock = product.variations.reduce((s, v) => s + v.stock, 0);
+  // Link to the variation this card represents so the detail page opens on the
+  // same price/stock instead of falling back to the (possibly out-of-stock) default.
+  const detailHref = productDetailHref(product.slug, defaultVariation);
   const [hovered, setHovered] = useState(false);
   const [showQuickAdd, setShowQuickAdd] = useState(false);
 
@@ -94,7 +98,7 @@ export default function ProductCard({
   if (variant === 'list') {
     return (
       <Link
-        href={`/store/products/${product.slug}`}
+        href={detailHref}
         onClick={() => trackView(product.id)}
         className="group flex gap-4 rounded-none border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 p-4 transition-all hover:border-brand-300 dark:hover:border-brand-700 hover:shadow-md"
       >
@@ -200,7 +204,7 @@ export default function ProductCard({
 
   return (
     <Link
-      href={`/store/products/${product.slug}`}
+      href={detailHref}
       onClick={() => trackView(product.id)}
       className="group relative flex h-full flex-col overflow-hidden rounded-none border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 transition-shadow duration-200 hover:border-brand-300 hover:shadow-[0_8px_25px_rgba(0,0,0,0.08)] dark:hover:border-brand-700"
     >

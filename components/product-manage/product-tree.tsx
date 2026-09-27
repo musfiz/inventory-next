@@ -11,8 +11,8 @@ import { useAuthStore } from '@/stores/auth-store';
 import type { Product } from '@/types/api.types';
 
 interface ProductTreePanelProps {
-  businessTypeId: number | null;
-  onBusinessTypeChange: (id: number | null) => void;
+  businessTypeId: string | number | null;
+  onBusinessTypeChange: (id: string | number | null) => void;
   /** Tenant scope for warehouse selection — super admin only picks one explicitly. */
   tenantId?: string | null;
   onTenantChange?: (id: string | null) => void;
@@ -80,7 +80,7 @@ export function ProductTreePanel({
     return () => clearTimeout(t);
   }, [search]);
 
-  const { data: products = [], isLoading: loading } = useProducts(effectiveBtId, debounced, isHydrated);
+  const { data: products = [], isLoading: loading } = useProducts(effectiveBtId, debounced, isHydrated && !!effectiveBtId);
 
   // Reset expansion when the scope changes.
   useEffect(() => { setExpanded(new Set()); }, [effectiveBtId]);
@@ -143,7 +143,7 @@ export function ProductTreePanel({
               value={tenantId}
               onChange={(o) => {
                 handleTenantChange(o);
-                if (o?.value && formErrors.tenant && onTenantErrorClear) onTenantErrorClear();
+                if (o && formErrors.tenant && onTenantErrorClear) onTenantErrorClear();
               }}
               placeholder="Select tenant"
               compact

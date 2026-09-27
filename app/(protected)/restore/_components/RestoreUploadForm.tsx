@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { Upload, FileText, X, CheckCircle2, XCircle, AlertTriangle, Loader2 } from 'lucide-react';
-import { restoreService, type DryRunResult } from '@/services/restoreService';
+import { restoreService, type DryRunResult, type RestoreStrategy } from '@/services/restoreService';
 import { notify } from '@/lib/notifications';
 import { FORMATTING, MAX_RESTORE_FILE_BYTES, ACCEPTED_EXTENSIONS } from '../constants';
 
@@ -14,6 +14,7 @@ interface RestoreUploadFormProps {
   onFileSelect: (file: File | null) => void;
   replaceExisting: boolean;
   onReplaceExistingChange: (val: boolean) => void;
+  strategy: RestoreStrategy;
   targetTenantId: string;
   onTargetTenantIdChange: (val: string) => void;
   onConfirmRestore: () => void;
@@ -28,6 +29,7 @@ export function RestoreUploadForm({
   onFileSelect,
   replaceExisting,
   onReplaceExistingChange,
+  strategy,
   targetTenantId,
   onTargetTenantIdChange,
   onConfirmRestore,
@@ -48,7 +50,7 @@ export function RestoreUploadForm({
     }
     const ext = '.' + (file.name.split('.').pop() || '').toLowerCase();
     if (!ACCEPTED_EXTENSIONS.includes(ext)) {
-      setError('Only .sql files are supported.');
+      setError('Only .sql or .sql.zip files are supported.');
       return;
     }
     if (file.size > MAX_RESTORE_FILE_BYTES) {
@@ -132,7 +134,7 @@ export function RestoreUploadForm({
               Drag & drop your .sql file here
             </div>
             <div className="text-xs text-gray-500 dark:text-gray-400">
-              or click to browse · Max {FORMATTING.humanFileSize(MAX_RESTORE_FILE_BYTES)} · .sql only
+              or click to browse · Max {FORMATTING.humanFileSize(MAX_RESTORE_FILE_BYTES)} · .sql or .sql.zip
             </div>
           </div>
         ) : (
@@ -179,10 +181,16 @@ export function RestoreUploadForm({
           {dryRunResult && validResult && (
             <button
               onClick={onConfirmRestore}
-              className="inline-flex items-center gap-2 px-3 py-1.5 text-sm font-medium rounded bg-red-600 text-white hover:bg-red-700"
+              className={`inline-flex items-center gap-2 px-3 py-1.5 text-sm font-medium rounded text-white ${
+                strategy === 'merge' ? 'bg-blue-600 hover:bg-blue-700' : 'bg-red-600 hover:bg-red-700'
+              }`}
             >
               <AlertTriangle className="w-4 h-4" />
-              {dryRunResult.mode === 'full' ? 'Proceed with Full Restore' : 'Restore Tenant Data'}
+              {strategy === 'merge'
+                ? 'Merge Data'
+                : dryRunResult.mode === 'full'
+                  ? 'Proceed with Full Restore'
+                  : 'Replace Tenant Data'}
             </button>
           )}
         </div>

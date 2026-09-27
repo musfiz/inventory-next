@@ -1,11 +1,11 @@
 'use client';
 
+import { ChevronRight } from 'lucide-react';
 import Link from 'next/link';
 import { useMemo, useState } from 'react';
-import { ChevronRight } from 'lucide-react';
 import { IoCartSharp } from 'react-icons/io5';
-import { useStorefrontCategoriesStore } from '@/stores/storefront-categories-store';
 import { useHeaderMenu } from '@/hooks/use-header-menu';
+import { useStorefrontCategories } from '@/hooks/use-storefront-data';
 import type { CategoryTreeItem } from '@/services/storefrontService';
 import type { MegaMenuItem } from '@/types/api.types';
 
@@ -17,9 +17,8 @@ import type { MegaMenuItem } from '@/types/api.types';
  * lists stay scannable without excess whitespace.
  */
 export const CascadingMenu = ({ onClose, onKeepOpen }: { onClose: () => void; onKeepOpen: () => void }) => {
-  // Read-only — StorefrontHeader already fetches categories once per session.
-  const categories = useStorefrontCategoriesStore((s) => s.categories);
-  const loading = useStorefrontCategoriesStore((s) => s.loading);
+  // Read-only — SWR dedupes so header/menu/page all share one request.
+  const { categories, loading } = useStorefrontCategories();
   const { config: menu } = useHeaderMenu();
   const megaConfig = menu.mega_menu_config;
   const [activeGroup, setActiveGroup] = useState<MegaMenuItem | null>(null);

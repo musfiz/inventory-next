@@ -3,7 +3,7 @@
 import { Search, X, ArrowRight, ChevronDown, SlidersHorizontal } from 'lucide-react';
 import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import ProductCardSkeleton from '@/components/storefront/ProductCardSkeleton';
 import { FilterSidebar, FilterDrawer, PRICE_STEPS } from '@/components/storefront/ProductFilterSidebar';
 import ProductVariationCards from '@/components/storefront/ProductVariationCards';
@@ -11,10 +11,10 @@ import ScrollReveal from '@/components/storefront/ScrollReveal';
 import { useStorefrontBrands } from '@/hooks/use-storefront-brands';
 import { useStorefrontCategories } from '@/hooks/use-storefront-categories';
 import { useStorefrontStatus } from '@/hooks/use-storefront-status';
+import { useInfinitePages } from '@/hooks/use-storefront-data';
 import { POPULAR_SEARCHES } from '@/lib/storefront/mock-data';
 import { useSeo } from '@/lib/utils/use-seo';
 import storefrontService from '@/services/storefrontService';
-import type { Product } from '@/types/storefront';
 
 const SORTS = [
   { id: 'relevance', label: 'Relevance' },
@@ -47,12 +47,6 @@ export default function SearchPage() {
   const [priceStep, setPriceStep] = useState('all');
   const [minRating, setMinRating] = useState(0);
   const [inStockOnly, setInStockOnly] = useState(false);
-  const [results, setResults] = useState<Product[]>([]);
-  const [loading, setLoading] = useState(false);
-  const [loadingMore, setLoadingMore] = useState(false);
-  const [page, setPage] = useState(1);
-  const [meta, setMeta] = useState({ current_page: 1, last_page: 1, total: 0 });
-  const [hasMore, setHasMore] = useState(false);
 
   const { categories: parentCats } = useStorefrontCategories();
   const { brands } = useStorefrontBrands();
@@ -97,48 +91,41 @@ export default function SearchPage() {
     onClearAll: clearAll,
   };
 
-  // Server-driven search + filters via the storefront product API.
-  const fetchResults = async (pageNum: number, append: boolean) => {
-    const lc = q.toLowerCase().trim();
-    if (!lc) {
-      setResults([]);
-      setLoading(false);
-      return;
-    }
-    if (append) setLoadingMore(true); else setLoading(true);
-    try {
-      const res = await storefrontService.search({
-        q,
-        page: pageNum,
-        per_page: ITEMS_PER_PAGE,
-        sort,
-        category_id: selectedCats.length > 0 ? selectedCats.join(',') : undefined,
-        brand_id: selectedBrands.length > 0 ? selectedBrands.join(',') : undefined,
-        min_price: priceRange.min > 0 ? priceRange.min : undefined,
-        max_price: Number.isFinite(priceRange.max) ? priceRange.max : undefined,
-        in_stock: inStockOnly || undefined,
-        min_rating: minRating > 0 ? minRating : undefined,
-      });
-      setResults(prev => (append ? prev.concat(res.data) : res.data));
-      setPage(pageNum);
-      setMeta(res.meta);
-      setHasMore(res.meta.current_page < res.meta.last_page);
-    } catch {
-      if (!append) setResults([]);
-    } finally {
-      if (append) setLoadingMore(false); else setLoading(false);
-    }
+  // Server-driven search + filters via SWR — one cache entry per (query/filters, page).
+  const filterKey = {
+    q,
+    sort,
+    cats: selectedCats.join(','),
+    brands: selectedBrands.join(','),
+    priceStep,
+    minRating,
+    inStockOnly,
   };
 
-  useEffect(() => {
-    fetchResults(1, false);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [q, sort, selectedCats, selectedBrands, priceStep, minRating, inStockOnly]);
+  const grid = useInfinitePages(
+    'storefront:search',
+    filterKey,
+    (pageNum) => storefrontService.search({
+      q,
+      page: pageNum,
+      per_page: ITEMS_PER_PAGE,
+      sort,
+      category_id: selectedCats.length > 0 ? selectedCats.join(',') : undefined,
+      brand_id: selectedBrands.length > 0 ? selectedBrands.join(',') : undefined,
+      min_price: priceRange.min > 0 ? priceRange.min : undefined,
+      max_price: Number.isFinite(priceRange.max) ? priceRange.max : undefined,
+      in_stock: inStockOnly || undefined,
+      min_rating: minRating > 0 ? minRating : undefined,
+    }),
+    !!q.trim(),
+  );
 
-  const loadMore = () => {
-    if (!hasMore || loadingMore) return;
-    fetchResults(page + 1, true);
-  };
+  const results = grid.pages.flatMap(p => p.data);
+  const meta = { current_page: grid.meta?.current_page ?? 1, last_page: grid.meta?.last_page ?? 1, total: grid.meta?.total ?? 0 };
+  const loading = grid.loading && !!q.trim();
+  const hasMore = grid.hasMore;
+  const loadingMore = grid.loadingMore;
+  const loadMore = grid.loadMore;
 
   const displayed = results;
 

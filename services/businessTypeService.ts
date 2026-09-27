@@ -4,7 +4,7 @@ import apiClient from '@/lib/api/axios';
 import type { ApiResponse } from '@/types/api.types';
 
 export interface BusinessTypeItem {
-  id: number;
+  id: string | number;
   name: string;
   slug: string;
   description?: string;
@@ -23,7 +23,7 @@ class BusinessTypeService {
     return response.data.data;
   }
 
-  async getById(id: number): Promise<BusinessTypeItem> {
+  async getById(id: string | number): Promise<BusinessTypeItem> {
     const response = await apiClient.get<ApiResponse<BusinessTypeItem>>(`/api/v1/business-types/${id}`);
     return response.data.data;
   }
@@ -33,17 +33,17 @@ class BusinessTypeService {
     return response.data.data;
   }
 
-  async update(id: number, data: { name?: string; description?: string; is_active?: boolean }): Promise<BusinessTypeItem> {
+  async update(id: string | number, data: { name?: string; description?: string; is_active?: boolean }): Promise<BusinessTypeItem> {
     const response = await apiClient.put<ApiResponse<BusinessTypeItem>>(`/api/v1/business-types/${id}`, data);
     return response.data.data;
   }
 
-  async delete(id: number): Promise<void> {
+  async delete(id: string | number): Promise<void> {
     await apiClient.delete(`/api/v1/business-types/${id}`);
   }
 
-  async getForDropdown(params?: { search?: string }): Promise<{ id: number; name: string; slug: string }[]> {
-    const response = await apiClient.get<ApiResponse<{ id: number; name: string; slug: string }[]>>('/api/v1/business-types/dropdown', { params });
+  async getForDropdown(params?: { search?: string }): Promise<{ id: string | number; name: string; slug: string }[]> {
+    const response = await apiClient.get<ApiResponse<{ id: string | number; name: string; slug: string }[]>>('/api/v1/business-types/dropdown', { params });
     return response.data.data;
   }
 }

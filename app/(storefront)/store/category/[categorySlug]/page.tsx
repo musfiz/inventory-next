@@ -4,16 +4,15 @@ import { ChevronDown, ArrowRight, SlidersHorizontal } from 'lucide-react';
 import Image from 'next/image';
 import Link from 'next/link';
 import { useParams, notFound } from 'next/navigation';
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import ProductCardSkeleton from '@/components/storefront/ProductCardSkeleton';
 import { FilterSidebar, FilterDrawer, PRICE_STEPS } from '@/components/storefront/ProductFilterSidebar';
 import ProductVariationCards from '@/components/storefront/ProductVariationCards';
 import ScrollReveal from '@/components/storefront/ScrollReveal';
-import { useStorefrontBrands } from '@/hooks/use-storefront-brands';
+import { useStorefrontBrands, useCategoryBySlug, useInfinitePages } from '@/hooks/use-storefront-data';
 import { useStorefrontStatus } from '@/hooks/use-storefront-status';
 import { useSeo } from '@/lib/utils/use-seo';
 import storefrontService from '@/services/storefrontService';
-import type { CategoryPageData } from '@/services/storefrontService';
 import type { Product } from '@/types/storefront';
 
 const SORTS = [
@@ -30,28 +29,20 @@ export default function CategoryPage() {
   const { categorySlug } = useParams<{ categorySlug: string }>();
   const [sort, setSort] = useState<(typeof SORTS)[number]['id']>('featured');
 
-  // Category state
-  const [category, setCategory] = useState<CategoryPageData | null>(null);
-  const [categoryLoading, setCategoryLoading] = useState(true);
-  const [is404, setIs404] = useState(false);
-
   // Filter state
   const [filterOpen, setFilterOpen] = useState(false);
   const [selectedBrands, setSelectedBrands] = useState<string[]>([]);
   const [priceStep, setPriceStep] = useState('all');
   const [minRating, setMinRating] = useState(0);
   const [inStockOnly, setInStockOnly] = useState(false);
+  const [bannerError, setBannerError] = useState(false);
+
   const { brands } = useStorefrontBrands();
   const { storeName } = useStorefrontStatus();
   const siteName = storeName || 'Our Store';
 
-  // Products state
-  const [products, setProducts] = useState<Product[]>([]);
-  const [productsLoading, setProductsLoading] = useState(true);
-  const [meta, setMeta] = useState({ current_page: 1, last_page: 1, total: 0 });
-  const [hasMore, setHasMore] = useState(false);
-  const [loadingMore, setLoadingMore] = useState(false);
-  const [bannerError, setBannerError] = useState(false);
+  // Category header — SWR; 404 error is terminal (no retry).
+  const { category, is404, loading: categoryLoading } = useCategoryBySlug(categorySlug);
 
   useSeo({
     title: category ? `${category.name} | ${siteName}` : `Category | ${siteName}`,
@@ -116,76 +107,40 @@ export default function CategoryPage() {
     onClearAll: clearAll,
   };
 
-  // Fetch category by slug
-  useEffect(() => {
-    if (!categorySlug) return;
-    setCategoryLoading(true);
-    setIs404(false);
-    storefrontService
-      .getCategoryBySlug(categorySlug)
-      .then(data => {
-        setCategory(data);
-        setCategoryLoading(false);
-      })
-      .catch(err => {
-        if (err?.response?.status === 404) setIs404(true);
-        setCategoryLoading(false);
-      });
-  }, [categorySlug]);
-
-  // Fetch products when category, sort, or any filter changes
-  useEffect(() => {
-    if (!category?.id) return;
-    setProductsLoading(true);
-    storefrontService
-      .getProducts({
-        category_id: Number(category.id),
-        sort: apiSortParam(sort),
-        page: 1,
-        per_page: ITEMS_PER_PAGE,
-        brand_id: selectedBrands.length > 0 ? selectedBrands.join(',') : undefined,
-        min_price: priceRange.min > 0 ? priceRange.min : undefined,
-        max_price: Number.isFinite(priceRange.max) ? priceRange.max : undefined,
-        in_stock: inStockOnly || undefined,
-        min_rating: minRating > 0 ? minRating : undefined,
-      })
-      .then(res => {
-        setProducts(sortClientSide(res.data, sort));
-        setMeta(res.meta);
-        setHasMore(res.meta.current_page < res.meta.last_page);
-        setProductsLoading(false);
-      })
-      .catch(() => {
-        setProducts([]);
-        setProductsLoading(false);
-      });
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [category?.id, sort, selectedBrands, priceStep, minRating, inStockOnly]);
-
-  // Load more pagination
-  const loadMore = () => {
-    if (!hasMore || !category?.id || loadingMore) return;
-    setLoadingMore(true);
-    const nextPage = meta.current_page + 1;
-    storefrontService
-      .getProducts({
-        category_id: Number(category.id),
-        sort: apiSortParam(sort),
-        page: nextPage,
-        per_page: ITEMS_PER_PAGE,
-        brand_id: selectedBrands.length > 0 ? selectedBrands.join(',') : undefined,
-        min_price: priceRange.min > 0 ? priceRange.min : undefined,
-        max_price: Number.isFinite(priceRange.max) ? priceRange.max : undefined,
-        in_stock: inStockOnly || undefined,
-        min_rating: minRating > 0 ? minRating : undefined,
-      })
-      .then(res => {
-        setProducts(prev => [...prev, ...sortClientSide(res.data, sort)]);
-        setMeta(res.meta);
-        setHasMore(res.meta.current_page < res.meta.last_page);
-      })
-      .finally(() => setLoadingMore(false));
+  // Products — one SWR entry per (filters, page); filter/sort change resets to page 1,
+  // keepPreviousData avoids the flash while page 1 reloads.
+  const filterKey = {
+    categoryId: category?.id ?? null,
+    sort,
+    brands: selectedBrands.join(','),
+    priceStep,
+    minRating,
+    inStockOnly,
   };
+
+  const fetchPage = async (pageNum: number) => {
+    const res = await storefrontService.getProducts({
+      category_id: Number(category!.id),
+      sort: apiSortParam(sort),
+      page: pageNum,
+      per_page: ITEMS_PER_PAGE,
+      brand_id: selectedBrands.length > 0 ? selectedBrands.join(',') : undefined,
+      min_price: priceRange.min > 0 ? priceRange.min : undefined,
+      max_price: Number.isFinite(priceRange.max) ? priceRange.max : undefined,
+      in_stock: inStockOnly || undefined,
+      min_rating: minRating > 0 ? minRating : undefined,
+    });
+    return { ...res, data: sortClientSide(res.data, sort) };
+  };
+
+  const grid = useInfinitePages(
+    'storefront:category-products',
+    filterKey,
+    fetchPage,
+    !!category?.id,
+  );
+  const products = grid.pages.flatMap(p => p.data);
+  const meta = { current_page: grid.meta?.current_page ?? 1, last_page: grid.meta?.last_page ?? 1, total: grid.meta?.total ?? 0 };
 
   // 404 handling
   if (is404) notFound();
@@ -326,7 +281,7 @@ export default function CategoryPage() {
         </div>
 
         {/* Grid — loading state */}
-        {productsLoading && products.length === 0 ? (
+        {grid.loading && products.length === 0 ? (
           <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
             {[...Array(8)].map((_, i) => (
               <ProductCardSkeleton key={i} />
@@ -352,14 +307,14 @@ export default function CategoryPage() {
                   <ProductVariationCards key={p.id} product={p} staggerIndex={i} />
                 ))}
               </div>
-              {hasMore && (
+              {grid.hasMore && (
                 <div className="mt-8 text-center">
                   <button
-                    onClick={loadMore}
-                    disabled={loadingMore}
+                    onClick={grid.loadMore}
+                    disabled={grid.loadingMore}
                     className="inline-flex items-center gap-2 rounded-full border border-gray-300 bg-white px-8 py-3 text-sm font-bold text-gray-700 transition-all hover:border-brand-400 hover:text-brand-600 disabled:cursor-not-allowed disabled:opacity-60 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-300"
                   >
-                    {loadingMore ? 'Loading…' : `Load more (${meta.total - products.length} remaining)`}
+                    {grid.loadingMore ? 'Loading…' : `Load more (${meta.total - products.length} remaining)`}
                     <ChevronDown className="h-4 w-4" />
                   </button>
                 </div>

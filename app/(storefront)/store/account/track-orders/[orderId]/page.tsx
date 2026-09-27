@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { use, useState, useEffect } from 'react';
+import { use } from 'react';
 import {
   Package,
   Truck,
@@ -17,8 +17,7 @@ import {
   Loader2,
   AlertCircle,
 } from 'lucide-react';
-import ecommerceOrderService from '@/services/ecommerceOrderService';
-import type { OrderDetail } from '@/types/ecommerce';
+import { useTrackedOrder } from '@/hooks/use-storefront-data';
 
 const STATUS_LABELS: Record<string, string> = {
   placed: 'Order Placed',
@@ -123,29 +122,10 @@ export default function TrackOrderDetailPage({
   params: Promise<{ orderId: string }>;
 }) {
   const { orderId } = use(params);
-  const [order, setOrder] = useState<OrderDetail | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
 
-  useEffect(() => {
-    const fetchOrder = async () => {
-      setLoading(true);
-      setError(null);
-      try {
-        const result = await ecommerceOrderService.getById(orderId);
-        if (result) {
-          setOrder(result);
-        } else {
-          setError('Order not found');
-        }
-      } catch {
-        setError('Something went wrong loading the order.');
-      } finally {
-        setLoading(false);
-      }
-    };
-    fetchOrder();
-  }, [orderId]);
+  // Tracked order detail — SWR; failures are terminal (no retry).
+  const { order, error: loadError, loading } = useTrackedOrder(orderId);
+  const error = loadError ? 'Something went wrong loading the order.' : null;
 
   if (loading) {
     return (

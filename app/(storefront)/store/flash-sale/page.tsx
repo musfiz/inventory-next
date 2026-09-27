@@ -7,8 +7,9 @@ import { useState, useEffect, useMemo } from 'react';
 import ProductCardSkeleton from '@/components/storefront/ProductCardSkeleton';
 import ProductVariationCards from '@/components/storefront/ProductVariationCards';
 import ScrollReveal from '@/components/storefront/ScrollReveal';
+import { useFlashSale } from '@/hooks/use-storefront-data';
 import { formatMoney } from '@/lib/utils/format';
-import storefrontService, { StorefrontFlashSaleCampaign, StorefrontFlashSaleProduct } from '@/services/storefrontService';
+import { type StorefrontFlashSaleCampaign, type StorefrontFlashSaleProduct } from '@/services/storefrontService';
 
 interface FlashSaleProductForCard {
   id: string;
@@ -95,31 +96,11 @@ const CampaignCountdown = ({ target }: { target: string }) => {
 };
 
 export default function FlashSalePage() {
-  const [campaigns, setCampaigns] = useState<StorefrontFlashSaleCampaign[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-
-  // Fetch all live flash sale campaigns
-  useEffect(() => {
-    const fetchFlashSales = async () => {
-      try {
-        setLoading(true);
-        const data = await storefrontService.getFlashSale();
-        if (data.length > 0) {
-          setCampaigns(data);
-        } else {
-          setError('No active flash sale campaign at the moment');
-        }
-      } catch (err) {
-        console.error('Failed to fetch flash sale:', err);
-        setError('Failed to load flash sale. Please try again later.');
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchFlashSales();
-  }, []);
+  // Flash sale campaigns — SWR (deduped, cached; the countdown interval below stays local).
+  const { campaigns, loading, error: fetchError } = useFlashSale();
+  const error = campaigns.length === 0 && !loading
+    ? (fetchError ? 'Failed to load flash sale. Please try again later.' : 'No active flash sale campaign at the moment')
+    : null;
 
   // Transform API products to ProductCard-compatible format (per campaign)
   const productsByCampaign = useMemo((): Record<string, FlashSaleProductForCard[]> => {

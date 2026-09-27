@@ -7,7 +7,6 @@ import { notify } from '@/lib/notifications';
 import storefrontSettingsService from '@/services/storefrontSettingsService';
 import ecommerceSettingsService from '@/services/ecommerceSettingsService';
 import { useAuthStore } from '@/stores/auth-store';
-import { useStorefrontSettingsStore } from '@/stores/storefront-settings-store';
 import { usePermissions } from '@/hooks/use-permissions';
 import { useStorefrontStatus } from '@/hooks/use-storefront-status';
 import Spinner from '@/components/ui/spinner';
@@ -19,8 +18,7 @@ import type { EcommerceSettings } from '@/types/ecommerce';
 export default function SettingsPage() {
   const authUser = useAuthStore(s => s.user);
   const { isSuperAdmin } = usePermissions();
-  const { active, activeTenantId, loading, fetch, expressCheckoutEnabled } = useStorefrontStatus();
-  const fetchSettings = useStorefrontSettingsStore((s) => s.fetch);
+  const { active, activeTenantId, loading, fetch, fetchSettings, expressCheckoutEnabled } = useStorefrontStatus();
 
   const [updatedAt, setUpdatedAt] = useState<string | null>(null);
   const [statusSaving, setStatusSaving] = useState(false);
@@ -119,7 +117,8 @@ export default function SettingsPage() {
         </h1>
       </div>
 
-      {/* Status & Activation */}
+      {/* Status & Activation — superadmin only */}
+      {isSuperAdmin && (
       <div className="space-y-2">
         <div className="flex items-center justify-between">
           <h2 className="text-lg font-bold text-gray-900 dark:text-gray-100 flex items-center gap-2">
@@ -186,6 +185,7 @@ export default function SettingsPage() {
           </div>
         </div>
       </div>
+      )}
 
       {/* Express Checkout */}
       <div className="space-y-2">

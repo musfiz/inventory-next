@@ -21,7 +21,7 @@ export interface PurchaseOrder {
 
 // Business Type - can be string (name) or object with id and name
 export type BusinessType = {
-  id: number;
+  id: string | number;
   name: string
 };
 
@@ -53,7 +53,7 @@ export interface Tenant {
   business_name: string;
   slug: string;
   business_type?: BusinessType;
-  business_type_id?: number;
+  business_type_id?: string | number;
   contact_person?: string;
   phone?: string;
   email?: string;

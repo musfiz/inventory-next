@@ -4,7 +4,8 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { Upload, RefreshCw } from 'lucide-react';
 import { usePermissions } from '@/hooks/use-permissions';
-import { restoreService, type DryRunResult, type RestoreJobStatus } from '@/services/restoreService';
+import { restoreService, type DryRunResult, type RestoreJobStatus, type RestoreStrategy } from '@/services/restoreService';
+import { businessTypeService } from '@/services/businessTypeService';
 import { confirm, notify } from '@/lib/notifications';
 import { BackupProgressModal, JobProgress } from '../backup/_components/BackupProgressModal';
 import { RestoreUploadForm } from './_components/RestoreUploadForm';
@@ -17,8 +18,10 @@ export default function RestorePage() {
   const { isSuperAdmin, isHydrated } = usePermissions();
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [dryRunResult, setDryRunResult] = useState<DryRunResult | null>(null);
-  const [replaceExisting, setReplaceExisting] = useState(true);
+  const [strategy, setStrategy] = useState<RestoreStrategy>('fresh');
   const [targetTenantId, setTargetTenantId] = useState('');
+  const [businessTypes, setBusinessTypes] = useState<{ id: string; name: string }[]>([]);
+  const [businessTypeId, setBusinessTypeId] = useState('');
   const [activeJob, setActiveJob] = useState<RestoreJobStatus | null>(null);
   const [modalOpen, setModalOpen] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
@@ -30,9 +33,27 @@ export default function RestorePage() {
     if (isHydrated && !isSuperAdmin) router.push('/access-denied');
   }, [isSuperAdmin, isHydrated, router]);
 
+  // Current-database business types for the "keep current business type" remap.
+  useEffect(() => {
+    let cancelled = false;
+    businessTypeService
+      .getForDropdown({ search: '' })
+      .then((rows) => {
+        if (!cancelled) {
+          setBusinessTypes(rows.map((r) => ({ id: String(r.id), name: r.name })));
+        }
+      })
+      .catch(() => {});
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
   // Poll the active restore job while the modal is open.
+  // Inline restores finish before the modal opens — no polling needed then.
   useEffect(() => {
     if (!modalOpen || !activeJob) return;
+    if (activeJob.status === 'completed' || activeJob.status === 'failed') return;
     let cancelled = false;
     const poll = async () => {
       try {
@@ -62,23 +83,43 @@ export default function RestorePage() {
 
   const handleConfirmRestore = useCallback(async () => {
     if (!selectedFile || !dryRunResult?.valid) return;
-    if (dryRunResult.mode === 'full') {
+    if (dryRunResult.mode === 'full' && strategy === 'fresh') {
       const ok = await confirm({
-        title: '⚠️ Full database restore',
-        html: `<p class="text-sm">This will <b>replace the ENTIRE database</b>.</p>` +
-              `<p class="text-sm mt-2">All tenants, all data, all tables will be overwritten by the contents of the uploaded .sql file.</p>` +
+        title: '⚠️ Fresh full database restore',
+        html: `<p class="text-sm">This will <b>truncate and replace the ENTIRE database</b>.</p>` +
+              `<p class="text-sm mt-2">All tenants, all existing data, all tables will be wiped and overwritten by the contents of the uploaded file.</p>` +
               `<p class="text-sm mt-2">A full snapshot will be taken first so the change can be rolled back if needed.</p>`,
         icon: 'warning',
         confirmButtonText: 'Yes, replace the entire database',
         cancelButtonText: 'Cancel',
       });
       if (!ok.isConfirmed) return;
-    } else {
+    } else if (dryRunResult.mode === 'full' && strategy === 'merge') {
+      const ok = await confirm({
+        title: 'Merge full database backup?',
+        html: `<p class="text-sm">Existing data will be <b>kept</b>. Only rows that do not already exist will be inserted.</p>` +
+              `<p class="text-sm mt-2">Rows with a primary key that already exists in the database are skipped.</p>` +
+              `<p class="text-sm mt-2">A full snapshot will be taken first so the change can be rolled back if needed.</p>`,
+        icon: 'question',
+        confirmButtonText: 'Yes, merge data',
+        cancelButtonText: 'Cancel',
+      });
+      if (!ok.isConfirmed) return;
+    } else if (strategy === 'fresh') {
       const ok = await confirm({
         title: 'Restore tenant data?',
         text: 'Existing data for the target tenant will be replaced. A snapshot will be created first.',
         icon: 'warning',
         confirmButtonText: 'Restore',
+        cancelButtonText: 'Cancel',
+      });
+      if (!ok.isConfirmed) return;
+    } else {
+      const ok = await confirm({
+        title: 'Merge tenant data?',
+        text: 'Existing tenant data will be kept. Only rows that do not already exist will be inserted. A snapshot will be created first.',
+        icon: 'question',
+        confirmButtonText: 'Merge',
         cancelButtonText: 'Cancel',
       });
       if (!ok.isConfirmed) return;
@@ -90,7 +131,8 @@ export default function RestorePage() {
       const job = await restoreService.restoreDatabase(selectedFile, {
         mode: 'auto',
         tenantId: targetTenantId || undefined,
-        replaceExisting,
+        strategy,
+        businessTypeId: businessTypeId || undefined,
         onUploadProgress: (e: any) => {
           if (e.total) {
             setUploadProgress(Math.round((e.loaded * 100) / e.total));
@@ -100,11 +142,13 @@ export default function RestorePage() {
       setActiveJob(job);
       setModalOpen(true);
       setIsUploading(false);
+      // Refresh the history table; inline restores are already completed.
+      setHistoryKey((k) => k + 1);
     } catch (err: any) {
       setIsUploading(false);
       notify.error(err?.response?.data?.message || 'Restore failed');
     }
-  }, [selectedFile, dryRunResult, replaceExisting, targetTenantId]);
+  }, [selectedFile, dryRunResult, strategy, targetTenantId, businessTypeId]);
 
   if (!isHydrated) {
     return <div className="flex items-center justify-center h-40 text-sm text-gray-500">Loading…</div>;
@@ -132,8 +176,9 @@ export default function RestorePage() {
         onDryRunResult={setDryRunResult}
         selectedFile={selectedFile}
         onFileSelect={setSelectedFile}
-        replaceExisting={replaceExisting}
-        onReplaceExistingChange={setReplaceExisting}
+        replaceExisting={strategy === 'fresh'}
+        onReplaceExistingChange={(v) => setStrategy(v ? 'fresh' : 'merge')}
+        strategy={strategy}
         targetTenantId={targetTenantId}
         onTargetTenantIdChange={setTargetTenantId}
         onConfirmRestore={handleConfirmRestore}
@@ -144,10 +189,13 @@ export default function RestorePage() {
       {dryRunResult && (
         <DryRunReport
           result={dryRunResult}
-          replaceExisting={replaceExisting}
-          onReplaceExistingChange={setReplaceExisting}
+          strategy={strategy}
+          onStrategyChange={setStrategy}
           targetTenantId={targetTenantId}
           onTargetTenantIdChange={setTargetTenantId}
+          businessTypes={businessTypes}
+          businessTypeId={businessTypeId}
+          onBusinessTypeIdChange={setBusinessTypeId}
         />
       )}
 

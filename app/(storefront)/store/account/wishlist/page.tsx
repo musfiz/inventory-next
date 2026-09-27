@@ -4,6 +4,8 @@ import Link from 'next/link';
 import { useEffect } from 'react';
 import { Heart, ShoppingBag, ArrowRight, Trash2 } from 'lucide-react';
 import { useWishlistStore } from '@/stores/wishlist-store';
+import { useCustomerAuthStore } from '@/stores/customer-auth-store';
+import { useWishlistIds } from '@/hooks/use-storefront-data';
 import { PRODUCTS } from '@/lib/storefront/mock-data';
 import { formatMoney } from '@/lib/utils/format';
 import ProductCard from '@/components/storefront/ProductCard';
@@ -13,11 +15,14 @@ import { notify } from '@/lib/notifications';
 export default function WishlistPage() {
   const items = useWishlistStore(s => s.items);
   const clear = useWishlistStore(s => s.clear);
-  const syncFromServer = useWishlistStore(s => s.syncFromServer);
+  const replaceItems = useWishlistStore(s => s.replaceItems);
+  const { user } = useCustomerAuthStore();
 
+  // Server wishlist — SWR (deduped/cached); hydrate the client store from it.
+  const { ids } = useWishlistIds(!!user);
   useEffect(() => {
-    syncFromServer();
-  }, [syncFromServer]);
+    if (ids) replaceItems(ids);
+  }, [ids, replaceItems]);
 
   const products = PRODUCTS.filter(p => items.includes(p.id));
 

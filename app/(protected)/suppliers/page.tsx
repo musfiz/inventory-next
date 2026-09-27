@@ -1,15 +1,15 @@
 'use client';
 
-import { useEffect, useState } from 'react';
-import { List, Plus, Edit, X, Trash2 } from 'lucide-react';
-import { GiSave } from 'react-icons/gi';
 import { ColumnDef } from '@tanstack/react-table';
-import DataTable from '@/components/ui/datatable';
-import CustomSelect from '@/components/ui/custom-select';
-import { supplierService, commonService } from '@/services';
+import { List, Plus, Edit, X, Trash2 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
+import { useEffect, useState } from 'react';
+import { GiSave } from 'react-icons/gi';
+import CustomSelect from '@/components/ui/custom-select';
+import DataTable from '@/components/ui/datatable';
 import { usePermissions } from '@/hooks/use-permissions';
 import { notify, confirm } from '@/lib/notifications';
+import { supplierService, commonService } from '@/services';
 
 export default function SupplierListPage() {
   const [refreshKey, setRefreshKey] = useState(0);
@@ -123,17 +123,50 @@ export default function SupplierListPage() {
     }
   };
 
-  const handleEdit = (supplier: any) => {
+  const handleEdit = async (supplier: any) => {
     setFormErrors({});
-    setFormData({
-      ...formData,
-      ...supplier,
-    });
-    if (supplier?.tenant_id)
-      setSelectedTenant({
-        value: supplier.tenant_id,
-        label: supplier.tenant_business_name || supplier.tenant_name || '',
-      });
+    // Normalize nulls to '' to avoid React `value` prop null warning (312:15)
+    const sanitized = Object.fromEntries(
+      Object.entries({ ...formData, ...supplier }).map(([k, v]) => [k, v ?? ''])
+    ) as any;
+    // keep tenant_id as undefined if empty, credit_limit as 0 if empty
+    if (sanitized.tenant_id === '') sanitized.tenant_id = undefined;
+    if (sanitized.credit_limit === '') sanitized.credit_limit = 0;
+    setFormData(sanitized);
+    if (supplier?.tenant_id) {
+      // Prefer eager-loaded tenant relationship from API (SupplierTrait now with tenant)
+      let label: string =
+        supplier.tenant?.business_name ||
+        supplier.tenant_business_name ||
+        supplier.tenant_name ||
+        supplier.business_name ||
+        '';
+      if (!label) {
+        const hit = defaultTenantOptions.find((o: any) => String(o.value) === String(supplier.tenant_id));
+        if (hit) label = hit.label;
+      }
+      if (!label && isSuperAdmin) {
+        try {
+          const tenants = await commonService.getTenantsForDropdown({ search: '' });
+          const t = tenants.find((x: any) => String(x.id) === String(supplier.tenant_id));
+          if (t) {
+            label = (t as any).business_name;
+            if (!defaultTenantOptions.some((o: any) => String(o.value) === String(t.id))) {
+              setDefaultTenantOptions((prev: any) => [...prev, { value: (t as any).id, label }]);
+            }
+          }
+        } catch { }
+      }
+      if (!label) label = String(supplier.tenant_id).slice(0, 8);
+      const opt = { value: supplier.tenant_id, label };
+      setSelectedTenant(opt);
+      // Ensure AsyncSelect can display it even if not in defaultOptions
+      if (!defaultTenantOptions.some((o: any) => String(o.value) === String(supplier.tenant_id))) {
+        setDefaultTenantOptions((prev: any) => [...prev, opt]);
+      }
+    } else {
+      setSelectedTenant(null);
+    }
     setIsEditing(true);
     setShowForm(true);
   };
@@ -185,14 +218,14 @@ export default function SupplierListPage() {
             onClick={() => handleEdit(row.original)}
             className="p-1 text-green-600 hover:text-green-800 dark:text-green-400 dark:hover:text-green-300 cursor-pointer"
             title="Edit"
-           aria-label="Edit">
+            aria-label="Edit">
             <Edit className="w-4 h-4" />
           </button>
           <button
             onClick={() => handleDelete(row.original.id)}
             className="p-1 text-red-600 hover:text-red-800 dark:text-red-400 dark:hover:text-red-300 cursor-pointer"
             title="Delete"
-           aria-label="Delete">
+            aria-label="Delete">
             <Trash2 className="w-4 h-4" />
           </button>
         </div>
@@ -276,7 +309,7 @@ export default function SupplierListPage() {
               <label className="block text-sm">Name</label>
               <input
                 type="text"
-                value={formData.name}
+                value={formData.name ?? ''}
                 onChange={e => {
                   setFormData({ ...formData, name: e.target.value });
                   if (formErrors.name) {
@@ -294,7 +327,7 @@ export default function SupplierListPage() {
               <label className="block text-sm">Phone</label>
               <input
                 type="text"
-                value={formData.phone}
+                value={formData.phone ?? ''}
                 onChange={e => {
                   setFormData({ ...formData, phone: e.target.value });
                   if (formErrors.phone) {
@@ -311,7 +344,7 @@ export default function SupplierListPage() {
               <label className="block text-sm">Contact Person</label>
               <input
                 type="text"
-                value={formData.contact_person}
+                value={formData.contact_person ?? ''}
                 onChange={e => setFormData({ ...formData, contact_person: e.target.value })}
                 placeholder="Enter contact person name"
                 className={`w-full px-2 py-1.25 text-sm border rounded-sm focus:outline-none focus:ring-1 focus:ring-blue-500 dark:focus:ring-blue-400 focus:border-transparent dark:bg-gray-700 dark:text-gray-100 ${formErrors.contact_person ? 'border-red-500' : 'border-gray-300'}`}
@@ -324,7 +357,7 @@ export default function SupplierListPage() {
               <label className="block text-sm">Company</label>
               <input
                 type="text"
-                value={formData.company_name}
+                value={formData.company_name ?? ''}
                 onChange={e => setFormData({ ...formData, company_name: e.target.value })}
                 placeholder="Enter company name"
                 className={`w-full px-2 py-1.25 text-sm border rounded-sm focus:outline-none focus:ring-1 focus:ring-blue-500 dark:focus:ring-blue-400 focus:border-transparent dark:bg-gray-700 dark:text-gray-100 ${formErrors.company_name ? 'border-red-500' : 'border-gray-300'}`}
@@ -335,7 +368,7 @@ export default function SupplierListPage() {
               <label className="block text-sm">Email</label>
               <input
                 type="email"
-                value={formData.email}
+                value={formData.email ?? ''}
                 onChange={e => setFormData({ ...formData, email: e.target.value })}
                 placeholder="Enter email address"
                 className={`w-full px-2 py-1.25 text-sm border rounded-sm focus:outline-none focus:ring-1 focus:ring-blue-500 dark:focus:ring-blue-400 focus:border-transparent dark:bg-gray-700 dark:text-gray-100 ${formErrors.email ? 'border-red-500' : 'border-gray-300'}`}
@@ -345,7 +378,7 @@ export default function SupplierListPage() {
               <label className="block text-sm">Website</label>
               <input
                 type="text"
-                value={formData.website}
+                value={formData.website ?? ''}
                 onChange={e => setFormData({ ...formData, website: e.target.value })}
                 placeholder="Enter website URL"
                 className={`w-full px-2 py-1.25 text-sm border rounded-sm focus:outline-none focus:ring-1 focus:ring-blue-500 dark:focus:ring-blue-400 focus:border-transparent dark:bg-gray-700 dark:text-gray-100 ${formErrors.website ? 'border-red-500' : 'border-gray-300'}`}
@@ -358,7 +391,7 @@ export default function SupplierListPage() {
               <label className="block text-sm">City</label>
               <input
                 type="text"
-                value={formData.city}
+                value={formData.city ?? ''}
                 onChange={e => setFormData({ ...formData, city: e.target.value })}
                 placeholder="Enter city"
                 className={`w-full px-2 py-1.25 text-sm border rounded-sm focus:outline-none focus:ring-1 focus:ring-blue-500 dark:focus:ring-blue-400 focus:border-transparent dark:bg-gray-700 dark:text-gray-100 ${formErrors.city ? 'border-red-500' : 'border-gray-300'}`}
@@ -368,7 +401,7 @@ export default function SupplierListPage() {
               <label className="block text-sm">State</label>
               <input
                 type="text"
-                value={formData.state}
+                value={formData.state ?? ''}
                 onChange={e => setFormData({ ...formData, state: e.target.value })}
                 placeholder="Enter state"
                 className={`w-full px-2 py-1.25 text-sm border rounded-sm focus:outline-none focus:ring-1 focus:ring-blue-500 dark:focus:ring-blue-400 focus:border-transparent dark:bg-gray-700 dark:text-gray-100 ${formErrors.state ? 'border-red-500' : 'border-gray-300'}`}
@@ -378,7 +411,7 @@ export default function SupplierListPage() {
               <label className="block text-sm">Postal Code</label>
               <input
                 type="text"
-                value={formData.postal_code}
+                value={formData.postal_code ?? ''}
                 onChange={e => setFormData({ ...formData, postal_code: e.target.value })}
                 placeholder="Enter postal code"
                 className={`w-full px-2 py-1.25 text-sm border rounded-sm focus:outline-none focus:ring-1 focus:ring-blue-500 dark:focus:ring-blue-400 focus:border-transparent dark:bg-gray-700 dark:text-gray-100 ${formErrors.postal_code ? 'border-red-500' : 'border-gray-300'}`}
@@ -391,7 +424,7 @@ export default function SupplierListPage() {
               <label className="block text-sm">VAT Number</label>
               <input
                 type="text"
-                value={formData.vat_number}
+                value={formData.vat_number ?? ''}
                 onChange={e => setFormData({ ...formData, vat_number: e.target.value })}
                 placeholder="Enter VAT number"
                 className={`w-full px-2 py-1.25 text-sm border rounded-sm focus:outline-none focus:ring-1 focus:ring-blue-500 dark:focus:ring-blue-400 focus:border-transparent dark:bg-gray-700 dark:text-gray-100 ${formErrors.vat_number ? 'border-red-500' : 'border-gray-300'}`}
@@ -401,7 +434,7 @@ export default function SupplierListPage() {
               <label className="block text-sm">TIN Number</label>
               <input
                 type="text"
-                value={formData.tin_number}
+                value={formData.tin_number ?? ''}
                 onChange={e => setFormData({ ...formData, tin_number: e.target.value })}
                 placeholder="Enter TIN number"
                 className={`w-full px-2 py-1.25 text-sm border rounded-sm focus:outline-none focus:ring-1 focus:ring-blue-500 dark:focus:ring-blue-400 focus:border-transparent dark:bg-gray-700 dark:text-gray-100 ${formErrors.tin_number ? 'border-red-500' : 'border-gray-300'}`}
@@ -411,7 +444,7 @@ export default function SupplierListPage() {
               <label className="block text-sm">Trade License</label>
               <input
                 type="text"
-                value={formData.trade_license}
+                value={formData.trade_license ?? ''}
                 onChange={e => setFormData({ ...formData, trade_license: e.target.value })}
                 placeholder="Enter trade license number"
                 className={`w-full px-2 py-1.25 text-sm border rounded-sm focus:outline-none focus:ring-1 focus:ring-blue-500 dark:focus:ring-blue-400 focus:border-transparent dark:bg-gray-700 dark:text-gray-100 ${formErrors.trade_license ? 'border-red-500' : 'border-gray-300'}`}
@@ -424,7 +457,7 @@ export default function SupplierListPage() {
               <label className="block text-sm">Payment Terms</label>
               <input
                 type="text"
-                value={formData.payment_terms}
+                value={formData.payment_terms ?? ''}
                 onChange={e => setFormData({ ...formData, payment_terms: e.target.value })}
                 placeholder="Enter payment terms"
                 className={`w-full px-2 py-1.25 text-sm border rounded-sm focus:outline-none focus:ring-1 focus:ring-blue-500 dark:focus:ring-blue-400 focus:border-transparent dark:bg-gray-700 dark:text-gray-100 ${formErrors.payment_terms ? 'border-red-500' : 'border-gray-300'}`}
@@ -435,7 +468,7 @@ export default function SupplierListPage() {
               <input
                 type="number"
                 step="0.01"
-                value={formData.credit_limit}
+                value={formData.credit_limit ?? ''}
                 onChange={e => setFormData({ ...formData, credit_limit: e.target.value })}
                 placeholder="Enter credit limit"
                 className={`w-full px-2 py-1.25 text-sm border rounded-sm focus:outline-none focus:ring-1 focus:ring-blue-500 dark:focus:ring-blue-400 focus:border-transparent dark:bg-gray-700 dark:text-gray-100 ${formErrors.credit_limit ? 'border-red-500' : 'border-gray-300'}`}
@@ -444,7 +477,7 @@ export default function SupplierListPage() {
             <div>
               <label className="block text-sm">Status</label>
               <select
-                value={formData.status}
+                value={formData.status ?? 'active'}
                 onChange={e => setFormData({ ...formData, status: e.target.value })}
                 className={`w-full px-2 py-1.25 text-sm border rounded-sm focus:outline-none focus:ring-1 focus:ring-blue-500 dark:focus:ring-blue-400 focus:border-transparent dark:bg-gray-700 dark:text-gray-100 ${formErrors.status ? 'border-red-500' : 'border-gray-300'}`}
               >

@@ -2,13 +2,12 @@
 
 import Link from 'next/link';
 import Image from 'next/image';
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { useBranding } from '@/hooks/use-branding';
 import { useStorefrontCategories } from '@/hooks/use-storefront-categories';
 import { useStorefrontStatus } from '@/hooks/use-storefront-status';
 import ScrollReveal from '@/components/storefront/ScrollReveal';
-import footerService from '@/services/footerService';
-import storefrontService from '@/services/storefrontService';
+import { useFooterConfig, useProductCount } from '@/hooks/use-storefront-data';
 import type { FooterConfig, SocialLink } from '@/types/api.types';
 import {
   Mail,
@@ -139,21 +138,13 @@ export default function GroceryFooter() {
   const { storeName } = useStorefrontStatus();
   const siteName = storeName || 'Grocery Store';
   const [subscribed, setSubscribed] = useState(false);
-  const [config, setConfig] = useState<FooterConfig | null>(null);
-  const [productCount, setProductCount] = useState(0);
+
+  // Footer config + product count — SWR shared cache (both footers, one fetch).
+  const { config: loadedConfig, error: configError } = useFooterConfig();
+  const config = loadedConfig ?? (configError ? FALLBACK_CONFIG : null);
+  const productCount = useProductCount();
 
   const { categories } = useStorefrontCategories();
-
-  useEffect(() => {
-    footerService.get().then(setConfig).catch(() => setConfig(FALLBACK_CONFIG));
-  }, []);
-
-  useEffect(() => {
-    storefrontService
-      .getProducts({ per_page: 1 })
-      .then((res) => setProductCount(res?.meta?.total ?? 0))
-      .catch(() => {});
-  }, []);
 
   if (!config) return null;
 

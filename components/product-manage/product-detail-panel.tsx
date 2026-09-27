@@ -84,7 +84,7 @@ export function ProductDetailPanel({
 }: {
   selectedProductId: string | null;
   categories: Category[];
-  businessTypeId: number | null;
+  businessTypeId: string | number | null;
   /** Super admin-selected tenant for warehouse scope; tenant users pass their own. */
   tenantId?: string | null;
   createTrigger?: number;

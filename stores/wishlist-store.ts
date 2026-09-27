@@ -11,8 +11,8 @@ interface WishlistState {
   toggle: (productId: string) => void;
   has: (productId: string) => boolean;
   clear: () => void;
-  /** Replace local items with the server-side wishlist (for logged-in users). */
-  syncFromServer: () => Promise<void>;
+  /** Replace local items with server data fetched via SWR (see useWishlistIds). */
+  replaceItems: (items: string[]) => void;
   /** Best-effort background sync of a single toggle to the server. */
   pushToServer: (productId: string) => void;
 }
@@ -51,14 +51,7 @@ export const useWishlistStore = create<WishlistState>()(
 
       clear: () => set({ items: [] }),
 
-      syncFromServer: async () => {
-        try {
-          const data = await storefrontService.getWishlist();
-          set({ items: data.items.map(i => i.product_id) });
-        } catch {
-          // Guest or network error — keep localStorage as-is.
-        }
-      },
+      replaceItems: items => set({ items }),
 
       pushToServer: productId => {
         storefrontService.toggleWishlist(productId).catch(() => {

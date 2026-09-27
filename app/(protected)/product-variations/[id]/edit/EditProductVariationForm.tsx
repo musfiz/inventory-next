@@ -1,15 +1,15 @@
 'use client';
 
-import { useCallback, useEffect, useState } from 'react';
-import { useParams, useRouter } from 'next/navigation';
 import { Package, RefreshCw, X } from 'lucide-react';
+import { useParams, useRouter } from 'next/navigation';
+import { useCallback, useEffect, useState } from 'react';
 import { GiSave } from 'react-icons/gi';
 import CustomSelect, { SelectOption } from '@/components/ui/custom-select';
 import { usePermissions } from '@/hooks/use-permissions';
 import { notify } from '@/lib/notifications';
-import commonService from '@/services/commonService';
 import attributeService from '@/services/attributeService';
 import attributeValueService from '@/services/attributeValueService';
+import commonService from '@/services/commonService';
 import productVariationService from '@/services/productVariationService';
 import type {
   Attribute,
@@ -659,8 +659,8 @@ export default function EditProductVariationPage() {
                   value={formData.product_code}
                   onChange={handleInputChange}
                   className={`w-full px-2.5 py-1 text-sm bg-white dark:bg-gray-700 border font-mono ${hasFieldError('product_code')
-                      ? 'border-red-500 focus:border-red-500'
-                      : 'border-gray-300 dark:border-gray-600 focus:border-indigo-500 dark:focus:border-indigo-400'
+                    ? 'border-red-500 focus:border-red-500'
+                    : 'border-gray-300 dark:border-gray-600 focus:border-indigo-500 dark:focus:border-indigo-400'
                     } rounded-sm text-gray-900 dark:text-gray-100 focus:outline-none`}
                   placeholder="Scan or enter company barcode"
                 />

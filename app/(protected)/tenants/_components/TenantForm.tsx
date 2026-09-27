@@ -25,7 +25,6 @@ import {
   optionalString,
   email,
   phone,
-  optionalId,
   numberField,
   booleanField,
   normalizeServerErrors,
@@ -37,7 +36,7 @@ const COUNTRY_OPTIONS = ['Bangladesh'] as const;
 // ── Schema (Section 3.4: zod-based validation) ──────────────────────────────
 const tenantSchema = z.object({
   business_name: requiredString('Business name', { max: 191 }),
-  business_type_id: optionalId('Business type'),
+  business_type_id: z.string().trim().uuid('Invalid business type').optional().or(z.literal('')).transform(v => (v === '' ? undefined : v)),
   contact_person: optionalString({ max: 191 }),
   phone: phone('Phone', false),
   email: email(),
@@ -162,15 +161,25 @@ export default function TenantForm({ editRef }: { editRef?: string }) {
 
   const onValid = async (values: TenantFormOutput) => {
     try {
-      const payload = { ...values };
+      const payload: Record<string, unknown> = { ...values };
+      // Strip undefined/empty to avoid sending `business_type_id: undefined` which backend treats as keep-existing
+      // but ensure business_name trim is preserved.
+      Object.keys(payload).forEach(k => {
+        if (payload[k] === undefined) delete payload[k];
+      });
       if (isEditMode && editRef) {
-        await tenantService.updateTenant(editRef, payload as any);
+        const updated = await tenantService.updateTenant(editRef, payload as any);
         notify.success('Tenant updated successfully!');
+        // Optimistically reflect name change before list refetches
+        if (typeof window !== 'undefined') {
+          window.dispatchEvent(new CustomEvent('tenant:updated', { detail: updated }));
+        }
       } else {
         await tenantService.storeTenant(payload as any);
         notify.success('Tenant created successfully!');
       }
       router.push('/tenants');
+      router.refresh();
     } catch (error: any) {
       const errors = error.response?.data?.errors;
       const normalized = normalizeServerErrors(errors);
@@ -178,6 +187,7 @@ export default function TenantForm({ editRef }: { editRef?: string }) {
         for (const [field, msg] of Object.entries(normalized)) {
           setError(field as keyof TenantFormOutput, { type: 'server', message: msg });
         }
+        notify.error('Please fix the highlighted fields');
       } else {
         notify.error(
           error.response?.data?.message ||
@@ -189,20 +199,16 @@ export default function TenantForm({ editRef }: { editRef?: string }) {
 
   const storefrontError = methods.formState.errors.storefront_active?.message as string | undefined;
 
-  if (isEditMode && !isHydrated) {
-    return (
-      <div className="flex items-center justify-center h-40">
-        <div className="text-center">
-          <Spinner size="md" className="mb-3" />
-          <p className="text-sm text-gray-600 dark:text-gray-400">Loading...</p>
-        </div>
-      </div>
-    );
-  }
+  const showPageLoader = isEditMode && !isHydrated;
 
   return (
     <FormProvider {...methods}>
-      <div className="space-y-2">
+      <div className="relative space-y-2">
+        {showPageLoader && (
+          <div className="fixed inset-0 z-40 flex items-center justify-center bg-white/60 dark:bg-gray-900/60 backdrop-blur-sm">
+            <Spinner size="md" decorative />
+          </div>
+        )}
         <div className="flex items-center justify-between">
           <h1 className="text-base font-bold text-gray-900 dark:text-gray-100 flex items-center gap-2">
             <Building2 className="w-5 h-5 text-indigo-600 dark:text-indigo-400" />
@@ -390,7 +396,7 @@ export default function TenantForm({ editRef }: { editRef?: string }) {
                 className="flex items-center justify-center gap-2 px-5 py-1.5 text-sm bg-indigo-600 hover:bg-indigo-700 disabled:bg-gray-400 text-white rounded-sm transition-colors cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 <GiSave className="w-4 h-4" />
-                {isSubmitting ? (isEditMode ? 'Saving…' : 'Creating…') : isEditMode ? 'Save Changes' : 'Create Tenant'}
+                {isSubmitting ? (isEditMode ? 'Updating…' : 'Creating…') : isEditMode ? 'Update' : 'Create Tenant'}
               </button>
             </div>
           </div>

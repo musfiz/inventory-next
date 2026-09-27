@@ -1,11 +1,11 @@
 # Inventory Management System - Frontend
 
-A modern, enterprise-level inventory management dashboard built with Next.js 15 App Router, featuring secure Laravel Sanctum authentication and role-based access control.
+A modern, enterprise-level inventory management dashboard built with Next.js 16 App Router, featuring secure Laravel Sanctum authentication and role-based access control.
 
 ## Features
 
 - 🔐 **Secure Authentication** - Laravel Sanctum cookie-based authentication with CSRF protection
-- 🚀 **Next.js 15 App Router** - Using the latest App Router architecture
+- 🚀 **Next.js 16 App Router** - Using the latest App Router architecture
 - 🎨 **Modern UI** - Built with Tailwind CSS and dark mode support
 - 📱 **Responsive Design** - Works seamlessly on all devices
 - 🛡️ **Protected Routes** - Proxy-based route protection with session validation

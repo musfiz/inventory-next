@@ -22,6 +22,14 @@ import type { ApiResponse } from '@/types/api.types';
 
 export type BackupMode = 'full' | 'tenant' | 'unknown';
 
+/**
+ * Restore strategy:
+ *   fresh — replace: wipe/truncate the target (or the dump's own DROP/CREATE)
+ *           and import. Existing data is discarded.
+ *   merge — additive: keep existing data, insert only rows that don't exist.
+ */
+export type RestoreStrategy = 'fresh' | 'merge';
+
 export type RestoreStatus =
   | 'pending'
   | 'processing'
@@ -38,9 +46,9 @@ export interface RestoreSummary {
 }
 
 export interface RestoreJobStatus {
-  id: number;
+  id: string;
   detected_mode: BackupMode;
-  detected_tenant_id: number | null;
+  detected_tenant_id: string | null;
   detected_tenant_name: string | null;
   target_tenant_id: string | null;
   target_tenant_name: string | null;
@@ -53,6 +61,8 @@ export interface RestoreJobStatus {
   original_filename: string;
   snapshot_file: string | null;
   replace_existing: boolean;
+  strategy: RestoreStrategy;
+  target_business_type_id: string | null;
   dry_run: boolean;
   error_message: string | null;
   warnings: string[] | null;
@@ -74,6 +84,7 @@ export interface DryRunResult {
   contains_create_table: boolean;
   contains_inserts: boolean;
   contains_drop_table: boolean;
+  detected_business_type_ids: string[];
   errors: string[];
   warnings: string[];
 }
@@ -88,7 +99,9 @@ class RestoreService {
     options?: {
       mode?: 'auto' | 'full' | 'tenant';
       tenantId?: string | number;
+      strategy?: RestoreStrategy;
       replaceExisting?: boolean;
+      businessTypeId?: string;
       onUploadProgress?: (progressEvent: any) => void;
     },
   ): Promise<RestoreJobStatus> {
@@ -98,10 +111,17 @@ class RestoreService {
     if (options?.tenantId !== undefined && options.tenantId !== null) {
       formData.append('tenant_id', String(options.tenantId));
     }
-    formData.append(
-      'replace_existing',
-      options?.replaceExisting === false ? '0' : '1',
-    );
+    if (options?.businessTypeId) {
+      formData.append('business_type_id', options.businessTypeId);
+    }
+    if (options?.strategy) {
+      formData.append('strategy', options.strategy);
+    } else {
+      formData.append(
+        'replace_existing',
+        options?.replaceExisting === false ? '0' : '1',
+      );
+    }
 
     const response = await apiClient.post<ApiResponse<RestoreJobStatus>>(
       '/api/v1/db/restore',
@@ -115,7 +135,7 @@ class RestoreService {
   }
 
   /** GET /api/v1/db/restore/{jobId}/status */
-  async getRestoreStatus(jobId: number): Promise<RestoreJobStatus> {
+  async getRestoreStatus(jobId: string): Promise<RestoreJobStatus> {
     const response = await apiClient.get<ApiResponse<RestoreJobStatus>>(
       `/api/v1/db/restore/${jobId}/status`,
     );

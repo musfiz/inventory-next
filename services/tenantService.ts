@@ -66,11 +66,11 @@ class TenantService {
    * POST /api/v1/tenants/store
    */
   async storeTenant(data: Partial<Tenant>): Promise<Tenant> {
-    const response = await apiClient.post<ApiResponse<{ tenant: Tenant }>>(
+    const response = await apiClient.post<ApiResponse<any>>(
       '/api/v1/tenants/store',
       data
     );
-    return response.data.data.tenant;
+    return (response.data.data as any).tenant ?? (response.data.data as Tenant);
   }
 
   /**
@@ -90,11 +90,11 @@ class TenantService {
     tenantId: string,
     data: Partial<Omit<Tenant, 'id' | 'slug'>>
   ): Promise<Tenant> {
-    const response = await apiClient.post<ApiResponse<{ tenant: Tenant }>>(
+    const response = await apiClient.post<ApiResponse<any>>(
       '/api/v1/tenants/update',
       { ...data, id: tenantId }
     );
-    return response.data.data.tenant;
+    return (response.data.data as any).tenant ?? (response.data.data as Tenant);
   }
 
   /**

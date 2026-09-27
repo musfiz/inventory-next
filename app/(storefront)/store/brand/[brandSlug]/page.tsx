@@ -3,15 +3,14 @@
 import { ChevronDown, ArrowRight, Loader2, Package } from 'lucide-react';
 import Link from 'next/link';
 import { useParams } from 'next/navigation';
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import ProductVariationCards from '@/components/storefront/ProductVariationCards';
 import ScrollReveal from '@/components/storefront/ScrollReveal';
 import { useStorefrontStatus } from '@/hooks/use-storefront-status';
-import { notify } from '@/lib/notifications';
+import { useStorefrontBrands, useInfinitePages } from '@/hooks/use-storefront-data';
 import { formatMoney } from '@/lib/utils/format';
 import { useSeo } from '@/lib/utils/use-seo';
 import storefrontService from '@/services/storefrontService';
-import type { Brand, Product } from '@/types/storefront';
 
 const SORTS = [
   { id: 'featured', label: 'Featured' },
@@ -25,17 +24,22 @@ export default function BrandPage() {
   const { brandSlug } = useParams<{ brandSlug: string }>();
   const { storeName } = useStorefrontStatus();
   const siteName = storeName || 'Our Store';
-  const [brand, setBrand] = useState<Brand | null>(null);
-  const [products, setProducts] = useState<Product[]>([]);
-  const [allBrands, setAllBrands] = useState<Brand[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [notFound, setNotFound] = useState(false);
   const [sort, setSort] = useState<(typeof SORTS)[number]['id']>('featured');
-  const [page, setPage] = useState(1);
-  const [meta, setMeta] = useState<{ last_page: number; total: number }>({
-    last_page: 1,
-    total: 0,
-  });
+
+  // All brands (shared SWR cache with filter sidebars) — for the "Other brands" strip.
+  const { brands: allBrands } = useStorefrontBrands();
+
+  // Brand + paginated products in one request; "load more" appends pages.
+  const grid = useInfinitePages(
+    'storefront:brand-products',
+    { brandSlug, sort },
+    (pageNum) => storefrontService.getBrand(brandSlug, { sort, page: pageNum, per_page: 12 }),
+    !!brandSlug,
+  );
+  const brand = grid.pages[0]?.brand ?? null;
+  const products = grid.pages.flatMap(p => p.products);
+  const is404 = (grid.error as { response?: { status?: number } } | undefined)?.response?.status === 404;
+  const meta = { last_page: grid.meta?.last_page ?? 1, total: grid.meta?.total ?? 0 };
 
   useSeo({
     title: brand ? `${brand.name} | ${siteName}` : `Brand | ${siteName}`,
@@ -45,49 +49,11 @@ export default function BrandPage() {
     url: `/store/brand/${brandSlug}`,
   });
 
-  useEffect(() => {
-    storefrontService
-      .getBrands({ per_page: 50 })
-      .then(res => setAllBrands(res.data))
-      .catch(() => setAllBrands([]));
-  }, []);
-
-  useEffect(() => {
-    let active = true;
-    setLoading(true);
-    storefrontService
-      .getBrand(brandSlug, { sort, page, per_page: 12 })
-      .then(res => {
-        if (!active) return;
-        setBrand(res.brand);
-        setMeta({ last_page: res.meta.last_page, total: res.meta.total });
-        setProducts(prev => (page === 1 ? res.products : [...prev, ...res.products]));
-      })
-      .catch((err: any) => {
-        if (!active) return;
-        if (err?.response?.status === 404) {
-          setNotFound(true);
-        } else {
-          notify.error('Failed to load brand');
-        }
-      })
-      .finally(() => {
-        if (active) setLoading(false);
-      });
-    return () => {
-      active = false;
-    };
-  }, [brandSlug, sort, page]);
-
   const onSortChange = (value: string) => {
-    setPage(1);
-    setProducts([]);
     setSort(value as (typeof SORTS)[number]['id']);
   };
 
-  const loadMore = () => setPage(p => p + 1);
-
-  if (notFound) {
+  if (is404) {
     return (
       <div className="mx-auto max-w-3xl px-4 py-24 text-center">
         <Package className="mx-auto h-12 w-12 text-gray-300" />
@@ -187,7 +153,7 @@ export default function BrandPage() {
           </div>
         </div>
 
-        {loading && products.length === 0 ? (
+        {grid.loading && products.length === 0 ? (
           <div className="flex justify-center py-16">
             <Loader2 className="h-8 w-8 animate-spin text-brand-500" />
           </div>
@@ -210,14 +176,14 @@ export default function BrandPage() {
                 <ProductVariationCards key={p.id} product={p} staggerIndex={i} />
               ))}
             </div>
-            {page < meta.last_page && (
+            {grid.hasMore && (
               <div className="mt-8 flex justify-center">
                 <button
-                  onClick={loadMore}
-                  disabled={loading}
+                  onClick={grid.loadMore}
+                  disabled={grid.loading || grid.loadingMore}
                   className="inline-flex items-center gap-2 rounded-lg bg-brand-600 px-6 py-3 text-sm font-bold text-white hover:bg-brand-700 disabled:opacity-60"
                 >
-                  {loading ? (
+                  {grid.loadingMore ? (
                     <Loader2 className="h-4 w-4 animate-spin" />
                   ) : (
                     'Load more'

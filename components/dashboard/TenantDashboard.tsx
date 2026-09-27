@@ -1,31 +1,40 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
-import Spinner from '@/components/ui/spinner';
 import {
   ShoppingCart, Receipt, Package, Banknote,
   AlertTriangle, XCircle, Calendar, DollarSign,
   Truck, ClipboardList, RotateCcw, FileText,
-  TrendingUp, TrendingDown, ArrowUpRight
+  TrendingUp, TrendingDown,
 } from 'lucide-react';
+import { useState } from 'react';
 import {
   AreaChart, Area, BarChart, Bar, PieChart, Pie, Cell,
   LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip,
   ResponsiveContainer, Legend
 } from 'recharts';
 import ErrorBoundary from '@/components/ui/error-boundary';
-import KpiCard from './KpiCard';
-import ChartCard from './ChartCard';
-import QuickActions from './QuickActions';
-import AlertsPanel from './AlertsPanel';
-import ActivityFeed from './ActivityFeed';
-import dashboardService, {
-  TenantSummary, SalesTrendItem, TopProduct,
-  PaymentMethod, StockMovementDay, PurchaseVsSalesItem,
-  CategoryInventory, WarehouseStockItem, CustomerType,
-  PosSessionToday, LowStockItem, Alert, ActivityItem
-} from '@/services/dashboardService';
+import Spinner from '@/components/ui/spinner';
+import {
+  useTenantSummary,
+  useSalesTrend,
+  useTopProducts,
+  usePaymentMethods,
+  useStockMovements,
+  usePurchaseVsSales,
+  useInventoryByCategory,
+  useWarehouseStock,
+  useCustomerDistribution,
+  usePosSessionsToday,
+  useLowStockItems,
+  useAlerts,
+  useActivityFeed,
+} from '@/services/queries/useDashboard';
 import { useAuthStore } from '@/stores/auth-store';
+import ActivityFeed from './ActivityFeed';
+import AlertsPanel from './AlertsPanel';
+import ChartCard from './ChartCard';
+import KpiCard from './KpiCard';
+import QuickActions from './QuickActions';
 
 const PERIOD_OPTIONS = [
   { label: '7D', value: '7d' },
@@ -48,76 +57,51 @@ const CATEGORY_COLORS = ['#3B82F6', '#8B5CF6', '#10B981', '#F59E0B', '#EF4444', 
 
 export default function TenantDashboard() {
   const user = useAuthStore(state => state.user);
-  const [loading, setLoading] = useState(true);
-  const [summary, setSummary] = useState<TenantSummary | null>(null);
-  const [salesTrend, setSalesTrend] = useState<SalesTrendItem[]>([]);
-  const [topProducts, setTopProducts] = useState<TopProduct[]>([]);
-  const [paymentMethods, setPaymentMethods] = useState<PaymentMethod[]>([]);
-  const [stockMovements, setStockMovements] = useState<StockMovementDay[]>([]);
-  const [purchaseVsSales, setPurchaseVsSales] = useState<PurchaseVsSalesItem[]>([]);
-  const [inventoryByCategory, setInventoryByCategory] = useState<CategoryInventory[]>([]);
-  const [warehouseStock, setWarehouseStock] = useState<WarehouseStockItem[]>([]);
-  const [customerDist, setCustomerDist] = useState<CustomerType[]>([]);
-  const [posSessions, setPosSessions] = useState<PosSessionToday[]>([]);
-  const [lowStock, setLowStock] = useState<LowStockItem[]>([]);
-  const [alerts, setAlerts] = useState<Alert[]>([]);
-  const [activityFeed, setActivityFeed] = useState<ActivityItem[]>([]);
 
   const [salesPeriod, setSalesPeriod] = useState('30d');
   const [productPeriod, setProductPeriod] = useState('30d');
 
-  const loadData = useCallback(async () => {
-    setLoading(true);
-    try {
-      const [sum, trend, prods, payments, movements, pvs, invCat, wStock, cDist, sessions, lowItems, alertItems, activity] = await Promise.all([
-        dashboardService.getSummary(),
-        dashboardService.getSalesTrend(salesPeriod),
-        dashboardService.getTopProducts(productPeriod),
-        dashboardService.getPaymentMethods(),
-        dashboardService.getStockMovements(),
-        dashboardService.getPurchaseVsSales(),
-        dashboardService.getInventoryByCategory(),
-        dashboardService.getWarehouseStock(),
-        dashboardService.getCustomerDistribution(),
-        dashboardService.getPosSessionsToday(),
-        dashboardService.getLowStockItems(),
-        dashboardService.getAlerts(),
-        dashboardService.getActivityFeed(),
-      ]);
-      setSummary(sum);
-      setSalesTrend(trend);
-      setTopProducts(prods);
-      setPaymentMethods(payments);
-      setStockMovements(movements);
-      setPurchaseVsSales(pvs);
-      setInventoryByCategory(invCat);
-      setWarehouseStock(wStock);
-      setCustomerDist(cDist);
-      setPosSessions(sessions);
-      setLowStock(lowItems);
-      setAlerts(alertItems);
-      setActivityFeed(activity);
-    } catch (e) {
-      console.error('Dashboard load error:', e);
-    } finally {
-      setLoading(false);
-    }
-  }, [salesPeriod, productPeriod]);
+  const { data: summary, isLoading: lSummary } = useTenantSummary();
+  const { data: salesTrendData, isLoading: lTrend } = useSalesTrend(salesPeriod);
+  const { data: topProductsData, isLoading: lTopProds } = useTopProducts(productPeriod);
+  const { data: paymentMethodsData, isLoading: lPayments } = usePaymentMethods();
+  const { data: stockMovementsData, isLoading: lMovements } = useStockMovements();
+  const { data: purchaseVsSalesData, isLoading: lPvs } = usePurchaseVsSales();
+  const { data: inventoryByCategoryData, isLoading: lInvCat } = useInventoryByCategory();
+  const { data: warehouseStockData, isLoading: lWStock } = useWarehouseStock();
+  const { data: customerDistData, isLoading: lCDist } = useCustomerDistribution();
+  const { data: posSessionsData, isLoading: lSessions } = usePosSessionsToday();
+  const { data: lowStockData, isLoading: lLow } = useLowStockItems();
+  const { data: alertsData, isLoading: lAlerts } = useAlerts();
+  const { data: activityFeedData, isLoading: lActivity } = useActivityFeed();
 
-  useEffect(() => { loadData(); }, [loadData]);
+  const salesTrend = salesTrendData ?? [];
+  const topProducts = topProductsData ?? [];
+  const paymentMethods = paymentMethodsData ?? [];
+  const stockMovements = stockMovementsData ?? [];
+  const purchaseVsSales = purchaseVsSalesData ?? [];
+  const inventoryByCategory = inventoryByCategoryData ?? [];
+  const warehouseStock = warehouseStockData ?? [];
+  const customerDist = customerDistData ?? [];
+  const posSessions = posSessionsData ?? [];
+  const lowStock = lowStockData ?? [];
+  const alerts = alertsData ?? [];
+  const activityFeed = activityFeedData ?? [];
 
-  // Reload just sales trend when period changes
-  useEffect(() => {
-    if (!loading) {
-      dashboardService.getSalesTrend(salesPeriod).then(setSalesTrend).catch(console.error);
-    }
-  }, [salesPeriod]);
-
-  useEffect(() => {
-    if (!loading) {
-      dashboardService.getTopProducts(productPeriod).then(setTopProducts).catch(console.error);
-    }
-  }, [productPeriod]);
+  const loading =
+    lSummary ||
+    lTrend ||
+    lTopProds ||
+    lPayments ||
+    lMovements ||
+    lPvs ||
+    lInvCat ||
+    lWStock ||
+    lCDist ||
+    lSessions ||
+    lLow ||
+    lAlerts ||
+    lActivity;
 
   const formatCurrency = (val: number) => {
     const num = Number(val) || 0;
@@ -525,18 +509,16 @@ export default function TenantDashboard() {
                         <td className="py-2 text-gray-600 dark:text-gray-400">{s.cashier ?? '-'}</td>
                         <td className="py-2 text-gray-900 dark:text-gray-100">{s.sale_count ?? 0}</td>
                         <td className="py-2 text-gray-900 dark:text-gray-100">{formatCurrency(s.total_sales ?? 0)}</td>
-                        <td className={`py-2 font-medium ${
-                          (s.cash_difference ?? 0) > 0 ? 'text-green-600 dark:text-green-400' :
+                        <td className={`py-2 font-medium ${(s.cash_difference ?? 0) > 0 ? 'text-green-600 dark:text-green-400' :
                           (s.cash_difference ?? 0) < 0 ? 'text-red-600 dark:text-red-400' :
-                          'text-gray-500'
-                        }`}>
+                            'text-gray-500'
+                          }`}>
                           {(s.cash_difference ?? 0) > 0 ? '+' : ''}{formatCurrency(s.cash_difference ?? 0)}
                         </td>
                         <td className="py-2">
-                          <span className={`px-1.5 py-0.5 rounded text-xs font-medium ${
-                            s.status === 'open' ? 'bg-green-100 text-green-700 dark:bg-green-900/40 dark:text-green-300' :
+                          <span className={`px-1.5 py-0.5 rounded text-xs font-medium ${s.status === 'open' ? 'bg-green-100 text-green-700 dark:bg-green-900/40 dark:text-green-300' :
                             'bg-gray-100 text-gray-700 dark:bg-gray-700 dark:text-gray-300'
-                          }`}>{s.status}</span>
+                            }`}>{s.status}</span>
                         </td>
                       </tr>
                     ))}

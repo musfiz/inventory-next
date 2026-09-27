@@ -2,13 +2,13 @@
 
 import { Suspense } from 'react';
 import { useSearchParams } from 'next/navigation';
-import { ProductFormPage } from '@/app/(protected)/products/add/page';
+import { ProductForm } from '@/components/products/ProductForm';
 import PageLoader from '@/components/ui/page-loader';
 
 function EditProductContent() {
   const searchParams = useSearchParams();
   const id = searchParams?.get('id') || undefined;
-  return <ProductFormPage editRef={id} />;
+  return <ProductForm editRef={id} />;
 }
 
 export default function EditProductPage() {
