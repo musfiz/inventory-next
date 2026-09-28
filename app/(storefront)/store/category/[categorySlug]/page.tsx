@@ -43,6 +43,9 @@ export default function CategoryPage() {
 
   // Category header — SWR; 404 error is terminal (no retry).
   const { category, is404, loading: categoryLoading } = useCategoryBySlug(categorySlug);
+  // The API may return `children: null` for categories without subcategories;
+  // normalise to an array so selecting a category can never crash the page.
+  const subcategories = category?.children ?? [];
 
   useSeo({
     title: category ? `${category.name} | ${siteName}` : `Category | ${siteName}`,
@@ -230,9 +233,9 @@ export default function CategoryPage() {
 
           <div>
         {/* Subcategory chips */}
-        {category!.children.length > 0 && (
+        {subcategories.length > 0 && (
           <div className="mb-6 flex flex-wrap gap-2">
-            {category!.children.map((c, i) => (
+            {subcategories.map((c, i) => (
               <ScrollReveal key={c.id} animation="pop" staggerIndex={i} staggerGap={60}>
                 <Link
                   href={`/store/category/${c.slug}`}

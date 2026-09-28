@@ -2,7 +2,8 @@ import apiClient from '@/lib/api/axios';
 import type { CategoryContent } from '@/types/api.types';
 
 class CategoryContentService {
-  async getContent(id: number): Promise<CategoryContent> {
+  /** Category IDs are UUID strings — pass through untouched, never Number(). */
+  async getContent(id: string | number): Promise<CategoryContent> {
     const response = await apiClient.get<{
       success: boolean;
       data: CategoryContent;
@@ -10,7 +11,7 @@ class CategoryContentService {
     return response.data.data;
   }
 
-  async updateContent(id: number, formData: FormData): Promise<CategoryContent> {
+  async updateContent(id: string | number, formData: FormData): Promise<CategoryContent> {
     const response = await apiClient.post<{
       success: boolean;
       data: CategoryContent;

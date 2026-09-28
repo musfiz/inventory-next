@@ -2,7 +2,8 @@ import apiClient from '@/lib/api/axios';
 import type { ProductMediaItem } from '@/types/api.types';
 
 class ProductMediaService {
-  async getImages(productId: number, variationId?: number | null): Promise<ProductMediaItem[]> {
+  /** Product / variation / image IDs are UUID strings — pass through, never Number(). */
+  async getImages(productId: string | number, variationId?: string | number | null): Promise<ProductMediaItem[]> {
     const params: any = {};
     if (variationId) params.variation_id = variationId;
     const response = await apiClient.get<{
@@ -22,11 +23,11 @@ class ProductMediaService {
     return response.data.data;
   }
 
-  async deleteImage(imageId: number): Promise<void> {
+  async deleteImage(imageId: string | number): Promise<void> {
     await apiClient.delete(`/api/v1/ecommerce/products/product-media/${imageId}`);
   }
 
-  async setPrimary(imageId: number): Promise<void> {
+  async setPrimary(imageId: string | number): Promise<void> {
     await apiClient.patch(`/api/v1/ecommerce/products/product-media/${imageId}/primary`);
   }
 }

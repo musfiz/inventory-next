@@ -43,13 +43,35 @@ const formatBytes = (bytes: number) => {
   return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
 };
 
+/**
+ * Horizontal label + input row mirroring the product add page
+ * (components/products/ProductForm.tsx): right-aligned 11px label with
+ * fixed width + colon, flexible control.
+ */
+function FormRow({ label, required, error, children, labelWidth = 'w-20', className = '' }: { label: string; required?: boolean; error?: string | null; children: React.ReactNode; labelWidth?: string; className?: string }) {
+  const errorMl =
+    labelWidth === 'w-32' ? 'ml-[8.5rem]' : labelWidth === 'w-20' ? 'ml-[5.5rem]' : 'ml-[4.375rem]';
+  return (
+    <div className={className}>
+      <div className="flex items-center gap-1.5">
+        <label className={`${labelWidth} shrink-0 text-[11px] font-medium text-gray-600 dark:text-gray-400 text-right`}>
+          {label}{required && <span className="text-red-500">*</span>}:
+        </label>
+        <div className="flex-1 min-w-0">{children}</div>
+      </div>
+      {error && <p className={`text-[10px] text-red-500 mt-0.5 ${errorMl}`}>{error}</p>}
+    </div>
+  );
+}
+
 export default function ProductMediaPage() {
   const user = useAuthStore(state => state.user);
   const tenantBusinessTypeId = (user as any)?.tenant?.business_type?.id ?? null;
 
   const [selectedCategory, setSelectedCategory] = useState<SelectOption | null>(null);
   const [selectedProductOption, setSelectedProductOption] = useState<SelectOption | null>(null);
-  const [selectedProductId, setSelectedProductId] = useState<number | null>(null);
+  // Product IDs are UUID strings — never wrap in Number() (yields NaN).
+  const [selectedProductId, setSelectedProductId] = useState<string | null>(null);
   const [selectedProductData, setSelectedProductData] = useState<any>(null);
 
   // Holds full product objects keyed by option value so we can recover
@@ -91,7 +113,8 @@ export default function ProductMediaPage() {
       try {
         const params: any = { search: inputValue };
         if (tenantBusinessTypeId) params.business_type_id = tenantBusinessTypeId;
-        const catId = selectedCategory ? Number(selectedCategory.value) : null;
+        // Category IDs are UUID strings — Number() would yield NaN.
+        const catId = selectedCategory?.value?.trim() || null;
         if (catId) params.category_id = catId;
         const data = await commonService.getProductsForDropdown(params);
         return (data || []).map(p => {
@@ -148,7 +171,7 @@ export default function ProductMediaPage() {
     setPreviewIndex(null);
   }, []);
 
-  const loadImages = useCallback(async (productId: number, variationId?: number | null) => {
+  const loadImages = useCallback(async (productId: string, variationId?: string | null) => {
     setLoading(true);
     try {
       const data = await productMediaService.getImages(productId, variationId);
@@ -174,7 +197,18 @@ export default function ProductMediaPage() {
     }
 
     const product = productOptionsRef.current[option.value];
-    const productId = Number(option.value);
+    // Product / variation IDs are UUID strings — never wrap in Number().
+    const productId = option.value;
+    if (!productId?.trim()) {
+      setSelectedProductOption(null);
+      setSelectedProductId(null);
+      setSelectedProductData(null);
+      setSelectedVariant(null);
+      setVariants([]);
+      setImages([]);
+      setPreviewIndex(null);
+      return;
+    }
 
     setSelectedProductOption(option);
     setSelectedProductId(productId);
@@ -194,7 +228,7 @@ export default function ProductMediaPage() {
         if (def) {
           const opt = { value: String(def.id), label: def.name || def.sku || `Variant #${def.id}` };
           setSelectedVariant(opt);
-          loadImages(productId, Number(def.id));
+          loadImages(productId, def.id != null ? String(def.id) : null);
         } else {
           setImages([]);
         }
@@ -207,7 +241,7 @@ export default function ProductMediaPage() {
   const handleVariantChange = useCallback((option: SelectOption | null) => {
     setSelectedVariant(option);
     if (selectedProductId) {
-      loadImages(selectedProductId, option ? Number(option.value) : null);
+      loadImages(selectedProductId, option ? option.value : null);
     }
   }, [selectedProductId, loadImages]);
 
@@ -254,7 +288,7 @@ export default function ProductMediaPage() {
       return;
     }
 
-    const variationId = Number(selectedVariant.value);
+    const variationId = selectedVariant.value;
     const hasPrimary = images.some(img => img.is_primary);
 
     setUploading(true);
@@ -280,7 +314,7 @@ export default function ProductMediaPage() {
   const handleDelete = useCallback(
     async (image: ProductMediaItem) => {
       if (!selectedProductId) return;
-      const variationId = selectedVariant ? Number(selectedVariant.value) : null;
+      const variationId = selectedVariant ? selectedVariant.value : null;
       try {
         await productMediaService.deleteImage(image.id);
         notify.success('Image deleted');
@@ -295,7 +329,7 @@ export default function ProductMediaPage() {
   const handleSetPrimary = useCallback(
     async (image: ProductMediaItem) => {
       if (!selectedProductId) return;
-      const variationId = selectedVariant ? Number(selectedVariant.value) : null;
+      const variationId = selectedVariant ? selectedVariant.value : null;
       try {
         await productMediaService.setPrimary(image.id);
         notify.success('Primary image updated');
@@ -360,13 +394,13 @@ export default function ProductMediaPage() {
       </div>
 
       {/* Search card */}
-      <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-4 space-y-4">
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+      <div className="bg-white dark:bg-gray-800 rounded-md shadow-sm border border-gray-200 dark:border-gray-700 p-3">
+        <h3 className="text-xs font-semibold text-gray-700 dark:text-gray-300 mb-3">
+          Find Product
+        </h3>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-x-4 gap-y-2">
           {/* Category filter */}
-          <div>
-            <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1.5">
-              Category
-            </label>
+          <FormRow label="Category" labelWidth="w-20">
             <CustomSelect
               value={selectedCategory}
               onChange={handleCategoryChange}
@@ -374,17 +408,12 @@ export default function ProductMediaPage() {
               placeholder="All categories..."
               defaultOptions
               isClearable
+              compact
             />
-            <p className="text-[11px] text-gray-400 dark:text-gray-500 mt-1">
-              Filters the product list below.
-            </p>
-          </div>
+          </FormRow>
 
           {/* Product search */}
-          <div>
-            <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1.5">
-              Search Product
-            </label>
+          <FormRow label="Product" required labelWidth="w-20">
             <CustomSelect
               key={selectedCategory?.value || 'all'}
               value={selectedProductOption}
@@ -394,8 +423,9 @@ export default function ProductMediaPage() {
               placeholder="Search by product name..."
               isClearable
               defaultOptions
+              compact
             />
-          </div>
+          </FormRow>
         </div>
 
         {/* Selected product + Clear row */}
@@ -426,7 +456,7 @@ export default function ProductMediaPage() {
             <button
               type="button"
               onClick={handleClearAll}
-              className="text-xs text-indigo-600 dark:text-indigo-400 hover:underline whitespace-nowrap"
+              className="px-3 py-1.5 text-xs rounded border border-gray-300 dark:border-gray-600 text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 whitespace-nowrap"
             >
               Change
             </button>
@@ -439,9 +469,8 @@ export default function ProductMediaPage() {
             <button
               type="button"
               onClick={handleClearAll}
-              className="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-md hover:bg-gray-50 dark:hover:bg-gray-600"
+              className="px-3 py-1.5 text-xs rounded border border-gray-300 dark:border-gray-600 text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 whitespace-nowrap"
             >
-              <X className="w-3.5 h-3.5" />
               Clear
             </button>
           </div>
@@ -450,20 +479,22 @@ export default function ProductMediaPage() {
 
       {/* Variant selector (required for upload) */}
       {selectedProductData && (
-        <div className="max-w-md">
-          <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1.5">
-            Variant <span className="text-red-500">*</span>
-          </label>
-          <CustomSelect
-            value={selectedVariant}
-            onChange={handleVariantChange}
-            options={variants.map(v => ({ value: String(v.id), label: v.name || v.sku || `Variant #${v.id}` }))}
-            placeholder={variants.length === 0 ? 'No variants available' : 'Select variant...'}
-            isClearable={false}
-            isDisabled={variants.length === 0}
-          />
+        <div className="bg-white dark:bg-gray-800 rounded-md shadow-sm border border-gray-200 dark:border-gray-700 p-3">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-x-4 gap-y-2">
+            <FormRow label="Variant" required labelWidth="w-20">
+              <CustomSelect
+                value={selectedVariant}
+                onChange={handleVariantChange}
+                options={variants.map(v => ({ value: String(v.id), label: v.name || v.sku || `Variant #${v.id}` }))}
+                placeholder={variants.length === 0 ? 'No variants available' : 'Select variant...'}
+                isClearable={false}
+                isDisabled={variants.length === 0}
+                compact
+              />
+            </FormRow>
+          </div>
           {variants.length === 0 && (
-            <p className="text-xs text-amber-600 dark:text-amber-400 mt-1">
+            <p className="text-[10px] text-amber-600 dark:text-amber-400 mt-1 ml-[5.5rem]">
               This product has no variant. Create a variant before uploading images.
             </p>
           )}
@@ -482,7 +513,7 @@ export default function ProductMediaPage() {
           {/* Left: Upload zone */}
           <div className="lg:col-span-2 space-y-4">
             <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-4">
-              <h3 className="text-sm font-semibold text-gray-800 dark:text-gray-200 mb-3 flex items-center gap-2">
+              <h3 className="text-xs font-semibold text-gray-700 dark:text-gray-300 mb-3 flex items-center gap-1.5">
                 <UploadCloud className="w-4 h-4 text-indigo-600 dark:text-indigo-400" />
                 Upload Images
               </h3>
@@ -571,7 +602,7 @@ export default function ProductMediaPage() {
                     type="button"
                     onClick={handleUpload}
                     disabled={!canUpload}
-                    className="mt-3 w-full inline-flex items-center justify-center gap-1.5 px-4 py-2 text-sm font-medium text-white bg-indigo-600 rounded-lg hover:bg-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                    className="mt-3 w-full inline-flex items-center justify-center gap-1.5 px-3 py-1.5 text-xs font-medium text-white bg-indigo-600 rounded hover:bg-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed"
                   >
                     {uploading ? (
                       <Loader2 className="w-4 h-4 animate-spin" />
@@ -593,7 +624,7 @@ export default function ProductMediaPage() {
           <div className="lg:col-span-3">
             <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-4 h-full">
               <div className="flex items-center justify-between mb-3">
-                <h3 className="text-sm font-semibold text-gray-800 dark:text-gray-200">
+                <h3 className="text-xs font-semibold text-gray-700 dark:text-gray-300">
                   Existing Images
                 </h3>
                 <span className="text-xs text-gray-400 dark:text-gray-500">

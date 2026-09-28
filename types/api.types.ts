@@ -1196,7 +1196,7 @@ export interface ProductFlagsVariation {
 }
 
 export interface CategoryContent {
-  id: number;
+  id: string;
   name: string;
   slug: string;
   image_url: string | null;
@@ -1205,9 +1205,9 @@ export interface CategoryContent {
 }
 
 export interface ProductMediaItem {
-  id: number;
-  product_id: number;
-  variation_id: number | null;
+  id: string;
+  product_id: string;
+  variation_id: string | null;
   file_path_thumb: string;
   file_url_thumb: string;
   file_path_medium: string;

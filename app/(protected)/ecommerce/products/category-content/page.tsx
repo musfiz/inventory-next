@@ -55,9 +55,16 @@ export default function CategoryContentPage() {
       return;
     }
 
+    // Category IDs are UUID strings — never wrap in Number() (yields NaN).
+    const categoryId = option.value?.trim();
+    if (!categoryId) {
+      setContent(null);
+      return;
+    }
+
     setLoading(true);
     try {
-      const data = await categoryContentService.getContent(Number(option.value));
+      const data = await categoryContentService.getContent(categoryId);
       setContent(data);
     } catch {
       notify.error('Failed to load category content');
@@ -82,7 +89,7 @@ export default function CategoryContentPage() {
         formData.append('banner_image', bannerFile instanceof File ? bannerFile : '');
       }
 
-      const updated = await categoryContentService.updateContent(Number(selectedCategory.value), formData);
+      const updated = await categoryContentService.updateContent(selectedCategory.value, formData);
       setContent(updated);
       setThumbnailFile(undefined);
       setBannerFile(undefined);

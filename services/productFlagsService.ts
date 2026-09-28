@@ -6,7 +6,8 @@ class ProductFlagsService {
     page?: number;
     per_page?: number;
     search?: string;
-    category_id?: number;
+    /** Category IDs are UUID strings — pass through, never Number(). */
+    category_id?: string | number;
   }): Promise<{
     data: ProductFlagsItem[];
     meta: { current_page: number; last_page: number; per_page: number; total: number };

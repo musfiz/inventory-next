@@ -109,7 +109,8 @@ export default function FlagsPage() {
         page,
         per_page: 20,
         ...(search ? { search } : {}),
-        category_id: Number(selectedCategory.value),
+        // Category IDs are UUID strings — Number() would yield NaN.
+        category_id: selectedCategory.value,
       });
       setItems(res.data);
       setTotal(res.meta.total);
