@@ -190,6 +190,22 @@ export interface StorefrontOfferSlide {
   sort_order: number;
 }
 
+/** One of the fixed 4 promo cells in the homepage hero grid widget. */
+export interface StorefrontHeroGridImage {
+  id: string;
+  position: number;
+  image_url: string;
+  /** Intrinsic pixel size of the stored file; null on legacy rows. */
+  width: number | null;
+  height: number | null;
+  /** width / height, or null when the size is unknown. */
+  aspect_ratio: number | null;
+  title: string | null;
+  link_url: string | null;
+  alt_text: string | null;
+  is_active: boolean;
+}
+
 export interface StoreReview {
   id: string;
   customerName: string;

@@ -20,6 +20,7 @@ export const SK = {
   reviews: (slug: string, page: number) => ['storefront:reviews', slug, page] as const,
   flashSale: ['storefront:flash-sale'] as const,
   heroSliders: ['storefront:hero-sliders'] as const,
+  heroGridImages: ['storefront:hero-grid-images'] as const,
   offerSlides: ['storefront:offer-slides'] as const,
   search: (params: Record<string, unknown>) => ['storefront:search', params] as const,
   addresses: ['storefront:addresses'] as const,

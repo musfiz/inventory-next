@@ -1060,6 +1060,32 @@ export interface CreateHeroSliderRequest {
   ends_at?: string;
 }
 
+/** One of the fixed 4 promo cells in the homepage hero grid widget. */
+export interface HeroGridImage {
+  id: string;
+  tenant_id: string;
+  position: number;
+  image_path: string;
+  image_url: string;
+  width: number | null;
+  height: number | null;
+  aspect_ratio: number | null;
+  title: string | null;
+  link_url: string | null;
+  alt_text: string | null;
+  is_active: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface CreateHeroGridImageRequest {
+  position: number;
+  title?: string;
+  link_url?: string;
+  alt_text?: string;
+  is_active?: boolean;
+}
+
 export interface BrandingResponse {
   header_logo_url: string | null;
   footer_logo_url: string | null;

@@ -41,7 +41,7 @@ export interface StorefrontFlashSaleProduct {
   discount_percentage: number;
 }
 
-import type { StorefrontOfferSlide } from '@/types/storefront';
+import type { StorefrontOfferSlide, StorefrontHeroGridImage } from '@/types/storefront';
 
 export interface CategoryTreeItem {
   id: string;
@@ -115,6 +115,14 @@ class StorefrontService {
   async getOfferSlides(): Promise<StorefrontOfferSlide[]> {
     const response = await apiClient.get<ApiResponse<StorefrontOfferSlide[]>>(
       '/api/v1/storefront/offer-slides'
+    );
+    return response.data.data ?? [];
+  }
+
+  /** Fixed 4-slot promo grid shown beside the Weekly Deals rail. */
+  async getHeroGridImages(): Promise<StorefrontHeroGridImage[]> {
+    const response = await apiClient.get<ApiResponse<StorefrontHeroGridImage[]>>(
+      '/api/v1/storefront/hero-grid-images'
     );
     return response.data.data ?? [];
   }

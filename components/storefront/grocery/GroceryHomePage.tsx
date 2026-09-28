@@ -15,6 +15,7 @@ import Image from 'next/image';
 import Link from 'next/link';
 import { useRef } from 'react';
 import HeroCarousel, { HeroCarouselSkeleton } from '@/components/storefront/HeroCarousel';
+import HeroGridWithWeeklyDeals from '@/components/storefront/HeroGridWithWeeklyDeals';
 import ProductCardSkeleton from '@/components/storefront/ProductCardSkeleton';
 import ProductVariationCards from '@/components/storefront/ProductVariationCards';
 import ScrollReveal from '@/components/storefront/ScrollReveal';
@@ -506,7 +507,7 @@ export default function GroceryHomePage() {
   // Hero + offer slides — SWR (deduped; no double fetch in StrictMode).
   const { sliders: heroSliders, loading: heroLoading } = useHeroSliders();
   const { slides: offerSlides } = useOfferSlides();
-  const { storeName } = useStorefrontStatus();
+  const { storeName, homepageHeroWidget } = useStorefrontStatus();
   const siteName = storeName || 'Grocery Store';
 
   useSeo({
@@ -516,11 +517,21 @@ export default function GroceryHomePage() {
     url: '/store',
   });
 
+  // Admin-selected hero widget: rotating banner slider, or promo grid + deals rail.
+  const heroWidget =
+    homepageHeroWidget === 'hero_grid_deals' ? (
+      <HeroGridWithWeeklyDeals />
+    ) : heroLoading ? (
+      <HeroCarouselSkeleton />
+    ) : (
+      <HeroCarousel slides={heroSliders} />
+    );
+
   return (
     <div className="bg-green-50/50 dark:bg-gray-950">
       <div className="mx-auto max-w-screen-2xl px-4 py-6">
-        {/* Hero Carousel */}
-        {heroLoading ? <HeroCarouselSkeleton /> : <HeroCarousel slides={heroSliders} />}
+        {/* Hero widget (slider or grid + weekly deals) */}
+        {heroWidget}
 
         {/* Category Strip */}
         <GroceryCategoryStrip />

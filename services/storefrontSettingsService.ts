@@ -1,11 +1,17 @@
 import apiClient from '@/lib/api/axios';
 import type { ApiResponse } from '@/types/api.types';
 
+export type HomepageHeroWidget = 'hero_slider' | 'hero_grid_deals';
+
 export interface StorefrontSettings {
   storefront_active: boolean;
   express_checkout_enabled: boolean;
   storefront_theme?: string | null;
   store_name?: string | null;
+  /** Which widget renders in the homepage hero area. */
+  homepage_hero_widget?: HomepageHeroWidget | null;
+  /** Optional flash sale campaign pinned to the Weekly Deals rail. */
+  weekly_deals_campaign_id?: string | null;
 }
 
 class StorefrontSettingsService {

@@ -7,6 +7,8 @@ import { usePermissions } from '@/hooks/use-permissions';
 import {
   LayoutDashboard,
   LayoutGrid,
+  LayoutPanelTop,
+  Grid2x2,
   LayoutTemplate,
   LayoutList,
   Users,
@@ -282,6 +284,8 @@ const navigation: NavigationItem[] = [
         name: 'Homepage',
         icon: LayoutDashboard,
         children: [
+          { name: 'Hero Section', href: '/ecommerce/homepage/hero-section', icon: LayoutPanelTop, ecommercePermission: 'view-ecommerce-hero-slider' },
+          { name: 'Hero Grid Images', href: '/ecommerce/homepage/hero-grid', icon: Grid2x2, ecommercePermission: 'view-ecommerce-hero-slider' },
           { name: 'Hero Slider', href: '/ecommerce/homepage/hero-slider', icon: SlidersVertical, ecommercePermission: 'view-ecommerce-hero-slider' },
           { name: 'Top Offer', href: '/ecommerce/homepage/banners', icon: Megaphone, ecommercePermission: 'view-ecommerce-top-offer' },
           { name: 'Flash Sale', href: '/ecommerce/homepage/flash-sale', icon: Timer, ecommercePermission: 'view-ecommerce-flash-sale' },
