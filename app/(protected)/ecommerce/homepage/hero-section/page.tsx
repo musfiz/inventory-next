@@ -1,13 +1,10 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { Check, ExternalLink, Images, LayoutGrid, Loader2, Save, SlidersVertical, Tag } from 'lucide-react';
 import storefrontSettingsService, { type HomepageHeroWidget } from '@/services/storefrontSettingsService';
-import flashSaleCampaignService from '@/services/flashSaleCampaignService';
 import { notify } from '@/lib/notifications';
-import type { FlashSaleCampaign } from '@/types/ecommerce';
 
 const WIDGETS: Array<{
   id: HomepageHeroWidget;
@@ -47,11 +44,13 @@ const WIDGETS: Array<{
   },
 ];
 
+const WIDGET_DEAL_HREFS: Partial<Record<HomepageHeroWidget, { href: string; label: string }>> = {
+  hero_grid_deals: { href: '/ecommerce/homepage/weekly-deals', label: 'Manage Weekly Deals' },
+};
+
 export default function HeroSectionPage() {
   const router = useRouter();
   const [widget, setWidget] = useState<HomepageHeroWidget>('hero_slider');
-  const [campaignId, setCampaignId] = useState<string>('');
-  const [campaigns, setCampaigns] = useState<FlashSaleCampaign[]>([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
 
@@ -60,14 +59,9 @@ export default function HeroSectionPage() {
 
     (async () => {
       try {
-        const [settings, list] = await Promise.all([
-          storefrontSettingsService.get(),
-          flashSaleCampaignService.list({ per_page: 100 }).catch(() => null),
-        ]);
+        const settings = await storefrontSettingsService.get();
         if (cancelled) return;
         setWidget(settings.homepage_hero_widget ?? 'hero_slider');
-        setCampaignId(settings.weekly_deals_campaign_id ?? '');
-        if (list?.data) setCampaigns(list.data);
       } catch {
         if (!cancelled) notify.error('Failed to load hero section settings');
       } finally {
@@ -83,10 +77,7 @@ export default function HeroSectionPage() {
   const handleSave = async () => {
     setSaving(true);
     try {
-      await storefrontSettingsService.update({
-        homepage_hero_widget: widget,
-        weekly_deals_campaign_id: campaignId || null,
-      });
+      await storefrontSettingsService.update({ homepage_hero_widget: widget });
       notify.success('Hero section updated successfully');
     } catch (err: any) {
       notify.error(err?.response?.data?.message || 'Failed to update hero section');
@@ -201,42 +192,6 @@ export default function HeroSectionPage() {
         })}
       </div>
 
-      {/* Weekly Deals source — only relevant for the grid widget */}
-      {widget === 'hero_grid_deals' && (
-        <div className="rounded-sm border border-gray-200 bg-white p-4 dark:border-gray-700 dark:bg-gray-800">
-          <div className="flex items-start gap-3">
-            <Tag className="mt-0.5 h-5 w-5 shrink-0 text-indigo-600 dark:text-indigo-400" />
-            <div className="min-w-0 flex-1">
-              <h2 className="text-sm font-semibold text-gray-900 dark:text-gray-100">
-                Weekly Deals source
-              </h2>
-              <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
-                Deals are powered by your Flash Sale campaigns. Pick one campaign to feature, or leave
-                it on automatic to merge every campaign that is currently active.
-              </p>
-              <select
-                value={campaignId}
-                onChange={e => setCampaignId(e.target.value)}
-                className="mt-3 w-full rounded-sm border border-gray-300 bg-white px-2.5 py-1.5 text-sm text-gray-900 focus:border-indigo-500 focus:outline-none dark:border-gray-600 dark:bg-gray-900 dark:text-gray-100"
-              >
-                <option value="">Automatic — all active campaigns</option>
-                {campaigns.map(c => (
-                  <option key={c.id} value={c.id}>
-                    {c.name}
-                  </option>
-                ))}
-              </select>
-              <Link
-                href="/ecommerce/homepage/flash-sale"
-                className="mt-2 inline-block text-xs font-semibold text-indigo-600 hover:underline dark:text-indigo-400"
-              >
-                Manage flash sale campaigns
-              </Link>
-            </div>
-          </div>
-        </div>
-      )}
-
       {/* Manage content deep link */}
       <div className="flex flex-wrap items-center justify-between gap-3 rounded-sm border border-gray-200 bg-gray-50 p-4 dark:border-gray-700 dark:bg-gray-800/50">
         <div className="flex items-center gap-3">
@@ -251,13 +206,24 @@ export default function HeroSectionPage() {
             </p>
           </div>
         </div>
-        <button
-          onClick={() => router.push(active.manageHref)}
-          className="inline-flex items-center gap-2 rounded-sm bg-gray-900 px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-gray-700 dark:bg-white dark:text-gray-900 dark:hover:bg-gray-100"
-        >
-          <ExternalLink className="h-4 w-4" />
-          {active.manageLabel}
-        </button>
+        <div className="flex flex-wrap items-center gap-2">
+          {WIDGET_DEAL_HREFS[widget] && (
+            <button
+              onClick={() => router.push(WIDGET_DEAL_HREFS[widget]!.href)}
+              className="inline-flex items-center gap-2 rounded-sm border border-gray-300 bg-white px-4 py-2 text-sm font-semibold text-gray-700 transition-colors hover:bg-gray-50 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-300 dark:hover:bg-gray-700"
+            >
+              <Tag className="h-4 w-4" />
+              {WIDGET_DEAL_HREFS[widget]!.label}
+            </button>
+          )}
+          <button
+            onClick={() => router.push(active.manageHref)}
+            className="inline-flex items-center gap-2 rounded-sm bg-gray-900 px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-gray-700 dark:bg-white dark:text-gray-900 dark:hover:bg-gray-100"
+          >
+            <ExternalLink className="h-4 w-4" />
+            {active.manageLabel}
+          </button>
+        </div>
       </div>
     </div>
   );

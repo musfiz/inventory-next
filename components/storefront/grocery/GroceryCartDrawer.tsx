@@ -10,7 +10,6 @@ import {
   Trash2,
   ArrowRight,
   Tag,
-  Clock,
   Truck,
   MessageSquare,
 } from 'lucide-react';
@@ -23,14 +22,6 @@ import {
 } from '@/lib/storefront/mock-data';
 import { imageUrl } from '@/lib/image-url';
 import { notify } from '@/lib/notifications';
-
-const DELIVERY_SLOTS = [
-  { id: 'today-2pm', label: 'Today, 2PM - 5PM', available: true },
-  { id: 'today-6pm', label: 'Today, 6PM - 9PM', available: true },
-  { id: 'tomorrow-9am', label: 'Tomorrow, 9AM - 12PM', available: true },
-  { id: 'tomorrow-2pm', label: 'Tomorrow, 2PM - 5PM', available: true },
-  { id: 'tomorrow-6pm', label: 'Tomorrow, 6PM - 9PM', available: true },
-];
 
 export default function GroceryCartDrawer() {
   const {
@@ -52,7 +43,6 @@ export default function GroceryCartDrawer() {
   const [couponInput, setCouponInput] = useState('');
   const [couponError, setCouponError] = useState<string | null>(null);
   const [applyingCoupon, setApplyingCoupon] = useState(false);
-  const [selectedSlot, setSelectedSlot] = useState<string>('today-2pm');
   const [allowSubstitutions, setAllowSubstitutions] = useState(false);
   const [deliveryNote, setDeliveryNote] = useState('');
 
@@ -91,8 +81,7 @@ export default function GroceryCartDrawer() {
   const itemCount = getItemCount();
   const qualifiesFreeShip = subtotal >= STORE_INFO.freeShippingThreshold;
   const shipping = qualifiesFreeShip ? 0 : 60;
-  const tax = subtotal * (STORE_INFO.taxRate / 100);
-  const total = subtotal + shipping + tax - couponDiscount;
+  const total = subtotal + shipping - couponDiscount;
 
   const handleApplyCoupon = () => {
     const c = couponInput.toUpperCase().trim();
@@ -157,34 +146,6 @@ export default function GroceryCartDrawer() {
             <X className="h-4 w-4" />
           </button>
         </div>
-
-        {/* Delivery time slot */}
-        {items.length > 0 && (
-          <div className="shrink-0 border-b border-gray-200 bg-green-50 px-4 py-3 dark:border-gray-800 dark:bg-green-950/20">
-            <div className="flex items-center gap-2 mb-2">
-              <Clock className="h-4 w-4 text-green-600" />
-              <span className="text-xs font-bold text-green-800 dark:text-green-300">
-                Delivery Time
-              </span>
-            </div>
-            <div className="flex flex-wrap gap-2">
-              {DELIVERY_SLOTS.map((slot) => (
-                <button
-                  key={slot.id}
-                  onClick={() => setSelectedSlot(slot.id)}
-                  disabled={!slot.available}
-                  className={`rounded-sm border px-3 py-1.5 text-xs font-semibold transition-all ${
-                    selectedSlot === slot.id
-                      ? 'border-green-500 bg-green-600 text-white'
-                      : 'border-gray-200 bg-white text-gray-700 hover:border-green-300 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-300'
-                  } disabled:cursor-not-allowed disabled:opacity-40`}
-                >
-                  {slot.label}
-                </button>
-              ))}
-            </div>
-          </div>
-        )}
 
         {/* Free shipping progress */}
         {!qualifiesFreeShip && items.length > 0 && (
@@ -442,12 +403,6 @@ export default function GroceryCartDrawer() {
                   ) : (
                     formatMoneyDecimal(shipping)
                   )}
-                </dd>
-              </div>
-              <div className="flex justify-between text-gray-500 dark:text-gray-400">
-                <dt>Tax ({STORE_INFO.taxRate}%)</dt>
-                <dd className="font-semibold text-amber-600 dark:text-amber-400">
-                  {formatMoneyDecimal(tax)}
                 </dd>
               </div>
               {couponDiscount > 0 && (

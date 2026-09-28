@@ -84,8 +84,7 @@ function DefaultCartDrawer() {
   const itemCount = getItemCount();
   const qualifiesFreeShip = subtotal >= STORE_INFO.freeShippingThreshold;
   const shipping = qualifiesFreeShip ? 0 : 60;
-  const tax = subtotal * (STORE_INFO.taxRate / 100);
-  const total = subtotal + shipping + tax - couponDiscount;
+  const total = subtotal + shipping - couponDiscount;
 
   const handleApplyCoupon = () => {
     const c = couponInput.toUpperCase().trim();
@@ -378,12 +377,6 @@ function DefaultCartDrawer() {
                   ) : (
                     formatMoneyDecimal(shipping)
                   )}
-                </dd>
-              </div>
-              <div className="flex justify-between text-gray-500 dark:text-gray-400">
-                <dt>Tax ({STORE_INFO.taxRate}%)</dt>
-                <dd className="font-semibold text-amber-600 dark:text-amber-400">
-                  {formatMoneyDecimal(tax)}
                 </dd>
               </div>
               {couponDiscount > 0 && (

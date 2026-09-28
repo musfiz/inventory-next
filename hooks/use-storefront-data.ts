@@ -23,7 +23,7 @@ import storefrontService, {
   type StorefrontHeroSlider,
   type StorefrontFlashSaleCampaign,
 } from '@/services/storefrontService';
-import type { StorefrontOfferSlide, StorefrontHeroGridImage, Product, Brand, Address } from '@/types/storefront';
+import type { StorefrontOfferSlide, StorefrontHeroGridImage, StorefrontWeeklyDeal, Product, Brand, Address } from '@/types/storefront';
 import checkoutService, { type StorefrontOrder } from '@/services/checkoutService';
 import headerMenuService from '@/services/headerMenuService';
 import footerService from '@/services/footerService';
@@ -262,6 +262,15 @@ export function useHeroGridImages(enabled = true) {
     () => storefrontService.getHeroGridImages(),
   );
   return { images: data ?? [], loading: isLoading };
+}
+
+/** Weekly deals that are live right now (already filtered server-side). */
+export function useWeeklyDeals(enabled = true) {
+  const { data, isLoading } = useSWR<StorefrontWeeklyDeal[]>(
+    enabled ? SK.weeklyDeals : null,
+    () => storefrontService.getWeeklyDeals(),
+  );
+  return { deals: data ?? [], loading: isLoading };
 }
 
 export function useOfferSlides() {

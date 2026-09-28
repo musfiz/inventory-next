@@ -10,7 +10,6 @@ export interface StorefrontSettings {
   storeName: string | null;
   storefrontTheme: 'default' | 'grocery';
   homepageHeroWidget: HomepageHeroWidget;
-  weeklyDealsCampaignId: string | null;
 }
 
 export function useStorefrontSettings() {
@@ -23,7 +22,6 @@ export function useStorefrontSettings() {
         storeName: res.store_name ?? null,
         storefrontTheme: (res.storefront_theme as 'default' | 'grocery') ?? 'default',
         homepageHeroWidget: res.homepage_hero_widget ?? 'hero_slider',
-        weeklyDealsCampaignId: res.weekly_deals_campaign_id ?? null,
       };
     },
     { shouldRetryOnError: false },
@@ -34,7 +32,6 @@ export function useStorefrontSettings() {
     expressCheckoutEnabled: data?.expressCheckoutEnabled ?? false,
     storefrontTheme: data?.storefrontTheme ?? 'default',
     homepageHeroWidget: data?.homepageHeroWidget ?? 'hero_slider',
-    weeklyDealsCampaignId: data?.weeklyDealsCampaignId ?? null,
     loading: isLoading,
     fetch: () => mutate(),
   };
@@ -66,7 +63,6 @@ export function useStorefrontStatus() {
     storeName: settings.storeName,
     storefrontTheme: settings.storefrontTheme,
     homepageHeroWidget: settings.homepageHeroWidget,
-    weeklyDealsCampaignId: settings.weeklyDealsCampaignId,
     /** Force a fresh status read (e.g. after tenant switch in admin). */
     fetch: () => mutate(),
     fetchSettings: settings.fetch,

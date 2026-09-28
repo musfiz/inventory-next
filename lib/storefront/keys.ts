@@ -21,6 +21,7 @@ export const SK = {
   flashSale: ['storefront:flash-sale'] as const,
   heroSliders: ['storefront:hero-sliders'] as const,
   heroGridImages: ['storefront:hero-grid-images'] as const,
+  weeklyDeals: ['storefront:weekly-deals'] as const,
   offerSlides: ['storefront:offer-slides'] as const,
   search: (params: Record<string, unknown>) => ['storefront:search', params] as const,
   addresses: ['storefront:addresses'] as const,

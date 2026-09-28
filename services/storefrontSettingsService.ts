@@ -10,8 +10,6 @@ export interface StorefrontSettings {
   store_name?: string | null;
   /** Which widget renders in the homepage hero area. */
   homepage_hero_widget?: HomepageHeroWidget | null;
-  /** Optional flash sale campaign pinned to the Weekly Deals rail. */
-  weekly_deals_campaign_id?: string | null;
 }
 
 class StorefrontSettingsService {
