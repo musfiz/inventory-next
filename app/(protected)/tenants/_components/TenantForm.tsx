@@ -1,21 +1,14 @@
 'use client';
 
 import { zodResolver } from '@hookform/resolvers/zod';
-import { Building2 } from 'lucide-react';
+import { Building2, Loader2 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { useEffect } from 'react';
-import { useForm, FormProvider, Controller } from 'react-hook-form';
+import { useForm, Controller } from 'react-hook-form';
 import { GiSave } from 'react-icons/gi';
 import { z } from 'zod';
 import BusinessTypeSelect from '@/components/ui/business-type-select';
 import CustomDatePicker from '@/components/ui/date-picker';
-import {
-  TextField,
-  TextareaField,
-  SelectField,
-  CheckboxField,
-  Field,
-} from '@/components/ui/form/fields';
 import Spinner from '@/components/ui/spinner';
 import { usePermissions } from '@/hooks/use-permissions';
 import { SUBSCRIPTION_PLANS, SUBSCRIPTION_STATUSES } from '@/lib/constants';
@@ -103,8 +96,9 @@ export default function TenantForm({ editRef }: { editRef?: string }) {
     handleSubmit,
     reset,
     control,
+    register,
     setError,
-    formState: { isSubmitting },
+    formState: { errors, isSubmitting },
   } = methods;
 
   useEffect(() => {
@@ -197,211 +191,361 @@ export default function TenantForm({ editRef }: { editRef?: string }) {
     }
   };
 
-  const storefrontError = methods.formState.errors.storefront_active?.message as string | undefined;
+  const getFieldError = (field: keyof TenantFormOutput): string | null =>
+    (errors[field]?.message as string | undefined) ?? null;
+  const hasFieldError = (field: keyof TenantFormOutput): boolean => !!errors[field];
+
+  const inputCls = (hasError?: boolean) =>
+    `w-full px-2.5 py-1 text-xs bg-white dark:bg-gray-700 border ${hasError ? 'border-red-500' : 'border-gray-300 dark:border-gray-600'} rounded text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-1 focus:ring-indigo-500`;
+
+  const storefrontError = getFieldError('storefront_active');
 
   const showPageLoader = isEditMode && !isHydrated;
 
   return (
-    <FormProvider {...methods}>
-      <div className="relative space-y-2">
-        {showPageLoader && (
-          <div className="fixed inset-0 z-40 flex items-center justify-center bg-white/60 dark:bg-gray-900/60 backdrop-blur-sm">
-            <Spinner size="md" decorative />
+    <div className="relative space-y-3">
+      {showPageLoader && (
+        <div className="fixed inset-0 z-40 flex items-center justify-center bg-white/60 dark:bg-gray-900/60 backdrop-blur-sm">
+          <Spinner size="md" decorative />
+        </div>
+      )}
+      <div className="flex items-center justify-between">
+        <h1 className="text-xl font-bold text-gray-900 dark:text-gray-100 flex items-center gap-2">
+          <Building2 className="w-5 h-5 text-indigo-600 dark:text-indigo-400" />
+          {isEditMode ? 'Edit Tenant' : 'Tenant Registration'}
+        </h1>
+      </div>
+
+      <form onSubmit={handleSubmit(onValid)} className="space-y-3" autoComplete="off" noValidate>
+        {/* Basic Information */}
+        <div className="bg-white dark:bg-gray-800 rounded-md shadow-sm border border-gray-200 dark:border-gray-700 p-3">
+          <h3 className="text-xs font-semibold text-gray-700 dark:text-gray-300 mb-3 flex items-center gap-1.5">
+            Basic Information
+          </h3>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-x-4 gap-y-2">
+            <FormRow label="Business Name" required error={getFieldError('business_name')} labelWidth="w-32">
+              <input
+                id="business_name"
+                type="text"
+                aria-invalid={hasFieldError('business_name')}
+                {...register('business_name')}
+                className={inputCls(hasFieldError('business_name'))}
+                placeholder="Enter business name"
+              />
+            </FormRow>
+
+            <FormRow label="Business Type" error={getFieldError('business_type_id')} labelWidth="w-32">
+              <Controller
+                control={control}
+                name="business_type_id"
+                render={({ field }) => (
+                  <BusinessTypeSelect
+                    value={field.value ?? null}
+                    onChange={field.onChange}
+                    placeholder="Select business type"
+                    isInvalid={hasFieldError('business_type_id')}
+                    compact
+                  />
+                )}
+              />
+            </FormRow>
+
+            <FormRow label="Email" required error={getFieldError('email')} labelWidth="w-32">
+              <input
+                id="email"
+                type="email"
+                aria-invalid={hasFieldError('email')}
+                {...register('email')}
+                className={inputCls(hasFieldError('email'))}
+                placeholder="Enter email address"
+              />
+            </FormRow>
+
+            <FormRow label="Contact Person" error={getFieldError('contact_person')} labelWidth="w-32">
+              <input
+                id="contact_person"
+                type="text"
+                aria-invalid={hasFieldError('contact_person')}
+                {...register('contact_person')}
+                className={inputCls(hasFieldError('contact_person'))}
+                placeholder="Enter contact person name"
+              />
+            </FormRow>
+
+            <FormRow label="Phone" error={getFieldError('phone')} labelWidth="w-32">
+              <input
+                id="phone"
+                type="tel"
+                aria-invalid={hasFieldError('phone')}
+                {...register('phone')}
+                className={inputCls(hasFieldError('phone'))}
+                placeholder="Enter phone number"
+              />
+            </FormRow>
+
+            <FormRow label="City" error={getFieldError('city')} labelWidth="w-32">
+              <input
+                id="city"
+                type="text"
+                aria-invalid={hasFieldError('city')}
+                {...register('city')}
+                className={inputCls(hasFieldError('city'))}
+                placeholder="Enter city"
+              />
+            </FormRow>
+
+            <FormRow label="Country" required error={getFieldError('country')} labelWidth="w-32">
+              <select
+                id="country"
+                aria-invalid={hasFieldError('country')}
+                {...register('country')}
+                className={inputCls(hasFieldError('country'))}
+              >
+                {COUNTRY_OPTIONS.map(country => (
+                  <option key={country} value={country}>
+                    {country}
+                  </option>
+                ))}
+              </select>
+            </FormRow>
+
+            <FormRow label="Address" error={getFieldError('address')} labelWidth="w-32" className="md:col-span-2">
+              <textarea
+                id="address"
+                aria-invalid={hasFieldError('address')}
+                {...register('address')}
+                rows={2}
+                className={inputCls(hasFieldError('address'))}
+                placeholder="Enter business address"
+              />
+            </FormRow>
           </div>
-        )}
-        <div className="flex items-center justify-between">
-          <h1 className="text-base font-bold text-gray-900 dark:text-gray-100 flex items-center gap-2">
-            <Building2 className="w-5 h-5 text-indigo-600 dark:text-indigo-400" />
-            {isEditMode ? 'Edit Tenant' : 'Tenant Registration'}
-          </h1>
         </div>
 
-        <form onSubmit={handleSubmit(onValid)} className="space-y-1" autoComplete="false" noValidate>
-          {/* Basic Information */}
-          <div className="bg-white dark:bg-gray-800 rounded-md shadow-sm border border-gray-200 dark:border-gray-700 p-3">
-            <div className="mb-2 space-y-3">
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-                <TextField name="business_name" label="Business Name" required placeholder="Enter business name" />
-                <Field label="Business Type">
-                  <Controller
-                    control={control}
-                    name="business_type_id"
-                    render={({ field }) => (
-                      <BusinessTypeSelect
-                        value={field.value ?? null}
-                        onChange={field.onChange}
-                        placeholder="Select business type"
-                      />
-                    )}
-                  />
-                </Field>
-                <TextField name="email" label="Email" type="email" required placeholder="Enter email address" />
-              </div>
-
-              <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
-                <TextField name="contact_person" label="Contact Person" placeholder="Enter contact person name" />
-                <TextField name="phone" label="Phone" type="tel" placeholder="Enter phone number" />
-                <TextField name="city" label="City" placeholder="Enter city" />
-                <SelectField name="country" label="Country" required>
-                  {COUNTRY_OPTIONS.map(country => (
-                    <option key={country} value={country}>
-                      {country}
-                    </option>
-                  ))}
-                </SelectField>
-              </div>
-
-              <TextareaField name="address" label="Address" rows={2} placeholder="Enter business address" />
-            </div>
+        {/* Business Registration */}
+        <div className="bg-white dark:bg-gray-800 rounded-md shadow-sm border border-gray-200 dark:border-gray-700 p-3">
+          <h3 className="text-xs font-semibold text-gray-700 dark:text-gray-300 mb-3">
+            Business Registration
+          </h3>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-x-4 gap-y-2">
+            <FormRow label="Trade License" error={getFieldError('trade_license')} labelWidth="w-32">
+              <input
+                id="trade_license"
+                type="text"
+                aria-invalid={hasFieldError('trade_license')}
+                {...register('trade_license')}
+                className={inputCls(hasFieldError('trade_license'))}
+                placeholder="Enter trade license number"
+              />
+            </FormRow>
+            <FormRow label="TIN Number" error={getFieldError('tin_number')} labelWidth="w-32">
+              <input
+                id="tin_number"
+                type="text"
+                aria-invalid={hasFieldError('tin_number')}
+                {...register('tin_number')}
+                className={inputCls(hasFieldError('tin_number'))}
+                placeholder="Enter TIN number"
+              />
+            </FormRow>
+            <FormRow label="BIN Number" error={getFieldError('bin_number')} labelWidth="w-32">
+              <input
+                id="bin_number"
+                type="text"
+                aria-invalid={hasFieldError('bin_number')}
+                {...register('bin_number')}
+                className={inputCls(hasFieldError('bin_number'))}
+                placeholder="Enter BIN number"
+              />
+            </FormRow>
+            <FormRow label="VAT Number" error={getFieldError('vat_number')} labelWidth="w-32">
+              <input
+                id="vat_number"
+                type="text"
+                aria-invalid={hasFieldError('vat_number')}
+                {...register('vat_number')}
+                className={inputCls(hasFieldError('vat_number'))}
+                placeholder="Enter VAT number"
+              />
+            </FormRow>
           </div>
+        </div>
 
-          {/* Business Registration */}
-          <div className="bg-white dark:bg-gray-800 rounded-md shadow-sm border border-gray-200 dark:border-gray-700 p-3">
-            <h3 className="text-base font-semibold text-gray-900 dark:text-gray-100 mb-2">
-              Business Registration
-            </h3>
-            <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
-              <TextField name="trade_license" label="Trade License" placeholder="Enter trade license number" />
-              <TextField name="tin_number" label="TIN Number" placeholder="Enter TIN number" />
-              <TextField name="bin_number" label="BIN Number" placeholder="Enter BIN number" />
-              <TextField name="vat_number" label="VAT Number" placeholder="Enter VAT number" />
-            </div>
-          </div>
-
-          {/* Settings */}
-          <div className="bg-white dark:bg-gray-800 rounded-md shadow-sm border border-gray-200 dark:border-gray-700 p-3">
-            <h3 className="text-base font-semibold text-gray-900 dark:text-gray-100 mb-1">
-              Settings & Configuration
-            </h3>
-            <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
-              <SelectField name="subscription_plan" label="Subscription Plan" required>
+        {/* Settings & Configuration */}
+        <div className="bg-white dark:bg-gray-800 rounded-md shadow-sm border border-gray-200 dark:border-gray-700 p-3">
+          <h3 className="text-xs font-semibold text-gray-700 dark:text-gray-300 mb-3">
+            Subscription
+          </h3>
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-x-4 gap-y-2">
+            <FormRow label="Plan" required error={getFieldError('subscription_plan')} labelWidth="w-28">
+              <select
+                id="subscription_plan"
+                aria-invalid={hasFieldError('subscription_plan')}
+                {...register('subscription_plan')}
+                className={inputCls(hasFieldError('subscription_plan'))}
+              >
                 {SUBSCRIPTION_PLANS.map(plan => (
                   <option key={plan.value} value={plan.value}>
                     {plan.label}
                   </option>
                 ))}
-              </SelectField>
-              <SelectField name="subscription_status" label="Subscription Status" required>
+              </select>
+            </FormRow>
+            <FormRow label="Status" required error={getFieldError('subscription_status')} labelWidth="w-28">
+              <select
+                id="subscription_status"
+                aria-invalid={hasFieldError('subscription_status')}
+                {...register('subscription_status')}
+                className={inputCls(hasFieldError('subscription_status'))}
+              >
                 {SUBSCRIPTION_STATUSES.map(status => (
                   <option key={status.value} value={status.value}>
                     {status.label}
                   </option>
                 ))}
-              </SelectField>
-
-              <Field label="Subscription End At">
-                <Controller
-                  control={control}
-                  name="subscription_ends_at"
-                  render={({ field }) => (
-                    <CustomDatePicker value={field.value ?? ''} onChange={field.onChange} />
-                  )}
-                />
-              </Field>
-              <Field label="Trial Ends At">
-                <Controller
-                  control={control}
-                  name="trial_ends_at"
-                  render={({ field }) => (
-                    <CustomDatePicker value={field.value ?? ''} onChange={field.onChange} />
-                  )}
-                />
-              </Field>
-            </div>
-          </div>
-
-          {/* Limits */}
-          <div className="bg-white dark:bg-gray-800 rounded-md shadow-sm border border-gray-200 dark:border-gray-700 p-3">
-            <h3 className="text-base font-semibold text-gray-900 dark:text-gray-100 mb-2">
-              Usage Limits
-            </h3>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-              <TextField
-                name="max_users"
-                label="Max Users"
-                type="number"
-                min={1}
-                required
-                registrationOptions={{ valueAsNumber: true }}
-              />
-              <TextField
-                name="max_products"
-                label="Max Products"
-                type="number"
-                min={1}
-                required
-                registrationOptions={{ valueAsNumber: true }}
-              />
-              <TextField
-                name="max_warehouses"
-                label="Max Warehouses"
-                type="number"
-                min={1}
-                required
-                registrationOptions={{ valueAsNumber: true }}
-              />
-            </div>
-          </div>
-
-          {/* Active + Storefront + Submit */}
-          <div className="bg-white dark:bg-gray-800 rounded-md shadow-sm border border-gray-200 dark:border-gray-700 p-3">
-            <div className="flex items-center gap-6">
-              <CheckboxField name="is_active" label="Active" />
+              </select>
+            </FormRow>
+            <FormRow label="Subscription Ends" error={getFieldError('subscription_ends_at')} labelWidth="w-28">
               <Controller
                 control={control}
-                name="storefront_active"
+                name="subscription_ends_at"
                 render={({ field }) => (
-                  <label className="flex items-center gap-2 cursor-pointer">
-                    <button
-                      type="button"
-                      role="switch"
-                      aria-checked={Boolean(field.value)}
-                      onClick={() => field.onChange(!field.value)}
-                      className={`relative inline-flex h-5 w-9 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 ${field.value
-                          ? 'bg-indigo-600 focus:ring-indigo-500'
-                          : 'bg-gray-300 dark:bg-gray-600 focus:ring-indigo-500'
-                        } ${storefrontError ? 'ring-2 ring-red-500' : ''}`}
-                    >
-                      <span
-                        className={`inline-block h-3.5 w-3.5 transform rounded-full bg-white transition-transform ${field.value ? 'translate-x-[18px]' : 'translate-x-[3px]'
-                          }`}
-                      />
-                    </button>
-                    <div>
-                      <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
-                        Storefront Active
-                      </span>
-                      {storefrontError && (
-                        <p className="text-xs text-red-600 dark:text-red-400 mt-0.5" role="alert">
-                          {storefrontError}
-                        </p>
-                      )}
-                    </div>
-                  </label>
+                  <CustomDatePicker value={field.value ?? ''} onChange={field.onChange} compact />
                 )}
               />
-            </div>
-
-            <div className="flex items-center justify-end gap-2 mt-3 pt-3 border-t border-gray-200 dark:border-gray-700">
-              <button
-                type="button"
-                onClick={() => router.push('/tenants')}
-                className="px-3 py-1.5 text-sm font-medium text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-sm hover:bg-gray-50 dark:hover:bg-gray-600"
-              >
-                Cancel
-              </button>
-              <button
-                type="submit"
-                disabled={isSubmitting}
-                className="flex items-center justify-center gap-2 px-5 py-1.5 text-sm bg-indigo-600 hover:bg-indigo-700 disabled:bg-gray-400 text-white rounded-sm transition-colors cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                <GiSave className="w-4 h-4" />
-                {isSubmitting ? (isEditMode ? 'Updating…' : 'Creating…') : isEditMode ? 'Update' : 'Create Tenant'}
-              </button>
-            </div>
+            </FormRow>
+            <FormRow label="Trial Ends" error={getFieldError('trial_ends_at')} labelWidth="w-28">
+              <Controller
+                control={control}
+                name="trial_ends_at"
+                render={({ field }) => (
+                  <CustomDatePicker value={field.value ?? ''} onChange={field.onChange} compact />
+                )}
+              />
+            </FormRow>
           </div>
-        </form>
+        </div>
+
+        {/* Usage Limits */}
+        <div className="bg-white dark:bg-gray-800 rounded-md shadow-sm border border-gray-200 dark:border-gray-700 p-3">
+          <h3 className="text-xs font-semibold text-gray-700 dark:text-gray-300 mb-3">
+            Usage Limits
+          </h3>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-x-4 gap-y-2">
+            <FormRow label="Max Users" required error={getFieldError('max_users')} labelWidth="w-28">
+              <input
+                id="max_users"
+                type="number"
+                min={1}
+                aria-invalid={hasFieldError('max_users')}
+                {...register('max_users', { valueAsNumber: true })}
+                className={inputCls(hasFieldError('max_users'))}
+              />
+            </FormRow>
+            <FormRow label="Max Products" required error={getFieldError('max_products')} labelWidth="w-28">
+              <input
+                id="max_products"
+                type="number"
+                min={1}
+                aria-invalid={hasFieldError('max_products')}
+                {...register('max_products', { valueAsNumber: true })}
+                className={inputCls(hasFieldError('max_products'))}
+              />
+            </FormRow>
+            <FormRow label="Max Warehouses" required error={getFieldError('max_warehouses')} labelWidth="w-28">
+              <input
+                id="max_warehouses"
+                type="number"
+                min={1}
+                aria-invalid={hasFieldError('max_warehouses')}
+                {...register('max_warehouses', { valueAsNumber: true })}
+                className={inputCls(hasFieldError('max_warehouses'))}
+              />
+            </FormRow>
+          </div>
+        </div>
+
+        {/* Status */}
+        <div className="bg-white dark:bg-gray-800 rounded-md shadow-sm border border-gray-200 dark:border-gray-700 p-3">
+          <h3 className="text-xs font-semibold text-gray-700 dark:text-gray-300 mb-3">Status</h3>
+          <div className="flex flex-wrap items-center gap-2">
+            <label className="inline-flex items-center gap-1.5 cursor-pointer rounded-full px-2.5 py-1 hover:bg-gray-50 dark:hover:bg-gray-700/50 border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800">
+              <input
+                type="checkbox"
+                aria-invalid={!!errors.is_active}
+                {...register('is_active')}
+                className="h-3.5 w-3.5 accent-indigo-600"
+              />
+              <span className="text-xs text-gray-700 dark:text-gray-300 whitespace-nowrap">Active</span>
+            </label>
+            <Controller
+              control={control}
+              name="storefront_active"
+              render={({ field }) => (
+                <label className="inline-flex items-center gap-1.5 cursor-pointer rounded-full px-2.5 py-1 hover:bg-gray-50 dark:hover:bg-gray-700/50 border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800">
+                  <button
+                    type="button"
+                    role="switch"
+                    aria-checked={Boolean(field.value)}
+                    onClick={() => field.onChange(!field.value)}
+                    className={`relative inline-flex h-4 w-7 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-offset-1 ${field.value
+                      ? 'bg-indigo-600 focus:ring-indigo-500'
+                      : 'bg-gray-300 dark:bg-gray-600 focus:ring-indigo-500'
+                      } ${storefrontError ? 'ring-2 ring-red-500' : ''}`}
+                  >
+                    <span
+                      className={`inline-block h-2.5 w-2.5 transform rounded-full bg-white transition-transform ${field.value ? 'translate-x-4' : 'translate-x-0.5'
+                        }`}
+                    />
+                  </button>
+                  <span className="text-xs text-gray-700 dark:text-gray-300 whitespace-nowrap">
+                    Storefront Active
+                  </span>
+                </label>
+              )}
+            />
+          </div>
+          {storefrontError && (
+            <p className="text-[10px] text-red-500 mt-1" role="alert">
+              {storefrontError}
+            </p>
+          )}
+        </div>
+
+        <div className="flex justify-end gap-2">
+          <button
+            type="button"
+            onClick={() => router.push('/tenants')}
+            className="px-3 py-1.5 text-xs rounded border border-gray-300 dark:border-gray-600 text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700"
+          >
+            Cancel
+          </button>
+          <button
+            type="submit"
+            disabled={isSubmitting}
+            className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs bg-indigo-600 hover:bg-indigo-700 disabled:opacity-60 text-white rounded"
+          >
+            {isSubmitting ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <GiSave className="w-3.5 h-3.5" />}
+            {isSubmitting ? (isEditMode ? 'Updating...' : 'Creating...') : isEditMode ? 'Update Tenant' : 'Create Tenant'}
+          </button>
+        </div>
+      </form>
+    </div>
+  );
+}
+
+function FormRow({ label, required, error, children, labelWidth = 'w-32', className = '' }: { label: string; required?: boolean; error?: string | null; children: React.ReactNode; labelWidth?: string; className?: string }) {
+  const errorMl =
+    labelWidth === 'w-32' ? 'ml-[8.5rem]' : labelWidth === 'w-28' ? 'ml-[7.5rem]' : 'ml-[5.5rem]';
+  return (
+    <div className={className}>
+      <div className="flex items-center gap-1.5">
+        <label className={`${labelWidth} shrink-0 text-[11px] font-medium text-gray-600 dark:text-gray-400 text-right`}>
+          {label}{required && <span className="text-red-500">*</span>}:
+        </label>
+        <div className="flex-1 min-w-0">{children}</div>
       </div>
-    </FormProvider>
+      {error && <p className={`text-[10px] text-red-500 mt-0.5 ${errorMl}`}>{error}</p>}
+    </div>
   );
 }

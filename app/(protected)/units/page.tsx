@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { Eye, Edit, Trash2, Package, Plus, X } from 'lucide-react';
+import { Eye, Edit, Trash2, Package, Plus } from 'lucide-react';
 import { GiSave } from 'react-icons/gi';
 import { ColumnDef } from '@tanstack/react-table';
 import DataTable from '@/components/ui/datatable';
@@ -31,6 +31,9 @@ export default function UnitsPage() {
   });
   const [formErrors, setFormErrors] = useState<{ [key: string]: string }>({});
   const [refreshKey, setRefreshKey] = useState(0);
+
+  const inputCls = (hasError?: boolean) =>
+    `w-full px-2.5 py-1 text-xs bg-white dark:bg-gray-700 border ${hasError ? 'border-red-500' : 'border-gray-300 dark:border-gray-600'} rounded text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-1 focus:ring-indigo-500`;
 
   const handleAddUnit = () => {
     setIsEditing(false);
@@ -243,83 +246,65 @@ export default function UnitsPage() {
         </button>
       </div>
 
-      {/* Add/Edit Unit Form */}
+      {/* Add/Edit Unit Form — styled like product add page */}
       {showForm && (
-        <div className="bg-white dark:bg-gray-800 rounded-md shadow-sm border border-gray-200 dark:border-gray-700 p-1.5 mb-1">
-          <h2 className="text-lg font-semibold mb-1.5 text-gray-900 dark:text-gray-100">
-            {isEditing ? 'Edit Unit' : 'Add New Unit'}
-          </h2>
-          <form onSubmit={handleFormSubmit} className="grid grid-cols-1 md:grid-cols-2 gap-1.5">
-            <div className="md:col-span-2 grid grid-cols-1 md:grid-cols-3 gap-1">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-0.5">
-                  Name
-                </label>
+        <form onSubmit={handleFormSubmit} className="space-y-3" autoComplete="off">
+          <div className="bg-white dark:bg-gray-800 rounded-md shadow-sm border border-gray-200 dark:border-gray-700 p-3">
+            <h3 className="text-xs font-semibold text-gray-700 dark:text-gray-300 mb-3">
+              {isEditing ? 'Edit Unit' : 'Basic Information'}
+            </h3>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-x-4 gap-y-2">
+              <FormRow label="Name" required error={formErrors.name} labelWidth="w-32">
                 <input
                   type="text"
                   placeholder="Enter unit name"
                   value={formData.name}
                   onChange={e => setFormData({ ...formData, name: e.target.value })}
-                  className={`w-full px-2 py-1.5 text-sm border rounded-sm focus:outline-none focus:ring-1 focus:ring-indigo-500 dark:focus:ring-indigo-400 focus:border-transparent dark:bg-gray-700 dark:text-gray-100 ${formErrors.name ? 'border-red-500' : 'border-gray-300 dark:border-gray-600'
-                    }`}
+                  className={inputCls(!!formErrors.name)}
                   required
                 />
-                {formErrors.name && <p className="text-red-600 text-xs mt-1">{formErrors.name}</p>}
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-0.5">
-                  Short Name
-                </label>
+              </FormRow>
+              <FormRow label="Short Name" required error={formErrors.short_name} labelWidth="w-32">
                 <input
                   type="text"
                   placeholder="e.g., kg, pcs, liter"
                   value={formData.short_name}
                   onChange={e => setFormData({ ...formData, short_name: e.target.value })}
-                  className={`w-full px-2 py-1.5 text-sm border rounded-sm focus:outline-none focus:ring-1 focus:ring-indigo-500 dark:focus:ring-indigo-400 focus:border-transparent dark:bg-gray-700 dark:text-gray-100 ${formErrors.short_name
-                      ? 'border-red-500'
-                      : 'border-gray-300 dark:border-gray-600'
-                    }`}
+                  className={inputCls(!!formErrors.short_name)}
                   required
                 />
-                {formErrors.short_name && (
-                  <p className="text-red-600 text-xs mt-1">{formErrors.short_name}</p>
-                )}
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-0.5">
-                  Status
-                </label>
+              </FormRow>
+              <FormRow label="Status" labelWidth="w-32" error={formErrors.is_active}>
                 <select
                   value={formData.is_active ? 'active' : 'inactive'}
                   onChange={e =>
                     setFormData({ ...formData, is_active: e.target.value === 'active' })
                   }
-                  className="w-full px-2 py-1.5 text-sm border border-gray-300 dark:border-gray-600 rounded-sm focus:outline-none focus:ring-1 focus:ring-indigo-500 dark:focus:ring-indigo-400 focus:border-transparent dark:bg-gray-700 dark:text-gray-100"
+                  className={inputCls(!!formErrors.is_active)}
                 >
                   <option value="active">Active</option>
                   <option value="inactive">Inactive</option>
                 </select>
-              </div>
+              </FormRow>
             </div>
-            <div className="flex gap-2 md:col-span-2 mt-1.5">
-              <button
-                type="submit"
-                className="flex items-center justify-center gap-2 px-5 py-1.5 text-sm bg-indigo-600 hover:bg-indigo-700 disabled:bg-gray-400 text-white rounded-sm transition-colors cursor-pointer"
-              >
-                <GiSave className="w-4 h-4" />
-                {isEditing ? 'Update Unit' : 'Save Unit'}
-              </button>
-              <button
-                type="button"
-                onClick={() => setShowForm(false)}
-                className="px-3 py-1.5 bg-gray-600 text-white text-sm font-medium rounded-sm hover:bg-gray-700 transition-colors flex items-center gap-2 cursor-pointer"
-              >
-                <X className="w-4 h-4" />
-                Cancel
-              </button>
-            </div>
-          </form>
-        </div>
+          </div>
+          <div className="flex justify-end gap-2">
+            <button
+              type="button"
+              onClick={() => setShowForm(false)}
+              className="px-3 py-1.5 text-xs rounded border border-gray-300 dark:border-gray-600 text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700"
+            >
+              Cancel
+            </button>
+            <button
+              type="submit"
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs bg-indigo-600 hover:bg-indigo-700 text-white rounded"
+            >
+              <GiSave className="w-3.5 h-3.5" />
+              {isEditing ? 'Update Unit' : 'Create Unit'}
+            </button>
+          </div>
+        </form>
       )}
 
       {/* DataTable */}
@@ -331,6 +316,21 @@ export default function UnitsPage() {
         enableSearch={true}
         searchPlaceholder="Search by unit name, short name..."
       />
+    </div>
+  );
+}
+
+function FormRow({ label, required, error, children, labelWidth = 'w-32', className = '' }: { label: string; required?: boolean; error?: string | null; children: React.ReactNode; labelWidth?: string; className?: string }) {
+  const errorMl = 'ml-[8.5rem]';
+  return (
+    <div className={className}>
+      <div className="flex items-center gap-1.5">
+        <label className={`${labelWidth} shrink-0 text-[11px] font-medium text-gray-600 dark:text-gray-400 text-right`}>
+          {label}{required && <span className="text-red-500">*</span>}:
+        </label>
+        <div className="flex-1 min-w-0">{children}</div>
+      </div>
+      {error && <p className={`text-[10px] text-red-500 mt-0.5 ${errorMl}`}>{error}</p>}
     </div>
   );
 }

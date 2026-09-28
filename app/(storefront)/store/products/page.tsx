@@ -220,11 +220,11 @@ export default function AllProductsPage() {
           {/* Main */}
           <div>
             {/* Toolbar */}
-            <div className="mb-5 flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-gray-200 bg-white p-3 dark:border-gray-800 dark:bg-gray-900">
+            <div className="mb-5 flex flex-wrap items-center justify-between gap-3 rounded-sm border border-gray-200 bg-white p-3 dark:border-gray-800 dark:bg-gray-900">
               <div className="flex items-center gap-3">
                 <button
                   onClick={() => setFilterOpen(true)}
-                  className="inline-flex items-center gap-2 rounded-full border border-gray-300 px-4 py-2 text-sm font-semibold text-gray-700 transition-colors hover:bg-gray-50 lg:hidden dark:border-gray-700 dark:text-gray-300"
+                  className="inline-flex items-center gap-2 rounded-sm border border-gray-300 px-4 py-2 text-sm font-semibold text-gray-700 transition-colors hover:bg-gray-50 lg:hidden dark:border-gray-700 dark:text-gray-300"
                 >
                   <SlidersHorizontal className="h-4 w-4" />
                   Filters
@@ -240,18 +240,18 @@ export default function AllProductsPage() {
               </div>
 
               <div className="flex items-center gap-2">
-                <div className="hidden items-center rounded-lg border border-gray-200 p-0.5 dark:border-gray-700 sm:flex">
+                <div className="hidden items-center rounded-sm border border-gray-200 p-0.5 dark:border-gray-700 sm:flex">
                   <button
                     onClick={() => setView('grid')}
                     aria-label="Grid view"
-                    className={`rounded-md p-1.5 transition-colors ${view === 'grid' ? 'bg-brand-600 text-white' : 'text-gray-500 hover:text-gray-900 dark:hover:text-gray-200'}`}
+                    className={`rounded-sm p-1.5 transition-colors ${view === 'grid' ? 'bg-brand-600 text-white' : 'text-gray-500 hover:text-gray-900 dark:hover:text-gray-200'}`}
                   >
                     <FiGrid className="h-4 w-4" />
                   </button>
                   <button
                     onClick={() => setView('list')}
                     aria-label="List view"
-                    className={`rounded-md p-1.5 transition-colors ${view === 'list' ? 'bg-brand-600 text-white' : 'text-gray-500 hover:text-gray-900 dark:hover:text-gray-200'}`}
+                    className={`rounded-sm p-1.5 transition-colors ${view === 'list' ? 'bg-brand-600 text-white' : 'text-gray-500 hover:text-gray-900 dark:hover:text-gray-200'}`}
                   >
                     <IoListSharp className="h-4 w-4" />
                   </button>
@@ -260,7 +260,7 @@ export default function AllProductsPage() {
                   <select
                     value={sort}
                     onChange={e => setSort(e.target.value as any)}
-                    className="appearance-none rounded-lg border border-gray-200 bg-white pl-3 pr-8 py-2 text-sm font-medium text-gray-700 focus:border-brand-500 focus:outline-none dark:border-gray-700 dark:bg-gray-900 dark:text-gray-200"
+                    className="appearance-none rounded-sm border border-gray-200 bg-white pl-3 pr-8 py-2 text-sm font-medium text-gray-700 focus:border-brand-500 focus:outline-none dark:border-gray-700 dark:bg-gray-900 dark:text-gray-200"
                   >
                     {SORTS.map(s => (
                       <option key={s.id} value={s.id}>{s.label}</option>
@@ -280,7 +280,7 @@ export default function AllProductsPage() {
                     <button
                       key={id}
                       onClick={() => toggle(selectedCats, setSelectedCats, id)}
-                      className="inline-flex items-center gap-1 rounded-full bg-brand-50 px-3 py-1.5 text-xs font-semibold text-brand-700 dark:bg-brand-950/40 dark:text-brand-300"
+                      className="inline-flex items-center gap-1 rounded-sm bg-brand-50 px-3 py-1.5 text-xs font-semibold text-brand-700 dark:bg-brand-950/40 dark:text-brand-300"
                     >
                       {c?.name}
                       <X className="h-3 w-3" />
@@ -293,7 +293,7 @@ export default function AllProductsPage() {
                     <button
                       key={id}
                       onClick={() => toggle(selectedBrands, setSelectedBrands, id)}
-                      className="inline-flex items-center gap-1 rounded-full bg-brand-50 px-3 py-1.5 text-xs font-semibold text-brand-700 dark:bg-brand-950/40 dark:text-brand-300"
+                      className="inline-flex items-center gap-1 rounded-sm bg-brand-50 px-3 py-1.5 text-xs font-semibold text-brand-700 dark:bg-brand-950/40 dark:text-brand-300"
                     >
                       {b?.name}
                       <X className="h-3 w-3" />
@@ -303,7 +303,7 @@ export default function AllProductsPage() {
                 {priceStep !== 'all' && (
                   <button
                     onClick={() => setPriceStep('all')}
-                    className="inline-flex items-center gap-1 rounded-full bg-brand-50 px-3 py-1.5 text-xs font-semibold text-brand-700 dark:bg-brand-950/40 dark:text-brand-300"
+                    className="inline-flex items-center gap-1 rounded-sm bg-brand-50 px-3 py-1.5 text-xs font-semibold text-brand-700 dark:bg-brand-950/40 dark:text-brand-300"
                   >
                     {PRICE_STEPS.find(s => s.id === priceStep)?.label}
                     <X className="h-3 w-3" />
@@ -312,7 +312,7 @@ export default function AllProductsPage() {
                 {minRating > 0 && (
                   <button
                     onClick={() => setMinRating(0)}
-                    className="inline-flex items-center gap-1 rounded-full bg-brand-50 px-3 py-1.5 text-xs font-semibold text-brand-700 dark:bg-brand-950/40 dark:text-brand-300"
+                    className="inline-flex items-center gap-1 rounded-sm bg-brand-50 px-3 py-1.5 text-xs font-semibold text-brand-700 dark:bg-brand-950/40 dark:text-brand-300"
                   >
                     {minRating}★ & up
                     <X className="h-3 w-3" />
@@ -321,7 +321,7 @@ export default function AllProductsPage() {
                 {inStockOnly && (
                   <button
                     onClick={() => setInStockOnly(false)}
-                    className="inline-flex items-center gap-1 rounded-full bg-brand-50 px-3 py-1.5 text-xs font-semibold text-brand-700 dark:bg-brand-950/40 dark:text-brand-300"
+                    className="inline-flex items-center gap-1 rounded-sm bg-brand-50 px-3 py-1.5 text-xs font-semibold text-brand-700 dark:bg-brand-950/40 dark:text-brand-300"
                   >
                     In stock only
                     <X className="h-3 w-3" />
@@ -338,7 +338,7 @@ export default function AllProductsPage() {
                 ))}
               </div>
             ) : filtered.length === 0 ? (
-              <div className="rounded-2xl border border-dashed border-gray-300 bg-white py-16 text-center dark:border-gray-700 dark:bg-gray-900">
+              <div className="rounded-sm border border-dashed border-gray-300 bg-white py-16 text-center dark:border-gray-700 dark:bg-gray-900">
                 <p className="text-base font-bold text-gray-900 dark:text-gray-100">
                   No products match your filters
                 </p>
@@ -348,7 +348,7 @@ export default function AllProductsPage() {
                 {activeFilterCount > 0 && (
                   <button
                     onClick={clearAll}
-                    className="mt-6 inline-flex rounded-full bg-brand-600 px-6 py-2.5 text-sm font-bold text-white hover:bg-brand-700"
+                    className="mt-6 inline-flex rounded-sm bg-brand-600 px-6 py-2.5 text-sm font-bold text-white hover:bg-brand-700"
                   >
                     Clear all filters
                   </button>
@@ -366,7 +366,7 @@ export default function AllProductsPage() {
                     <button
                       onClick={grid.loadMore}
                       disabled={grid.loadingMore}
-                      className="inline-flex items-center gap-2 rounded-full border border-gray-300 bg-white px-8 py-3 text-sm font-bold text-gray-700 transition-all hover:border-brand-400 hover:text-brand-600 disabled:cursor-not-allowed disabled:opacity-60 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-300"
+                      className="inline-flex items-center gap-2 rounded-sm border border-gray-300 bg-white px-8 py-3 text-sm font-bold text-gray-700 transition-all hover:border-brand-400 hover:text-brand-600 disabled:cursor-not-allowed disabled:opacity-60 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-300"
                     >
                       {grid.loadingMore ? 'Loading…' : `Load more (${totalProducts - products.length} remaining)`}
                       <ChevronDown className="h-4 w-4" />

@@ -88,6 +88,9 @@ export default function CategoriesPage() {
   >([]);
   const [isLoadingEdit, setIsLoadingEdit] = useState(false);
 
+  const inputCls = (hasError?: boolean) =>
+    `w-full px-2.5 py-1 text-xs bg-white dark:bg-gray-700 border ${hasError ? 'border-red-500' : 'border-gray-300 dark:border-gray-600'} rounded text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-1 focus:ring-indigo-500`;
+
   const handleExportExcel = async () => {
     try {
       const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL;
@@ -677,16 +680,18 @@ export default function CategoriesPage() {
 
       {/* Filters */}
       {isSuperAdmin && (
-        <div className="bg-white dark:bg-gray-800 rounded-md shadow-sm border border-gray-200 dark:border-gray-700 p-1">
-          <div className="flex items-center justify-between">
-            <div className="flex gap-3">
-              <BusinessTypeSelect
-                value={businessTypeFilterId}
-                onChange={(id) => setBusinessTypeFilterId(id)}
-                placeholder="Filter by business type"
-                isClearable
-              />
-            </div>
+        <div className="bg-white dark:bg-gray-800 rounded-md shadow-sm border border-gray-200 dark:border-gray-700 px-3 py-2">
+          {/* Business Type Filter — fixed width, compact look like brands page */}
+          <div className="w-[260px]">
+            <label className="block text-[11px] font-medium text-gray-600 dark:text-gray-400 mb-1">Business Type</label>
+            <BusinessTypeSelect
+              value={businessTypeFilterId}
+              onChange={(id) => setBusinessTypeFilterId(id)}
+              placeholder="Filter by business type"
+              isClearable
+              className="w-full"
+              compact
+            />
           </div>
         </div>
       )}
@@ -850,37 +855,29 @@ export default function CategoriesPage() {
         </div>
       )}
 
-      {/* Add/Edit Category Form */}
+      {/* Add/Edit Category Form — styled like product add page */}
       {showForm && (
-        <div className="bg-white dark:bg-gray-800 rounded-md shadow-sm border border-gray-200 dark:border-gray-700 p-1.5 mb-1">
-          <h2 className="text-lg font-semibold mb-1.5 text-gray-900 dark:text-gray-100">
-            {isEditing ? 'Edit Category' : 'Add Category'}
-            {isEditing && isLoadingEdit && (
-              <span className="ml-2 text-xs font-normal text-gray-500">Loading fresh data…</span>
-            )}
-          </h2>
-          <form onSubmit={handleFormSubmit} className="grid grid-cols-1 md:grid-cols-2 gap-1.5">
-            <div className="md:col-span-2 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-1">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-0.5">
-                  Name
-                </label>
+        <form onSubmit={handleFormSubmit} className="space-y-3" autoComplete="off">
+          <div className="bg-white dark:bg-gray-800 rounded-md shadow-sm border border-gray-200 dark:border-gray-700 p-3">
+            <h3 className="text-xs font-semibold text-gray-700 dark:text-gray-300 mb-3">
+              {isEditing ? 'Edit Category' : 'Basic Information'}
+              {isEditing && isLoadingEdit && (
+                <span className="ml-2 font-normal text-gray-500">Loading fresh data…</span>
+              )}
+            </h3>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-x-4 gap-y-2">
+              <FormRow label="Name" required error={formErrors.name} labelWidth="w-32">
                 <input
                   type="text"
                   placeholder="Enter category name"
                   value={formData.name}
                   onChange={e => { setFormData({ ...formData, name: e.target.value }); clearFieldError('name'); }}
-                  className={`w-full px-2 py-1.25 text-sm border rounded-sm focus:outline-none focus:ring-1 focus:ring-blue-500 dark:focus:ring-blue-400 focus:border-transparent dark:bg-gray-700 dark:text-gray-100 ${formErrors.name ? 'border-red-500' : 'border-gray-300 dark:border-gray-600'
-                    }`}
+                  className={inputCls(!!formErrors.name)}
                   required
                 />
-                {formErrors.name && <p className="text-red-600 text-xs mt-1">{formErrors.name}</p>}
-              </div>
+              </FormRow>
               {isSuperAdmin && (
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-0.5">
-                    Business Types
-                  </label>
+                <FormRow label="Business Types" error={formErrors.business_type_ids} labelWidth="w-32">
                   <BusinessTypeMultiSelect
                     value={formData.business_type_ids}
                     onChange={(ids) => {
@@ -890,15 +887,9 @@ export default function CategoriesPage() {
                     placeholder="Select business types"
                     isInvalid={!!formErrors.business_type_ids}
                   />
-                  {formErrors.business_type_ids && (
-                    <p className="text-red-600 text-xs mt-1">{formErrors.business_type_ids}</p>
-                  )}
-                </div>
+                </FormRow>
               )}
-              <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-0.5">
-                  Parent Category
-                </label>
+              <FormRow label="Parent Category" error={formErrors.parent_id} labelWidth="w-32">
                 <CustomSelect
                   value={
                     formData.parent_id
@@ -916,39 +907,27 @@ export default function CategoriesPage() {
                   loadOptions={loadParentCategoryOptions}
                   defaultOptions={defaultParentOptions}
                   placeholder="Select parent (optional)"
-                  className="text-sm"
+                  className="w-full"
                   isClearable
                   isInvalid={!!formErrors.parent_id}
+                  compact
                 />
-                {formErrors.parent_id && (
-                  <p className="text-red-600 text-xs mt-1">{formErrors.parent_id}</p>
-                )}
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-0.5">
-                  Status
-                </label>
+              </FormRow>
+              <FormRow label="Status" error={formErrors.is_active} labelWidth="w-32">
                 <select
                   value={formData.is_active ? 'active' : 'inactive'}
                   onChange={e => {
                     setFormData({ ...formData, is_active: e.target.value === 'active' });
                     clearFieldError('is_active');
                   }}
-                  className={`w-full px-2 py-1.25 text-sm border rounded-sm focus:outline-none focus:ring-1 focus:ring-blue-500 dark:focus:ring-blue-400 focus:border-transparent dark:bg-gray-700 dark:text-gray-100 ${formErrors.is_active ? 'border-red-500' : 'border-gray-300 dark:border-gray-600'
-                    }`}
+                  className={inputCls(!!formErrors.is_active)}
                 >
                   <option value="active">Active</option>
                   <option value="inactive">Inactive</option>
                 </select>
-                {formErrors.is_active && (
-                  <p className="text-red-600 text-xs mt-1">{formErrors.is_active}</p>
-                )}
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-0.5">
-                  Show on Storefront
-                </label>
-                <div className="flex h-7.5 items-center gap-2">
+              </FormRow>
+              <FormRow label="Storefront" error={formErrors.storefront_active} labelWidth="w-32">
+                <div className="flex min-h-7 items-center gap-2">
                   <ToggleSwitch
                     checked={!!formData.storefront_active}
                     onChange={v => {
@@ -956,49 +935,39 @@ export default function CategoriesPage() {
                       clearFieldError('storefront_active');
                     }}
                   />
-                  <span className="text-xs text-gray-500 dark:text-gray-400">
+                  <span className="text-[11px] text-gray-500 dark:text-gray-400">
                     {formData.storefront_active ? 'Shown in Shop by Category' : 'Hidden from Shop by Category'}
                   </span>
                 </div>
-              </div>
-            </div>
-            <div className="md:col-span-2 grid grid-cols-1 md:grid-cols-2 gap-1">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-0.5">
-                  Description
-                </label>
+              </FormRow>
+              <FormRow label="Description" error={formErrors.description} labelWidth="w-32" className="md:col-span-2">
                 <textarea
                   placeholder="Describe the category"
                   value={formData.description}
                   onChange={e => { setFormData({ ...formData, description: e.target.value }); clearFieldError('description'); }}
-                  className={`w-full px-2 py-1.25 text-sm border rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500 dark:focus:ring-blue-400 focus:border-transparent dark:bg-gray-700 dark:text-gray-100 h-9 resize-none ${formErrors.description ? 'border-red-500' : 'border-gray-300 dark:border-gray-600'
-                    }`}
-                  rows={3}
+                  rows={2}
+                  className={`${inputCls(!!formErrors.description)} resize-none`}
                 />
-                {formErrors.description && (
-                  <p className="text-red-600 text-xs mt-1">{formErrors.description}</p>
-                )}
-              </div>
+              </FormRow>
             </div>
-            <div className="flex gap-2 md:col-span-2 mt-1.5">
-              <button
-                type="submit"
-                className="flex items-center justify-center gap-2 px-5 py-1.5 text-sm bg-indigo-600 hover:bg-indigo-700 disabled:bg-gray-400 text-white rounded-sm transition-colors cursor-pointer"
-              >
-                <GiSave className="w-4 h-4" />
-                {isEditing ? 'Update Category' : 'Save Category'}
-              </button>
-              <button
-                type="button"
-                onClick={() => setShowForm(false)}
-                className="px-3 py-1.5 bg-gray-600 text-white text-sm font-medium rounded-sm hover:bg-gray-700 transition-colors flex items-center gap-2 cursor-pointer"
-              >
-                <X className="w-4 h-4" />
-                Cancel
-              </button>
-            </div>
-          </form>
-        </div>
+          </div>
+          <div className="flex justify-end gap-2">
+            <button
+              type="button"
+              onClick={() => setShowForm(false)}
+              className="px-3 py-1.5 text-xs rounded border border-gray-300 dark:border-gray-600 text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700"
+            >
+              Cancel
+            </button>
+            <button
+              type="submit"
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs bg-indigo-600 hover:bg-indigo-700 text-white rounded"
+            >
+              <GiSave className="w-3.5 h-3.5" />
+              {isEditing ? 'Update Category' : 'Create Category'}
+            </button>
+          </div>
+        </form>
       )}
 
       {/* DataTable */}
@@ -1011,6 +980,21 @@ export default function CategoriesPage() {
         searchPlaceholder="Search by category name, description..."
         filterParams={{ business_type_id: effectiveBusinessTypeId }}
       />
+    </div>
+  );
+}
+
+function FormRow({ label, required, error, children, labelWidth = 'w-32', className = '' }: { label: string; required?: boolean; error?: string | null; children: React.ReactNode; labelWidth?: string; className?: string }) {
+  const errorMl = 'ml-[8.5rem]';
+  return (
+    <div className={className}>
+      <div className="flex items-center gap-1.5">
+        <label className={`${labelWidth} shrink-0 text-[11px] font-medium text-gray-600 dark:text-gray-400 text-right`}>
+          {label}{required && <span className="text-red-500">*</span>}:
+        </label>
+        <div className="flex-1 min-w-0">{children}</div>
+      </div>
+      {error && <p className={`text-[10px] text-red-500 mt-0.5 ${errorMl}`}>{error}</p>}
     </div>
   );
 }

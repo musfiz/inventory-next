@@ -137,7 +137,7 @@ export default function GroceryCartDrawer() {
         {/* Header */}
         <div className="flex shrink-0 items-center justify-between border-b border-gray-200 px-4 py-2.5 dark:border-gray-800">
           <div className="flex items-center gap-2">
-            <div className="flex h-7 w-7 items-center justify-center rounded-md bg-green-50 text-green-600 dark:bg-green-950/50">
+            <div className="flex h-7 w-7 items-center justify-center rounded-sm bg-green-50 text-green-600 dark:bg-green-950/50">
               <GiPaperBagOpen className="h-4 w-4" />
             </div>
             <div>
@@ -151,7 +151,7 @@ export default function GroceryCartDrawer() {
           </div>
           <button
             onClick={closeDrawer}
-            className="rounded-full p-1.5 text-gray-500 transition-colors hover:bg-gray-100 dark:hover:bg-gray-800"
+            className="rounded-sm p-1.5 text-gray-500 transition-colors hover:bg-gray-100 dark:hover:bg-gray-800"
             aria-label="Close cart"
           >
             <X className="h-4 w-4" />
@@ -173,7 +173,7 @@ export default function GroceryCartDrawer() {
                   key={slot.id}
                   onClick={() => setSelectedSlot(slot.id)}
                   disabled={!slot.available}
-                  className={`rounded-lg border px-3 py-1.5 text-xs font-semibold transition-all ${
+                  className={`rounded-sm border px-3 py-1.5 text-xs font-semibold transition-all ${
                     selectedSlot === slot.id
                       ? 'border-green-500 bg-green-600 text-white'
                       : 'border-gray-200 bg-white text-gray-700 hover:border-green-300 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-300'
@@ -193,9 +193,9 @@ export default function GroceryCartDrawer() {
               Add {formatMoney(STORE_INFO.freeShippingThreshold - subtotal)}{' '}
               more for FREE delivery 🚚
             </p>
-            <div className="mt-1 h-1 overflow-hidden rounded-full bg-orange-200 dark:bg-orange-900/40">
+            <div className="mt-1 h-1 overflow-hidden rounded-sm bg-orange-200 dark:bg-orange-900/40">
               <div
-                className="h-full rounded-full bg-orange-500 transition-all duration-500"
+                className="h-full rounded-sm bg-orange-500 transition-all duration-500"
                 style={{
                   width: `${Math.min(
                     100,
@@ -211,7 +211,7 @@ export default function GroceryCartDrawer() {
         <div className="flex-1 overflow-y-auto scrollbar-thin">
           {items.length === 0 ? (
             <div className="flex h-full flex-col items-center justify-center px-6 py-12 text-center">
-              <div className="mb-4 flex h-20 w-20 items-center justify-center rounded-full bg-gray-100 dark:bg-gray-800">
+              <div className="mb-4 flex h-20 w-20 items-center justify-center rounded-sm bg-gray-100 dark:bg-gray-800">
                 <GiPaperBagOpen className="h-10 w-10 text-gray-400" />
               </div>
               <h3 className="text-lg font-bold text-gray-900 dark:text-gray-100">
@@ -223,7 +223,7 @@ export default function GroceryCartDrawer() {
               <Link
                 href="/store/products"
                 onClick={closeDrawer}
-                className="mt-6 inline-flex items-center gap-2 rounded-lg bg-green-600 px-6 py-3 text-sm font-bold text-white transition-colors hover:bg-green-700"
+                className="mt-6 inline-flex items-center gap-2 rounded-sm bg-green-600 px-6 py-3 text-sm font-bold text-white transition-colors hover:bg-green-700"
               >
                 Start shopping
                 <ArrowRight className="h-4 w-4" />
@@ -239,7 +239,7 @@ export default function GroceryCartDrawer() {
                   <Link
                     href={`/store/products/${item.slug}`}
                     onClick={closeDrawer}
-                    className="relative h-12 w-12 shrink-0 overflow-hidden rounded-lg bg-gray-100 dark:bg-gray-800"
+                    className="relative h-12 w-12 shrink-0 overflow-hidden rounded-sm bg-gray-100 dark:bg-gray-800"
                   >
                     {item.image ? (
                       <Image
@@ -280,7 +280,7 @@ export default function GroceryCartDrawer() {
                       </Link>
                       <button
                         onClick={() => removeItem(item.variationId)}
-                        className="rounded-md p-0.5 text-gray-400 transition-colors hover:bg-red-50 hover:text-red-600 dark:hover:bg-red-950/30"
+                        className="rounded-sm p-0.5 text-gray-400 transition-colors hover:bg-red-50 hover:text-red-600 dark:hover:bg-red-950/30"
                         aria-label="Remove"
                       >
                         <Trash2 className="h-3.5 w-3.5" />
@@ -288,7 +288,7 @@ export default function GroceryCartDrawer() {
                     </div>
 
                     <div className="mt-auto flex items-center justify-between pt-1">
-                      <div className="inline-flex items-center rounded-md border border-gray-200 dark:border-gray-700">
+                      <div className="inline-flex items-center rounded-sm border border-gray-200 dark:border-gray-700">
                         <button
                           onClick={() =>
                             updateQuantity(item.variationId, item.quantity - 1)
@@ -330,7 +330,7 @@ export default function GroceryCartDrawer() {
           <div className="shrink-0 border-t border-gray-200 bg-gray-50 px-4 py-2.5 dark:border-gray-800 dark:bg-gray-900/50">
             {/* Coupon */}
             {couponCode ? (
-              <div className="mb-2 flex items-center justify-between rounded-lg border border-green-200 bg-green-50 px-3 py-2 dark:border-green-800 dark:bg-green-950/30">
+              <div className="mb-2 flex items-center justify-between rounded-sm border border-green-200 bg-green-50 px-3 py-2 dark:border-green-800 dark:bg-green-950/30">
                 <span className="flex items-center gap-2 text-sm font-semibold text-green-700 dark:text-green-400">
                   <Tag className="h-4 w-4" />
                   {couponCode} applied · −{formatMoney(couponDiscount)}
@@ -360,7 +360,7 @@ export default function GroceryCartDrawer() {
                         if (e.key === 'Escape') cancelCouponInput();
                       }}
                       placeholder="Enter coupon code"
-                      className={`w-full rounded-lg border bg-white py-2 pl-9 pr-3 text-sm font-medium uppercase tracking-wide text-gray-900 placeholder:normal-case placeholder:tracking-normal placeholder:text-gray-400 focus:outline-none focus:ring-2 dark:bg-gray-900 dark:text-gray-100 ${
+                      className={`w-full rounded-sm border bg-white py-2 pl-9 pr-3 text-sm font-medium uppercase tracking-wide text-gray-900 placeholder:normal-case placeholder:tracking-normal placeholder:text-gray-400 focus:outline-none focus:ring-2 dark:bg-gray-900 dark:text-gray-100 ${
                         couponError
                           ? 'border-red-300 focus:border-red-400 focus:ring-red-500/20'
                           : 'border-gray-300 focus:border-green-400 focus:ring-green-500/20 dark:border-gray-700'
@@ -370,13 +370,13 @@ export default function GroceryCartDrawer() {
                   <button
                     onClick={handleApplyCoupon}
                     disabled={applyingCoupon || !couponInput.trim()}
-                    className="shrink-0 rounded-lg bg-gray-900 px-4 text-sm font-bold text-white transition-colors hover:bg-gray-800 disabled:cursor-not-allowed disabled:opacity-50 dark:bg-white dark:text-gray-900 dark:hover:bg-gray-100"
+                    className="shrink-0 rounded-sm bg-gray-900 px-4 text-sm font-bold text-white transition-colors hover:bg-gray-800 disabled:cursor-not-allowed disabled:opacity-50 dark:bg-white dark:text-gray-900 dark:hover:bg-gray-100"
                   >
                     {applyingCoupon ? 'Applying…' : 'Apply'}
                   </button>
                   <button
                     onClick={cancelCouponInput}
-                    className="shrink-0 rounded-lg border border-gray-300 px-3 text-sm font-medium text-gray-500 transition-colors hover:bg-gray-100 dark:border-gray-700 dark:text-gray-400 dark:hover:bg-gray-800"
+                    className="shrink-0 rounded-sm border border-gray-300 px-3 text-sm font-medium text-gray-500 transition-colors hover:bg-gray-100 dark:border-gray-700 dark:text-gray-400 dark:hover:bg-gray-800"
                     aria-label="Cancel"
                   >
                     <X className="h-4 w-4" />
@@ -391,7 +391,7 @@ export default function GroceryCartDrawer() {
             ) : (
               <button
                 onClick={() => setShowCouponInput(true)}
-                className="mb-2 flex w-full items-center justify-center gap-1.5 rounded-lg border border-dashed border-gray-300 py-1 text-sm font-medium text-gray-600 transition-colors hover:border-green-400 hover:text-green-600 dark:border-gray-700 dark:text-gray-400"
+                className="mb-2 flex w-full items-center justify-center gap-1.5 rounded-sm border border-dashed border-gray-300 py-1 text-sm font-medium text-gray-600 transition-colors hover:border-green-400 hover:text-green-600 dark:border-gray-700 dark:text-gray-400"
               >
                 <Tag className="h-4 w-4" />
                 Have a coupon code?
@@ -409,7 +409,7 @@ export default function GroceryCartDrawer() {
                 value={deliveryNote}
                 onChange={e => setDeliveryNote(e.target.value)}
                 placeholder="e.g., Leave at door, ring bell"
-                className="w-full rounded-lg border border-gray-200 bg-white px-3 py-1.5 text-xs text-gray-900 placeholder:text-gray-400 focus:border-green-400 focus:outline-none focus:ring-2 focus:ring-green-500/20 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100"
+                className="w-full rounded-sm border border-gray-200 bg-white px-3 py-1.5 text-xs text-gray-900 placeholder:text-gray-400 focus:border-green-400 focus:outline-none focus:ring-2 focus:ring-green-500/20 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100"
               />
             </div>
 
@@ -459,7 +459,7 @@ export default function GroceryCartDrawer() {
                 </div>
               )}
             </dl>
-            <div className="mt-2 flex items-center justify-between rounded-lg bg-green-50 px-3 py-2 ring-1 ring-green-100 dark:bg-green-950/40 dark:ring-green-900/50">
+            <div className="mt-2 flex items-center justify-between rounded-sm bg-green-50 px-3 py-2 ring-1 ring-green-100 dark:bg-green-950/40 dark:ring-green-900/50">
               <span className="text-sm font-bold text-green-700 dark:text-green-300">
                 Total
               </span>
@@ -472,14 +472,14 @@ export default function GroceryCartDrawer() {
               <Link
                 href="/store/cart"
                 onClick={closeDrawer}
-                className="rounded-lg border border-gray-300 bg-white px-4 py-2 text-center text-sm font-semibold text-gray-700 transition-colors hover:bg-gray-50 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-200"
+                className="rounded-sm border border-gray-300 bg-white px-4 py-2 text-center text-sm font-semibold text-gray-700 transition-colors hover:bg-gray-50 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-200"
               >
                 View Cart
               </Link>
               <Link
                 href="/store/checkout"
                 onClick={closeDrawer}
-                className="inline-flex items-center justify-center gap-1.5 rounded-lg bg-green-600 px-4 py-2 text-sm font-bold text-white transition-colors hover:bg-green-700"
+                className="inline-flex items-center justify-center gap-1.5 rounded-sm bg-green-600 px-4 py-2 text-sm font-bold text-white transition-colors hover:bg-green-700"
               >
                 Checkout
                 <ArrowRight className="h-4 w-4" />

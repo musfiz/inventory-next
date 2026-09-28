@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
-import { ArrowLeft, Barcode, Printer, Settings, Store, Monitor, CheckSquare } from 'lucide-react';
+import { ArrowLeft, Barcode, Loader2, Monitor, Printer, Settings, Store } from 'lucide-react';
 import { notify } from '@/lib/notifications';
 import { tenantService } from '@/services/tenantService';
 import { GiSave } from 'react-icons/gi';
@@ -129,20 +129,10 @@ export default function TenantSettingsPage({ tenantId: propTenantId }: { tenantI
   };
 
   const getFieldError = (fieldName: string) => errors[fieldName]?.[0] ?? null;
+  const hasFieldError = (fieldName: string) => !!errors[fieldName];
 
-  const getInputClassName = (fieldName: string, base: string) => {
-    return errors[fieldName]
-      ? base
-        .replace(
-          'border-gray-300 dark:border-gray-600',
-          'border-red-500'
-        )
-        .replace(
-          'focus:border-indigo-500 dark:focus:border-indigo-400',
-          'focus:border-red-500'
-        )
-      : base;
-  };
+  const inputCls = (hasError?: boolean) =>
+    `w-full px-2.5 py-1 text-xs bg-white dark:bg-gray-700 border ${hasError ? 'border-red-500' : 'border-gray-300 dark:border-gray-600'} rounded text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-1 focus:ring-indigo-500`;
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -166,12 +156,6 @@ export default function TenantSettingsPage({ tenantId: propTenantId }: { tenantI
     }
   };
 
-  const inputBase =
-    'w-full px-2.5 py-1 text-sm bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-sm text-gray-900 dark:text-gray-100 focus:outline-none focus:border-indigo-500 dark:focus:border-indigo-400';
-
-  const labelClass =
-    'block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1.5';
-
   if (isFetching) {
     return (
       <div className="flex items-center justify-center h-40 text-sm text-gray-500 dark:text-gray-400">
@@ -183,7 +167,7 @@ export default function TenantSettingsPage({ tenantId: propTenantId }: { tenantI
   return (
     <div className="space-y-3">
       <div className="flex items-center justify-between">
-        <div className="flex items-center gap-2">
+        <h1 className="text-xl font-bold text-gray-900 dark:text-gray-100 flex items-center gap-2">
           <button
             type="button"
             onClick={() => router.push('/tenants')}
@@ -191,28 +175,22 @@ export default function TenantSettingsPage({ tenantId: propTenantId }: { tenantI
           >
             <ArrowLeft className="w-4 h-4" />
           </button>
-          <h1 className="text-base font-bold text-gray-900 dark:text-gray-100 flex items-center gap-2">
-            <Settings className="w-5 h-5 text-indigo-600 dark:text-indigo-400" />
-            Tenant Settings
-          </h1>
-        </div>
+          <Settings className="w-5 h-5 text-indigo-600 dark:text-indigo-400" />
+          Tenant Settings
+        </h1>
       </div>
 
       <form onSubmit={handleSubmit} className="space-y-3" autoComplete="off">
-        {/* Section 1: Default Printer Selection */}
-        <div className="bg-white dark:bg-gray-800 rounded-md shadow-sm border border-gray-200 dark:border-gray-700">
-          <div className="flex items-center gap-2 px-3 py-2 border-b border-gray-200 dark:border-gray-700">
-            <Printer className="w-4 h-4 text-indigo-600 dark:text-indigo-400" />
-            <h2 className="text-sm font-semibold text-gray-900 dark:text-gray-100">
-              Default Printer Selection
-            </h2>
-          </div>
-          <div className="p-3 space-y-3">
-            {/* Printer Type Radio */}
-            <div>
-              <label className={labelClass}>Printer Type</label>
-              <div className="flex gap-4 mt-1">
-                <label className="flex items-center gap-2 cursor-pointer">
+        {/* Default Printer Selection */}
+        <div className="bg-white dark:bg-gray-800 rounded-md shadow-sm border border-gray-200 dark:border-gray-700 p-3">
+          <h3 className="text-xs font-semibold text-gray-700 dark:text-gray-300 mb-3 flex items-center gap-1.5">
+            <Printer className="w-3.5 h-3.5 text-indigo-600 dark:text-indigo-400" />
+            Default Printer Selection
+          </h3>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-x-4 gap-y-2">
+            <FormRow label="Printer Type" labelWidth="w-32">
+              <div className="flex min-h-7 items-center gap-4">
+                <label className="flex items-center gap-1.5 cursor-pointer">
                   <input
                     type="radio"
                     name="default_printer_type"
@@ -223,11 +201,11 @@ export default function TenantSettingsPage({ tenantId: propTenantId }: { tenantI
                     }
                     className="accent-indigo-600 dark:accent-indigo-400"
                   />
-                  <span className="text-sm text-gray-700 dark:text-gray-300">
+                  <span className="text-xs text-gray-700 dark:text-gray-300">
                     A4 Print
                   </span>
                 </label>
-                <label className="flex items-center gap-2 cursor-pointer">
+                <label className="flex items-center gap-1.5 cursor-pointer">
                   <input
                     type="radio"
                     name="default_printer_type"
@@ -238,19 +216,17 @@ export default function TenantSettingsPage({ tenantId: propTenantId }: { tenantI
                     }
                     className="accent-indigo-600 dark:accent-indigo-400"
                   />
-                  <span className="text-sm text-gray-700 dark:text-gray-300">
+                  <span className="text-xs text-gray-700 dark:text-gray-300">
                     Thermal Print
                   </span>
                 </label>
               </div>
-            </div>
+            </FormRow>
 
-            {/* Thermal Paper Size (only when thermal selected) */}
             {formData.default_printer_type === 'thermal' && (
-              <div>
-                <label className={labelClass}>Thermal Paper Size</label>
-                <div className="flex gap-4 mt-1">
-                  <label className="flex items-center gap-2 cursor-pointer">
+              <FormRow label="Paper Size" labelWidth="w-32">
+                <div className="flex min-h-7 items-center gap-4">
+                  <label className="flex items-center gap-1.5 cursor-pointer">
                     <input
                       type="radio"
                       name="thermal_paper_size"
@@ -261,11 +237,11 @@ export default function TenantSettingsPage({ tenantId: propTenantId }: { tenantI
                       }
                       className="accent-indigo-600 dark:accent-indigo-400"
                     />
-                    <span className="text-sm text-gray-700 dark:text-gray-300">
+                    <span className="text-xs text-gray-700 dark:text-gray-300">
                       80mm
                     </span>
                   </label>
-                  <label className="flex items-center gap-2 cursor-pointer">
+                  <label className="flex items-center gap-1.5 cursor-pointer">
                     <input
                       type="radio"
                       name="thermal_paper_size"
@@ -276,372 +252,304 @@ export default function TenantSettingsPage({ tenantId: propTenantId }: { tenantI
                       }
                       className="accent-indigo-600 dark:accent-indigo-400"
                     />
-                    <span className="text-sm text-gray-700 dark:text-gray-300">
+                    <span className="text-xs text-gray-700 dark:text-gray-300">
                       53mm
                     </span>
                   </label>
                 </div>
-              </div>
+              </FormRow>
             )}
 
-            {/* Enable Checkbox */}
-            <label className="flex items-center gap-2 cursor-pointer pt-1">
-              <input
-                type="checkbox"
-                name="default_printer_enabled"
-                checked={formData.default_printer_enabled}
-                onChange={handleCheckboxChange}
-                className="rounded accent-indigo-600 dark:accent-indigo-400"
-              />
-              <span className="text-sm text-gray-700 dark:text-gray-300">
-                Enable Default Printer
-              </span>
-            </label>
+            <FormRow label="Default Printer" labelWidth="w-32">
+              <div className="flex min-h-7 items-center">
+                <label className="flex items-center gap-1.5 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    name="default_printer_enabled"
+                    checked={formData.default_printer_enabled}
+                    onChange={handleCheckboxChange}
+                    className="h-3.5 w-3.5 accent-indigo-600"
+                  />
+                  <span className="text-xs text-gray-700 dark:text-gray-300">
+                    Enable Default Printer
+                  </span>
+                </label>
+              </div>
+            </FormRow>
           </div>
         </div>
 
-        {/* Section 2: POS Settings */}
-        <div className="bg-white dark:bg-gray-800 rounded-md shadow-sm border border-gray-200 dark:border-gray-700">
-          <div className="flex items-center gap-2 px-3 py-2 border-b border-gray-200 dark:border-gray-700">
-            <Monitor className="w-4 h-4 text-indigo-600 dark:text-indigo-400" />
-            <h2 className="text-sm font-semibold text-gray-900 dark:text-gray-100">
-              POS Settings
-            </h2>
-          </div>
-          <div className="p-3">
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-              <div>
-                <label className={labelClass}>POS Type</label>
-                <select
-                  name="pos_type"
-                  value={formData.pos_type}
-                  onChange={handleInputChange}
-                  className={getInputClassName('pos_type', inputBase)}
-                >
-                  <option value="80mm">80mm</option>
-                  <option value="53mm">53mm</option>
-                </select>
-                {getFieldError('pos_type') && (
-                  <p className="mt-1 text-xs text-red-600 dark:text-red-400">
-                    {getFieldError('pos_type')}
-                  </p>
-                )}
-              </div>
+        {/* POS Settings */}
+        <div className="bg-white dark:bg-gray-800 rounded-md shadow-sm border border-gray-200 dark:border-gray-700 p-3">
+          <h3 className="text-xs font-semibold text-gray-700 dark:text-gray-300 mb-3 flex items-center gap-1.5">
+            <Monitor className="w-3.5 h-3.5 text-indigo-600 dark:text-indigo-400" />
+            POS Settings
+          </h3>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-x-4 gap-y-2">
+            <FormRow label="POS Type" error={getFieldError('pos_type')} labelWidth="w-32">
+              <select
+                name="pos_type"
+                value={formData.pos_type}
+                onChange={handleInputChange}
+                className={inputCls(hasFieldError('pos_type'))}
+              >
+                <option value="80mm">80mm</option>
+                <option value="53mm">53mm</option>
+              </select>
+            </FormRow>
 
-              <div>
-                <label className={labelClass}>Receipt Header</label>
-                <input
-                  type="text"
-                  name="pos_receipt_header"
-                  value={formData.pos_receipt_header}
-                  onChange={handleInputChange}
-                  className={getInputClassName(
-                    'pos_receipt_header',
-                    inputBase
-                  )}
-                  placeholder="Header text"
-                />
-              </div>
+            <FormRow label="Receipt Header" error={getFieldError('pos_receipt_header')} labelWidth="w-32">
+              <input
+                type="text"
+                name="pos_receipt_header"
+                value={formData.pos_receipt_header}
+                onChange={handleInputChange}
+                className={inputCls(hasFieldError('pos_receipt_header'))}
+                placeholder="Header text"
+              />
+            </FormRow>
 
-              <div>
-                <label className={labelClass}>Receipt Footer</label>
-                <input
-                  type="text"
-                  name="pos_receipt_footer"
-                  value={formData.pos_receipt_footer}
-                  onChange={handleInputChange}
-                  className={getInputClassName(
-                    'pos_receipt_footer',
-                    inputBase
-                  )}
-                  placeholder="Footer text"
-                />
-              </div>
+            <FormRow label="Receipt Footer" error={getFieldError('pos_receipt_footer')} labelWidth="w-32">
+              <input
+                type="text"
+                name="pos_receipt_footer"
+                value={formData.pos_receipt_footer}
+                onChange={handleInputChange}
+                className={inputCls(hasFieldError('pos_receipt_footer'))}
+                placeholder="Footer text"
+              />
+            </FormRow>
 
-              <div>
-                <label className={labelClass}>Logo Position</label>
-                <select
-                  name="pos_logo_position"
-                  value={formData.pos_logo_position}
-                  onChange={handleInputChange}
-                  className={getInputClassName('pos_logo_position', inputBase)}
-                >
-                  <option value="top">Top</option>
-                  <option value="bottom">Bottom</option>
-                </select>
-              </div>
+            <FormRow label="Logo Position" error={getFieldError('pos_logo_position')} labelWidth="w-32">
+              <select
+                name="pos_logo_position"
+                value={formData.pos_logo_position}
+                onChange={handleInputChange}
+                className={inputCls(hasFieldError('pos_logo_position'))}
+              >
+                <option value="top">Top</option>
+                <option value="bottom">Bottom</option>
+              </select>
+            </FormRow>
 
-              <div className="flex items-end pb-1">
-                <label className="flex items-center gap-2 cursor-pointer">
+            <FormRow label="Tax Breakdown" labelWidth="w-32">
+              <div className="flex min-h-7 items-center">
+                <label className="flex items-center gap-1.5 cursor-pointer">
                   <input
                     type="checkbox"
                     name="pos_show_tax_breakdown"
                     checked={formData.pos_show_tax_breakdown}
                     onChange={handleCheckboxChange}
-                    className="rounded accent-indigo-600 dark:accent-indigo-400"
+                    className="h-3.5 w-3.5 accent-indigo-600"
                   />
-                  <span className="text-sm text-gray-700 dark:text-gray-300">
+                  <span className="text-xs text-gray-700 dark:text-gray-300">
                     Show Tax Breakdown
                   </span>
                 </label>
               </div>
-            </div>
+            </FormRow>
           </div>
         </div>
 
-        {/* Section 3: General Settings */}
-        <div className="bg-white dark:bg-gray-800 rounded-md shadow-sm border border-gray-200 dark:border-gray-700">
-          <div className="flex items-center gap-2 px-3 py-2 border-b border-gray-200 dark:border-gray-700">
-            <Store className="w-4 h-4 text-indigo-600 dark:text-indigo-400" />
-            <h2 className="text-sm font-semibold text-gray-900 dark:text-gray-100">
-              General Settings
-            </h2>
-          </div>
-          <div className="p-3">
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-              <div>
-                <label className={labelClass}>Notification Email</label>
-                <input
-                  type="email"
-                  name="store_notification_email"
-                  value={formData.store_notification_email}
-                  onChange={handleInputChange}
-                  className={getInputClassName(
-                    'store_notification_email',
-                    inputBase
-                  )}
-                  placeholder="admin@example.com"
-                />
-                {getFieldError('store_notification_email') && (
-                  <p className="mt-1 text-xs text-red-600 dark:text-red-400">
-                    {getFieldError('store_notification_email')}
-                  </p>
-                )}
-              </div>
+        {/* General Settings */}
+        <div className="bg-white dark:bg-gray-800 rounded-md shadow-sm border border-gray-200 dark:border-gray-700 p-3">
+          <h3 className="text-xs font-semibold text-gray-700 dark:text-gray-300 mb-3 flex items-center gap-1.5">
+            <Store className="w-3.5 h-3.5 text-indigo-600 dark:text-indigo-400" />
+            General Settings
+          </h3>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-x-4 gap-y-2">
+            <FormRow label="Notification Email" error={getFieldError('store_notification_email')} labelWidth="w-32">
+              <input
+                type="email"
+                name="store_notification_email"
+                value={formData.store_notification_email}
+                onChange={handleInputChange}
+                className={inputCls(hasFieldError('store_notification_email'))}
+                placeholder="admin@example.com"
+              />
+            </FormRow>
 
-              <div>
-                <label className={labelClass}>Business Short Name</label>
-                <input
-                  type="text"
-                  name="business_short_name"
-                  value={formData.business_short_name ?? ''}
-                  onChange={handleInputChange}
-                  className={getInputClassName('business_short_name', inputBase)}
-                  placeholder="ABC"
-                  maxLength={5}
-                />
-                {getFieldError('business_short_name') && (
-                  <p className="mt-1 text-xs text-red-600 dark:text-red-400">
-                    {getFieldError('business_short_name')}
-                  </p>
-                )}
-              </div>
+            <FormRow label="Short Name" error={getFieldError('business_short_name')} labelWidth="w-32">
+              <input
+                type="text"
+                name="business_short_name"
+                value={formData.business_short_name ?? ''}
+                onChange={handleInputChange}
+                className={inputCls(hasFieldError('business_short_name'))}
+                placeholder="ABC"
+                maxLength={5}
+              />
+            </FormRow>
 
-              <div>
-                <label className={labelClass}>Logo URL</label>
-                <input
-                  type="text"
-                  name="logo_url"
-                  value={formData.logo_url}
-                  onChange={handleInputChange}
-                  className={getInputClassName('logo_url', inputBase)}
-                  placeholder="https://example.com/logo.png"
-                />
-                {getFieldError('logo_url') && (
-                  <p className="mt-1 text-xs text-red-600 dark:text-red-400">
-                    {getFieldError('logo_url')}
-                  </p>
-                )}
-              </div>
+            <FormRow label="Logo URL" error={getFieldError('logo_url')} labelWidth="w-32">
+              <input
+                type="text"
+                name="logo_url"
+                value={formData.logo_url}
+                onChange={handleInputChange}
+                className={inputCls(hasFieldError('logo_url'))}
+                placeholder="https://example.com/logo.png"
+              />
+            </FormRow>
 
-              <div>
-                <label className={labelClass}>Date Format</label>
-                <input
-                  type="text"
-                  name="store_date_format"
-                  value={formData.store_date_format}
-                  onChange={handleInputChange}
-                  className={getInputClassName('store_date_format', inputBase)}
-                  placeholder="Y-m-d"
-                />
-              </div>
+            <FormRow label="Date Format" error={getFieldError('store_date_format')} labelWidth="w-32">
+              <input
+                type="text"
+                name="store_date_format"
+                value={formData.store_date_format}
+                onChange={handleInputChange}
+                className={inputCls(hasFieldError('store_date_format'))}
+                placeholder="Y-m-d"
+              />
+            </FormRow>
 
-              <div>
-                <label className={labelClass}>Time Format</label>
-                <input
-                  type="text"
-                  name="store_time_format"
-                  value={formData.store_time_format}
-                  onChange={handleInputChange}
-                  className={getInputClassName('store_time_format', inputBase)}
-                  placeholder="H:i:s"
-                />
-              </div>
+            <FormRow label="Time Format" error={getFieldError('store_time_format')} labelWidth="w-32">
+              <input
+                type="text"
+                name="store_time_format"
+                value={formData.store_time_format}
+                onChange={handleInputChange}
+                className={inputCls(hasFieldError('store_time_format'))}
+                placeholder="H:i:s"
+              />
+            </FormRow>
 
-              <div>
-                <label className={labelClass}>Currency Position</label>
-                <select
-                  name="store_currency_position"
-                  value={formData.store_currency_position}
-                  onChange={handleInputChange}
-                  className={getInputClassName(
-                    'store_currency_position',
-                    inputBase
-                  )}
-                >
-                  <option value="before">Before (e.g. $100)</option>
-                  <option value="after">After (e.g. 100$)</option>
-                </select>
-              </div>
+            <FormRow label="Currency Position" error={getFieldError('store_currency_position')} labelWidth="w-32">
+              <select
+                name="store_currency_position"
+                value={formData.store_currency_position}
+                onChange={handleInputChange}
+                className={inputCls(hasFieldError('store_currency_position'))}
+              >
+                <option value="before">Before (e.g. $100)</option>
+                <option value="after">After (e.g. 100$)</option>
+              </select>
+            </FormRow>
 
-              <div className="flex items-end pb-1">
-                <label className="flex items-center gap-2 cursor-pointer">
+            <FormRow label="Tax Included" labelWidth="w-32">
+              <div className="flex min-h-7 items-center">
+                <label className="flex items-center gap-1.5 cursor-pointer">
                   <input
                     type="checkbox"
                     name="store_tax_included"
                     checked={formData.store_tax_included}
                     onChange={handleCheckboxChange}
-                    className="rounded accent-indigo-600 dark:accent-indigo-400"
+                    className="h-3.5 w-3.5 accent-indigo-600"
                   />
-                  <span className="text-sm text-gray-700 dark:text-gray-300">
+                  <span className="text-xs text-gray-700 dark:text-gray-300">
                     Tax Included in Prices
                   </span>
                 </label>
               </div>
-            </div>
+            </FormRow>
           </div>
         </div>
 
-        {/* Section 4: Barcode Print Settings */}
-        <div className="bg-white dark:bg-gray-800 rounded-md shadow-sm border border-gray-200 dark:border-gray-700">
-          <div className="flex items-center gap-2 px-3 py-2 border-b border-gray-200 dark:border-gray-700">
-            <Barcode className="w-4 h-4 text-indigo-600 dark:text-indigo-400" />
-            <h2 className="text-sm font-semibold text-gray-900 dark:text-gray-100">
-              Barcode Print Settings
-            </h2>
-          </div>
-          <div className="p-3">
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-              {/* Print Type */}
-              <div>
-                <label className={labelClass}>Print Type</label>
-                <select
-                  name="barcode_print_type"
-                  value={formData.barcode_print_type}
-                  onChange={handleInputChange}
-                  className={getInputClassName('barcode_print_type', inputBase)}
-                >
-                  <option value="a4">A4 Sheet</option>
-                  <option value="thermal">Thermal</option>
-                </select>
-                {getFieldError('barcode_print_type') && (
-                  <p className="mt-1 text-xs text-red-600 dark:text-red-400">
-                    {getFieldError('barcode_print_type')}
-                  </p>
-                )}
-              </div>
+        {/* Barcode Print Settings */}
+        <div className="bg-white dark:bg-gray-800 rounded-md shadow-sm border border-gray-200 dark:border-gray-700 p-3">
+          <h3 className="text-xs font-semibold text-gray-700 dark:text-gray-300 mb-3 flex items-center gap-1.5">
+            <Barcode className="w-3.5 h-3.5 text-indigo-600 dark:text-indigo-400" />
+            Barcode Print Settings
+          </h3>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-x-4 gap-y-2">
+            <FormRow label="Print Type" error={getFieldError('barcode_print_type')} labelWidth="w-32">
+              <select
+                name="barcode_print_type"
+                value={formData.barcode_print_type}
+                onChange={handleInputChange}
+                className={inputCls(hasFieldError('barcode_print_type'))}
+              >
+                <option value="a4">A4 Sheet</option>
+                <option value="thermal">Thermal</option>
+              </select>
+            </FormRow>
 
-              {/* Columns */}
-              <div>
-                <label className={labelClass}>Columns</label>
-                <select
-                  name="barcode_columns"
-                  value={formData.barcode_columns}
-                  onChange={(e) =>
-                    setFormData((prev) => ({
-                      ...prev,
-                      barcode_columns: parseInt(e.target.value),
-                    }))
-                  }
-                  className={getInputClassName('barcode_columns', inputBase)}
-                >
-                  <option value={1}>1</option>
-                  <option value={2}>2</option>
-                  <option value={3}>3</option>
-                </select>
-                {getFieldError('barcode_columns') && (
-                  <p className="mt-1 text-xs text-red-600 dark:text-red-400">
-                    {getFieldError('barcode_columns')}
-                  </p>
-                )}
-              </div>
+            <FormRow label="Columns" error={getFieldError('barcode_columns')} labelWidth="w-32">
+              <select
+                name="barcode_columns"
+                value={formData.barcode_columns}
+                onChange={(e) =>
+                  setFormData((prev) => ({
+                    ...prev,
+                    barcode_columns: parseInt(e.target.value),
+                  }))
+                }
+                className={inputCls(hasFieldError('barcode_columns'))}
+              >
+                <option value={1}>1</option>
+                <option value={2}>2</option>
+                <option value={3}>3</option>
+              </select>
+            </FormRow>
 
-              {/* Label Width */}
-              <div>
-                <label className={labelClass}>Label Width</label>
-                <input
-                  type="text"
-                  name="barcode_label_width"
-                  value={formData.barcode_label_width}
-                  onChange={handleInputChange}
-                  className={getInputClassName(
-                    'barcode_label_width',
-                    inputBase
-                  )}
-                  placeholder="50mm"
-                />
-                {getFieldError('barcode_label_width') && (
-                  <p className="mt-1 text-xs text-red-600 dark:text-red-400">
-                    {getFieldError('barcode_label_width')}
-                  </p>
-                )}
-              </div>
+            <FormRow label="Label Width" error={getFieldError('barcode_label_width')} labelWidth="w-32">
+              <input
+                type="text"
+                name="barcode_label_width"
+                value={formData.barcode_label_width}
+                onChange={handleInputChange}
+                className={inputCls(hasFieldError('barcode_label_width'))}
+                placeholder="50mm"
+              />
+            </FormRow>
 
-              {/* Label Height */}
-              <div>
-                <label className={labelClass}>Label Height</label>
-                <input
-                  type="text"
-                  name="barcode_label_height"
-                  value={formData.barcode_label_height}
-                  onChange={handleInputChange}
-                  className={getInputClassName(
-                    'barcode_label_height',
-                    inputBase
-                  )}
-                  placeholder="25mm"
-                />
-                {getFieldError('barcode_label_height') && (
-                  <p className="mt-1 text-xs text-red-600 dark:text-red-400">
-                    {getFieldError('barcode_label_height')}
-                  </p>
-                )}
-              </div>
+            <FormRow label="Label Height" error={getFieldError('barcode_label_height')} labelWidth="w-32">
+              <input
+                type="text"
+                name="barcode_label_height"
+                value={formData.barcode_label_height}
+                onChange={handleInputChange}
+                className={inputCls(hasFieldError('barcode_label_height'))}
+                placeholder="25mm"
+              />
+            </FormRow>
 
-              {/* Paper Size */}
-              <div>
-                <label className={labelClass}>Paper Size (Thermal)</label>
-                <select
-                  name="barcode_paper_size"
-                  value={formData.barcode_paper_size}
-                  onChange={handleInputChange}
-                  className={getInputClassName('barcode_paper_size', inputBase)}
-                >
-                  <option value="80mm">80mm</option>
-                  <option value="50mm">50mm</option>
-                </select>
-                {getFieldError('barcode_paper_size') && (
-                  <p className="mt-1 text-xs text-red-600 dark:text-red-400">
-                    {getFieldError('barcode_paper_size')}
-                  </p>
-                )}
-              </div>
-            </div>
+            <FormRow label="Paper Size" error={getFieldError('barcode_paper_size')} labelWidth="w-32">
+              <select
+                name="barcode_paper_size"
+                value={formData.barcode_paper_size}
+                onChange={handleInputChange}
+                className={inputCls(hasFieldError('barcode_paper_size'))}
+              >
+                <option value="80mm">80mm</option>
+                <option value="50mm">50mm</option>
+              </select>
+            </FormRow>
           </div>
         </div>
 
-        {/* Save Button */}
-        <div className="flex justify-end pt-1">
+        <div className="flex justify-end gap-2">
+          <button
+            type="button"
+            onClick={() => router.push('/tenants')}
+            className="px-3 py-1.5 text-xs rounded border border-gray-300 dark:border-gray-600 text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700"
+          >
+            Cancel
+          </button>
           <button
             type="submit"
             disabled={isLoading}
-            className="flex items-center gap-2 px-3 py-1 text-xs font-bold text-white bg-green-600 rounded-sm hover:bg-green-700 disabled:bg-gray-400"
+            className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs bg-indigo-600 hover:bg-indigo-700 disabled:opacity-60 text-white rounded"
           >
-            <GiSave />
+            {isLoading ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <GiSave className="w-3.5 h-3.5" />}
             {isLoading ? 'Saving...' : 'Save Settings'}
           </button>
         </div>
       </form>
+    </div>
+  );
+}
+
+function FormRow({ label, required, error, children, labelWidth = 'w-32', className = '' }: { label: string; required?: boolean; error?: string | null; children: React.ReactNode; labelWidth?: string; className?: string }) {
+  return (
+    <div className={className}>
+      <div className="flex items-center gap-1.5">
+        <label className={`${labelWidth} shrink-0 text-[11px] font-medium text-gray-600 dark:text-gray-400 text-right`}>
+          {label}{required && <span className="text-red-500">*</span>}:
+        </label>
+        <div className="flex-1 min-w-0">{children}</div>
+      </div>
+      {error && <p className="text-[10px] text-red-500 mt-0.5 ml-[8.5rem]">{error}</p>}
     </div>
   );
 }

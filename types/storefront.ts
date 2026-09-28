@@ -34,6 +34,8 @@ export interface ProductVariation {
   name: string;
   sellingPrice: Money;
   mrp?: Money;
+  dp?: Money;
+  price_mode?: 'dp' | 'mrp';
   stock: number;
   attributes: Record<string, string>;
   image?: string;

@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { Power, PowerOff, ExternalLink, Building2, Clock, Zap, Loader2, Info } from 'lucide-react';
+import { Power, PowerOff, ExternalLink, Building2, Clock, Zap, Info } from 'lucide-react';
 import { GiSave } from 'react-icons/gi';
 import { notify } from '@/lib/notifications';
 import storefrontSettingsService from '@/services/storefrontSettingsService';
@@ -209,15 +209,12 @@ export default function SettingsPage() {
               aria-checked={expressCheckoutEnabled}
               disabled={expressCheckoutSaving}
               onClick={handleExpressCheckoutToggle}
-              className={`relative inline-flex h-5.5 w-10 shrink-0 items-center rounded-full transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 ${
+              className={`relative inline-flex h-5 w-9 shrink-0 items-center rounded-full border-2 border-transparent transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 ${
                 expressCheckoutEnabled ? 'bg-indigo-600' : 'bg-gray-300 dark:bg-gray-600'
               } ${expressCheckoutSaving ? 'opacity-70 cursor-wait' : 'cursor-pointer'}`}
             >
-              {expressCheckoutSaving && (
-                <Loader2 className="absolute left-1 h-3 w-3 animate-spin text-white" />
-              )}
               <span
-                className={`pointer-events-none absolute top-0.75 left-0.75 h-3.5 w-3.5 rounded-full bg-white shadow-md transition-transform duration-200 ease-in-out ${
+                className={`inline-block h-4 w-4 transform rounded-full bg-white shadow-sm transition-transform duration-200 ${
                   expressCheckoutEnabled ? 'translate-x-4' : 'translate-x-0'
                 }`}
               />

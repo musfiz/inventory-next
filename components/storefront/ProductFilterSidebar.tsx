@@ -110,7 +110,7 @@ export function ProductFilterFields({
           {PRICE_STEPS.map(s => (
             <li key={s.id}>
               <label
-                className={`flex items-center gap-2 rounded-lg px-2 py-1.5 text-sm transition-colors ${
+                className={`flex items-center gap-2 rounded-sm px-2 py-1.5 text-sm transition-colors ${
                   priceStep === s.id
                     ? 'text-gray-900 outline outline-2 outline-brand-500 dark:text-white'
                     : 'text-gray-700 dark:text-gray-300'
@@ -218,7 +218,7 @@ export function ProductFilterFields({
       {activeFilterCount > 0 && (
         <button
           onClick={onClearAll}
-          className="w-full rounded-lg border border-gray-300 py-2.5 text-sm font-semibold text-gray-700 transition-colors hover:bg-gray-50 dark:border-gray-700 dark:text-gray-300 dark:hover:bg-gray-800"
+          className="w-full rounded-sm border border-gray-300 py-2.5 text-sm font-semibold text-gray-700 transition-colors hover:bg-gray-50 dark:border-gray-700 dark:text-gray-300 dark:hover:bg-gray-800"
         >
           Clear all filters ({activeFilterCount})
         </button>
@@ -231,7 +231,7 @@ export function ProductFilterFields({
 export function FilterSidebar(props: ProductFilterFieldsProps) {
   return (
     <aside className="hidden lg:block">
-      <div className="sticky top-32 rounded-2xl border border-gray-200 bg-white p-5 dark:border-gray-800 dark:bg-gray-900">
+      <div className="sticky top-32 rounded-sm border border-gray-200 bg-white p-5 dark:border-gray-800 dark:bg-gray-900">
         <h2 className="mb-4 flex items-center gap-2 text-sm font-bold uppercase tracking-wider text-gray-900 dark:text-gray-100">
           <SlidersHorizontal className="h-4 w-4" />
           Filters
@@ -261,7 +261,7 @@ export function FilterDrawer({
           </h2>
           <button
             onClick={onClose}
-            className="rounded-full p-2 text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-800"
+            className="rounded-sm p-2 text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-800"
           >
             <X className="h-5 w-5" />
           </button>
@@ -269,7 +269,7 @@ export function FilterDrawer({
         <ProductFilterFields {...fieldProps} />
         <button
           onClick={onClose}
-          className="mt-6 w-full rounded-lg bg-brand-600 py-3 text-sm font-bold text-white hover:bg-brand-700"
+          className="mt-6 w-full rounded-sm bg-brand-600 py-3 text-sm font-bold text-white hover:bg-brand-700"
         >
           Show {resultCount} results
         </button>

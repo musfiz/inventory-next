@@ -131,7 +131,7 @@ function DefaultCartDrawer() {
         {/* Header */}
         <div className="flex shrink-0 items-center justify-between border-b border-gray-200 px-4 py-2.5 dark:border-gray-800">
           <div className="flex items-center gap-2">
-            <div className="flex h-7 w-7 items-center justify-center rounded-md bg-brand-50 text-brand-600 dark:bg-brand-950/50">
+            <div className="flex h-7 w-7 items-center justify-center rounded-sm bg-brand-50 text-brand-600 dark:bg-brand-950/50">
               <GiPaperBagOpen className="h-4 w-4" />
             </div>
             <div>
@@ -145,7 +145,7 @@ function DefaultCartDrawer() {
           </div>
           <button
             onClick={closeDrawer}
-            className="rounded-full p-1.5 text-gray-500 transition-colors hover:bg-gray-100 dark:hover:bg-gray-800"
+            className="rounded-sm p-1.5 text-gray-500 transition-colors hover:bg-gray-100 dark:hover:bg-gray-800"
             aria-label="Close cart"
           >
             <X className="h-4 w-4" />
@@ -159,9 +159,9 @@ function DefaultCartDrawer() {
               Add {formatMoney(STORE_INFO.freeShippingThreshold - subtotal)}{' '}
               more for FREE shipping 🚚
             </p>
-            <div className="mt-1 h-1 overflow-hidden rounded-full bg-amber-200 dark:bg-amber-900/40">
+            <div className="mt-1 h-1 overflow-hidden rounded-sm bg-amber-200 dark:bg-amber-900/40">
               <div
-                className="h-full rounded-full bg-amber-500 transition-all duration-500"
+                className="h-full rounded-sm bg-amber-500 transition-all duration-500"
                 style={{
                   width: `${Math.min(
                     100,
@@ -177,7 +177,7 @@ function DefaultCartDrawer() {
         <div className="flex-1 overflow-y-auto scrollbar-thin">
           {items.length === 0 ? (
             <div className="flex h-full flex-col items-center justify-center px-6 py-12 text-center">
-              <div className="mb-4 flex h-20 w-20 items-center justify-center rounded-full bg-gray-100 dark:bg-gray-800">
+              <div className="mb-4 flex h-20 w-20 items-center justify-center rounded-sm bg-gray-100 dark:bg-gray-800">
                 <GiPaperBagOpen className="h-10 w-10 text-gray-400" />
               </div>
               <h3 className="text-lg font-bold text-gray-900 dark:text-gray-100">
@@ -189,7 +189,7 @@ function DefaultCartDrawer() {
               <Link
                 href="/store/products"
                 onClick={closeDrawer}
-                className="mt-6 inline-flex items-center gap-2 rounded-full bg-brand-600 px-6 py-3 text-sm font-bold text-white transition-colors hover:bg-brand-700"
+                className="mt-6 inline-flex items-center gap-2 rounded-sm bg-brand-600 px-6 py-3 text-sm font-bold text-white transition-colors hover:bg-brand-700"
               >
                 Start shopping
                 <ArrowRight className="h-4 w-4" />
@@ -205,7 +205,7 @@ function DefaultCartDrawer() {
                   <Link
                     href={`/store/products/${item.slug}`}
                     onClick={closeDrawer}
-                    className="relative h-12 w-12 shrink-0 overflow-hidden rounded-md bg-gray-100 dark:bg-gray-800"
+                    className="relative h-12 w-12 shrink-0 overflow-hidden rounded-sm bg-gray-100 dark:bg-gray-800"
                   >
                     {item.image ? (
                       <Image
@@ -236,7 +236,7 @@ function DefaultCartDrawer() {
                             {Object.entries(item.attributes).map(([k, v], ai) => (
                               <span
                                 key={ai}
-                                className="rounded bg-brand-50 px-1.5 py-0.5 text-[10px] font-medium text-brand-700 dark:bg-brand-950/40 dark:text-brand-300"
+                                className="rounded-sm bg-brand-50 px-1.5 py-0.5 text-[10px] font-medium text-brand-700 dark:bg-brand-950/40 dark:text-brand-300"
                               >
                                 {k}: <span className="font-semibold">{v}</span>
                               </span>
@@ -246,7 +246,7 @@ function DefaultCartDrawer() {
                       </Link>
                       <button
                         onClick={() => removeItem(item.variationId)}
-                        className="rounded-md p-0.5 text-gray-400 transition-colors hover:bg-red-50 hover:text-red-600 dark:hover:bg-red-950/30"
+                        className="rounded-sm p-0.5 text-gray-400 transition-colors hover:bg-red-50 hover:text-red-600 dark:hover:bg-red-950/30"
                         aria-label="Remove"
                       >
                         <Trash2 className="h-3.5 w-3.5" />
@@ -254,7 +254,7 @@ function DefaultCartDrawer() {
                     </div>
 
                     <div className="mt-auto flex items-center justify-between pt-1">
-                      <div className="inline-flex items-center rounded-md border border-gray-200 dark:border-gray-700">
+                      <div className="inline-flex items-center rounded-sm border border-gray-200 dark:border-gray-700">
                         <button
                           onClick={() =>
                             updateQuantity(item.variationId, item.quantity - 1)
@@ -296,7 +296,7 @@ function DefaultCartDrawer() {
           <div className="shrink-0 border-t border-gray-200 bg-gray-50 px-4 py-2.5 dark:border-gray-800 dark:bg-gray-900/50">
             {/* Coupon */}
             {couponCode ? (
-              <div className="mb-2 flex items-center justify-between rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2 dark:border-emerald-800 dark:bg-emerald-950/30">
+              <div className="mb-2 flex items-center justify-between rounded-sm border border-emerald-200 bg-emerald-50 px-3 py-2 dark:border-emerald-800 dark:bg-emerald-950/30">
                 <span className="flex items-center gap-2 text-sm font-semibold text-emerald-700 dark:text-emerald-400">
                   <Tag className="h-4 w-4" />
                   {couponCode} applied · −{formatMoney(couponDiscount)}
@@ -326,7 +326,7 @@ function DefaultCartDrawer() {
                         if (e.key === 'Escape') cancelCouponInput();
                       }}
                       placeholder="Enter coupon code"
-                      className={`w-full rounded-lg border bg-white py-2 pl-9 pr-3 text-sm font-medium uppercase tracking-wide text-gray-900 placeholder:normal-case placeholder:tracking-normal placeholder:text-gray-400 focus:outline-none focus:ring-2 dark:bg-gray-900 dark:text-gray-100 ${couponError
+                      className={`w-full rounded-sm border bg-white py-2 pl-9 pr-3 text-sm font-medium uppercase tracking-wide text-gray-900 placeholder:normal-case placeholder:tracking-normal placeholder:text-gray-400 focus:outline-none focus:ring-2 dark:bg-gray-900 dark:text-gray-100 ${couponError
                           ? 'border-red-300 focus:border-red-400 focus:ring-red-500/20'
                           : 'border-gray-300 focus:border-brand-400 focus:ring-brand-500/20 dark:border-gray-700'
                         }`}
@@ -335,13 +335,13 @@ function DefaultCartDrawer() {
                   <button
                     onClick={handleApplyCoupon}
                     disabled={applyingCoupon || !couponInput.trim()}
-                    className="shrink-0 rounded-lg bg-gray-900 px-4 text-sm font-bold text-white transition-colors hover:bg-gray-800 disabled:cursor-not-allowed disabled:opacity-50 dark:bg-white dark:text-gray-900 dark:hover:bg-gray-100"
+                    className="shrink-0 rounded-sm bg-gray-900 px-4 text-sm font-bold text-white transition-colors hover:bg-gray-800 disabled:cursor-not-allowed disabled:opacity-50 dark:bg-white dark:text-gray-900 dark:hover:bg-gray-100"
                   >
                     {applyingCoupon ? 'Applying…' : 'Apply'}
                   </button>
                   <button
                     onClick={cancelCouponInput}
-                    className="shrink-0 rounded-lg border border-gray-300 px-3 text-sm font-medium text-gray-500 transition-colors hover:bg-gray-100 dark:border-gray-700 dark:text-gray-400 dark:hover:bg-gray-800"
+                    className="shrink-0 rounded-sm border border-gray-300 px-3 text-sm font-medium text-gray-500 transition-colors hover:bg-gray-100 dark:border-gray-700 dark:text-gray-400 dark:hover:bg-gray-800"
                     aria-label="Cancel"
                   >
                     <X className="h-4 w-4" />
@@ -356,7 +356,7 @@ function DefaultCartDrawer() {
             ) : (
               <button
                 onClick={() => setShowCouponInput(true)}
-                className="mb-2 flex w-full items-center justify-center gap-1.5 rounded-lg border border-dashed border-gray-300 py-1 text-sm font-medium text-gray-600 transition-colors hover:border-brand-400 hover:text-brand-600 dark:border-gray-700 dark:text-gray-400"
+                className="mb-2 flex w-full items-center justify-center gap-1.5 rounded-sm border border-dashed border-gray-300 py-1 text-sm font-medium text-gray-600 transition-colors hover:border-brand-400 hover:text-brand-600 dark:border-gray-700 dark:text-gray-400"
               >
                 <Tag className="h-4 w-4" />
                 Have a coupon code?
@@ -395,7 +395,7 @@ function DefaultCartDrawer() {
                 </div>
               )}
             </dl>
-            <div className="mt-2 flex items-center justify-between rounded-lg bg-brand-50 px-3 py-2 ring-1 ring-brand-100 dark:bg-brand-950/40 dark:ring-brand-900/50">
+            <div className="mt-2 flex items-center justify-between rounded-sm bg-brand-50 px-3 py-2 ring-1 ring-brand-100 dark:bg-brand-950/40 dark:ring-brand-900/50">
               <span className="text-sm font-bold text-brand-700 dark:text-brand-300">
                 Total
               </span>
@@ -408,14 +408,14 @@ function DefaultCartDrawer() {
               <Link
                 href="/store/cart"
                 onClick={closeDrawer}
-                className="rounded-lg border border-gray-300 bg-white px-4 py-2 text-center text-sm font-semibold text-gray-700 transition-colors hover:bg-gray-50 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-200"
+                className="rounded-sm border border-gray-300 bg-white px-4 py-2 text-center text-sm font-semibold text-gray-700 transition-colors hover:bg-gray-50 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-200"
               >
                 View Cart
               </Link>
               <Link
                 href="/store/checkout"
                 onClick={closeDrawer}
-                className="inline-flex items-center justify-center gap-1.5 rounded-lg bg-brand-600 px-4 py-2 text-sm font-bold text-white transition-colors hover:bg-brand-700"
+                className="inline-flex items-center justify-center gap-1.5 rounded-sm bg-brand-600 px-4 py-2 text-sm font-bold text-white transition-colors hover:bg-brand-700"
               >
                 Checkout
                 <ArrowRight className="h-4 w-4" />

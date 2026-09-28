@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { Edit, Trash2, Layers3, Plus, X } from 'lucide-react';
+import { Edit, Trash2, Layers3, Plus } from 'lucide-react';
 import { GiSave } from 'react-icons/gi';
 import { ColumnDef } from '@tanstack/react-table';
 import DataTable from '@/components/ui/datatable';
@@ -29,6 +29,9 @@ export default function ModulesPage() {
   });
   const [formErrors, setFormErrors] = useState<{ [key: string]: string }>({});
   const [refreshKey, setRefreshKey] = useState(0);
+
+  const inputCls = (hasError?: boolean) =>
+    `w-full px-2.5 py-1 text-xs bg-white dark:bg-gray-700 border ${hasError ? 'border-red-500' : 'border-gray-300 dark:border-gray-600'} rounded text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-1 focus:ring-indigo-500`;
 
   const handleAddModule = () => {
     setIsEditing(false);
@@ -195,46 +198,42 @@ export default function ModulesPage() {
       </div>
 
       {showForm && (
-        <div className="bg-white dark:bg-gray-800 rounded-md shadow-sm border border-gray-200 dark:border-gray-700 p-1.5 mb-1">
-          <h2 className="text-lg font-semibold mb-1.5 text-gray-900 dark:text-gray-100">
-            {isEditing ? 'Edit Module' : 'Add New Module'}
-          </h2>
-          <form onSubmit={handleFormSubmit} className="grid grid-cols-1 gap-1.5">
-            <div>
-              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-0.5">
-                Name
-              </label>
-              <input
-                type="text"
-                placeholder="Enter module name"
-                value={formData.name}
-                onChange={e => setFormData({ ...formData, name: e.target.value })}
-                className={`w-full px-2 py-1.5 text-sm border rounded-sm focus:outline-none focus:ring-1 focus:ring-indigo-500 dark:focus:ring-indigo-400 focus:border-transparent dark:bg-gray-700 dark:text-gray-100 ${formErrors.name ? 'border-red-500' : 'border-gray-300 dark:border-gray-600'
-                  }`}
-                required
-              />
-              {formErrors.name && <p className="text-red-600 text-xs mt-1">{formErrors.name}</p>}
+        <form onSubmit={handleFormSubmit} className="space-y-3" autoComplete="off">
+          <div className="bg-white dark:bg-gray-800 rounded-md shadow-sm border border-gray-200 dark:border-gray-700 p-3">
+            <h3 className="text-xs font-semibold text-gray-700 dark:text-gray-300 mb-3">
+              {isEditing ? 'Edit Module' : 'Basic Information'}
+            </h3>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-x-4 gap-y-2">
+              <FormRow label="Name" required error={formErrors.name} labelWidth="w-32">
+                <input
+                  type="text"
+                  placeholder="Enter module name"
+                  value={formData.name}
+                  onChange={e => setFormData({ ...formData, name: e.target.value })}
+                  className={inputCls(!!formErrors.name)}
+                  required
+                />
+              </FormRow>
             </div>
+          </div>
 
-            <div className="flex gap-2 mt-1.5">
-              <button
-                type="submit"
-                className="flex items-center justify-center gap-2 px-5 py-1.5 text-sm bg-indigo-600 hover:bg-indigo-700 disabled:bg-gray-400 text-white rounded-sm transition-colors cursor-pointer"
-              >
-                <GiSave className="w-4 h-4" />
-                {isEditing ? 'Update Module' : 'Save Module'}
-              </button>
-              <button
-                type="button"
-                onClick={() => setShowForm(false)}
-                className="px-3 py-1.5 bg-gray-600 text-white text-sm font-medium rounded-sm hover:bg-gray-700 transition-colors flex items-center gap-2 cursor-pointer"
-              >
-                <X className="w-4 h-4" />
-                Cancel
-              </button>
-            </div>
-          </form>
-        </div>
+          <div className="flex justify-end gap-2">
+            <button
+              type="button"
+              onClick={() => setShowForm(false)}
+              className="px-3 py-1.5 text-xs rounded border border-gray-300 dark:border-gray-600 text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700"
+            >
+              Cancel
+            </button>
+            <button
+              type="submit"
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs bg-indigo-600 hover:bg-indigo-700 text-white rounded"
+            >
+              <GiSave className="w-3.5 h-3.5" />
+              {isEditing ? 'Update Module' : 'Create Module'}
+            </button>
+          </div>
+        </form>
       )}
 
       <DataTable
@@ -245,6 +244,21 @@ export default function ModulesPage() {
         enableSearch={true}
         searchPlaceholder="Search by module name..."
       />
+    </div>
+  );
+}
+
+function FormRow({ label, required, error, children, labelWidth = 'w-32', className = '' }: { label: string; required?: boolean; error?: string | null; children: React.ReactNode; labelWidth?: string; className?: string }) {
+  const errorMl = 'ml-[8.5rem]';
+  return (
+    <div className={className}>
+      <div className="flex items-center gap-1.5">
+        <label className={`${labelWidth} shrink-0 text-[11px] font-medium text-gray-600 dark:text-gray-400 text-right`}>
+          {label}{required && <span className="text-red-500">*</span>}:
+        </label>
+        <div className="flex-1 min-w-0">{children}</div>
+      </div>
+      {error && <p className={`text-[10px] text-red-500 mt-0.5 ${errorMl}`}>{error}</p>}
     </div>
   );
 }

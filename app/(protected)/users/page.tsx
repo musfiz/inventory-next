@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { Eye, EyeOff, Edit, Trash2, Rows4, UserCheck, Plus, X } from 'lucide-react';
+import { Eye, EyeOff, Edit, Trash2, Rows4, UserCheck, Plus, Loader2 } from 'lucide-react';
 import { GiSave } from 'react-icons/gi';
 import { ColumnDef } from '@tanstack/react-table';
 import DataTable from '@/components/ui/datatable';
@@ -401,8 +401,8 @@ export default function UsersPage() {
     return 'users';
   };
 
-  const inputCls = 'w-full px-2 py-1.25 text-sm border border-gray-300 dark:border-gray-600 rounded-sm focus:outline-none focus:ring-1 focus:ring-blue-500 dark:focus:ring-blue-400 focus:border-transparent dark:bg-gray-700 dark:text-gray-100';
-  const labelCls = 'block text-sm font-medium text-gray-700 dark:text-gray-300 mb-0.5';
+  const inputCls = (hasError?: boolean) =>
+    `w-full px-2.5 py-1 text-xs bg-white dark:bg-gray-700 border ${hasError ? 'border-red-500' : 'border-gray-300 dark:border-gray-600'} rounded text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-1 focus:ring-indigo-500`;
 
   return (
     <div className="space-y-3">
@@ -425,19 +425,15 @@ export default function UsersPage() {
         )}
       </div>
 
-      {/* Form Modal/Section */}
+      {/* Form Modal/Section — styled like product add page */}
       {showForm && (
-        <div className="bg-white dark:bg-gray-800 rounded-md shadow-sm border border-gray-200 dark:border-gray-700 p-1.5 mb-1">
-          <h2 className="text-lg font-semibold mb-1.5 text-gray-900 dark:text-gray-100">
-            {mode === 'add' ? 'Add User' : 'Edit User'}
-          </h2>
-
-          <form onSubmit={handleSubmit} className="space-y-3">
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-1.5">
-              <div>
-                <label className={labelCls}>
-                  Name <span className="text-red-500">*</span>
-                </label>
+        <form onSubmit={handleSubmit} className="space-y-3" autoComplete="off">
+          <div className="bg-white dark:bg-gray-800 rounded-md shadow-sm border border-gray-200 dark:border-gray-700 p-3">
+            <h3 className="text-xs font-semibold text-gray-700 dark:text-gray-300 mb-3">
+              {mode === 'add' ? 'Basic Information' : 'Edit User'}
+            </h3>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-x-4 gap-y-2">
+              <FormRow label="Name" required error={formErrors.name} labelWidth="w-32">
                 <input
                   type="text"
                   value={form.name}
@@ -449,17 +445,12 @@ export default function UsersPage() {
                       setFormErrors(rest);
                     }
                   }}
-                  className={`w-full px-2 py-1.25 text-sm border rounded-sm focus:outline-none focus:ring-1 focus:ring-blue-500 dark:focus:ring-blue-400 focus:border-transparent dark:bg-gray-700 dark:text-gray-100 ${formErrors.name ? 'border-red-500' : 'border-gray-300 dark:border-gray-600'
-                    }`}
+                  className={inputCls(!!formErrors.name)}
                   placeholder="Enter full name"
                 />
-                {formErrors.name && <p className="text-red-600 text-xs mt-1">{formErrors.name}</p>}
-              </div>
+              </FormRow>
 
-              <div>
-                <label className={labelCls}>
-                  Email <span className="text-red-500">*</span>
-                </label>
+              <FormRow label="Email" required error={formErrors.email} labelWidth="w-32">
                 <input
                   type="email"
                   value={form.email}
@@ -471,46 +462,37 @@ export default function UsersPage() {
                       setFormErrors(rest);
                     }
                   }}
-                  className={`w-full px-2 py-1.25 text-sm border rounded-sm focus:outline-none focus:ring-1 focus:ring-blue-500 dark:focus:ring-blue-400 focus:border-transparent dark:bg-gray-700 dark:text-gray-100 ${formErrors.email ? 'border-red-500' : 'border-gray-300 dark:border-gray-600'
-                    }`}
+                  className={inputCls(!!formErrors.email)}
                   placeholder="user@example.com"
                 />
-                {formErrors.email && <p className="text-red-600 text-xs mt-1">{formErrors.email}</p>}
-              </div>
+              </FormRow>
 
-              <div>
-                <label className={labelCls}>Phone</label>
+              <FormRow label="Phone" error={formErrors.phone} labelWidth="w-32">
                 <input
                   type="text"
                   value={form.phone}
                   onChange={(e) => setForm({ ...form, phone: e.target.value })}
-                  className={inputCls}
+                  className={inputCls(!!formErrors.phone)}
                   placeholder="Phone number"
                 />
-              </div>
+              </FormRow>
 
-              <div>
-                <label className={labelCls}>
-                  User Type <span className="text-red-500">*</span>
-                </label>
+              <FormRow label="User Type" required error={formErrors.user_type} labelWidth="w-32">
                 <select
                   value={isTenantAdmin && mode === 'add' ? 'tenant_user' : form.user_type}
                   onChange={(e) => setForm({ ...form, user_type: e.target.value as 'tenant_admin' | 'tenant_user' })}
                   disabled={isTenantAdmin}
-                  className={`${inputCls} ${isTenantAdmin ? 'opacity-60 cursor-not-allowed' : ''}`}
+                  className={`${inputCls(!!formErrors.user_type)} ${isTenantAdmin ? 'opacity-60 cursor-not-allowed' : ''}`}
                 >
                   <option value="tenant_user">Tenant User</option>
                   <option value="tenant_admin">Tenant Admin</option>
                 </select>
                 {isTenantAdmin && (
-                  <p className="text-gray-400 text-[11px] mt-0.5">Fixed to Tenant User</p>
+                  <p className="text-[10px] text-gray-400 mt-0.5">Fixed to Tenant User</p>
                 )}
-              </div>
+              </FormRow>
 
-              <div>
-                <label className={labelCls}>
-                  Password {mode === 'add' && <span className="text-red-500">*</span>}
-                </label>
+              <FormRow label="Password" required={mode === 'add'} error={formErrors.password} labelWidth="w-32">
                 <div className="relative">
                   <input
                     type={showPassword ? 'text' : 'password'}
@@ -523,8 +505,7 @@ export default function UsersPage() {
                         setFormErrors(rest);
                       }
                     }}
-                    className={`w-full px-2 py-1.25 pr-9 text-sm border rounded-sm focus:outline-none focus:ring-1 focus:ring-blue-500 dark:focus:ring-blue-400 focus:border-transparent dark:bg-gray-700 dark:text-gray-100 ${formErrors.password ? 'border-red-500' : 'border-gray-300 dark:border-gray-600'
-                      }`}
+                    className={`${inputCls(!!formErrors.password)} pr-8`}
                     placeholder={mode === 'edit' ? 'Leave blank to keep current' : 'Minimum 6 characters'}
                   />
                   <button
@@ -534,16 +515,12 @@ export default function UsersPage() {
                     title={showPassword ? 'Hide password' : 'Show password'}
                     aria-label={showPassword ? 'Hide password' : 'Show password'}
                   >
-                    {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                    {showPassword ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
                   </button>
                 </div>
-                {formErrors.password && <p className="text-red-600 text-xs mt-1">{formErrors.password}</p>}
-              </div>
+              </FormRow>
 
-              <div>
-                <label className={labelCls}>
-                  Confirm Password {mode === 'add' && <span className="text-red-500">*</span>}
-                </label>
+              <FormRow label="Confirm Password" required={mode === 'add'} error={formErrors.password_confirmation} labelWidth="w-32">
                 <div className="relative">
                   <input
                     type={showConfirmPassword ? 'text' : 'password'}
@@ -556,8 +533,7 @@ export default function UsersPage() {
                         setFormErrors(rest);
                       }
                     }}
-                    className={`w-full px-2 py-1.25 pr-9 text-sm border rounded-sm focus:outline-none focus:ring-1 focus:ring-blue-500 dark:focus:ring-blue-400 focus:border-transparent dark:bg-gray-700 dark:text-gray-100 ${formErrors.password_confirmation ? 'border-red-500' : 'border-gray-300 dark:border-gray-600'
-                      }`}
+                    className={`${inputCls(!!formErrors.password_confirmation)} pr-8`}
                     placeholder="Re-enter password"
                   />
                   <button
@@ -567,48 +543,45 @@ export default function UsersPage() {
                     title={showConfirmPassword ? 'Hide password' : 'Show password'}
                     aria-label={showConfirmPassword ? 'Hide password' : 'Show password'}
                   >
-                    {showConfirmPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                    {showConfirmPassword ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
                   </button>
                 </div>
-                {formErrors.password_confirmation && <p className="text-red-600 text-xs mt-1">{formErrors.password_confirmation}</p>}
-              </div>
+              </FormRow>
 
+              <FormRow label="Status" labelWidth="w-32">
+                <div className="flex min-h-7 items-center">
+                  <label className="flex items-center gap-1.5 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={form.is_active}
+                      onChange={(e) => setForm({ ...form, is_active: e.target.checked })}
+                      className="h-3.5 w-3.5 accent-indigo-600"
+                    />
+                    <span className="text-xs text-gray-700 dark:text-gray-300">Active</span>
+                  </label>
+                </div>
+              </FormRow>
             </div>
+          </div>
 
-            {/* Settings */}
-            <div className="flex items-center gap-2 pt-2 border-t border-gray-200 dark:border-gray-700">
-              <label className="flex items-center gap-2 cursor-pointer">
-                <input
-                  type="checkbox"
-                  checked={form.is_active}
-                  onChange={(e) => setForm({ ...form, is_active: e.target.checked })}
-                  className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500 dark:focus:ring-blue-600 dark:ring-offset-gray-800 focus:ring-2 cursor-pointer"
-                />
-                <span className="text-sm font-medium text-gray-700 dark:text-gray-300">Active</span>
-              </label>
-            </div>
-
-            {/* Form Actions */}
-            <div className="flex gap-2 pt-2">
-              <button
-                type="submit"
-                disabled={submitting}
-                className="flex items-center justify-center gap-2 px-5 py-1.5 text-sm bg-indigo-600 hover:bg-indigo-700 disabled:bg-gray-400 text-white rounded-sm transition-colors cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                <GiSave className="w-4 h-4" />
-                {submitting ? 'Saving...' : mode === 'add' ? 'Create User' : 'Update User'}
-              </button>
-              <button
-                type="button"
-                onClick={() => { setShowForm(false); resetForm(); }}
-                className="px-3 py-1.5 bg-gray-600 text-white text-sm font-medium rounded-sm hover:bg-gray-700 transition-colors flex items-center gap-2 cursor-pointer"
-              >
-                <X className="w-4 h-4" />
-                Cancel
-              </button>
-            </div>
-          </form>
-        </div>
+          <div className="flex justify-end gap-2">
+            <button
+              type="button"
+              onClick={() => { setShowForm(false); resetForm(); }}
+              className="px-3 py-1.5 text-xs rounded border border-gray-300 dark:border-gray-600 text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700"
+            >
+              Cancel
+            </button>
+            <button
+              type="submit"
+              disabled={submitting}
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs bg-indigo-600 hover:bg-indigo-700 disabled:opacity-60 text-white rounded"
+            >
+              {submitting ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <GiSave className="w-3.5 h-3.5" />}
+              {submitting ? 'Saving...' : mode === 'add' ? 'Create User' : 'Update User'}
+            </button>
+          </div>
+        </form>
       )}
 
       {/* DataTable */}
@@ -620,6 +593,20 @@ export default function UsersPage() {
         enableSearch={true}
         searchPlaceholder="Search by name, email, or phone..."
       />
+    </div>
+  );
+}
+
+function FormRow({ label, required, error, children, labelWidth = 'w-32', className = '' }: { label: string; required?: boolean; error?: string | null; children: React.ReactNode; labelWidth?: string; className?: string }) {
+  return (
+    <div className={className}>
+      <div className="flex items-center gap-1.5">
+        <label className={`${labelWidth} shrink-0 text-[11px] font-medium text-gray-600 dark:text-gray-400 text-right`}>
+          {label}{required && <span className="text-red-500">*</span>}:
+        </label>
+        <div className="flex-1 min-w-0">{children}</div>
+      </div>
+      {error && <p className="text-[10px] text-red-500 mt-0.5 ml-[8.5rem]">{error}</p>}
     </div>
   );
 }

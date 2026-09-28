@@ -13,6 +13,7 @@ import { useStorefrontBrands, useCategoryBySlug, useInfinitePages } from '@/hook
 import { useStorefrontStatus } from '@/hooks/use-storefront-status';
 import { useSeo } from '@/lib/utils/use-seo';
 import storefrontService from '@/services/storefrontService';
+import { useCustomerAuthStore } from '@/stores/customer-auth-store';
 import type { Product } from '@/types/storefront';
 
 const SORTS = [
@@ -40,6 +41,8 @@ export default function CategoryPage() {
   const { brands } = useStorefrontBrands();
   const { storeName } = useStorefrontStatus();
   const siteName = storeName || 'Our Store';
+  // Wishlist hearts only render for logged-in customers.
+  const isAuthed = useCustomerAuthStore(s => s.isAuthenticated);
 
   // Category header — SWR; 404 error is terminal (no retry).
   const { category, is404, loading: categoryLoading } = useCategoryBySlug(categorySlug);
@@ -65,12 +68,14 @@ export default function CategoryPage() {
   };
 
   const apiSortParam = (s: string) => (['featured', 'newest'].includes(s) ? s : 'featured');
+  const effectivePrice = (v?: { sellingPrice?: number; mrp?: number; price_mode?: string }) =>
+    v && v.price_mode === 'mrp' && v.mrp ? v.mrp : (v?.sellingPrice ?? 0);
   const sortClientSide = (data: Product[], s: string) => {
     if (s === 'price_asc') {
-      return [...data].sort((a, b) => (a.variations[0]?.sellingPrice ?? 0) - (b.variations[0]?.sellingPrice ?? 0));
+      return [...data].sort((a, b) => effectivePrice(a.variations[0]) - effectivePrice(b.variations[0]));
     }
     if (s === 'price_desc') {
-      return [...data].sort((a, b) => (b.variations[0]?.sellingPrice ?? 0) - (a.variations[0]?.sellingPrice ?? 0));
+      return [...data].sort((a, b) => effectivePrice(b.variations[0]) - effectivePrice(a.variations[0]));
     }
     if (s === 'rating') {
       return [...data].sort((a, b) => b.rating - a.rating);
@@ -157,10 +162,10 @@ export default function CategoryPage() {
         <div className="mx-auto max-w-screen-2xl px-4 py-6">
           <div className="mb-6 flex flex-wrap gap-2">
             {[...Array(4)].map((_, i) => (
-              <div key={i} className="h-9 w-24 animate-pulse rounded-full bg-gray-200 dark:bg-gray-800" />
+              <div key={i} className="h-9 w-24 animate-pulse rounded-sm bg-gray-200 dark:bg-gray-800" />
             ))}
           </div>
-          <div className="mb-5 h-14 animate-pulse rounded-2xl bg-gray-200 dark:bg-gray-800" />
+          <div className="mb-5 h-14 animate-pulse rounded-sm bg-gray-200 dark:bg-gray-800" />
           <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
             {[...Array(8)].map((_, i) => (
               <ProductCardSkeleton key={i} />
@@ -239,7 +244,7 @@ export default function CategoryPage() {
               <ScrollReveal key={c.id} animation="pop" staggerIndex={i} staggerGap={60}>
                 <Link
                   href={`/store/category/${c.slug}`}
-                  className="inline-flex items-center gap-1 rounded-full border border-gray-200 bg-white px-4 py-2 text-sm font-semibold text-gray-700 transition-all hover:border-brand-400 hover:text-brand-600 dark:border-gray-800 dark:bg-gray-900 dark:text-gray-300"
+                  className="inline-flex items-center gap-1 rounded-sm border border-gray-200 bg-white px-4 py-2 text-sm font-semibold text-gray-700 transition-all hover:border-brand-400 hover:text-brand-600 dark:border-gray-800 dark:bg-gray-900 dark:text-gray-300"
                 >
                   {c.name}
                   <ChevronDown className="h-3 w-3 -rotate-90" />
@@ -250,11 +255,11 @@ export default function CategoryPage() {
         )}
 
         {/* Toolbar */}
-        <div className="mb-5 flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-gray-200 bg-white p-3 dark:border-gray-800 dark:bg-gray-900">
+        <div className="mb-5 flex flex-wrap items-center justify-between gap-3 rounded-sm border border-gray-200 bg-white p-3 dark:border-gray-800 dark:bg-gray-900">
           <div className="flex items-center gap-3">
             <button
               onClick={() => setFilterOpen(true)}
-              className="inline-flex items-center gap-2 rounded-full border border-gray-300 px-4 py-2 text-sm font-semibold text-gray-700 transition-colors hover:bg-gray-50 lg:hidden dark:border-gray-700 dark:text-gray-300"
+              className="inline-flex items-center gap-2 rounded-sm border border-gray-300 px-4 py-2 text-sm font-semibold text-gray-700 transition-colors hover:bg-gray-50 lg:hidden dark:border-gray-700 dark:text-gray-300"
             >
               <SlidersHorizontal className="h-4 w-4" />
               Filters
@@ -273,7 +278,7 @@ export default function CategoryPage() {
             <select
               value={sort}
               onChange={e => setSort(e.target.value as any)}
-              className="appearance-none rounded-lg border border-gray-200 bg-white pl-3 pr-8 py-2 text-sm font-medium text-gray-700 focus:border-brand-500 focus:outline-none dark:border-gray-700 dark:bg-gray-900 dark:text-gray-200"
+              className="appearance-none rounded-sm border border-gray-200 bg-white pl-3 pr-8 py-2 text-sm font-medium text-gray-700 focus:border-brand-500 focus:outline-none dark:border-gray-700 dark:bg-gray-900 dark:text-gray-200"
             >
               {SORTS.map(s => (
                 <option key={s.id} value={s.id}>{s.label}</option>
@@ -292,7 +297,7 @@ export default function CategoryPage() {
           </div>
         ) : /* Empty state */
           products.length === 0 ? (
-            <div className="rounded-2xl border border-dashed border-gray-300 bg-white py-16 text-center dark:border-gray-700 dark:bg-gray-900">
+            <div className="rounded-sm border border-dashed border-gray-300 bg-white py-16 text-center dark:border-gray-700 dark:bg-gray-900">
               <p className="text-base font-bold text-gray-900 dark:text-gray-100">
                 No products in this category yet
               </p>
@@ -307,7 +312,7 @@ export default function CategoryPage() {
             <>
               <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
                 {products.map((p, i) => (
-                  <ProductVariationCards key={p.id} product={p} staggerIndex={i} />
+                  <ProductVariationCards key={p.id} product={p} staggerIndex={i} showWishlist={isAuthed} />
                 ))}
               </div>
               {grid.hasMore && (
@@ -315,7 +320,7 @@ export default function CategoryPage() {
                   <button
                     onClick={grid.loadMore}
                     disabled={grid.loadingMore}
-                    className="inline-flex items-center gap-2 rounded-full border border-gray-300 bg-white px-8 py-3 text-sm font-bold text-gray-700 transition-all hover:border-brand-400 hover:text-brand-600 disabled:cursor-not-allowed disabled:opacity-60 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-300"
+                    className="inline-flex items-center gap-2 rounded-sm border border-gray-300 bg-white px-8 py-3 text-sm font-bold text-gray-700 transition-all hover:border-brand-400 hover:text-brand-600 disabled:cursor-not-allowed disabled:opacity-60 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-300"
                   >
                     {grid.loadingMore ? 'Loading…' : `Load more (${meta.total - products.length} remaining)`}
                     <ChevronDown className="h-4 w-4" />
