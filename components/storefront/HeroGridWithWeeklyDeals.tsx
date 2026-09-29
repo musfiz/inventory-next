@@ -28,7 +28,9 @@ const ratioStyle = (ratio: number | null | undefined): { aspectRatio: string } =
   aspectRatio: ratio && ratio > 0 ? `${ratio} / 1` : FALLBACK_CELL_RATIO,
 });
 
-/** Loading placeholder matching the grid + rail silhouette. */
+/** Loading placeholder matching the grid + rail silhouette. The rail card
+    stretches to the grid row height with a flex-1 slide block, so the
+    skeleton holds the same footprint as the loaded widget. */
 export function HeroGridDealsSkeleton() {
   return (
     <div className="grid grid-cols-1 gap-4 lg:grid-cols-7">
@@ -41,13 +43,26 @@ export function HeroGridDealsSkeleton() {
           />
         ))}
       </div>
-      <div className="space-y-3 lg:col-span-2">
-        <div className="sf-shimmer h-8 w-40 rounded-sm" />
-        <div className="sf-shimmer h-32 w-full rounded-sm" />
-        <div className="flex justify-center gap-1.5">
-          {[...Array(4)].map((_, i) => (
-            <div key={i} className="sf-shimmer h-1.5 w-1.5 rounded-full" />
-          ))}
+      <div className="lg:col-span-2 lg:h-full lg:min-h-0">
+        <div className="flex h-full flex-col space-y-3 rounded-sm border border-gray-200 bg-white p-3 dark:border-gray-700 dark:bg-gray-900">
+          <div className="flex items-center justify-between gap-2">
+            <div className="sf-shimmer h-5 w-32 rounded-sm" />
+            <div className="flex gap-1.5">
+              <div className="sf-shimmer h-6 w-6 rounded-sm" />
+              <div className="sf-shimmer h-6 w-6 rounded-sm" />
+            </div>
+          </div>
+          <div className="grid grid-cols-4 gap-1.5">
+            {[...Array(4)].map((_, i) => (
+              <div key={i} className="sf-shimmer h-10 rounded-sm" />
+            ))}
+          </div>
+          <div className="sf-shimmer min-h-40 w-full flex-1 rounded-sm" />
+          <div className="flex justify-center gap-1.5">
+            {[...Array(4)].map((_, i) => (
+              <div key={i} className="sf-shimmer h-1.5 w-1.5 rounded-full" />
+            ))}
+          </div>
         </div>
       </div>
     </div>

@@ -6,14 +6,11 @@ import Image from 'next/image';
 import { useRouter } from 'next/navigation';
 import { ChevronLeft, ChevronRight, ArrowRight, Search, Sparkles } from 'lucide-react';
 import type { StorefrontHeroSlider } from '@/services/storefrontService';
+import { imageUrl } from '@/lib/image-url';
 
-const resolveImageUrl = (url?: string | null) => {
-  if (!url) return '';
-  if (/^https?:\/\//i.test(url)) return url;
-  const baseUrl = (process.env.NEXT_PUBLIC_BACKEND_URL || '').replace(/\/+$/, '');
-  if (!baseUrl) return url;
-  return url.startsWith('/') ? `${baseUrl}${url}` : `${baseUrl}/${url}`;
-};
+/** Slider `image_url` may be a full URL, `/storage/...`, or a bare disk
+    path — the shared helper normalizes all three shapes. */
+const resolveImageUrl = (url?: string | null) => imageUrl(url) ?? '';
 
 export function HeroCarouselSkeleton() {
   return (

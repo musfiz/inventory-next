@@ -398,6 +398,7 @@ export default function StockAddPage() {
               />
             </FormRow>
 
+            <div>
             <FormRow label="Product" required labelWidth="w-32" error={formErrors.product_id}>
               <div className="flex items-center gap-1.5">
                 <div className="flex-1 min-w-0">
@@ -428,13 +429,14 @@ export default function StockAddPage() {
                   <button
                     type="button"
                     onClick={resetSelection}
-                    className="shrink-0 inline-flex items-center justify-center h-8 w-8 bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 text-gray-700 dark:text-gray-300 rounded border border-gray-300 dark:border-gray-600 transition-colors cursor-pointer"
+                    className="shrink-0 inline-flex items-center justify-center h-7 w-7 bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 text-gray-700 dark:text-gray-300 rounded border border-gray-300 dark:border-gray-600 transition-colors cursor-pointer"
                     title="Clear Product"
                   >
                     <RefreshCcw className="w-3.5 h-3.5" />
                   </button>
                 )}
               </div>
+            </FormRow>
               {!canSelectProduct() && (
                 <p className="text-[10px] text-amber-600 dark:text-amber-400 mt-0.5 ml-[8.5rem]">
                   {isSuperAdmin && !selectedTenant
@@ -442,7 +444,7 @@ export default function StockAddPage() {
                     : 'Please select a warehouse before choosing a product'}
                 </p>
               )}
-            </FormRow>
+            </div>
 
             <FormRow label="Options" labelWidth="w-32">
               <div className="flex flex-wrap items-center gap-2">

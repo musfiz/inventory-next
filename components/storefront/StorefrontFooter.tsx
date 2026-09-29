@@ -13,18 +13,8 @@ import {
   Mail,
   Phone,
   MapPin,
-  Truck,
-  RotateCcw,
-  ShieldCheck,
-  Headphones,
-  Gift,
-  Sparkles,
-  Star,
-  Zap,
-  HeartHandshake,
   Package,
-  Clock,
-  BadgePercent,
+  Sparkles,
   Copyright,
 } from 'lucide-react';
 import { useStorefrontTheme } from '@/contexts/storefront-theme-context';
@@ -37,11 +27,6 @@ import {
   FaTiktok,
   FaXTwitter,
 } from 'react-icons/fa6';
-
-const VALUE_PROP_ICONS: Record<string, any> = {
-  Truck, RotateCcw, ShieldCheck, Headphones, Gift, Sparkles,
-  Star, Zap, HeartHandshake, Package, Clock, BadgePercent,
-};
 
 const SOCIAL_PLATFORMS: Record<string, any> = {
   facebook: FaFacebook,
@@ -188,8 +173,6 @@ function DefaultStorefrontFooter() {
   if (!config) return null;
 
   const {
-    value_props_enabled,
-    value_props,
     newsletter_enabled,
     newsletter_title,
     newsletter_subtitle,
@@ -204,7 +187,6 @@ function DefaultStorefrontFooter() {
     payment_badges,
   } = config;
 
-  const activeValueProps = value_props.filter(v => v.is_active);
   const activeSocialLinks = social_links.filter((s: SocialLink) => s.is_active);
   const activeBadges = payment_badges.filter(b => b.is_active);
   const displayColumns = columns.filter(c => c.links.some(l => l.is_active));
@@ -222,37 +204,15 @@ function DefaultStorefrontFooter() {
   };
 
   return (
-    <ScrollReveal animation="fade-up" duration="normal" as="footer" className="mt-16 bg-linear-to-b from-gray-50 via-white to-gray-50 dark:from-gray-950 dark:via-gray-900 dark:to-gray-950">
-      {/* Value props strip */}
-      {value_props_enabled && activeValueProps.length > 0 && (
-        <div className="bg-linear-to-r from-brand-50 via-purple-50 to-pink-50 dark:from-brand-950/30 dark:via-purple-950/30 dark:to-pink-950/30 border-y border-brand-100 dark:border-gray-800">
-          <div className="mx-auto grid max-w-screen-2xl grid-cols-2 gap-6 px-4 py-8 md:grid-cols-4">
-            {activeValueProps.map(({ icon, title, description }) => {
-              const Icon = VALUE_PROP_ICONS[icon] || Truck;
-              return (
-                <div key={title} className="flex items-center gap-3">
-                  <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-brand-50 text-brand-600 dark:bg-brand-950/50 dark:text-brand-400">
-                    <Icon className="h-5 w-5" />
-                  </div>
-                  <div>
-                    <p className="font-bold text-gray-900 dark:text-gray-100">{title}</p>
-                    <p className="text-xs text-gray-500 dark:text-gray-400">{description}</p>
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        </div>
-      )}
-
+    <ScrollReveal animation="fade-up" duration="normal" as="footer" className="mt-8 bg-linear-to-b from-gray-50 via-white to-gray-50 dark:from-gray-950 dark:via-gray-900 dark:to-gray-950">
       {/* Newsletter */}
       {newsletter_enabled && (
         <div className="bg-linear-to-r from-brand-100 via-purple-100 to-pink-100 dark:from-brand-950/40 dark:via-purple-950/40 dark:to-pink-950/40 border-y border-brand-200 dark:border-gray-800">
-          <div className="mx-auto max-w-screen-2xl px-4 py-10">
-            <div className="grid items-center gap-6 lg:grid-cols-2">
+          <div className="mx-auto max-w-screen-2xl px-4 py-5">
+            <div className="grid items-center gap-3 lg:grid-cols-2">
               <div>
-                <h3 className="text-2xl font-black text-gray-900 dark:text-white">{newsletter_title}</h3>
-                <p className="mt-1 text-sm text-gray-600 dark:text-gray-300">{newsletter_subtitle}</p>
+                <h3 className="text-xl font-black text-gray-900 dark:text-white">{newsletter_title}</h3>
+                <p className="mt-0.5 text-sm text-gray-600 dark:text-gray-300">{newsletter_subtitle}</p>
               </div>
               <form onSubmit={handleSubscribe} className="flex w-full max-w-md gap-2">
                 <div className="relative flex-1">
@@ -263,12 +223,12 @@ function DefaultStorefrontFooter() {
                     onChange={e => setEmail(e.target.value)}
                     required
                     placeholder="Your email address"
-                    className="w-full rounded-full border border-gray-300 bg-white py-3 pl-11 pr-4 text-sm text-gray-900 placeholder:text-gray-400 focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-500/20 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100"
+                    className="w-full rounded-sm border border-gray-300 bg-white py-2 pl-11 pr-4 text-sm text-gray-900 placeholder:text-gray-400 focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-500/20 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100"
                   />
                 </div>
                 <button
                   type="submit"
-                  className="rounded-full bg-brand-600 px-6 py-3 text-sm font-bold text-white transition-colors hover:bg-brand-700"
+                  className="rounded-sm bg-brand-600 px-5 py-2 text-sm font-bold text-white transition-colors hover:bg-brand-700"
                 >
                   {subscribed ? '\u2713 Subscribed' : 'Subscribe'}
                 </button>
@@ -279,8 +239,8 @@ function DefaultStorefrontFooter() {
       )}
 
       {/* Main links */}
-      <div className="mx-auto max-w-screen-2xl px-4 py-12">
-        <div className="grid gap-10 md:grid-cols-2 lg:grid-cols-6">
+      <div className="mx-auto max-w-screen-2xl px-4 py-6">
+        <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-6">
           <div className="lg:col-span-2">
             <Link href="/" className="inline-flex items-center" aria-label={siteName}>
               {footerLogo ? (
