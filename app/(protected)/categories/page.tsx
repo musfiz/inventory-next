@@ -7,7 +7,7 @@ import { ImDownload } from 'react-icons/im';
 import { RiFileExcel2Line } from 'react-icons/ri';
 import { TiUploadOutline } from 'react-icons/ti';
 import { ColumnDef } from '@tanstack/react-table';
-import { notify } from '@/lib/notifications';
+import { notify, confirm } from '@/lib/notifications';
 import { categoryService } from '@/services';
 import commonService from '@/services/commonService';
 import { Category } from '@/types/api.types';
@@ -451,7 +451,20 @@ export default function CategoriesPage() {
   };
 
   const handleDelete = async (category: Category) => {
-    if (!confirm(`Are you sure you want to delete "${category.name}"?`)) {
+    const result = await confirm({
+      title: 'Delete Category',
+      html: `Are you sure you want to delete <strong>${category.name}</strong>?<br><br>
+            <div style="color: #6b7280; font-size: 13px; line-height: 1.5;">
+              <strong>Description:</strong> ${category.description || 'No description'}<br>
+              <strong>Status:</strong> ${category.is_active ? 'Active' : 'Inactive'}
+            </div><br>
+            <em style="color: #dc2626; font-size: 12px;">This action cannot be undone and will permanently delete the category.</em>`,
+      confirmButtonText: 'Delete',
+      cancelButtonText: 'Cancel',
+      icon: 'warning',
+    });
+
+    if (!result.isConfirmed) {
       return;
     }
 

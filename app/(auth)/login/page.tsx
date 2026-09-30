@@ -1,10 +1,13 @@
 'use client';
 
-import { useState, Suspense } from 'react';
 import { Mail, Lock, Eye, EyeOff, Loader2 } from 'lucide-react';
 import Link from 'next/link';
-import { useAuth } from '@/hooks/use-auth';
+import { useState, Suspense, useEffect } from 'react';
+import DemoLoginPanel from '@/components/auth/demo-login-panel';
 import PageLoader from '@/components/ui/page-loader';
+import { useAuth } from '@/hooks/use-auth';
+import { demoService } from '@/services/demoService';
+import type { DemoUser } from '@/types/demo';
 
 interface ValidationErrors {
   email?: string[];
@@ -19,10 +22,26 @@ function LoginForm() {
   const [errors, setErrors] = useState<ValidationErrors>({});
   const [isLoading, setIsLoading] = useState(false);
 
-  const { login } = useAuth({
+  const { login, demoLogin } = useAuth({
     middleware: 'guest',
     redirectIfAuthenticated: '/dashboard',
   });
+  const [demoUsers, setDemoUsers] = useState<DemoUser[]>([]);
+
+  useEffect(() => {
+    let cancelled = false;
+    demoService
+      .getDemoUsers()
+      .then(users => {
+        if (!cancelled) setDemoUsers(users);
+      })
+      .catch(() => {
+        if (!cancelled) setDemoUsers([]);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   const handleSubmit = async (event: React.FormEvent<HTMLFormElement>): Promise<void> => {
     event.preventDefault();
@@ -189,6 +208,10 @@ function LoginForm() {
             </button>
           </form>
         </div>
+
+        {demoUsers.length > 0 && (
+          <DemoLoginPanel users={demoUsers} onDemoLogin={userId => demoLogin(userId)} />
+        )}
 
         {/* Footer Links */}
         <div className="text-center text-xs text-gray-500 dark:text-gray-400 space-y-1">

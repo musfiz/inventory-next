@@ -1,7 +1,7 @@
+import { useParams, useRouter } from 'next/navigation';
+import { useEffect, useState } from 'react';
 import useSWR from 'swr';
 import axios from '@/lib/api/axios';
-import { useEffect, useState } from 'react';
-import { useParams, useRouter } from 'next/navigation';
 import useAuthStore from '@/stores/auth-store';
 
 interface UseAuthOptions {
@@ -12,7 +12,7 @@ interface UseAuthOptions {
 export const useAuth = ({ middleware, redirectIfAuthenticated }: UseAuthOptions = {}) => {
   const router = useRouter();
   const params = useParams();
-  const { setUser, clearAuth } = useAuthStore();
+  const { setUser, clearAuth, setIsDemo } = useAuthStore();
   const [isRedirecting, setIsRedirecting] = useState(false);
 
   const {
@@ -27,6 +27,8 @@ export const useAuth = ({ middleware, redirectIfAuthenticated }: UseAuthOptions 
       try {
         const res = await axios.get('/api/v1/user');
         setUser(res.data);
+        // Backend adds `is_demo: true` to the user payload when demo mode is on.
+        setIsDemo(Boolean((res.data as any)?.is_demo));
         return res.data;
       } catch (error: any) {
         if (error.response?.status === 401) {
@@ -101,6 +103,37 @@ export const useAuth = ({ middleware, redirectIfAuthenticated }: UseAuthOptions 
 
         setErrors(error.response.data.errors);
       });
+  };
+
+  const demoLogin = async (
+    userId: string,
+    options?: { setErrors?: (errors: any) => void }
+  ) => {
+    await csrf();
+
+    options?.setErrors?.([]);
+
+    try {
+      await axios.post('/api/v1/demo-login', { user_id: userId });
+      await mutate();
+      // Respect ?redirect= param when present, otherwise go to dashboard.
+      // The guest-middleware effect also redirects, this is a fast-path.
+      if (typeof window !== 'undefined') {
+        const redirect = new URLSearchParams(window.location.search).get('redirect');
+        if (redirect && redirect.startsWith('/')) {
+          router.push(redirect);
+          return;
+        }
+        router.push('/dashboard');
+      }
+    } catch (error: any) {
+      if (error?.response?.status === 422) {
+        options?.setErrors?.(error.response.data.errors ?? error.response.data);
+        return;
+      }
+      options?.setErrors?.(error?.response?.data ?? { message: 'Demo login failed' });
+      throw error;
+    }
   };
 
   const forgotPassword = async ({
@@ -193,6 +226,7 @@ export const useAuth = ({ middleware, redirectIfAuthenticated }: UseAuthOptions 
     user,
     register,
     login,
+    demoLogin,
     forgotPassword,
     resetPassword,
     resendEmailVerification,

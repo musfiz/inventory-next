@@ -1,17 +1,19 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
-import { User } from '@/types';
 import { userService } from '@/services/userService';
+import { User } from '@/types';
 
 interface AuthState {
   user: User | null;
   loading: boolean;
   hydrated: boolean;
+  isDemo: boolean;
   isSwitchedUser: boolean;
   originalSuperAdmin: { id: string; name: string; email: string } | null;
   login: (user: User) => void;
   logout: () => void;
   setUser: (user: User | null) => void;
+  setIsDemo: (isDemo: boolean) => void;
   setLoading: (loading: boolean) => void;
   setHydrated: (hydrated: boolean) => void;
   clearAuth: () => void;
@@ -25,14 +27,16 @@ export const useAuthStore = create<AuthState>()(
       user: null,
       loading: false,
       hydrated: false,
+      isDemo: false,
       isSwitchedUser: false,
       originalSuperAdmin: null,
       login: user => set({ user }),
-      logout: () => set({ user: null, isSwitchedUser: false, originalSuperAdmin: null }),
+      logout: () => set({ user: null, isDemo: false, isSwitchedUser: false, originalSuperAdmin: null }),
       setUser: user => set({ user }),
+      setIsDemo: isDemo => set({ isDemo }),
       setLoading: loading => set({ loading }),
       setHydrated: hydrated => set({ hydrated }),
-      clearAuth: () => set({ user: null, isSwitchedUser: false, originalSuperAdmin: null }),
+      clearAuth: () => set({ user: null, isDemo: false, isSwitchedUser: false, originalSuperAdmin: null }),
       switchUser: async (userId: string) => {
         try {
           const response = await userService.switchUser(userId);

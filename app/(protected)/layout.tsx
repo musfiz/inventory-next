@@ -1,16 +1,17 @@
 'use client';
 
-import { useAuthStore } from '@/stores/auth-store';
-import { useState, Suspense } from 'react';
-import { useRouter } from 'next/navigation';
 import { User } from 'lucide-react';
-import { notify } from '@/lib/notifications';
-import { useAuth } from '@/hooks/use-auth';
-import { useSyncTenantStore } from '@/hooks/use-sync-tenant-store';
+import { useRouter } from 'next/navigation';
+import { useState, Suspense } from 'react';
+import DemoBanner from '@/components/layout/demo-banner';
 import Header from '@/components/layout/header';
 import Sidebar from '@/components/layout/sidebar';
 import PageLoader from '@/components/ui/page-loader';
 import Spinner from '@/components/ui/spinner';
+import { useAuth } from '@/hooks/use-auth';
+import { useSyncTenantStore } from '@/hooks/use-sync-tenant-store';
+import { notify } from '@/lib/notifications';
+import { useAuthStore } from '@/stores/auth-store';
 
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
   const { user: authUser, isRedirecting, isLoading } = useAuth({ middleware: 'auth' });
@@ -60,6 +61,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
 
   return (
     <div>
+      <DemoBanner />
       <a
         href="#main-content"
         className="sr-only focus:not-sr-only focus:absolute focus:left-4 focus:top-4 focus:z-50 focus:rounded-md focus:bg-indigo-600 focus:px-4 focus:py-2 focus:text-sm focus:font-medium focus:text-white focus:shadow-lg focus:outline-none focus:ring-2 focus:ring-indigo-400"
@@ -82,11 +84,10 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
             </div>
             <button
               onClick={handleSwitchBackToAdmin}
-              className={`flex items-center gap-2 px-2 py-1 rounded-sm text-sm font-medium transition-all cursor-pointer ${
-                switchingBack
+              className={`flex items-center gap-2 px-2 py-1 rounded-sm text-sm font-medium transition-all cursor-pointer ${switchingBack
                   ? 'bg-orange-700 cursor-not-allowed opacity-75'
                   : 'bg-white text-orange-600 hover:bg-purple-50 shadow-sm'
-              }`}
+                }`}
             >
               {switchingBack ? (
                 <>

@@ -131,13 +131,14 @@ class NotificationService {
     Swal.close();
   }
 
-  // Toast notification (smaller, positioned)
+  // Toast notification (smaller, positioned bottom-right like the demo notice card)
   toast(options: NotificationOptions) {
     return Swal.fire({
       ...options,
       toast: true,
       position: 'top-end',
       showConfirmButton: false,
+      showCloseButton: true,
       timer: options.timer || 3000,
       timerProgressBar: true,
       customClass: {
