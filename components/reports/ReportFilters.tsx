@@ -30,7 +30,7 @@ export default function ReportFilters({
         <button
           onClick={onApply}
           disabled={loading}
-          className="inline-flex items-center gap-1.5 px-4 py-1.5 text-sm bg-indigo-600 hover:bg-indigo-700 text-white rounded-sm disabled:opacity-60 transition-colors"
+          className="inline-flex items-center gap-1.5 px-3 py-1 text-xs bg-indigo-600 hover:bg-indigo-700 text-white rounded disabled:opacity-60 transition-colors"
         >
           {loading ? <Loader2 size={14} className="animate-spin" /> : <Search size={14} />}
           {loading ? 'Loading\u2026' : applyLabel}
@@ -39,7 +39,7 @@ export default function ReportFilters({
           <button
             onClick={onReset}
             disabled={loading}
-            className="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm text-gray-600 dark:text-gray-400 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-sm hover:bg-gray-50 dark:hover:bg-gray-600 disabled:opacity-60 transition-colors"
+            className="inline-flex items-center gap-1.5 px-3 py-1 text-xs text-gray-600 dark:text-gray-400 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded hover:bg-gray-50 dark:hover:bg-gray-600 disabled:opacity-60 transition-colors"
           >
             <RotateCcw size={14} />
             {resetLabel}
@@ -72,6 +72,6 @@ export function FilterField({
 }
 
 export const filterInputClass =
-  'w-full px-2.5 py-1 text-sm bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-sm text-gray-900 dark:text-gray-100 focus:outline-none focus:border-indigo-500 dark:focus:border-indigo-400';
+  'w-full px-2.5 py-1 text-xs bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-1 focus:ring-indigo-500';
 
 export const filterSelectClass = filterInputClass + ' cursor-pointer';

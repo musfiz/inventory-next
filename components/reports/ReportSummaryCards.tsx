@@ -8,6 +8,8 @@ export interface SummaryCard {
   subValue?: string;
   icon?: LucideIcon;
   color?: 'blue' | 'green' | 'red' | 'orange' | 'purple' | 'amber' | 'gray';
+  onClick?: () => void;
+  active?: boolean;
 }
 
 const COLOR_MAP: Record<string, { text: string; bg: string; border: string }> = {
@@ -70,7 +72,22 @@ export default function ReportSummaryCards({ cards, columns }: ReportSummaryCard
         return (
           <div
             key={i}
-            className={`rounded-lg border ${colors.border} ${colors.bg} p-4`}
+            onClick={card.onClick}
+            role={card.onClick ? 'button' : undefined}
+            tabIndex={card.onClick ? 0 : undefined}
+            onKeyDown={
+              card.onClick
+                ? (e) => {
+                    if (e.key === 'Enter' || e.key === ' ') {
+                      e.preventDefault();
+                      card.onClick?.();
+                    }
+                  }
+                : undefined
+            }
+            className={`rounded-lg border ${colors.border} ${colors.bg} p-4 transition-all ${
+              card.onClick ? 'cursor-pointer hover:shadow-md hover:-translate-y-0.5' : ''
+            } ${card.active ? 'ring-2 ring-offset-1 ring-indigo-500 dark:ring-offset-gray-900' : ''}`}
           >
             {Icon && (
               <div className="flex items-center gap-2 mb-1">

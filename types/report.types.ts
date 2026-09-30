@@ -313,27 +313,55 @@ export interface BatchExpiryReport {
   };
 }
 
+export type StockStatusValue = 'in_stock' | 'low_stock' | 'out_of_stock' | 'overstock';
+
 export interface StockStatusRow {
   product_name: string;
   variation_name: string | null;
   sku: string;
-  warehouse_name: string;
+  barcode: string | null;
+  category_name: string | null;
+  brand_name: string | null;
+  warehouse_name: string | null;
+  unit_name: string | null;
   on_hand: number;
   reserved: number;
   available: number;
   reorder_point: number;
-  status: 'in_stock' | 'low_stock' | 'out_of_stock';
-  value: number;
+  max_quantity: number | null;
+  avg_cost: number;
+  stock_value: number;
+  retail_value: number;
+  status: StockStatusValue;
+  status_label: string;
+  last_received_at: string | null;
+  last_sold_at: string | null;
 }
 
 export interface StockStatusReport {
   data: StockStatusRow[];
   summary: {
+    total_skus: number;
     in_stock_count: number;
     low_stock_count: number;
     out_of_stock_count: number;
-    total_value: number;
+    overstock_count: number;
+    total_quantity: number;
+    total_stock_value: number;
+    total_retail_value: number;
+    potential_margin: number;
   };
+  columns?: ReportColumnMeta[];
+  filters_applied?: string[];
+  generated_at?: string;
+}
+
+export interface ReportColumnMeta {
+  key: string;
+  label: string;
+  type: string;
+  align: string;
+  totals: boolean;
 }
 
 // ── Sales by Category ───────────────────────────────────────────────────────

@@ -9,6 +9,7 @@ import type {
   StockMovementReport,
   BatchExpiryReport,
   StockStatusReport,
+  StockStatusValue,
   SalesByProductReport,
   SalesByCustomerReport,
   SalesTrendReport,
@@ -597,9 +598,17 @@ class ReportService {
   }
 
   async stockStatus(params: {
-    warehouse_id?: number | null;
-    category_id?: number | null;
-    stock_status?: 'in_stock' | 'low_stock' | 'out_of_stock' | 'all';
+    warehouse_id?: string | null;
+    category_id?: string | null;
+    brand_id?: string | null;
+    product_id?: string | null;
+    product_type?: 'simple' | 'variable' | 'composite' | 'digital' | 'service';
+    status?: StockStatusValue[];
+    stock_status?: StockStatusValue | 'all';
+    search?: string;
+    include_inactive?: boolean;
+    sort?: string;
+    dir?: 'asc' | 'desc';
     tenant_id?: string;
   }): Promise<StockStatusReport> {
     const { tenant_id, ...rest } = params;
