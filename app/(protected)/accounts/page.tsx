@@ -8,6 +8,7 @@ import type { Account, AccountFormData, AccountType, AccountSubtype } from '@/ty
 import { usePermissions } from '@/hooks/use-permissions';
 import TenantSelect from '@/components/ui/tenant-select';
 import { useAuthStore } from '@/stores/auth-store';
+import { useTenantsDropdown } from '@/services/queries/useTenantsDropdown';
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
 const ACCOUNT_TYPES: AccountType[] = ['asset', 'liability', 'equity', 'revenue', 'expense', 'contra'];
@@ -110,12 +111,26 @@ export default function AccountsPage() {
 
   useEffect(() => { fetchAccounts(); }, [search, selectedTenantId]);
 
+  // Super-admin: default to the first tenant; stays blank when none exist.
+  const { data: tenantsForDefault } = useTenantsDropdown();
+  useEffect(() => {
+    if (!isSuperAdmin || selectedTenantId) return;
+    const firstId = tenantsForDefault?.[0]?.id;
+    if (firstId) setSelectedTenantId(String(firstId));
+  }, [isSuperAdmin, selectedTenantId, tenantsForDefault]);
+
   const handleSeedDefaults = async () => {
-    if (!await confirm({ title: 'Seed Default Accounts?', text: 'Existing accounts with same codes will be skipped.', icon: 'question', confirmButtonText: 'Yes, Seed', cancelButtonText: 'Cancel' }).then(r => r.isConfirmed)) return;
+    // Super-admin seeds the tenant picked in the TenantSelect above,
+    // or every tenant when none is picked. Regular users seed their own tenant.
+    const targetTenantId = isSuperAdmin ? selectedTenantId : authUser?.tenant_id;
+    const seedText = isSuperAdmin && !targetTenantId
+      ? 'Missing accounts will be created and existing account names synced to the standard chart for EVERY tenant.'
+      : 'Missing accounts will be created and existing account names synced to the standard chart.';
+    if (!await confirm({ title: 'Seed Default Accounts?', text: seedText, icon: 'question', confirmButtonText: 'Yes, Seed', cancelButtonText: 'Cancel' }).then(r => r.isConfirmed)) return;
     setSeeding(true);
     try {
-      await accountService.seedDefaults();
-      notify.success('Default Chart of Accounts created!');
+      const message = await accountService.seedDefaults(targetTenantId || undefined);
+      notify.success(message || 'Default Chart of Accounts created!');
       fetchAccounts();
     } catch {
       notify.error('Failed to seed defaults');
@@ -191,89 +206,93 @@ export default function AccountsPage() {
   const activeAccounts = accounts.filter(account => account.is_active).length;
 
   return (
-    <div className="space-y-4 p-4">
-      <div className="rounded-xl border border-gray-200 bg-white px-4 py-4 shadow-sm dark:border-gray-700 dark:bg-gray-900">
+    <div className="space-y-3 p-4">
+      <div className="rounded-sm border border-gray-200 bg-white p-3 shadow-sm dark:border-gray-700 dark:bg-gray-800">
         <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
           <div className="space-y-2">
-            <div className="flex items-center gap-2 text-xs uppercase tracking-[0.2em] text-gray-500 dark:text-gray-400">
-              <Layers3 className="h-4 w-4 text-blue-600 dark:text-blue-400" />
-              Accounting
-            </div>
             <div>
-              <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Chart of Accounts</h1>
+              <h1 className="text-xl font-bold text-gray-900 dark:text-gray-100 flex items-center gap-2">
+                <Layers3 className="h-5 w-5 text-indigo-600 dark:text-indigo-400" />
+                Chart of Accounts
+              </h1>
               <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
                 Manage the account structure, balances, and default seed accounts.
               </p>
             </div>
           </div>
 
-          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-end">
-            {isSuperAdmin && (
-              <div className="w-full sm:w-48">
-                <TenantSelect
-                  value={selectedTenantId}
-                  onChange={(tid) => setSelectedTenantId(tid || '')}
-                  placeholder="All Tenants"
+          <div className="flex flex-col gap-2 sm:items-end">
+            <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+              {isSuperAdmin && (
+                <div className="w-full sm:w-48">
+                  <TenantSelect
+                    value={selectedTenantId}
+                    onChange={(tid) => setSelectedTenantId(tid || '')}
+                    placeholder="All Tenants"
+                    compact
+                  />
+                </div>
+              )}
+              <div className="relative w-full sm:w-72">
+                <Search className="pointer-events-none absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-gray-400 dark:text-gray-500" />
+                <input
+                  type="search"
+                  placeholder="Search accounts..."
+                  value={search}
+                  onChange={e => setSearch(e.target.value)}
+                  className="w-full pl-8 pr-2.5 py-1 text-xs bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-1 focus:ring-indigo-500"
                 />
               </div>
-            )}
-            <div className="relative w-full sm:w-72">
-              <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400 dark:text-gray-500" />
-              <input
-                type="search"
-                placeholder="Search accounts..."
-                value={search}
-                onChange={e => setSearch(e.target.value)}
-                className="w-full px-2.5 py-1 text-sm bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-sm text-gray-900 dark:text-gray-100 focus:outline-none focus:border-indigo-500 dark:focus:border-indigo-400"
-              />
             </div>
-            <button
-              onClick={handleSeedDefaults}
-              disabled={seeding}
-              className="inline-flex items-center justify-center gap-2 rounded-lg border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 transition hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-60 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-200 dark:hover:bg-gray-700"
-            >
-              <RefreshCw
-                size={14}
-                className={seeding ? 'animate-spin' : ''}
-                aria-hidden="true"
-              />
-              Seed Defaults
-            </button>
-            {hasPermission('create_accounts') && (
+            <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
               <button
-                onClick={openCreate}
-                className="inline-flex items-center justify-center gap-2 rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white transition hover:bg-blue-700"
+                onClick={handleSeedDefaults}
+                disabled={seeding}
+                className="inline-flex items-center justify-center gap-1.5 px-3 py-1.5 text-xs rounded border border-gray-300 dark:border-gray-600 text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 disabled:cursor-not-allowed disabled:opacity-60"
               >
-                <Plus size={14} />
-                New Account
+                <RefreshCw
+                  size={14}
+                  className={seeding ? 'animate-spin' : ''}
+                  aria-hidden="true"
+                />
+                Seed Defaults
               </button>
-            )}
+              {hasPermission('create_accounts') && (
+                <button
+                  onClick={openCreate}
+                  className="inline-flex items-center justify-center gap-1.5 px-3 py-1.5 text-xs bg-indigo-600 hover:bg-indigo-700 disabled:opacity-60 text-white rounded"
+                >
+                  <Plus size={14} />
+                  New Account
+                </button>
+              )}
+            </div>
           </div>
         </div>
 
         <div className="mt-4 grid gap-3 sm:grid-cols-3">
-          <div className="rounded-lg border border-gray-200 bg-gray-50 px-4 py-3 dark:border-gray-700 dark:bg-gray-800/60">
+          <div className="rounded-sm border border-gray-200 bg-gray-50 px-3 py-2.5 dark:border-gray-700 dark:bg-gray-800/60">
             <div className="text-xs uppercase tracking-wide text-gray-500 dark:text-gray-400">Total Accounts</div>
-            <div className="mt-1 text-2xl font-bold text-gray-900 dark:text-white">{totalAccounts}</div>
+            <div className="mt-1 text-xl font-bold text-gray-900 dark:text-white">{totalAccounts}</div>
           </div>
-          <div className="rounded-lg border border-gray-200 bg-gray-50 px-4 py-3 dark:border-gray-700 dark:bg-gray-800/60">
+          <div className="rounded-sm border border-gray-200 bg-gray-50 px-3 py-2.5 dark:border-gray-700 dark:bg-gray-800/60">
             <div className="text-xs uppercase tracking-wide text-gray-500 dark:text-gray-400">Active Accounts</div>
-            <div className="mt-1 text-2xl font-bold text-gray-900 dark:text-white">{activeAccounts}</div>
+            <div className="mt-1 text-xl font-bold text-gray-900 dark:text-white">{activeAccounts}</div>
           </div>
-          <div className="rounded-lg border border-gray-200 bg-gray-50 px-4 py-3 dark:border-gray-700 dark:bg-gray-800/60">
+          <div className="rounded-sm border border-gray-200 bg-gray-50 px-3 py-2.5 dark:border-gray-700 dark:bg-gray-800/60">
             <div className="text-xs uppercase tracking-wide text-gray-500 dark:text-gray-400">System Accounts</div>
-            <div className="mt-1 text-2xl font-bold text-gray-900 dark:text-white">{systemAccounts}</div>
+            <div className="mt-1 text-xl font-bold text-gray-900 dark:text-white">{systemAccounts}</div>
           </div>
         </div>
       </div>
 
       {/* Account Tree */}
       {loading ? (
-        <div className="rounded-xl border border-gray-200 bg-white py-12 text-center text-sm text-gray-500 shadow-sm dark:border-gray-700 dark:bg-gray-900 dark:text-gray-400">
+        <div className="rounded-sm border border-gray-200 bg-white py-12 text-center text-sm text-gray-500 shadow-sm dark:border-gray-700 dark:bg-gray-800 dark:text-gray-400">
           Loading accounts...
         </div>
       ) : (
-        <div className="overflow-hidden rounded-xl border border-gray-200 bg-white shadow-sm dark:border-gray-700 dark:bg-gray-900">
+        <div className="overflow-hidden rounded-sm border border-gray-200 bg-white shadow-sm dark:border-gray-700 dark:bg-gray-800">
           {loadError ? (
             <div className="bg-red-50 px-4 py-3 text-sm text-red-700 dark:bg-red-950/30 dark:text-red-300">
               {loadError}
@@ -347,7 +366,7 @@ export default function AccountsPage() {
                                 <button
                                   onClick={() => openEdit(account)}
                                   disabled={account.is_system}
-                                  className="inline-flex h-8 w-8 items-center justify-center rounded-md border border-transparent text-gray-400 transition hover:border-blue-200 hover:bg-blue-50 hover:text-blue-600 disabled:cursor-not-allowed disabled:opacity-30 dark:hover:border-blue-900 dark:hover:bg-blue-950/40"
+                                  className="inline-flex h-8 w-8 items-center justify-center rounded border border-transparent text-gray-400 transition hover:border-indigo-200 hover:bg-indigo-50 hover:text-indigo-600 disabled:cursor-not-allowed disabled:opacity-30 dark:hover:border-indigo-900 dark:hover:bg-indigo-950/40"
                                   title="Edit"
                                  aria-label="Edit">
                                   <Pencil size={14} />
@@ -357,7 +376,7 @@ export default function AccountsPage() {
                                 <button
                                   onClick={() => handleDelete(account)}
                                   disabled={account.is_system}
-                                  className="inline-flex h-8 w-8 items-center justify-center rounded-md border border-transparent text-gray-400 transition hover:border-red-200 hover:bg-red-50 hover:text-red-600 disabled:cursor-not-allowed disabled:opacity-30 dark:hover:border-red-900 dark:hover:bg-red-950/40"
+                                  className="inline-flex h-8 w-8 items-center justify-center rounded border border-transparent text-gray-400 transition hover:border-red-200 hover:bg-red-50 hover:text-red-600 disabled:cursor-not-allowed disabled:opacity-30 dark:hover:border-red-900 dark:hover:bg-red-950/40"
                                   title="Delete"
                                  aria-label="Delete">
                                   <Trash2 size={14} />
@@ -379,7 +398,7 @@ export default function AccountsPage() {
       {/* Create/Edit Modal */}
       {showForm && (
         <div className="fixed inset-0 z-50 bg-black/40 flex items-center justify-center p-4">
-          <div className="bg-white dark:bg-gray-900 rounded-xl shadow-xl w-full max-w-md">
+          <div className="bg-white dark:bg-gray-800 rounded-sm shadow-xl w-full max-w-md">
             <div className="flex items-center justify-between p-4">
               <h2 className="font-semibold text-gray-900 dark:text-white">
                 {editAccount ? 'Edit Account' : 'New Account'}
@@ -396,7 +415,7 @@ export default function AccountsPage() {
                     value={form.code}
                     onChange={e => setForm(p => ({ ...p, code: e.target.value }))}
                     disabled={!!editAccount}
-                    className="w-full px-2.5 py-1 text-sm bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-sm text-gray-900 dark:text-gray-100 focus:outline-none focus:border-indigo-500 dark:focus:border-indigo-400 disabled:opacity-50"
+                    className="w-full px-2.5 py-1 text-xs bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-1 focus:ring-indigo-500 disabled:opacity-50"
                     placeholder="e.g. 1101"
                   />
                 </div>
@@ -406,7 +425,7 @@ export default function AccountsPage() {
                     type="text"
                     value={form.currency}
                     onChange={e => setForm(p => ({ ...p, currency: e.target.value }))}
-                    className="w-full px-2.5 py-1 text-sm bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-sm text-gray-900 dark:text-gray-100 focus:outline-none focus:border-indigo-500 dark:focus:border-indigo-400"
+                    className="w-full px-2.5 py-1 text-xs bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-1 focus:ring-indigo-500"
                   />
                 </div>
               </div>
@@ -417,7 +436,7 @@ export default function AccountsPage() {
                   required
                   value={form.name}
                   onChange={e => setForm(p => ({ ...p, name: e.target.value }))}
-                  className="w-full px-2.5 py-1 text-sm bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-sm text-gray-900 dark:text-gray-100 focus:outline-none focus:border-indigo-500 dark:focus:border-indigo-400"
+                  className="w-full px-2.5 py-1 text-xs bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-1 focus:ring-indigo-500"
                 />
               </div>
               <div className="grid grid-cols-2 gap-3">
@@ -431,7 +450,7 @@ export default function AccountsPage() {
                       const first = SUBTYPES_BY_TYPE[t]?.[0]?.value ?? 'other';
                       setForm(p => ({ ...p, account_type: t, account_subtype: first }));
                     }}
-                    className="w-full px-2.5 py-1 text-sm bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-sm text-gray-900 dark:text-gray-100 focus:outline-none focus:border-indigo-500 dark:focus:border-indigo-400"
+                    className="w-full px-2.5 py-1 text-xs bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-1 focus:ring-indigo-500"
                   >
                     {ACCOUNT_TYPES.map(t => <option key={t} value={t} className="capitalize">{t}</option>)}
                   </select>
@@ -442,7 +461,7 @@ export default function AccountsPage() {
                     required
                     value={form.account_subtype}
                     onChange={e => setForm(p => ({ ...p, account_subtype: e.target.value as AccountSubtype }))}
-                    className="w-full px-2.5 py-1 text-sm bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-sm text-gray-900 dark:text-gray-100 focus:outline-none focus:border-indigo-500 dark:focus:border-indigo-400"
+                    className="w-full px-2.5 py-1 text-xs bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-1 focus:ring-indigo-500"
                   >
                     {subtypeOptions.map(s => <option key={s.value} value={s.value}>{s.label}</option>)}
                   </select>
@@ -454,14 +473,14 @@ export default function AccountsPage() {
                   rows={2}
                   value={form.description ?? ''}
                   onChange={e => setForm(p => ({ ...p, description: e.target.value }))}
-                  className="w-full px-2.5 py-1 text-sm bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-sm text-gray-900 dark:text-gray-100 focus:outline-none focus:border-indigo-500 dark:focus:border-indigo-400"
+                  className="w-full px-2.5 py-1 text-xs bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-1 focus:ring-indigo-500"
                 />
               </div>
               <div className="flex justify-end gap-2 pt-2">
-                <button type="button" onClick={() => setShowForm(false)} className="px-3 py-1.5 text-sm font-medium text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-sm hover:bg-gray-50 dark:hover:bg-gray-600">
+                <button type="button" onClick={() => setShowForm(false)} className="px-3 py-1.5 text-xs rounded border border-gray-300 dark:border-gray-600 text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700">
                   Cancel
                 </button>
-                <button type="submit" disabled={saving} className="px-5 py-1.5 text-sm bg-indigo-600 hover:bg-indigo-700 text-white rounded-sm disabled:opacity-60">
+                <button type="submit" disabled={saving} className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs bg-indigo-600 hover:bg-indigo-700 disabled:opacity-60 text-white rounded">
                   {saving ? 'Saving…' : (editAccount ? 'Update' : 'Create')}
                 </button>
               </div>

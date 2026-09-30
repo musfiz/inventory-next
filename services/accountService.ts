@@ -63,8 +63,12 @@ class AccountService {
     return response.data.data;
   }
 
-  async seedDefaults(): Promise<void> {
-    await apiClient.post('/api/v1/accounts/seed-defaults');
+  async seedDefaults(tenantId?: string): Promise<string> {
+    const response = await apiClient.post<ApiResponse<null>>(
+      '/api/v1/accounts/seed-defaults',
+      tenantId ? { tenant_id: tenantId } : {},
+    );
+    return response.data.message;
   }
 
   async trialBalance(params: { start_date: string; end_date: string; tenant_id?: string }): Promise<TrialBalanceReport> {
