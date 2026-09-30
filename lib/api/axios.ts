@@ -1,6 +1,9 @@
 import Axios from 'axios';
 import { useLoadingStore } from '@/stores/loading-store';
 
+export const isDemoModeForbidden = (error: any): boolean =>
+  error?.response?.status === 403 && error?.response?.data?.code === 'DEMO_MODE';
+
 const axios = Axios.create({
   // Calls are same-origin; next.config.ts rewrites /api and /sanctum to the backend.
   // This keeps the session cookie first-party so proxy.ts can read it for auth.
@@ -88,6 +91,11 @@ axios.interceptors.response.use(
 
     // Handle 403 permission errors
     if (error.response?.status === 403) {
+      // Demo mode blocked action: do NOT redirect — the caller's error
+      // handler already surfaces the message (swal). Just reject.
+      if (isDemoModeForbidden(error)) {
+        return Promise.reject(error);
+      }
       // Redirect to access denied page if permission denied
       if (typeof window !== 'undefined') {
         window.location.href = '/access-denied';
