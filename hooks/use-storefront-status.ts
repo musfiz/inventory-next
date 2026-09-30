@@ -3,12 +3,13 @@
 import useSWR from 'swr';
 import apiClient from '@/lib/api/axios';
 import { SK } from '@/lib/storefront/keys';
-import storefrontSettingsService from '@/services/storefrontSettingsService';
+import storefrontSettingsService, { type HomepageHeroWidget } from '@/services/storefrontSettingsService';
 
 export interface StorefrontSettings {
   expressCheckoutEnabled: boolean;
   storeName: string | null;
   storefrontTheme: 'default' | 'grocery';
+  homepageHeroWidget: HomepageHeroWidget;
 }
 
 export function useStorefrontSettings() {
@@ -20,6 +21,7 @@ export function useStorefrontSettings() {
         expressCheckoutEnabled: res.express_checkout_enabled ?? false,
         storeName: res.store_name ?? null,
         storefrontTheme: (res.storefront_theme as 'default' | 'grocery') ?? 'default',
+        homepageHeroWidget: res.homepage_hero_widget ?? 'hero_slider',
       };
     },
     { shouldRetryOnError: false },
@@ -29,6 +31,7 @@ export function useStorefrontSettings() {
     storeName: data?.storeName ?? null,
     expressCheckoutEnabled: data?.expressCheckoutEnabled ?? false,
     storefrontTheme: data?.storefrontTheme ?? 'default',
+    homepageHeroWidget: data?.homepageHeroWidget ?? 'hero_slider',
     loading: isLoading,
     fetch: () => mutate(),
   };
@@ -59,6 +62,7 @@ export function useStorefrontStatus() {
     expressCheckoutEnabled: settings.expressCheckoutEnabled,
     storeName: settings.storeName,
     storefrontTheme: settings.storefrontTheme,
+    homepageHeroWidget: settings.homepageHeroWidget,
     /** Force a fresh status read (e.g. after tenant switch in admin). */
     fetch: () => mutate(),
     fetchSettings: settings.fetch,

@@ -13,21 +13,7 @@ import {
   Mail,
   Phone,
   MapPin,
-  Truck,
-  RotateCcw,
-  ShieldCheck,
-  Headphones,
-  Gift,
-  Sparkles,
-  Star,
-  Zap,
-  HeartHandshake,
-  Package,
-  Clock,
-  BadgePercent,
   Copyright,
-  Leaf,
-  CreditCard,
 } from 'lucide-react';
 import {
   FaFacebook,
@@ -127,11 +113,6 @@ const FALLBACK_CONFIG: FooterConfig = {
   ],
 };
 
-const VALUE_PROP_ICONS: Record<string, any> = {
-  Truck, RotateCcw, ShieldCheck, Headphones, Gift, Sparkles,
-  Star, Zap, HeartHandshake, Package, Clock, BadgePercent,
-};
-
 export default function GroceryFooter() {
   const [email, setEmail] = useState('');
   const { footerLogo, ready } = useBranding();
@@ -149,8 +130,6 @@ export default function GroceryFooter() {
   if (!config) return null;
 
   const {
-    value_props_enabled,
-    value_props,
     newsletter_enabled,
     newsletter_title,
     newsletter_subtitle,
@@ -165,7 +144,6 @@ export default function GroceryFooter() {
     payment_badges,
   } = config;
 
-  const activeValueProps = value_props.filter(v => v.is_active);
   const activeSocialLinks = social_links.filter((s: SocialLink) => s.is_active);
   const activeBadges = payment_badges.filter(b => b.is_active);
   const displayColumns = columns.filter(c => c.links.some(l => l.is_active));
@@ -183,47 +161,15 @@ export default function GroceryFooter() {
   };
 
   return (
-    <ScrollReveal animation="fade-up" duration="normal" as="footer" className="mt-16 bg-linear-to-b from-green-50 via-white to-green-50 dark:from-gray-950 dark:via-gray-900 dark:to-gray-950">
-      {/* Value props strip */}
-      {value_props_enabled && activeValueProps.length > 0 && (
-        <div className="bg-green-600 border-y border-green-700">
-          <div className="mx-auto grid max-w-screen-2xl grid-cols-2 gap-6 px-4 py-6 md:grid-cols-4">
-            {activeValueProps.map(({ icon, title, description }) => {
-              const Icon = VALUE_PROP_ICONS[icon] || Truck;
-              return (
-                <div key={title} className="flex items-center gap-3">
-                  <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-white/20 text-white">
-                    <Icon className="h-5 w-5" />
-                  </div>
-                  <div>
-                    <p className="font-bold text-white">{title}</p>
-                    <p className="text-xs text-green-100">{description}</p>
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        </div>
-      )}
-
-      {/* Freshness guarantee banner */}
-      <div className="bg-green-50 border-b border-green-100 dark:bg-green-950/20 dark:border-green-900/30">
-        <div className="mx-auto flex max-w-screen-2xl items-center justify-center gap-3 px-4 py-4 text-green-800 dark:text-green-300">
-          <Leaf className="h-5 w-5" />
-          <span className="text-sm font-bold">100% Fresh or Money Back</span>
-          <span className="text-green-400">•</span>
-          <span className="text-sm">Free delivery on orders over ₹500</span>
-        </div>
-      </div>
-
+    <ScrollReveal animation="fade-up" duration="normal" as="footer" className="mt-8 bg-linear-to-b from-green-50 via-white to-green-50 dark:from-gray-950 dark:via-gray-900 dark:to-gray-950">
       {/* Newsletter */}
       {newsletter_enabled && (
         <div className="bg-linear-to-r from-green-100 via-green-50 to-orange-50 dark:from-green-950/40 dark:via-green-950/20 dark:to-orange-950/20 border-y border-green-200 dark:border-green-900/30">
-          <div className="mx-auto max-w-screen-2xl px-4 py-10">
-            <div className="grid items-center gap-6 lg:grid-cols-2">
+          <div className="mx-auto max-w-screen-2xl px-4 py-5">
+            <div className="grid items-center gap-3 lg:grid-cols-2">
               <div>
-                <h3 className="text-2xl font-black text-gray-900 dark:text-white">{newsletter_title}</h3>
-                <p className="mt-1 text-sm text-gray-600 dark:text-gray-300">{newsletter_subtitle}</p>
+                <h3 className="text-xl font-black text-gray-900 dark:text-white">{newsletter_title}</h3>
+                <p className="mt-0.5 text-sm text-gray-600 dark:text-gray-300">{newsletter_subtitle}</p>
               </div>
               <form onSubmit={handleSubscribe} className="flex w-full max-w-md gap-2">
                 <div className="relative flex-1">
@@ -234,12 +180,12 @@ export default function GroceryFooter() {
                     onChange={e => setEmail(e.target.value)}
                     required
                     placeholder="Your email address"
-                    className="w-full rounded-full border border-gray-300 bg-white py-3 pl-11 pr-4 text-sm text-gray-900 placeholder:text-gray-400 focus:border-green-500 focus:outline-none focus:ring-2 focus:ring-green-500/20 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100"
+                    className="w-full rounded-sm border border-gray-300 bg-white py-2 pl-11 pr-4 text-sm text-gray-900 placeholder:text-gray-400 focus:border-green-500 focus:outline-none focus:ring-2 focus:ring-green-500/20 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100"
                   />
                 </div>
                 <button
                   type="submit"
-                  className="rounded-full bg-green-600 px-6 py-3 text-sm font-bold text-white transition-colors hover:bg-green-700"
+                  className="rounded-sm bg-green-600 px-5 py-2 text-sm font-bold text-white transition-colors hover:bg-green-700"
                 >
                   {subscribed ? '✓ Subscribed' : 'Subscribe'}
                 </button>
@@ -250,8 +196,8 @@ export default function GroceryFooter() {
       )}
 
       {/* Main links */}
-      <div className="mx-auto max-w-screen-2xl px-4 py-12">
-        <div className="grid gap-10 md:grid-cols-2 lg:grid-cols-6">
+      <div className="mx-auto max-w-screen-2xl px-4 py-6">
+        <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-6">
           <div className="lg:col-span-2">
             <Link href="/" className="inline-flex items-center" aria-label={siteName}>
               {footerLogo ? (

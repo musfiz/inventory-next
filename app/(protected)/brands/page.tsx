@@ -10,6 +10,7 @@ import BusinessTypeSelect from '@/components/ui/business-type-select';
 import { Brand } from '@/types';
 import { notify, confirm } from '@/lib/notifications';
 import brandService from '@/services/brandService';
+import { imageUrl } from '@/lib/image-url';
 import { formatDate } from '@/lib/utils/date';
 import { useRouter } from 'next/navigation';
 import { usePermissions } from '@/hooks/use-permissions';
@@ -193,9 +194,9 @@ export default function BrandsPage() {
       header: 'Logo',
       meta: { width: '8%' },
       cell: ({ row }) => {
-        const logoUrl = row.original.logo_url;
-        const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL?.replace(/\/$/, '') || '';
-        const fullLogoUrl = logoUrl ? `${backendUrl}${logoUrl}` : null;
+        // logo_url may be a full URL, `/storage/...`, or a bare disk path
+        // like `brands/x.jpg` — imageUrl() normalizes all three shapes.
+        const fullLogoUrl = imageUrl(row.original.logo_url);
         return (
           <div className="flex items-center justify-center">
             {fullLogoUrl ? (
@@ -446,9 +447,7 @@ export default function BrandsPage() {
                         src={
                           formData.logo_url
                             ? URL.createObjectURL(formData.logo_url)
-                            : currentBrand?.logo_url
-                              ? `${(process.env.NEXT_PUBLIC_BACKEND_URL || '').replace(/\/$/, '')}${currentBrand.logo_url}`
-                              : ''
+                            : imageUrl(currentBrand?.logo_url) ?? ''
                         }
                         alt="Logo Preview"
                         className="w-14 h-14 object-contain rounded border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-700 p-1"

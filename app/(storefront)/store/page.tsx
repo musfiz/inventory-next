@@ -14,6 +14,7 @@ import Link from 'next/link';
 import { useRef } from 'react';
 import GroceryHomePage from '@/components/storefront/grocery/GroceryHomePage';
 import HeroCarousel, { HeroCarouselSkeleton } from '@/components/storefront/HeroCarousel';
+import HeroGridWithWeeklyDeals from '@/components/storefront/HeroGridWithWeeklyDeals';
 import ProductCardSkeleton from '@/components/storefront/ProductCardSkeleton';
 import ProductVariationCards from '@/components/storefront/ProductVariationCards';
 import ScrollReveal from '@/components/storefront/ScrollReveal';
@@ -123,18 +124,13 @@ const CategoryStrip = () => {
   return (
     <section className="py-10 sm:py-12">
       <ScrollReveal animation="fade-up" as="div" className="mb-6">
-        <div className="flex items-end justify-between">
-          <div>
-            <h2 className="text-2xl font-black text-gray-900 dark:text-white sm:text-3xl">
-              Shop by Category
-            </h2>
-            <p className="mt-1 text-sm text-gray-500">
-              Browse our most popular categories
-            </p>
-          </div>
+        <div className="relative flex items-center justify-center text-center">
+          <h2 className="text-2xl font-black uppercase text-gray-900 dark:text-white">
+            Shop by Category
+          </h2>
           <Link
             href="/store/products"
-            className="hidden text-sm font-semibold text-brand-600 hover:text-brand-700 sm:inline-flex sm:items-center sm:gap-1"
+            className="absolute right-0 hidden text-sm font-semibold text-brand-600 hover:text-brand-700 sm:inline-flex sm:items-center sm:gap-1"
           >
             View all
             <ArrowRight className="h-4 w-4" />
@@ -193,7 +189,6 @@ const FeaturedProducts = () => {
             <div className="h-11 w-11 animate-pulse rounded-xl bg-gray-200 dark:bg-gray-800" />
             <div>
               <div className="h-6 w-48 animate-pulse rounded bg-gray-200 dark:bg-gray-800" />
-              <div className="mt-2 h-4 w-32 animate-pulse rounded bg-gray-200 dark:bg-gray-800" />
             </div>
           </div>
         </div>
@@ -211,21 +206,18 @@ const FeaturedProducts = () => {
   return (
     <section className="py-8 sm:py-10">
       <ScrollReveal animation="fade-up" as="div" className="mb-6">
-        <div className="flex items-end justify-between">
+        <div className="relative flex items-center justify-center text-center">
           <div className="flex items-center gap-3">
             <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-brand-50 text-brand-600 dark:bg-brand-950/50">
               <Sparkles className="h-5 w-5" />
             </div>
-            <div>
-              <h2 className="text-2xl font-black text-gray-900 dark:text-white sm:text-3xl">
-                Featured Products
-              </h2>
-              <p className="text-sm text-gray-500">Hand-picked by our team</p>
-            </div>
+            <h2 className="text-2xl font-black uppercase text-gray-900 dark:text-white">
+              Featured Products
+            </h2>
           </div>
           <Link
             href="/store/products"
-            className="inline-flex items-center gap-1.5 rounded-full border border-brand-200 bg-brand-50 px-4 py-2 text-sm font-bold text-brand-700 transition-all hover:bg-brand-100 hover:text-brand-800 dark:border-brand-800 dark:bg-brand-950/30 dark:text-brand-400"
+            className="absolute right-0 hidden items-center gap-1.5 rounded-full border border-brand-200 bg-brand-50 px-4 py-2 text-sm font-bold text-brand-700 transition-all hover:bg-brand-100 hover:text-brand-800 sm:inline-flex dark:border-brand-800 dark:bg-brand-950/30 dark:text-brand-400"
           >
             View all
             <ArrowRight className="h-4 w-4" />
@@ -260,7 +252,6 @@ const BestSellers = () => {
             <div className="h-11 w-11 animate-pulse rounded-xl bg-gray-200 dark:bg-gray-800" />
             <div>
               <div className="h-6 w-48 animate-pulse rounded bg-gray-200 dark:bg-gray-800" />
-              <div className="mt-2 h-4 w-32 animate-pulse rounded bg-gray-200 dark:bg-gray-800" />
             </div>
           </div>
         </div>
@@ -278,21 +269,18 @@ const BestSellers = () => {
   return (
     <section className="py-8 sm:py-10">
       <ScrollReveal animation="fade-up" as="div" className="mb-6">
-        <div className="flex items-end justify-between">
+        <div className="relative flex items-center justify-center text-center">
           <div className="flex items-center gap-3">
             <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-brand-50 text-brand-600 dark:bg-brand-950/50">
               <TrendingUp className="h-5 w-5" />
             </div>
-            <div>
-              <h2 className="text-2xl font-black text-gray-900 dark:text-white sm:text-3xl">
-                Best Sellers
-              </h2>
-              <p className="text-sm text-gray-500">What everyone&apos;s buying right now</p>
-            </div>
+            <h2 className="text-2xl font-black uppercase text-gray-900 dark:text-white">
+              Best Sellers
+            </h2>
           </div>
           <Link
             href="/store/products"
-            className="inline-flex items-center gap-1.5 rounded-full border border-brand-200 bg-brand-50 px-4 py-2 text-sm font-bold text-brand-700 transition-all hover:bg-brand-100 hover:text-brand-800 dark:border-brand-800 dark:bg-brand-950/30 dark:text-brand-400"
+            className="absolute right-0 hidden items-center gap-1.5 rounded-full border border-brand-200 bg-brand-50 px-4 py-2 text-sm font-bold text-brand-700 transition-all hover:bg-brand-100 hover:text-brand-800 sm:inline-flex dark:border-brand-800 dark:bg-brand-950/30 dark:text-brand-400"
           >
             View all
             <ArrowRight className="h-4 w-4" />
@@ -327,7 +315,6 @@ const NewArrivals = () => {
             <div className="h-11 w-11 animate-pulse rounded-xl bg-gray-200 dark:bg-gray-800" />
             <div>
               <div className="h-6 w-48 animate-pulse rounded bg-gray-200 dark:bg-gray-800" />
-              <div className="mt-2 h-4 w-32 animate-pulse rounded bg-gray-200 dark:bg-gray-800" />
             </div>
           </div>
         </div>
@@ -345,21 +332,18 @@ const NewArrivals = () => {
   return (
     <section className="py-8 sm:py-10">
       <ScrollReveal animation="fade-up" as="div" className="mb-6">
-        <div className="flex items-end justify-between">
+        <div className="relative flex items-center justify-center text-center">
           <div className="flex items-center gap-3">
             <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-brand-50 text-brand-600 dark:bg-brand-950/50">
               <Tag className="h-5 w-5" />
             </div>
-            <div>
-              <h2 className="text-2xl font-black text-gray-900 dark:text-white sm:text-3xl">
-                New Arrivals
-              </h2>
-              <p className="text-sm text-gray-500">Fresh styles just landed</p>
-            </div>
+            <h2 className="text-2xl font-black uppercase text-gray-900 dark:text-white">
+              New Arrivals
+            </h2>
           </div>
           <Link
             href="/store/products"
-            className="inline-flex items-center gap-1.5 rounded-full border border-brand-200 bg-brand-50 px-4 py-2 text-sm font-bold text-brand-700 transition-all hover:bg-brand-100 hover:text-brand-800 dark:border-brand-800 dark:bg-brand-950/30 dark:text-brand-400"
+            className="absolute right-0 hidden items-center gap-1.5 rounded-full border border-brand-200 bg-brand-50 px-4 py-2 text-sm font-bold text-brand-700 transition-all hover:bg-brand-100 hover:text-brand-800 sm:inline-flex dark:border-brand-800 dark:bg-brand-950/30 dark:text-brand-400"
           >
             View all
             <ArrowRight className="h-4 w-4" />
@@ -441,16 +425,11 @@ const OffersCarousel = ({ slides }: { slides: StorefrontOfferSlide[] }) => {
 
   return (
     <ScrollReveal animation="fade-up" as="section" className="py-6 sm:py-8">
-      <div className="mb-4 flex items-end justify-between">
-        <div>
-          <h2 className="text-2xl font-black text-gray-900 dark:text-white sm:text-3xl">
-            Top Offers
-          </h2>
-          <p className="mt-1 text-sm text-gray-500">
-            Hand-picked deals across categories
-          </p>
-        </div>
-        <div className="hidden gap-2 sm:flex">
+      <div className="relative mb-4 flex items-center justify-center text-center">
+        <h2 className="text-2xl font-black uppercase text-gray-900 dark:text-white">
+          Top Offers
+        </h2>
+        <div className="absolute right-0 hidden gap-2 sm:flex">
           <button
             onClick={() => scrollByCard(-1)}
             aria-label="Scroll offers left"
@@ -525,17 +504,14 @@ const RecentlyViewed = () => {
   return (
     <section className="py-8 sm:py-10">
       <ScrollReveal animation="fade-up" as="div" className="mb-6">
-        <div className="flex items-end justify-between">
+        <div className="flex items-center justify-center text-center">
           <div className="flex items-center gap-3">
             <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-brand-50 text-brand-600 dark:bg-brand-950/50">
               <History className="h-5 w-5" />
             </div>
-            <div>
-              <h2 className="text-2xl font-black text-gray-900 dark:text-white sm:text-3xl">
-                Recently Viewed
-              </h2>
-              <p className="text-sm text-gray-500">Pick up where you left off</p>
-            </div>
+            <h2 className="text-2xl font-black uppercase text-gray-900 dark:text-white">
+              Recently Viewed
+            </h2>
           </div>
         </div>
       </ScrollReveal>
@@ -552,7 +528,7 @@ export default function HomePage() {
   // Hero + offer slides — SWR (deduped; no double fetch in StrictMode).
   const { sliders: heroSliders, loading: heroLoading } = useHeroSliders();
   const { slides: offerSlides } = useOfferSlides();
-  const { storeName } = useStorefrontStatus();
+  const { storeName, homepageHeroWidget } = useStorefrontStatus();
   const siteName = storeName || 'Our Store';
 
   useSeo({
@@ -565,11 +541,21 @@ export default function HomePage() {
   const { isGrocery } = useStorefrontTheme();
   if (isGrocery) return <GroceryHomePage />;
 
+  // Admin-selected hero widget: rotating banner slider, or promo grid + deals rail.
+  const heroWidget =
+    homepageHeroWidget === 'hero_grid_deals' ? (
+      <HeroGridWithWeeklyDeals />
+    ) : heroLoading ? (
+      <HeroCarouselSkeleton />
+    ) : (
+      <HeroCarousel slides={heroSliders} />
+    );
+
   return (
     <div className="bg-gray-50 dark:bg-gray-950">
       <div className="mx-auto max-w-screen-2xl px-4 py-6">
-        {/* Section 1 — Hero Carousel (main banner slider) */}
-        {heroLoading ? <HeroCarouselSkeleton /> : <HeroCarousel slides={heroSliders} />}
+        {/* Section 1 — Hero widget (slider or grid + weekly deals) */}
+        {heroWidget}
 
         {/* Section 2 — Shop by Category (replaces Trust Strip) */}
         <CategoryStrip />

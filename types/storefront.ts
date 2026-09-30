@@ -190,6 +190,36 @@ export interface StorefrontOfferSlide {
   sort_order: number;
 }
 
+/**
+ * A live weekly deal from the homepage hero widget. `items` holds one entry per
+ * promoted product variation (the product shape narrowed to a single
+ * variation), so the carousel can show them one at a time.
+ */
+export interface StorefrontWeeklyDeal {
+  id: string;
+  title: string;
+  description: string | null;
+  starts_at: string;
+  ends_at: string;
+  items: Product[];
+}
+
+/** One of the fixed 4 promo cells in the homepage hero grid widget. */
+export interface StorefrontHeroGridImage {
+  id: string;
+  position: number;
+  image_url: string;
+  /** Intrinsic pixel size of the stored file; null on legacy rows. */
+  width: number | null;
+  height: number | null;
+  /** width / height, or null when the size is unknown. */
+  aspect_ratio: number | null;
+  title: string | null;
+  link_url: string | null;
+  alt_text: string | null;
+  is_active: boolean;
+}
+
 export interface StoreReview {
   id: string;
   customerName: string;

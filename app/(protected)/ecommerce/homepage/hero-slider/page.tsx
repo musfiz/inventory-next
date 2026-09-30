@@ -17,6 +17,7 @@ import {
   Calendar,
 } from 'lucide-react';
 import { ImUpload } from 'react-icons/im';
+import { GiSave } from 'react-icons/gi';
 import heroSliderService from '@/services/heroSliderService';
 import { notify, confirm } from '@/lib/notifications';
 import CustomDateTimePicker from '@/components/ui/date-time-picker';
@@ -254,8 +255,11 @@ export default function HeroSliderPage() {
     return resolveImageUrl(slide?.image_url) || null;
   })() : form.image_preview;
 
+  const inputCls = (hasError?: boolean) =>
+    `w-full px-2.5 py-1 text-xs bg-white dark:bg-gray-700 border ${hasError ? 'border-red-500' : 'border-gray-300 dark:border-gray-600'} rounded text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-1 focus:ring-indigo-500`;
+
   return (
-    <div className="space-y-6">
+    <div className="space-y-3">
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
           <Sliders className="w-5 h-5 text-indigo-600 dark:text-indigo-400" />
@@ -271,31 +275,33 @@ export default function HeroSliderPage() {
       </div>
 
       {formOpen && (
-        <div className="bg-white dark:bg-gray-800 rounded-md shadow-sm border border-gray-200 dark:border-gray-700 p-4">
-          <div className="flex items-center justify-between mb-4">
-            <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100">
-              {editing ? 'Edit Slide' : 'Add New Slide'}
-            </h2>
-            <button
-              onClick={resetForm}
-              className="p-1 rounded text-gray-400 hover:text-gray-600 hover:bg-gray-100 dark:hover:bg-gray-700 cursor-pointer"
-            >
-              <X className="w-4 h-4" />
-            </button>
+        <div className="space-y-3">
+          <div className="bg-white dark:bg-gray-800 rounded-md shadow-sm border border-gray-200 dark:border-gray-700 p-3">
+            <div className="flex items-center justify-between mb-3">
+              <h3 className="text-xs font-semibold text-gray-700 dark:text-gray-300">
+                {editing ? 'Edit Slide' : 'Add New Slide'}
+              </h3>
+              <button
+                onClick={resetForm}
+                className="p-1 rounded text-gray-400 hover:text-gray-600 hover:bg-gray-100 dark:hover:bg-gray-700 cursor-pointer"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
           </div>
 
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-            <div className="lg:col-span-2 space-y-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                  Image {!editing && <span className="text-red-500">*</span>}
-                </label>
+          <div className="bg-white dark:bg-gray-800 rounded-md shadow-sm border border-gray-200 dark:border-gray-700 p-3">
+            <h3 className="text-xs font-semibold text-gray-700 dark:text-gray-300 mb-3">
+              Slide Image
+            </h3>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-x-4 gap-y-2">
+              <FormRow label="Image" required labelWidth="w-32">
                 <div
                   onDragOver={e => { e.preventDefault(); setDragActive(true); }}
                   onDragLeave={() => setDragActive(false)}
                   onDrop={handleDrop}
                   onClick={() => fileInputRef.current?.click()}
-                  className={`relative flex items-center justify-center h-32 rounded border-2 border-dashed transition-colors cursor-pointer ${dragActive
+                  className={`relative flex items-center justify-center h-[68px] rounded border-2 border-dashed transition-colors cursor-pointer ${dragActive
                     ? 'border-indigo-400 bg-indigo-50 dark:bg-indigo-900/20'
                     : 'border-gray-300 dark:border-gray-600 hover:border-gray-400'
                     }`}
@@ -307,138 +313,139 @@ export default function HeroSliderPage() {
                     onChange={e => handleFileSelect(e.target.files?.[0] || null)}
                     className="hidden"
                   />
-                  <div className="text-center">
-                    <ImUpload className="w-6 h-6 mx-auto text-gray-400 mb-1" />
-                    <p className="text-xs text-gray-500 dark:text-gray-400">
+                  <div className="text-center px-2">
+                    <ImUpload className="w-4 h-4 mx-auto text-gray-400 mb-0.5" />
+                    <p className="text-[11px] text-gray-500 dark:text-gray-400">
                       Drop an image or click to browse
                     </p>
-                    <p className="text-xs text-gray-400 dark:text-gray-500 mt-0.5">
+                    <p className="text-[10px] text-gray-400 dark:text-gray-500">
                       JPEG, PNG, WebP &middot; Max 4MB
                     </p>
                   </div>
                 </div>
-              </div>
+              </FormRow>
 
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Title</label>
-                  <input
-                    type="text"
-                    value={form.title}
-                    onChange={e => setForm(f => ({ ...f, title: e.target.value }))}
-                    placeholder="Slide title"
-                    className="w-full px-3 py-1.5 text-sm border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-1 focus:ring-indigo-500"
-                  />
+              <FormRow label="Preview" labelWidth="w-32">
+                <div className="aspect-video max-h-[68px] w-full bg-gray-100 dark:bg-gray-700 rounded border border-gray-200 dark:border-gray-600 flex items-center justify-center overflow-hidden">
+                  {currentPreview ? (
+                    <img src={currentPreview} alt="Preview" className="w-full h-full object-cover" />
+                  ) : (
+                    <div className="text-center p-2">
+                      <ImageIcon className="w-5 h-5 mx-auto text-gray-400 mb-0.5" />
+                      <p className="text-[10px] text-gray-400">No image selected</p>
+                    </div>
+                  )}
                 </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Subtitle</label>
-                  <input
-                    type="text"
-                    value={form.subtitle}
-                    onChange={e => setForm(f => ({ ...f, subtitle: e.target.value }))}
-                    placeholder="Slide subtitle"
-                    className="w-full px-3 py-1.5 text-sm border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-1 focus:ring-indigo-500"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">CTA Text</label>
-                  <input
-                    type="text"
-                    value={form.cta_text}
-                    onChange={e => setForm(f => ({ ...f, cta_text: e.target.value }))}
-                    placeholder="e.g. Shop Now"
-                    className="w-full px-3 py-1.5 text-sm border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-1 focus:ring-indigo-500"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">CTA Link</label>
-                  <div className="relative">
-                    <Link className="absolute left-2 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-gray-400" />
-                    <input
-                      type="text"
-                      value={form.cta_link}
-                      onChange={e => setForm(f => ({ ...f, cta_link: e.target.value }))}
-                      placeholder="/products or https://"
-                      className="w-full pl-8 pr-3 py-1.5 text-sm border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-1 focus:ring-indigo-500"
-                    />
-                  </div>
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Alt Text</label>
-                  <input
-                    type="text"
-                    value={form.alt_text}
-                    onChange={e => setForm(f => ({ ...f, alt_text: e.target.value }))}
-                    placeholder="Image description for accessibility"
-                    className="w-full px-3 py-1.5 text-sm border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-1 focus:ring-indigo-500"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Sort Order</label>
-                  <input
-                    type="number"
-                    min="0"
-                    value={form.sort_order}
-                    onChange={e => setForm(f => ({ ...f, sort_order: parseInt(e.target.value) || 0 }))}
-                    className="w-full px-3 py-1.5 text-sm border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-1 focus:ring-indigo-500"
-                  />
-                </div>
-              </div>
+              </FormRow>
 
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Start Date (optional)</label>
-                  <CustomDateTimePicker
-                    value={form.starts_at}
-                    onChange={val => setForm(f => ({ ...f, starts_at: val }))}
-                    placeholder="Select start date & time"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">End Date (optional)</label>
-                  <CustomDateTimePicker
-                    value={form.ends_at}
-                    onChange={val => setForm(f => ({ ...f, ends_at: val }))}
-                    placeholder="Select end date & time"
-                  />
-                </div>
-              </div>
-
-              <div className="flex items-center gap-2">
+              <FormRow label="Alt Text" labelWidth="w-32" className="md:col-span-2">
                 <input
-                  type="checkbox"
-                  id="is-active"
-                  checked={form.is_active}
-                  onChange={e => setForm(f => ({ ...f, is_active: e.target.checked }))}
-                  className="w-4 h-4 text-indigo-600 border-gray-300 rounded focus:ring-indigo-500 cursor-pointer"
+                  type="text"
+                  value={form.alt_text}
+                  onChange={e => setForm(f => ({ ...f, alt_text: e.target.value }))}
+                  placeholder="Image description for accessibility"
+                  className={inputCls()}
                 />
-                <label htmlFor="is-active" className="text-sm font-medium text-gray-700 dark:text-gray-300 cursor-pointer select-none">
-                  Active
-                </label>
-              </div>
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Preview</label>
-              <div className="aspect-video bg-gray-100 dark:bg-gray-700 rounded border border-gray-200 dark:border-gray-600 flex items-center justify-center overflow-hidden">
-                {currentPreview ? (
-                  <img src={currentPreview} alt="Preview" className="w-full h-full object-cover" />
-                ) : (
-                  <div className="text-center p-4">
-                    <ImageIcon className="w-8 h-8 mx-auto text-gray-400 mb-1" />
-                    <p className="text-xs text-gray-400">No image selected</p>
-                  </div>
-                )}
-              </div>
+              </FormRow>
             </div>
           </div>
 
-          <div className="mt-4 pt-3 border-t border-gray-200 dark:border-gray-700">
+          <div className="bg-white dark:bg-gray-800 rounded-md shadow-sm border border-gray-200 dark:border-gray-700 p-3">
+            <h3 className="text-xs font-semibold text-gray-700 dark:text-gray-300 mb-3">
+              Slide Content
+            </h3>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-x-4 gap-y-2">
+              <FormRow label="Title" labelWidth="w-32">
+                <input
+                  type="text"
+                  value={form.title}
+                  onChange={e => setForm(f => ({ ...f, title: e.target.value }))}
+                  placeholder="Slide title"
+                  className={inputCls()}
+                />
+              </FormRow>
+              <FormRow label="Subtitle" labelWidth="w-32">
+                <input
+                  type="text"
+                  value={form.subtitle}
+                  onChange={e => setForm(f => ({ ...f, subtitle: e.target.value }))}
+                  placeholder="Slide subtitle"
+                  className={inputCls()}
+                />
+              </FormRow>
+              <FormRow label="CTA Text" labelWidth="w-32">
+                <input
+                  type="text"
+                  value={form.cta_text}
+                  onChange={e => setForm(f => ({ ...f, cta_text: e.target.value }))}
+                  placeholder="e.g. Shop Now"
+                  className={inputCls()}
+                />
+              </FormRow>
+              <FormRow label="CTA Link" labelWidth="w-32">
+                <div className="relative">
+                  <Link className="absolute left-2 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-gray-400" />
+                  <input
+                    type="text"
+                    value={form.cta_link}
+                    onChange={e => setForm(f => ({ ...f, cta_link: e.target.value }))}
+                    placeholder="/products or https://"
+                    className={`${inputCls()} pl-8`}
+                  />
+                </div>
+              </FormRow>
+              <FormRow label="Sort Order" labelWidth="w-32">
+                <input
+                  type="number"
+                  min="0"
+                  value={form.sort_order}
+                  onChange={e => setForm(f => ({ ...f, sort_order: parseInt(e.target.value) || 0 }))}
+                  className={inputCls()}
+                />
+              </FormRow>
+              <FormRow label="Active" labelWidth="w-32">
+                <div className="flex items-center h-[28px]">
+                  <input
+                    type="checkbox"
+                    id="is-active"
+                    checked={form.is_active}
+                    onChange={e => setForm(f => ({ ...f, is_active: e.target.checked }))}
+                    className="w-4 h-4 text-indigo-600 border-gray-300 rounded focus:ring-indigo-500 cursor-pointer"
+                  />
+                  <label htmlFor="is-active" className="ml-1.5 text-[11px] text-gray-600 dark:text-gray-400 cursor-pointer select-none">
+                    Show this slide on storefront
+                  </label>
+                </div>
+              </FormRow>
+            </div>
+          </div>
+
+          <div className="bg-white dark:bg-gray-800 rounded-md shadow-sm border border-gray-200 dark:border-gray-700 p-3">
+            <h3 className="text-xs font-semibold text-gray-700 dark:text-gray-300 mb-3">
+              Schedule
+            </h3>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-x-4 gap-y-2">
+              <FormRow label="Start Date" labelWidth="w-32">
+                <CustomDateTimePicker
+                  value={form.starts_at}
+                  onChange={val => setForm(f => ({ ...f, starts_at: val }))}
+                  placeholder="Select start date & time"
+                />
+              </FormRow>
+              <FormRow label="End Date" labelWidth="w-32">
+                <CustomDateTimePicker
+                  value={form.ends_at}
+                  onChange={val => setForm(f => ({ ...f, ends_at: val }))}
+                  placeholder="Select end date & time"
+                />
+              </FormRow>
+            </div>
+
             {saving && uploadProgress !== null && (
-              <div className="mb-3">
+              <div className="mt-3">
                 <div className="flex items-center justify-between mb-1">
-                  <p className="text-xs text-gray-500 dark:text-gray-400">Upload progress</p>
-                  <p className="text-xs font-medium text-indigo-600 dark:text-indigo-400">{uploadProgress}%</p>
+                  <p className="text-[11px] text-gray-500 dark:text-gray-400">Upload progress</p>
+                  <p className="text-[11px] font-medium text-indigo-600 dark:text-indigo-400">{uploadProgress}%</p>
                 </div>
                 <div className="h-2 w-full rounded bg-gray-200 dark:bg-gray-700 overflow-hidden">
                   <div
@@ -449,7 +456,7 @@ export default function HeroSliderPage() {
               </div>
             )}
 
-            <div className="flex gap-2">
+            <div className="mt-3 pt-3 border-t border-gray-200 dark:border-gray-700 flex gap-2">
               <button
                 onClick={handleSubmit}
                 disabled={saving || (!editing && !form.image)}
@@ -458,7 +465,7 @@ export default function HeroSliderPage() {
                 {saving ? (
                   <Loader2 className="w-3.5 h-3.5 animate-spin" />
                 ) : (
-                  <ImUpload className="w-3.5 h-3.5" />
+                  <GiSave className="w-3.5 h-3.5" />
                 )}
                 {saving ? 'Saving...' : editing ? 'Update Slide' : 'Upload Slide'}
               </button>
@@ -605,6 +612,22 @@ export default function HeroSliderPage() {
           ))}
         </div>
       )}
+    </div>
+  );
+}
+
+function FormRow({ label, required, error, children, labelWidth = 'w-32', className = '' }: { label: string; required?: boolean; error?: string | null; children: React.ReactNode; labelWidth?: string; className?: string }) {
+  const errorMl =
+    labelWidth === 'w-32' ? 'ml-[8.5rem]' : labelWidth === 'w-20' ? 'ml-[5.5rem]' : 'ml-[4.375rem]';
+  return (
+    <div className={className}>
+      <div className="flex items-center gap-1.5">
+        <label className={`${labelWidth} shrink-0 text-[11px] font-medium text-gray-600 dark:text-gray-400 text-right`}>
+          {label}{required && <span className="text-red-500">*</span>}:
+        </label>
+        <div className="flex-1 min-w-0">{children}</div>
+      </div>
+      {error && <p className={`text-[10px] text-red-500 mt-0.5 ${errorMl}`}>{error}</p>}
     </div>
   );
 }

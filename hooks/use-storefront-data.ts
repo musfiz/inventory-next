@@ -23,7 +23,7 @@ import storefrontService, {
   type StorefrontHeroSlider,
   type StorefrontFlashSaleCampaign,
 } from '@/services/storefrontService';
-import type { StorefrontOfferSlide, Product, Brand, Address } from '@/types/storefront';
+import type { StorefrontOfferSlide, StorefrontHeroGridImage, StorefrontWeeklyDeal, Product, Brand, Address } from '@/types/storefront';
 import checkoutService, { type StorefrontOrder } from '@/services/checkoutService';
 import headerMenuService from '@/services/headerMenuService';
 import footerService from '@/services/footerService';
@@ -253,6 +253,24 @@ export function useShowSimilarProducts() {
 export function useHeroSliders() {
   const { data, isLoading } = useSWR<StorefrontHeroSlider[]>(SK.heroSliders, () => storefrontService.getHeroSliders());
   return { sliders: data ?? [], loading: isLoading };
+}
+
+/** 4-slot promo grid for the `hero_grid_deals` homepage hero widget. */
+export function useHeroGridImages(enabled = true) {
+  const { data, isLoading } = useSWR<StorefrontHeroGridImage[]>(
+    enabled ? SK.heroGridImages : null,
+    () => storefrontService.getHeroGridImages(),
+  );
+  return { images: data ?? [], loading: isLoading };
+}
+
+/** Weekly deals that are live right now (already filtered server-side). */
+export function useWeeklyDeals(enabled = true) {
+  const { data, isLoading } = useSWR<StorefrontWeeklyDeal[]>(
+    enabled ? SK.weeklyDeals : null,
+    () => storefrontService.getWeeklyDeals(),
+  );
+  return { deals: data ?? [], loading: isLoading };
 }
 
 export function useOfferSlides() {

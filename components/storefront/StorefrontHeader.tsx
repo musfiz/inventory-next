@@ -6,7 +6,6 @@ import { useState, useRef, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import {
   User,
-  Heart,
   Menu,
   Phone,
   BadgePercent,
@@ -14,7 +13,6 @@ import {
 } from 'lucide-react';
 import { ImCart } from 'react-icons/im';
 import { useCartStore } from '@/stores/cart-store';
-import { useWishlistStore } from '@/stores/wishlist-store';
 import { useCustomerAuthStore } from '@/stores/customer-auth-store';
 import { formatMoney } from '@/lib/utils/format';
 import { useBranding } from '@/hooks/use-branding';
@@ -47,7 +45,6 @@ function DefaultStorefrontHeader() {
   const accountRef = useRef<HTMLDivElement>(null);
   const itemCount = useCartStore(s => s.getItemCount());
   const subtotal = useCartStore(s => s.getSubtotal());
-  const wishlistCount = useWishlistStore(s => s.items.length);
   const openCart = useCartStore(s => s.openDrawer);
   const { headerLogo, ready } = useBranding();
   const { config: menu, ready: menuReady } = useHeaderMenu();
@@ -158,24 +155,15 @@ function DefaultStorefrontHeader() {
               </div>
             </div>
 
-            <div className="flex items-center gap-0.5">
-              <Link href="/store/account/wishlist" className="relative hidden rounded-xl p-2.5 text-gray-600 transition-all hover:bg-gray-100 sm:inline-flex dark:text-gray-300 dark:hover:bg-gray-800" aria-label="Wishlist">
-                <Heart className="h-5 w-5" />
-                {wishlistCount > 0 && (
-                  <span className="absolute -right-0.5 -top-0.5 flex h-4 min-w-[16px] items-center justify-center rounded-full bg-linear-to-r from-accent-500 to-pink-500 px-1 text-[10px] font-bold text-white shadow-sm">
-                    {wishlistCount}
-                  </span>
-                )}
-              </Link>
-
+            <div className="flex items-center gap-2">
               <div ref={accountRef} className="relative">
                 <button
                   onClick={() => {
                     if (user) { setAccountOpen(o => !o); }
                     else { router.push('/store/account/login'); }
                   }}
-                  className="flex items-center gap-2 rounded-xl p-2 text-gray-600 transition-all hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-gray-800"
-                  aria-label="Account"
+                  className="inline-flex h-11 items-center gap-2 rounded-sm border border-gray-200 bg-white px-3 text-gray-900 shadow-sm transition-all hover:bg-gray-100 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100 dark:hover:bg-gray-700"
+                  aria-label={user ? 'Account' : 'Sign in'}
                 >
                   {user ? (
                     <>
@@ -187,13 +175,18 @@ function DefaultStorefrontHeader() {
                       </span>
                     </>
                   ) : (
-                    <User className="h-5 w-5" />
+                    <>
+                      <User className="h-5 w-5" />
+                      <span className="hidden text-sm font-semibold sm:inline-block">
+                        Sign In
+                      </span>
+                    </>
                   )}
                 </button>
                 {user && accountOpen && <AccountMenu onClose={() => setAccountOpen(false)} />}
               </div>
 
-              <button onClick={openCart} className="relative inline-flex items-center gap-2.5 rounded-xl border border-gray-200 bg-white py-2.5 pl-3 pr-4 text-gray-900 shadow-sm transition-all hover:bg-gray-100 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100 dark:hover:bg-gray-700" aria-label={`Cart with ${itemCount} items, total ${formatMoney(subtotal)}`}>
+              <button onClick={openCart} className="relative inline-flex h-11 items-center gap-2.5 rounded-sm border border-gray-200 bg-white pl-3 pr-4 text-gray-900 shadow-sm transition-all hover:bg-gray-100 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100 dark:hover:bg-gray-700" aria-label={`Cart with ${itemCount} items, total ${formatMoney(subtotal)}`}>
                 <div className="relative">
                   <ImCart className="h-5 w-5" />
                   {itemCount > 0 && (

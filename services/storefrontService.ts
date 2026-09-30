@@ -41,7 +41,7 @@ export interface StorefrontFlashSaleProduct {
   discount_percentage: number;
 }
 
-import type { StorefrontOfferSlide } from '@/types/storefront';
+import type { StorefrontOfferSlide, StorefrontHeroGridImage, StorefrontWeeklyDeal } from '@/types/storefront';
 
 export interface CategoryTreeItem {
   id: string;
@@ -117,6 +117,25 @@ class StorefrontService {
       '/api/v1/storefront/offer-slides'
     );
     return response.data.data ?? [];
+  }
+
+  /** Fixed 4-slot promo grid shown beside the Weekly Deals rail. */
+  async getHeroGridImages(): Promise<StorefrontHeroGridImage[]> {
+    const response = await apiClient.get<ApiResponse<StorefrontHeroGridImage[]>>(
+      '/api/v1/storefront/hero-grid-images'
+    );
+    return response.data.data ?? [];
+  }
+
+  /**
+   * Weekly deals that are live right now. Each deal's items are narrowed to a
+   * single product variation so the carousel shows one at a time.
+   */
+  async getWeeklyDeals(): Promise<StorefrontWeeklyDeal[]> {
+    const response = await apiClient.get<ApiResponse<{ deals: StorefrontWeeklyDeal[] }>>(
+      '/api/v1/storefront/weekly-deals'
+    );
+    return response.data.data?.deals ?? [];
   }
 
   async getFlashSale(): Promise<StorefrontFlashSaleCampaign[]> {

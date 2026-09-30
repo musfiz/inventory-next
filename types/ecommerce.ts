@@ -144,6 +144,47 @@ export interface ProductSearchResult {
   image_url?: string;
 }
 
+// ── Weekly Deal Types ─────────────────────────────────────────────────────
+
+export type WeeklyDealStatus = 'upcoming' | 'active' | 'ended' | 'inactive';
+
+export interface WeeklyDealProduct {
+  id: string;
+  weekly_deal_id: string;
+  product_variation_id: string;
+  sort_order: number;
+}
+
+/** A variation row as selected in the picker (label fields are display-only). */
+export interface SelectedVariation {
+  product_variation_id: string;
+  product_id: string;
+  product_name: string;
+  variation_name: string;
+  sku: string;
+  image_url?: string;
+  selling_price: number;
+}
+
+export interface WeeklyDeal {
+  id: string;
+  tenant_id?: string | null;
+  title: string;
+  description: string | null;
+  starts_at: string;
+  ends_at: string;
+  is_active: boolean;
+  sort_order: number;
+  /** Derived server-side from the window + is_active. */
+  computed_status?: WeeklyDealStatus;
+  products_count?: number;
+  products?: WeeklyDealProduct[];
+  /** Pivot rows as serialized by the admin show endpoint (snake_case key). */
+  deal_products?: WeeklyDealProduct[];
+  created_at?: string;
+  updated_at?: string;
+}
+
 /** Category shape for the campaign category filter dropdown */
 export interface CampaignCategory {
   id: string;
