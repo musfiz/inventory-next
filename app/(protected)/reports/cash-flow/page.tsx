@@ -38,7 +38,7 @@ export default function CashFlowPage() {
     <div className="p-4 space-y-4">
       <div>
         <h1 className="text-xl font-bold text-gray-900 dark:text-white">Cash Flow</h1>
-        <p className="text-sm text-gray-500">Inflows and outflows across all cash & bank accounts</p>
+        <p className="text-xs text-gray-500">Inflows and outflows across all cash & bank accounts</p>
       </div>
 
       {/* Filters */}

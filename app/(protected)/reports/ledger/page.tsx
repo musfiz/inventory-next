@@ -57,7 +57,7 @@ export default function LedgerPage() {
     <div className="p-4 space-y-4">
       <div>
         <h1 className="text-xl font-bold text-gray-900 dark:text-white">Account Ledger</h1>
-        <p className="text-sm text-gray-500">View transaction history for any account</p>
+        <p className="text-xs text-gray-500">View transaction history for any account</p>
       </div>
 
       {/* Filters */}

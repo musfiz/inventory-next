@@ -219,7 +219,7 @@ export default function JournalEntriesPage() {
       <div className="flex items-center justify-between flex-wrap gap-2">
         <div>
           <h1 className="text-xl font-bold text-gray-900 dark:text-white">Journal Entries</h1>
-          <p className="text-sm text-gray-500">Double-entry bookkeeping ledger</p>
+          <p className="text-xs text-gray-500">Double-entry bookkeeping ledger</p>
         </div>
         <div className="flex items-center gap-2">
           {isSuperAdmin && (

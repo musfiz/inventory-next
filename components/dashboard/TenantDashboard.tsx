@@ -124,7 +124,7 @@ export default function TenantDashboard() {
         <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100">
           {getGreeting()}, {user?.name?.split(' ')[0]}!
         </h1>
-        <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
+        <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
           Here&apos;s what&apos;s happening with your business today.
         </p>
       </div>

@@ -42,7 +42,9 @@ export default function ReportLayout({
   printId,
 }: ReportLayoutProps) {
   return (
-    <div className="p-4 space-y-4">
+    // No page padding: <main> already supplies it, so reports line up with the
+    // rest of the app (dashboard, brand list, product list, ...).
+    <div className="space-y-2">
       {/* Header */}
       <div className="flex items-center justify-between flex-wrap gap-2">
         <div className="flex items-center gap-2">
@@ -54,7 +56,7 @@ export default function ReportLayout({
           <div>
             <h1 className="text-xl font-bold text-gray-900 dark:text-white">{title}</h1>
             {description && (
-              <p className="text-sm text-gray-500 dark:text-gray-400">{description}</p>
+              <p className="text-xs text-gray-500 dark:text-gray-400">{description}</p>
             )}
           </div>
         </div>
@@ -65,7 +67,7 @@ export default function ReportLayout({
       {filters && <div className="no-print">{filters}</div>}
 
       {/* Content */}
-      <div ref={printRef} id={printId}>
+      <div ref={printRef} id={printId} className="space-y-3">
         {/* Summary cards */}
         {summaryCards && hasData && <div>{summaryCards}</div>}
 

@@ -839,7 +839,7 @@ export default function MegaMenuPage() {
             <h1 className="text-xl font-bold text-gray-900 dark:text-gray-100">
               Mega Menu (All Categories)
             </h1>
-            <p className="text-sm text-gray-500">
+            <p className="text-xs text-gray-500">
               Create parent items and assign categories to build a multi-column
               mega menu
             </p>

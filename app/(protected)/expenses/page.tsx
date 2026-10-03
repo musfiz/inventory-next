@@ -192,7 +192,7 @@ export default function ExpensesPage() {
       <div className="flex items-center justify-between flex-wrap gap-2">
         <div>
           <h1 className="text-xl font-bold text-gray-900 dark:text-white">Expenses</h1>
-          <p className="text-sm text-gray-500">Record and track business expenses</p>
+          <p className="text-xs text-gray-500">Record and track business expenses</p>
         </div>
         <div className="flex items-center gap-2">
           {isSuperAdmin && (

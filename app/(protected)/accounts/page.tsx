@@ -215,7 +215,7 @@ export default function AccountsPage() {
                 <Layers3 className="h-5 w-5 text-indigo-600 dark:text-indigo-400" />
                 Chart of Accounts
               </h1>
-              <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
+              <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
                 Manage the account structure, balances, and default seed accounts.
               </p>
             </div>

@@ -229,9 +229,10 @@ class ReportService {
   async salesByProduct(params: {
     start_date: string;
     end_date: string;
-    warehouse_id?: number | null;
-    category_id?: number | null;
-    brand_id?: number | null;
+    // `category_id` / `brand_id` are validated as `uuid` by SalesByProductRequest,
+    // so they carry the dropdown's string ID rather than a numeric one.
+    category_id?: string | null;
+    brand_id?: string | null;
     source?: 'pos' | 'so' | 'all';
     sort_by?: 'revenue' | 'quantity' | 'profit';
     tenant_id?: string;
@@ -606,7 +607,8 @@ class ReportService {
     status?: StockStatusValue[];
     stock_status?: StockStatusValue | 'all';
     search?: string;
-    include_inactive?: boolean;
+    /** 1/0 — Laravel's `boolean` rule rejects the strings "true"/"false". */
+    include_inactive?: boolean | 0 | 1;
     sort?: string;
     dir?: 'asc' | 'desc';
     tenant_id?: string;

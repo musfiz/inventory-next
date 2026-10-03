@@ -12,6 +12,7 @@ import {
   Search,
 } from 'lucide-react';
 import { formatCurrency, formatNumber, formatPercent, formatDate } from '@/lib/utils/format';
+import { filterSearchInputClass } from './ReportFilters';
 
 // ── Types ───────────────────────────────────────────────────────────────────
 
@@ -44,6 +45,9 @@ interface ReportTableProps<T = Record<string, any>> {
   maxHeight?: string;
   emptyMessage?: string;
   onRowClick?: (row: T) => void;
+  /** Prepend a sticky 1-based index column that keeps counting across pages. */
+  showSerial?: boolean;
+  serialHeader?: string;
 }
 
 // ── Helpers ─────────────────────────────────────────────────────────────────
@@ -85,6 +89,8 @@ export default function ReportTable<T extends Record<string, any>>({
   maxHeight,
   emptyMessage = 'No data found for the selected filters.',
   onRowClick,
+  showSerial = false,
+  serialHeader = '#',
 }: ReportTableProps<T>) {
   const [sortKey, setSortKey] = useState<string | null>(null);
   const [sortDir, setSortDir] = useState<'asc' | 'desc'>('asc');
@@ -129,6 +135,9 @@ export default function ReportTable<T extends Record<string, any>>({
     ? sorted.slice((currentPage - 1) * pageSize, currentPage * pageSize)
     : sorted;
 
+  /** First row number of the current page — the serial column counts from here. */
+  const firstRowNumber = enablePagination ? (currentPage - 1) * pageSize : 0;
+
   const toggleSort = (key: string) => {
     if (!enableSorting) return;
     if (sortKey === key) {
@@ -155,9 +164,9 @@ export default function ReportTable<T extends Record<string, any>>({
     <div className="bg-white dark:bg-gray-900 rounded-lg border border-gray-200 dark:border-gray-700 overflow-hidden">
       {/* Search bar */}
       {enableSearch && (
-        <div className="p-3 border-b border-gray-200 dark:border-gray-700">
-          <div className="relative max-w-sm">
-            <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
+        <div className="px-2.5 py-2 border-b border-gray-200 dark:border-gray-700">
+          <div className="relative max-w-xs">
+            <Search className="pointer-events-none absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-gray-400" />
             <input
               type="search"
               placeholder={searchPlaceholder}
@@ -166,7 +175,7 @@ export default function ReportTable<T extends Record<string, any>>({
                 setSearch(e.target.value);
                 setPage(1);
               }}
-              className="w-full pl-9 pr-3 py-1.5 text-sm bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-sm text-gray-900 dark:text-gray-100 focus:outline-none focus:border-indigo-500 dark:focus:border-indigo-400"
+              className={filterSearchInputClass}
             />
           </div>
         </div>
@@ -180,6 +189,11 @@ export default function ReportTable<T extends Record<string, any>>({
         <table className="w-full text-sm">
           <thead className="bg-gray-50 dark:bg-gray-800/40 sticky top-0 z-10">
             <tr>
+              {showSerial && (
+                <th className="px-4 py-2.5 text-left font-medium text-gray-600 dark:text-gray-300 whitespace-nowrap w-10">
+                  {serialHeader}
+                </th>
+              )}
               {columns.map((col) => (
                 <th
                   key={col.key}
@@ -204,7 +218,7 @@ export default function ReportTable<T extends Record<string, any>>({
           <tbody className="divide-y divide-gray-100 dark:divide-gray-800">
             {paginated.length === 0 ? (
               <tr>
-                <td colSpan={columns.length} className="px-4 py-12 text-center text-sm text-gray-500 dark:text-gray-400">
+                <td colSpan={columns.length + (showSerial ? 1 : 0)} className="px-4 py-12 text-center text-sm text-gray-500 dark:text-gray-400">
                   {emptyMessage}
                 </td>
               </tr>
@@ -217,6 +231,11 @@ export default function ReportTable<T extends Record<string, any>>({
                     className={`hover:bg-gray-50 dark:hover:bg-gray-800/40 ${onRowClick ? 'cursor-pointer' : ''}`}
                     onClick={() => onRowClick?.(row)}
                   >
+                    {showSerial && (
+                      <td className="px-4 py-2 font-mono text-xs text-gray-500 dark:text-gray-400 whitespace-nowrap">
+                        {firstRowNumber + i + 1}
+                      </td>
+                    )}
                     {columns.map((col) => {
                       const accessor = col.accessor ?? ((r: T) => r[col.key]);
                       const value = accessor(row);
@@ -244,6 +263,7 @@ export default function ReportTable<T extends Record<string, any>>({
           {totalsRow && (
             <tfoot>
               <tr className="bg-gray-50 dark:bg-gray-800/60 border-t-2 border-gray-300 dark:border-gray-600">
+                {showSerial && <td className="px-4 py-2.5" />}
                 {columns.map((col) => (
                   <td
                     key={col.key}

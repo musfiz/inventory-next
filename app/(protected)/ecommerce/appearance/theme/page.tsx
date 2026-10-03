@@ -77,7 +77,7 @@ export default function ThemePage() {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Theme & Appearance</h1>
-          <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
+          <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
             Choose a theme for your storefront. Changes apply instantly.
           </p>
         </div>

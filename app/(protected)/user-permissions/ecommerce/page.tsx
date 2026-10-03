@@ -313,7 +313,7 @@ export default function EcommercePermissionsPage() {
             <ShoppingCart className="w-5 h-5 text-indigo-600 dark:text-indigo-400" />
             Ecommerce Menu Permissions
           </h1>
-          <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
+          <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
             Control which ecommerce pages each user can access
           </p>
         </div>

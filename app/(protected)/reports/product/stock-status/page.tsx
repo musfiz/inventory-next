@@ -11,13 +11,14 @@ import { notify } from '@/lib/notifications';
 import {
   ReportLayout,
   ReportFilters,
+  FilterRow,
   FilterField,
+  FilterCheckbox,
   filterInputClass,
   filterSelectClass,
   ReportSummaryCards,
   ReportTable,
   ReportExportBar,
-  ReportChart,
   type ReportColumn,
   type SummaryCard,
 } from '@/components/reports';
@@ -79,7 +80,10 @@ export default function StockStatusPage() {
     if (status !== 'all') params.status = [status];
     if (search.trim()) params.search = search.trim();
     if (productType) params.product_type = productType;
-    if (includeInactive) params.include_inactive = true;
+    // Always sent so the API gets an explicit boolean. Query strings only carry
+    // text, and Laravel's `boolean` rule rejects "true"/"false" — it accepts
+    // 1/0, so serialise the flag as a number instead of a JS boolean.
+    params.include_inactive = includeInactive ? 1 : 0;
     const tenantId = isSuperAdmin ? selectedTenantId : authUser?.tenant_id;
     if (tenantId) params.tenant_id = tenantId;
     return params;
@@ -174,15 +178,6 @@ export default function StockStatusPage() {
       ]
     : [];
 
-  const chartData = summary
-    ? [
-        { name: 'In Stock', value: summary.in_stock_count },
-        { name: 'Low Stock', value: summary.low_stock_count },
-        { name: 'Out of Stock', value: summary.out_of_stock_count },
-        { name: 'Overstock', value: summary.overstock_count },
-      ]
-    : [];
-
   const columns: ReportColumn<StockStatusRow>[] = [
     { key: 'product_name', header: 'Product' },
     { key: 'variation_name', header: 'Variation' },
@@ -239,96 +234,100 @@ export default function StockStatusPage() {
       description={generatedAt ? `Data as of ${generatedAt}` : 'All inventory items with their current stock position'}
       icon={BarChart3}
       filters={
-        <ReportFilters onApply={generate} onReset={reset} loading={loading}>
-          {isSuperAdmin && (
-            <FilterField label="Tenant" className="w-full sm:w-44">
-              <TenantSelect
-                value={selectedTenantId}
-                onChange={(tid) => {
-                  setSelectedTenantId(tid || '');
-                  setWarehouse(null);
-                }}
-                placeholder="All Tenants"
+        <ReportFilters onApply={generate} onReset={reset} loading={loading} actionsPlacement="below">
+          {/* Row 1 — scope the report */}
+          <FilterRow>
+            {isSuperAdmin && (
+              <FilterField label="Tenant">
+                <TenantSelect
+                  value={selectedTenantId}
+                  onChange={(tid) => {
+                    setSelectedTenantId(tid || '');
+                    setWarehouse(null);
+                  }}
+                  placeholder="All Tenants"
+                  compact
+                />
+              </FilterField>
+            )}
+            <FilterField label="Warehouse">
+              <CustomSelect
+                key={effectiveTenantId || 'all-tenants'}
+                value={warehouse}
+                onChange={setWarehouse}
+                loadOptions={loadWarehouses}
+                defaultOptions
+                isClearable
                 compact
+                placeholder="All warehouses"
               />
             </FilterField>
-          )}
-          <FilterField label="Warehouse" className="w-full sm:w-44">
-            <CustomSelect
-              key={effectiveTenantId || 'all-tenants'}
-              value={warehouse}
-              onChange={setWarehouse}
-              loadOptions={loadWarehouses}
-              defaultOptions
-              isClearable
-              compact
-              placeholder="All warehouses"
-            />
-          </FilterField>
-          <FilterField label="Category" className="w-full sm:w-44">
-            <CustomSelect
-              value={category}
-              onChange={setCategory}
-              loadOptions={loadCategories}
-              defaultOptions
-              isClearable
-              compact
-              placeholder="All categories"
-            />
-          </FilterField>
-          <FilterField label="Brand" className="w-full sm:w-40">
-            <CustomSelect
-              value={brand}
-              onChange={setBrand}
-              loadOptions={loadBrands}
-              defaultOptions
-              isClearable
-              compact
-              placeholder="All brands"
-            />
-          </FilterField>
-          <FilterField label="Status" className="w-full sm:w-36">
-            <select
-              className={filterSelectClass}
-              value={status}
-              onChange={(e) => setStatus(e.target.value as StockStatusValue | 'all')}
-            >
-              {STATUS_OPTIONS.map((o) => (
-                <option key={o.value} value={o.value}>
-                  {o.label}
-                </option>
-              ))}
-            </select>
-          </FilterField>
-          <FilterField label="Product Type" className="w-full sm:w-36">
-            <select className={filterSelectClass} value={productType} onChange={(e) => setProductType(e.target.value)}>
-              {PRODUCT_TYPES.map((t) => (
-                <option key={t.value} value={t.value}>
-                  {t.label}
-                </option>
-              ))}
-            </select>
-          </FilterField>
-          <FilterField label="Search" className="w-full sm:w-52">
-            <input
-              type="search"
-              className={filterInputClass}
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              placeholder="Name, SKU or barcode"
-            />
-          </FilterField>
-          <FilterField label="Options" className="w-full sm:w-auto">
-            <label className="inline-flex items-center gap-1.5 h-[28px] text-xs text-gray-700 dark:text-gray-300 cursor-pointer">
-              <input
-                type="checkbox"
-                checked={includeInactive}
-                onChange={(e) => setIncludeInactive(e.target.checked)}
-                className="h-3.5 w-3.5 rounded border-gray-300 dark:border-gray-600 text-indigo-600 focus:ring-indigo-500"
+            <FilterField label="Category">
+              <CustomSelect
+                value={category}
+                onChange={setCategory}
+                loadOptions={loadCategories}
+                defaultOptions
+                isClearable
+                compact
+                placeholder="All categories"
               />
-              Include inactive
-            </label>
-          </FilterField>
+            </FilterField>
+            <FilterField label="Brand">
+              <CustomSelect
+                value={brand}
+                onChange={setBrand}
+                loadOptions={loadBrands}
+                defaultOptions
+                isClearable
+                compact
+                placeholder="All brands"
+              />
+            </FilterField>
+          </FilterRow>
+
+          {/* Row 2 — narrow down the result set */}
+          <FilterRow>
+            <FilterField label="Status">
+              <select
+                className={filterSelectClass}
+                value={status}
+                onChange={(e) => setStatus(e.target.value as StockStatusValue | 'all')}
+              >
+                {STATUS_OPTIONS.map((o) => (
+                  <option key={o.value} value={o.value}>
+                    {o.label}
+                  </option>
+                ))}
+              </select>
+            </FilterField>
+            <FilterField label="Product Type">
+              <select className={filterSelectClass} value={productType} onChange={(e) => setProductType(e.target.value)}>
+                {PRODUCT_TYPES.map((t) => (
+                  <option key={t.value} value={t.value}>
+                    {t.label}
+                  </option>
+                ))}
+              </select>
+            </FilterField>
+            <FilterField label="Search">
+              <input
+                type="search"
+                className={filterInputClass}
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                placeholder="Name, SKU or barcode"
+              />
+            </FilterField>
+            <FilterField label="Options">
+              <FilterCheckbox
+                label="Include inactive"
+                activeHint="Adds archived products to the report"
+                checked={includeInactive}
+                onChange={setIncludeInactive}
+              />
+            </FilterField>
+          </FilterRow>
         </ReportFilters>
       }
       summaryCards={cards.length > 0 ? <ReportSummaryCards cards={cards} /> : undefined}
@@ -346,21 +345,18 @@ export default function StockStatusPage() {
         />
       }
     >
-      <div className="space-y-4">
-        {chartData.some((c) => c.value > 0) && (
-          <ReportChart type="donut" data={chartData} xKey="name" series={[{ key: 'value', label: 'Products' }]} format="number" height={260} />
-        )}
-        {data && (
-          <ReportTable
-            columns={columns}
-            data={data.data}
-            pageSize={25}
-            totalsRow={totalsRow}
-            rowKey={(row) => `${row.sku}-${row.warehouse_name ?? 'none'}`}
-            searchKeys={['product_name', 'variation_name', 'sku', 'barcode', 'category_name', 'brand_name']}
-          />
-        )}
-      </div>
+      {data && (
+        <ReportTable
+          columns={columns}
+          data={data.data}
+          pageSize={25}
+          totalsRow={totalsRow}
+          rowKey={(row) => `${row.sku}-${row.warehouse_name ?? 'none'}`}
+          searchKeys={['product_name', 'variation_name', 'sku', 'barcode', 'category_name', 'brand_name']}
+          showSerial
+          serialHeader="SL"
+        />
+      )}
     </ReportLayout>
   );
 }

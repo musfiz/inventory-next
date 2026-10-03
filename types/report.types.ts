@@ -452,6 +452,7 @@ export interface SalesByProductReport {
     total_gross_profit: number;
     avg_margin: number;
   };
+  generated_at?: string;
 }
 
 export interface SalesByCustomerRow {

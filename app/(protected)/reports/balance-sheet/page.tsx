@@ -124,7 +124,7 @@ export default function BalanceSheetPage() {
       <div className="flex items-center justify-between flex-wrap gap-2">
         <div>
           <h1 className="text-xl font-bold text-gray-900 dark:text-white">Balance Sheet</h1>
-          <p className="text-sm text-gray-500 dark:text-gray-400">
+          <p className="text-xs text-gray-500 dark:text-gray-400">
             Snapshot of Assets, Liabilities, and Equity as of a given date
           </p>
         </div>

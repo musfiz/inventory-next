@@ -65,7 +65,7 @@ export default function ReportSummaryCards({ cards, columns }: ReportSummaryCard
       : 'grid-cols-1 sm:grid-cols-2 lg:grid-cols-4';
 
   return (
-    <div className={`grid ${gridCols} gap-4`}>
+    <div className={`grid ${gridCols} gap-2`}>
       {cards.map((card, i) => {
         const colors = COLOR_MAP[card.color ?? 'gray'] ?? COLOR_MAP.gray;
         const Icon = card.icon;
@@ -85,26 +85,25 @@ export default function ReportSummaryCards({ cards, columns }: ReportSummaryCard
                   }
                 : undefined
             }
-            className={`rounded-lg border ${colors.border} ${colors.bg} p-4 transition-all ${
-              card.onClick ? 'cursor-pointer hover:shadow-md hover:-translate-y-0.5' : ''
+            className={`rounded-md border ${colors.border} ${colors.bg} px-2.5 py-2 transition-all ${
+              card.onClick ? 'cursor-pointer hover:shadow-sm hover:-translate-y-px' : ''
             } ${card.active ? 'ring-2 ring-offset-1 ring-indigo-500 dark:ring-offset-gray-900' : ''}`}
           >
-            {Icon && (
-              <div className="flex items-center gap-2 mb-1">
-                <Icon size={16} className={colors.text} />
-                <span className={`text-xs font-medium ${colors.text}`}>{card.label}</span>
-              </div>
-            )}
-            {!Icon && (
-              <div className="text-xs uppercase tracking-wide text-gray-500 dark:text-gray-400 mb-1">
-                {card.label}
-              </div>
-            )}
-            <div className={`text-xl font-bold font-mono ${colors.text}`}>
+            <div className="flex items-center gap-1.5">
+              {Icon && <Icon size={13} className={`shrink-0 ${colors.text}`} />}
+              {Icon ? (
+                <span className={`truncate text-[11px] font-medium ${colors.text}`}>{card.label}</span>
+              ) : (
+                <span className="truncate text-[10px] uppercase tracking-wide text-gray-500 dark:text-gray-400">
+                  {card.label}
+                </span>
+              )}
+            </div>
+            <div className={`mt-0.5 text-base font-bold font-mono leading-tight ${colors.text}`}>
               {card.value}
             </div>
             {card.subValue && (
-              <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">{card.subValue}</p>
+              <p className="mt-0.5 truncate text-[11px] text-gray-500 dark:text-gray-400">{card.subValue}</p>
             )}
           </div>
         );
