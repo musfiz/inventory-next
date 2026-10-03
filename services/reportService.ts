@@ -12,6 +12,7 @@ import type {
   StockStatusValue,
   SalesByProductReport,
   SalesByCustomerReport,
+  SalesByCategoryReport,
   SalesTrendReport,
   PosDailySalesReport,
   PosSessionSummaryReport,
@@ -250,6 +251,7 @@ class ReportService {
     end_date: string;
     customer_type?: string;
     source?: 'pos' | 'so' | 'all';
+    sort_by?: 'revenue' | 'orders' | 'outstanding' | 'last_purchase';
     tenant_id?: string;
   }): Promise<SalesByCustomerReport> {
     const { tenant_id, ...rest } = params;
@@ -263,12 +265,14 @@ class ReportService {
   async salesByCategory(params: {
     start_date: string;
     end_date: string;
-    warehouse_id?: number | null;
+    category_id?: string | null;
+    brand_id?: string | null;
     source?: 'pos' | 'so' | 'all';
+    sort_by?: 'revenue' | 'quantity' | 'profit' | 'products';
     tenant_id?: string;
-  }): Promise<GenericReportResponse> {
+  }): Promise<SalesByCategoryReport> {
     const { tenant_id, ...rest } = params;
-    const response = await apiClient.get<ApiResponse<GenericReportResponse>>(
+    const response = await apiClient.get<ApiResponse<SalesByCategoryReport>>(
       `${this.base}/sales/by-category`,
       { params: { ...rest, ...(tenant_id ? { tenant_id } : {}) } },
     );

@@ -381,8 +381,12 @@ export interface SalesByCategoryReport {
   data: SalesByCategoryRow[];
   summary: {
     total_revenue: number;
+    total_cogs: number;
     total_profit: number;
+    avg_margin: number;
+    category_count: number;
   };
+  generated_at?: string;
 }
 
 // ── Profit Margin ───────────────────────────────────────────────────────────
@@ -471,10 +475,12 @@ export interface SalesByCustomerReport {
   data: SalesByCustomerRow[];
   summary: {
     total_revenue: number;
+    total_paid: number;
     total_outstanding: number;
     customer_count: number;
     avg_revenue_per_customer: number;
   };
+  generated_at?: string;
 }
 
 export interface SalesTrendRow {

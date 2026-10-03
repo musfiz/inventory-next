@@ -68,7 +68,11 @@ export default function StockStatusPage() {
   const [productType, setProductType] = useState('');
   const [includeInactive, setIncludeInactive] = useState(false);
 
-  const effectiveTenantId = isSuperAdmin ? selectedTenantId : authUser?.tenant_id || '';
+  // The tenant whose catalogue the category/brand/warehouse dropdowns list.
+  // A super admin has no tenant of their own to scope by, so those dropdowns
+  // stay inert until one is picked; a tenant user is always scoped to their own.
+  const scopeTenantId = (isSuperAdmin ? selectedTenantId : authUser?.tenant_id) || '';
+  const scopeReady = !isSuperAdmin || !!selectedTenantId;
   const businessTypeId =
     (authUser as any)?.tenant?.business_type?.id ?? (authUser as any)?.business_type?.id ?? undefined;
 
@@ -84,8 +88,7 @@ export default function StockStatusPage() {
     // text, and Laravel's `boolean` rule rejects "true"/"false" — it accepts
     // 1/0, so serialise the flag as a number instead of a JS boolean.
     params.include_inactive = includeInactive ? 1 : 0;
-    const tenantId = isSuperAdmin ? selectedTenantId : authUser?.tenant_id;
-    if (tenantId) params.tenant_id = tenantId;
+    if (scopeTenantId) params.tenant_id = scopeTenantId;
     return params;
   };
 
@@ -132,22 +135,25 @@ export default function StockStatusPage() {
   };
 
   const loadWarehouses = async (inputValue: string): Promise<SelectOption[]> => {
-    // Fall back to the signed-in user's tenant so the list matches what the
-    // report will show when no tenant has been picked (super admin sees own tenant).
-    const tenantId = effectiveTenantId || authUser?.tenant_id || '';
+    if (!scopeReady) return [];
     try {
-      const rows = tenantId
-        ? await commonService.getWarehousesByTenant({ search: inputValue, tenant_id: tenantId })
-        : await commonService.getWarehousesByBusinessType({ search: inputValue, business_type_id: businessTypeId });
+      const rows = await commonService.getWarehousesByTenant({ search: inputValue, tenant_id: scopeTenantId });
       return (rows || []).map((w: any) => ({ value: String(w.id), label: w.code ? `${w.name} (${w.code})` : w.name }));
     } catch {
       return [];
     }
   };
 
+  // Categories and brands are resolved tenant-wise: the server maps tenant_id
+  // to its business_type_id, so the list matches the tenant being reported on.
   const loadCategories = async (inputValue: string): Promise<SelectOption[]> => {
+    if (!scopeReady) return [];
     try {
-      const rows = await commonService.getCategoriesForDropdown({ search: inputValue, business_type_id: businessTypeId });
+      const rows = await commonService.getCategoriesForDropdown({
+        search: inputValue,
+        tenant_id: scopeTenantId || undefined,
+        business_type_id: scopeTenantId ? undefined : businessTypeId,
+      });
       return (rows || []).map((c: any) => ({ value: String(c.id), label: c.name }));
     } catch {
       return [];
@@ -155,8 +161,13 @@ export default function StockStatusPage() {
   };
 
   const loadBrands = async (inputValue: string): Promise<SelectOption[]> => {
+    if (!scopeReady) return [];
     try {
-      const rows = await commonService.getBrandsForDropdown({ search: inputValue, business_type_id: businessTypeId });
+      const rows = await commonService.getBrandsForDropdown({
+        search: inputValue,
+        tenant_id: scopeTenantId || undefined,
+        business_type_id: scopeTenantId ? undefined : businessTypeId,
+      });
       return (rows || []).map((b: any) => ({ value: String(b.id), label: b.name }));
     } catch {
       return [];
@@ -235,58 +246,74 @@ export default function StockStatusPage() {
       icon={BarChart3}
       filters={
         <ReportFilters onApply={generate} onReset={reset} loading={loading} actionsPlacement="below">
-          {/* Row 1 — scope the report */}
-          <FilterRow>
-            {isSuperAdmin && (
-              <FilterField label="Tenant">
+          {/* Row 1 — super admin only: pick the tenant whose stock the rest of
+              the filters are scoped to. Its own row so it reads as the scope
+              selector rather than one more filter. */}
+          {isSuperAdmin && (
+            <FilterRow columns={1}>
+              <FilterField label="Tenant" className="max-w-sm">
                 <TenantSelect
                   value={selectedTenantId}
                   onChange={(tid) => {
                     setSelectedTenantId(tid || '');
+                    // Category/brand/warehouse belong to the previous tenant,
+                    // so they must not survive a tenant switch.
                     setWarehouse(null);
+                    setCategory(null);
+                    setBrand(null);
                   }}
-                  placeholder="All Tenants"
+                  placeholder="Select a tenant"
                   compact
+                  isClearable
                 />
               </FilterField>
-            )}
-            <FilterField label="Warehouse">
+            </FilterRow>
+          )}
+
+          {/* Row 2 — narrow down the catalogue and where it is stored */}
+          <FilterRow columns={3}>
+            <FilterField label="Category" hint={scopeReady ? undefined : 'select a tenant first'}>
               <CustomSelect
-                key={effectiveTenantId || 'all-tenants'}
-                value={warehouse}
-                onChange={setWarehouse}
-                loadOptions={loadWarehouses}
-                defaultOptions
-                isClearable
-                compact
-                placeholder="All warehouses"
-              />
-            </FilterField>
-            <FilterField label="Category">
-              <CustomSelect
+                key={`cat-${scopeTenantId || 'unscoped'}`}
                 value={category}
                 onChange={setCategory}
                 loadOptions={loadCategories}
-                defaultOptions
+                defaultOptions={scopeReady}
                 isClearable
+                isDisabled={!scopeReady}
                 compact
-                placeholder="All categories"
+                placeholder={scopeReady ? 'All categories' : 'Select a tenant first'}
               />
             </FilterField>
-            <FilterField label="Brand">
+            <FilterField label="Brand" hint={scopeReady ? undefined : 'select a tenant first'}>
               <CustomSelect
+                key={`brand-${scopeTenantId || 'unscoped'}`}
                 value={brand}
                 onChange={setBrand}
                 loadOptions={loadBrands}
-                defaultOptions
+                defaultOptions={scopeReady}
                 isClearable
+                isDisabled={!scopeReady}
                 compact
-                placeholder="All brands"
+                placeholder={scopeReady ? 'All brands' : 'Select a tenant first'}
+              />
+            </FilterField>
+            <FilterField label="Warehouse" hint={scopeReady ? undefined : 'select a tenant first'}>
+              <CustomSelect
+                key={`wh-${scopeTenantId || 'unscoped'}`}
+                value={warehouse}
+                onChange={setWarehouse}
+                loadOptions={loadWarehouses}
+                defaultOptions={scopeReady}
+                isClearable
+                isDisabled={!scopeReady}
+                compact
+                placeholder={scopeReady ? 'All warehouses' : 'Select a tenant first'}
               />
             </FilterField>
           </FilterRow>
 
-          {/* Row 2 — narrow down the result set */}
+          {/* Row 3 — narrow down the result set */}
           <FilterRow>
             <FilterField label="Status">
               <select

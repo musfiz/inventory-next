@@ -5,11 +5,17 @@ class CommonService {
   /**
    * Get categories for dropdown (simplified)
    * GET /api/v1/dropdown/category
+   *
+   * Pass `tenant_id` to scope the list to that tenant's business type — the
+   * server resolves tenant -> business_type_id, so a super admin can narrow
+   * the list without knowing the tenant's business type. Takes precedence
+   * over nothing: an explicit `business_type_id` still wins if both are sent.
    */
   async getCategoriesForDropdown(params?: {
     search?: string;
     only_parent?: boolean;
     business_type_id?: string | number;
+    tenant_id?: string;
   }): Promise<Category[]> {
     const response = await apiClient.get<{
       data: Category[];
@@ -22,14 +28,35 @@ class CommonService {
   /**
    * Get brands for dropdown (simplified)
    * GET /api/v1/dropdown/brand
+   *
+   * Scoped by `tenant_id` (resolved to its business type server-side) the same
+   * way as categories.
    */
   async getBrandsForDropdown(params?: {
     search?: string;
     business_type_id?: string | number;
+    tenant_id?: string;
   }): Promise<Brand[]> {
     const response = await apiClient.get<{
       data: Brand[];
     }>('/api/v1/dropdown/brand', {
+      params,
+    });
+    return response.data.data;
+  }
+
+  /**
+   * Get customer segments for dropdown
+   * GET /api/v1/dropdown/customer-type
+   *
+   * Returns the canonical enum from the server rather than DISTINCT values in
+   * the table, so a segment with no customers yet is still selectable. Not
+   * tenant-scoped — the list of segments is global.
+   */
+  async getCustomerTypesForDropdown(params?: { search?: string }): Promise<{ value: string; label: string }[]> {
+    const response = await apiClient.get<{
+      data: { value: string; label: string }[];
+    }>('/api/v1/dropdown/customer-type', {
       params,
     });
     return response.data.data;

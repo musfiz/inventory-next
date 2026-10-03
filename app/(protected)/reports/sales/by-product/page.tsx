@@ -46,12 +46,17 @@ export default function SalesByProductPage() {
   const businessTypeId =
     (authUser as any)?.tenant?.business_type?.id ?? (authUser as any)?.business_type?.id ?? undefined;
 
+  // The tenant whose catalogue the category/brand dropdowns should list.
+  // A super admin has no tenant of their own to scope by, so the dropdowns
+  // stay inert until one is picked; a tenant user is always scoped to their own.
+  const scopeTenantId = (isSuperAdmin ? selectedTenantId : authUser?.tenant_id) || '';
+  const scopeReady = !isSuperAdmin || !!selectedTenantId;
+
   const buildParams = (): SalesByProductParams => {
     const params: SalesByProductParams = { start_date: startDate, end_date: endDate, source, sort_by: sortBy };
     if (category) params.category_id = category.value;
     if (brand) params.brand_id = brand.value;
-    const tenantId = isSuperAdmin ? selectedTenantId : authUser?.tenant_id;
-    if (tenantId) params.tenant_id = tenantId;
+    if (scopeTenantId) params.tenant_id = scopeTenantId;
     return params;
   };
 
@@ -84,9 +89,16 @@ export default function SalesByProductPage() {
     setError(null);
   };
 
+  // Both dropdowns are resolved tenant-wise: the server maps tenant_id to its
+  // business_type_id, so the list always matches the tenant being reported on.
   const loadCategories = async (inputValue: string): Promise<SelectOption[]> => {
+    if (!scopeReady) return [];
     try {
-      const rows = await commonService.getCategoriesForDropdown({ search: inputValue, business_type_id: businessTypeId });
+      const rows = await commonService.getCategoriesForDropdown({
+        search: inputValue,
+        tenant_id: scopeTenantId || undefined,
+        business_type_id: scopeTenantId ? undefined : businessTypeId,
+      });
       return (rows || []).map((c: any) => ({ value: String(c.id), label: c.name }));
     } catch {
       return [];
@@ -94,8 +106,13 @@ export default function SalesByProductPage() {
   };
 
   const loadBrands = async (inputValue: string): Promise<SelectOption[]> => {
+    if (!scopeReady) return [];
     try {
-      const rows = await commonService.getBrandsForDropdown({ search: inputValue, business_type_id: businessTypeId });
+      const rows = await commonService.getBrandsForDropdown({
+        search: inputValue,
+        tenant_id: scopeTenantId || undefined,
+        business_type_id: scopeTenantId ? undefined : businessTypeId,
+      });
       return (rows || []).map((b: any) => ({ value: String(b.id), label: b.name }));
     } catch {
       return [];
@@ -153,23 +170,56 @@ export default function SalesByProductPage() {
       }
       filters={
         <ReportFilters onApply={generate} onReset={reset} loading={loading} actionsPlacement="below">
-          {/* Row 1 — scope the report */}
-          <FilterRow>
-            {isSuperAdmin && (
-              <FilterField label="Tenant">
+          {/* Row 1 — super admin only: pick the tenant whose catalogue the rest
+              of the filters are scoped to. Its own row so it reads as the
+              scope selector rather than one more filter. */}
+          {isSuperAdmin && (
+            <FilterRow columns={1}>
+              <FilterField label="Tenant" className="max-w-sm">
                 <TenantSelect
                   value={selectedTenantId}
-                  onChange={(tid) => setSelectedTenantId(tid || '')}
-                  placeholder="All Tenants"
+                  onChange={(tid) => {
+                    setSelectedTenantId(tid || '');
+                    // Category/brand belong to the previous tenant's business
+                    // type, so they must not survive a tenant switch.
+                    setCategory(null);
+                    setBrand(null);
+                  }}
+                  placeholder="Select a tenant"
                   compact
+                  isClearable
                 />
               </FilterField>
-            )}
-            <FilterField label="Start Date">
-              <CustomDatePicker value={startDate} onChange={setStartDate} compact />
+            </FilterRow>
+          )}
+
+          {/* Row 2 — narrow the catalogue, then the channel */}
+          <FilterRow columns={3}>
+            <FilterField label="Category" hint={scopeReady ? undefined : 'select a tenant first'}>
+              <CustomSelect
+                key={`cat-${scopeTenantId || 'unscoped'}`}
+                value={category}
+                onChange={setCategory}
+                loadOptions={loadCategories}
+                defaultOptions={scopeReady}
+                isClearable
+                isDisabled={!scopeReady}
+                compact
+                placeholder={scopeReady ? 'All categories' : 'Select a tenant first'}
+              />
             </FilterField>
-            <FilterField label="End Date">
-              <CustomDatePicker value={endDate} onChange={setEndDate} compact />
+            <FilterField label="Brand" hint={scopeReady ? undefined : 'select a tenant first'}>
+              <CustomSelect
+                key={`brand-${scopeTenantId || 'unscoped'}`}
+                value={brand}
+                onChange={setBrand}
+                loadOptions={loadBrands}
+                defaultOptions={scopeReady}
+                isClearable
+                isDisabled={!scopeReady}
+                compact
+                placeholder={scopeReady ? 'All brands' : 'Select a tenant first'}
+              />
             </FilterField>
             <FilterField label="Source">
               <select
@@ -184,29 +234,13 @@ export default function SalesByProductPage() {
             </FilterField>
           </FilterRow>
 
-          {/* Row 2 — narrow down the result set */}
-          <FilterRow>
-            <FilterField label="Category">
-              <CustomSelect
-                value={category}
-                onChange={setCategory}
-                loadOptions={loadCategories}
-                defaultOptions
-                isClearable
-                compact
-                placeholder="All categories"
-              />
+          {/* Row 3 — the period and the ordering */}
+          <FilterRow columns={3}>
+            <FilterField label="Start Date">
+              <CustomDatePicker value={startDate} onChange={setStartDate} compact />
             </FilterField>
-            <FilterField label="Brand">
-              <CustomSelect
-                value={brand}
-                onChange={setBrand}
-                loadOptions={loadBrands}
-                defaultOptions
-                isClearable
-                compact
-                placeholder="All brands"
-              />
+            <FilterField label="End Date">
+              <CustomDatePicker value={endDate} onChange={setEndDate} compact />
             </FilterField>
             <FilterField label="Sort By">
               <select
