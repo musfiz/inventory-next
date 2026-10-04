@@ -11,6 +11,8 @@ import type {
   BatchExpiryReport,
   StockStatusReport,
   StockStatusValue,
+  StockAgingReport,
+  StockAgingBucket,
   SalesByProductReport,
   SalesByCustomerReport,
   SalesByCategoryReport,
@@ -177,15 +179,27 @@ class ReportService {
   }
 
   async stockAging(params: {
-    warehouse_id?: number | null;
-    category_id?: number | null;
+    warehouse_id?: string | null;
+    category_id?: string | null;
+    brand_id?: string | null;
+    product_id?: string | null;
+    product_type?: 'simple' | 'variable' | 'composite' | 'digital' | 'service';
+    as_of_date?: string;
+    /** Drill into one age bucket; omit for all of them. */
+    bucket?: StockAgingBucket;
+    /** Days without a sale after which a line counts as slow-moving. */
+    slow_moving_days?: number;
+    search?: string;
+    /** 1/0 — Laravel's `boolean` rule rejects the strings "true"/"false". */
+    include_inactive?: boolean | 0 | 1;
+    sort?: string;
+    dir?: 'asc' | 'desc';
     tenant_id?: string;
-  }): Promise<GenericReportResponse> {
+  }): Promise<StockAgingReport> {
     const { tenant_id, ...rest } = params;
-    const response = await apiClient.get<ApiResponse<GenericReportResponse>>(
-      `${this.base}/inventory/stock-aging`,
-      { params: { ...rest, ...(tenant_id ? { tenant_id } : {}) } },
-    );
+    const response = await apiClient.get<ApiResponse<StockAgingReport>>(`${this.base}/inventory/stock-aging`, {
+      params: { ...rest, ...(tenant_id ? { tenant_id } : {}) },
+    });
     return response.data.data;
   }
 

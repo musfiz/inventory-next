@@ -114,30 +114,76 @@ export interface FailedJournalReport {
 
 // ── Stock Aging ─────────────────────────────────────────────────────────────
 
+/** Age buckets, matching the `stock_aging.age_category` enum on the backend. */
+export type StockAgingBucket = '0-30' | '31-60' | '61-90' | '91-180' | '181-365' | '365+' | 'unknown';
+
+/** Whether a line is selling. Computed server-side against the slow-moving threshold. */
+export type StockVelocity = 'fast_moving' | 'slow_moving' | 'never_sold';
+
 export interface StockAgingRow {
   product_name: string;
   variation_name: string | null;
   sku: string;
-  warehouse_name: string;
+  barcode: string | null;
+  category_name: string | null;
+  brand_name: string | null;
+  warehouse_name: string | null;
+  unit_name: string | null;
+  on_hand: number;
+  reserved: number;
+  available: number;
+  unit_cost: number;
+  stock_value: number;
+  last_received_at: string | null;
+  /** null when the line has no receipt history at all — see bucket 'unknown'. */
+  age_days: number | null;
+  bucket: StockAgingBucket;
+  bucket_label: string;
+  last_sold_at: string | null;
+  days_since_sold: number | null;
+  velocity: string;
+  velocity_key: StockVelocity;
+}
+
+export interface StockAgingBucketSummary {
+  key: StockAgingBucket;
+  label: string;
+  lines: number;
   quantity: number;
-  last_received_date: string | null;
-  age_days: number;
-  bucket: '0_30' | '31_60' | '61_90' | '90_plus';
   value: number;
+  share_pct: number;
 }
 
 export interface StockAgingReport {
   data: StockAgingRow[];
   summary: {
-    total_value_0_30: number;
-    total_value_31_60: number;
-    total_value_61_90: number;
-    total_value_90_plus: number;
-    count_0_30: number;
-    count_31_60: number;
-    count_61_90: number;
-    count_90_plus: number;
+    as_of_date: string;
+    /** True when as_of_date is in the past, so stock is replayed from the ledger. */
+    is_historical: boolean;
+    total_lines: number;
+    total_skus: number;
+    warehouse_count: number;
+    category_count: number;
+    total_quantity: number;
+    total_reserved: number;
+    total_stock_value: number;
+    avg_value_per_line: number;
+    /** null when no line has a receipt date to measure. */
+    avg_age_days: number | null;
+    oldest_age_days: number | null;
+    /** Lines that could not be aged — a data-quality signal, not a gap. */
+    unknown_age_lines: number;
+    /** Days without a sale after which a line counts as slow-moving. */
+    slow_moving_days: number;
+    slow_moving_lines: number;
+    slow_moving_value: number;
+    slow_moving_share_pct: number;
+    /** Always every bucket, in order, including the empty ones. */
+    by_bucket: StockAgingBucketSummary[];
   };
+  columns?: ReportColumnMeta[];
+  filters_applied?: string[];
+  generated_at?: string;
 }
 
 // ── ABC Analysis ────────────────────────────────────────────────────────────
