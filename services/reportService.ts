@@ -5,6 +5,7 @@ import type {
   PayablesReport,
   FailedJournalReport,
   StockValuationReport,
+  CostingMethod,
   ReorderReport,
   StockMovementReport,
   BatchExpiryReport,
@@ -64,18 +65,27 @@ class ReportService {
   // ── Inventory Reports ─────────────────────────────────────────────────────
 
   async stockValuation(params: {
-    warehouse_id?: number | null;
+    warehouse_id?: string | null;
+    category_id?: string | null;
+    brand_id?: string | null;
+    product_id?: string | null;
+    product_type?: 'simple' | 'variable' | 'composite' | 'digital' | 'service';
     as_of_date?: string;
-    costing_method?: 'fifo' | 'lifo' | 'weighted_avg' | 'standard';
-    category_id?: number | null;
-    brand_id?: number | null;
+    costing_method?: CostingMethod;
+    /** Hide lines below this stock value — the usual way to cut the long tail. */
+    min_value?: number | null;
+    search?: string;
+    /** 1/0 — Laravel's `boolean` rule rejects the strings "true"/"false". */
+    include_inactive?: boolean | 0 | 1;
+    include_zero_stock?: boolean | 0 | 1;
+    sort?: string;
+    dir?: 'asc' | 'desc';
     tenant_id?: string;
   }): Promise<StockValuationReport> {
     const { tenant_id, ...rest } = params;
-    const response = await apiClient.get<ApiResponse<StockValuationReport>>(
-      `${this.base}/inventory/stock-valuation`,
-      { params: { ...rest, ...(tenant_id ? { tenant_id } : {}) } },
-    );
+    const response = await apiClient.get<ApiResponse<StockValuationReport>>(`${this.base}/inventory/stock-valuation`, {
+      params: { ...rest, ...(tenant_id ? { tenant_id } : {}) },
+    });
     return response.data.data;
   }
 

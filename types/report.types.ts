@@ -213,29 +213,74 @@ export interface StockAdjustmentReport {
 
 // ── Inventory Report Types ──────────────────────────────────────────────────
 
+export type CostingMethod = 'weighted_avg' | 'fifo' | 'lifo' | 'standard';
+
 export interface StockValuationRow {
-  product_id: number;
   product_name: string;
-  variation_id: number | null;
   variation_name: string | null;
   sku: string;
-  warehouse_id: number;
-  warehouse_name: string;
-  quantity: number;
-  reserved_quantity: number;
-  available_quantity: number;
+  barcode: string | null;
+  category_name: string | null;
+  brand_name: string | null;
+  warehouse_name: string | null;
+  unit_name: string | null;
+  on_hand: number;
+  reserved: number;
+  available: number;
+  /** Cost the row was actually priced with, per the selected costing method. */
   unit_cost: number;
-  total_value: number;
+  weighted_avg_cost: number;
+  last_cost: number;
+  standard_cost: number;
+  selling_price: number;
+  stock_value: number;
+  retail_value: number;
+  margin: number;
+  margin_pct: number | null;
+  /** 'Costed' | 'No cost' | 'No stock' — why the row is (not) priced. */
+  cost_basis: string;
+  last_received_at: string | null;
+}
+
+/** One row of a "where does the money sit" breakdown. */
+export interface ValuationBreakdownRow {
+  name: string;
+  quantity: number;
+  value: number;
+  share_pct: number;
 }
 
 export interface StockValuationReport {
   data: StockValuationRow[];
   summary: {
+    as_of_date: string;
+    /** True when as_of_date is in the past, so quantities are replayed from the ledger. */
+    is_historical: boolean;
+    costing_method: CostingMethod;
+    total_lines: number;
     total_skus: number;
+    warehouse_count: number;
+    category_count: number;
     total_quantity: number;
-    total_value: number;
-    avg_cost: number;
+    total_reserved: number;
+    total_reserved_value: number;
+    total_stock_value: number;
+    total_retail_value: number;
+    potential_margin: number;
+    margin_pct: number | null;
+    avg_unit_cost: number;
+    avg_value_per_line: number;
+    /** Lines holding stock that has no cost on record — a data-quality flag. */
+    uncosted_lines: number;
+    concentration_rows: number;
+    /** Share of total value held by the top `concentration_rows` lines. */
+    concentration_share_pct: number;
+    by_category: ValuationBreakdownRow[];
+    by_warehouse: ValuationBreakdownRow[];
   };
+  columns?: ReportColumnMeta[];
+  filters_applied?: string[];
+  generated_at?: string;
 }
 
 export interface ReorderRow {
