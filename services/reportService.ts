@@ -7,12 +7,38 @@ import type {
   StockValuationReport,
   CostingMethod,
   ReorderReport,
+  ReorderSeverity,
+  LowStockReport,
+  LowStockStatus,
   StockMovementReport,
+  StockMovementType,
+  StockMovementDirection,
+  GrnRegisterReport,
+  WarehouseTransferReport,
   BatchExpiryReport,
+  BatchExpiryBucket,
+  BatchStatus,
   StockStatusReport,
   StockStatusValue,
+  ProductProfitabilityReport,
+  ProfitMarginReport,
+  ProfitMarginGroupBy,
+  MarginBand,
+  ReturnAnalysisReport,
+  ReturnSource,
+  PosRefundSummaryReport,
+  TrendPeriod,
+  HourlySalesReport,
+  CustomerProfitabilityReport,
+  CustomerMarginBand,
   StockAgingReport,
   StockAgingBucket,
+  AbcAnalysisReport,
+  AbcMetric,
+  AbcClass,
+  DeadStockReport,
+  StockAdjustmentReport,
+  StockAdjustmentType,
   SalesByProductReport,
   SalesByCustomerReport,
   SalesByCategoryReport,
@@ -20,6 +46,9 @@ import type {
   PosDailySalesReport,
   PosSessionSummaryReport,
   PoSummaryReport,
+  SupplierPerformanceReport,
+  PurchaseOrderStatus,
+  PurchasePaymentStatus,
   CustomerAgingReport,
   SupplierAgingReport,
   WarehouseStockReport,
@@ -92,9 +121,17 @@ class ReportService {
   }
 
   async reorderReport(params: {
-    warehouse_id?: number | null;
-    category_id?: number | null;
-    severity?: 'critical' | 'low' | 'all';
+    /** Drill into one severity; omit for all of them. */
+    severity?: ReorderSeverity;
+    warehouse_id?: string | null;
+    category_id?: string | null;
+    brand_id?: string | null;
+    product_type?: 'simple' | 'variable' | 'composite' | 'digital' | 'service';
+    search?: string;
+    /** 1/0 — Laravel's `boolean` rule rejects the strings "true"/"false". */
+    include_inactive?: boolean | 0 | 1;
+    sort?: string;
+    dir?: 'asc' | 'desc';
     tenant_id?: string;
   }): Promise<ReorderReport> {
     const { tenant_id, ...rest } = params;
@@ -105,11 +142,21 @@ class ReportService {
   }
 
   async lowStockReport(params: {
-    warehouse_id?: number | null;
+    /** Drill into one status; omit for all of them. */
+    status?: LowStockStatus;
+    warehouse_id?: string | null;
+    category_id?: string | null;
+    brand_id?: string | null;
+    product_type?: 'simple' | 'variable' | 'composite' | 'digital' | 'service';
+    search?: string;
+    /** 1/0 — Laravel's `boolean` rule rejects the strings "true"/"false". */
+    include_inactive?: boolean | 0 | 1;
+    sort?: string;
+    dir?: 'asc' | 'desc';
     tenant_id?: string;
-  }): Promise<GenericReportResponse> {
+  }): Promise<LowStockReport> {
     const { tenant_id, ...rest } = params;
-    const response = await apiClient.get<ApiResponse<GenericReportResponse>>(
+    const response = await apiClient.get<ApiResponse<LowStockReport>>(
       `${this.base}/inventory/low-stock`,
       { params: { ...rest, ...(tenant_id ? { tenant_id } : {}) } },
     );
@@ -117,13 +164,21 @@ class ReportService {
   }
 
   async stockMovementReport(params: {
-    warehouse_id?: number | null;
-    product_id?: number | null;
-    variation_id?: number | null;
-    movement_type?: string;
     start_date: string;
     end_date: string;
-    reference_type?: string;
+    /** One ledger type; omit for all of them. */
+    movement_type?: StockMovementType;
+    /** Classified from the sign of qty_change, not from the type name. */
+    direction?: StockMovementDirection;
+    warehouse_id?: string | null;
+    category_id?: string | null;
+    brand_id?: string | null;
+    product_type?: 'simple' | 'variable' | 'composite' | 'digital' | 'service';
+    search?: string;
+    /** 1/0 — Laravel's `boolean` rule rejects the strings "true"/"false". */
+    include_inactive?: boolean | 0 | 1;
+    sort?: string;
+    dir?: 'asc' | 'desc';
     tenant_id?: string;
   }): Promise<StockMovementReport> {
     const { tenant_id, ...rest } = params;
@@ -135,14 +190,22 @@ class ReportService {
   }
 
   async stockAdjustmentReport(params: {
-    warehouse_id?: number | null;
-    adjustment_type?: string;
     start_date: string;
     end_date: string;
+    adjustment_type?: StockAdjustmentType;
+    warehouse_id?: string | null;
+    category_id?: string | null;
+    brand_id?: string | null;
+    product_type?: 'simple' | 'variable' | 'composite' | 'digital' | 'service';
+    search?: string;
+    /** 1/0 — Laravel's `boolean` rule rejects the strings "true"/"false". */
+    include_inactive?: boolean | 0 | 1;
+    sort?: string;
+    dir?: 'asc' | 'desc';
     tenant_id?: string;
-  }): Promise<GenericReportResponse> {
+  }): Promise<StockAdjustmentReport> {
     const { tenant_id, ...rest } = params;
-    const response = await apiClient.get<ApiResponse<GenericReportResponse>>(
+    const response = await apiClient.get<ApiResponse<StockAdjustmentReport>>(
       `${this.base}/inventory/stock-adjustment`,
       { params: { ...rest, ...(tenant_id ? { tenant_id } : {}) } },
     );
@@ -150,9 +213,21 @@ class ReportService {
   }
 
   async batchExpiryReport(params: {
-    warehouse_id?: number | null;
-    urgency?: 'expired' | '7days' | '30days' | '60days' | 'all';
-    product_id?: number | null;
+    /** Date expiry is measured against; defaults to today. */
+    as_of_date?: string;
+    /** Drill into one expiry bucket; omit for all of them. */
+    bucket?: BatchExpiryBucket;
+    /** Drill into one operational status; omit for all of them. */
+    batch_status?: BatchStatus;
+    warehouse_id?: string | null;
+    category_id?: string | null;
+    brand_id?: string | null;
+    product_type?: 'simple' | 'variable' | 'composite' | 'digital' | 'service';
+    search?: string;
+    /** 1/0 — Laravel's `boolean` rule rejects the strings "true"/"false". */
+    include_inactive?: boolean | 0 | 1;
+    sort?: string;
+    dir?: 'asc' | 'desc';
     tenant_id?: string;
   }): Promise<BatchExpiryReport> {
     const { tenant_id, ...rest } = params;
@@ -164,14 +239,23 @@ class ReportService {
   }
 
   async deadStock(params: {
-    warehouse_id?: number | null;
+    /** Days without a sale before a line counts as dead; defaults to 90. */
     days_threshold?: number;
-    category_id?: number | null;
+    /** Hide lines whose idle value is below this; defaults to 0. */
     min_value?: number;
+    warehouse_id?: string | null;
+    category_id?: string | null;
+    brand_id?: string | null;
+    product_type?: 'simple' | 'variable' | 'composite' | 'digital' | 'service';
+    search?: string;
+    /** 1/0 — Laravel's `boolean` rule rejects the strings "true"/"false". */
+    include_inactive?: boolean | 0 | 1;
+    sort?: string;
+    dir?: 'asc' | 'desc';
     tenant_id?: string;
-  }): Promise<GenericReportResponse> {
+  }): Promise<DeadStockReport> {
     const { tenant_id, ...rest } = params;
-    const response = await apiClient.get<ApiResponse<GenericReportResponse>>(
+    const response = await apiClient.get<ApiResponse<DeadStockReport>>(
       `${this.base}/inventory/dead-stock`,
       { params: { ...rest, ...(tenant_id ? { tenant_id } : {}) } },
     );
@@ -206,12 +290,22 @@ class ReportService {
   async abcAnalysis(params: {
     start_date: string;
     end_date: string;
-    metric?: 'revenue' | 'quantity' | 'profit';
-    category_id?: number | null;
+    metric?: AbcMetric;
+    /** Drill into one class; omit for all of them. */
+    class?: AbcClass;
+    category_id?: string | null;
+    brand_id?: string | null;
+    product_id?: string | null;
+    product_type?: 'simple' | 'variable' | 'composite' | 'digital' | 'service';
+    search?: string;
+    /** 1/0 — Laravel's `boolean` rule rejects the strings "true"/"false". */
+    include_inactive?: boolean | 0 | 1;
+    sort?: string;
+    dir?: 'asc' | 'desc';
     tenant_id?: string;
-  }): Promise<GenericReportResponse> {
+  }): Promise<AbcAnalysisReport> {
     const { tenant_id, ...rest } = params;
-    const response = await apiClient.get<ApiResponse<GenericReportResponse>>(
+    const response = await apiClient.get<ApiResponse<AbcAnalysisReport>>(
       `${this.base}/inventory/abc-analysis`,
       { params: { ...rest, ...(tenant_id ? { tenant_id } : {}) } },
     );
@@ -320,13 +414,24 @@ class ReportService {
   async profitMargin(params: {
     start_date: string;
     end_date: string;
-    group_by?: 'product' | 'category' | 'brand' | 'customer';
+    /** product | category | brand — customer margin is its own report. */
+    group_by?: ProfitMarginGroupBy;
+    /** Drill into one margin band; omit for all of them. */
+    band?: MarginBand;
     min_margin?: number;
     max_margin?: number;
+    category_id?: string | null;
+    brand_id?: string | null;
+    product_type?: 'simple' | 'variable' | 'composite' | 'digital' | 'service';
+    search?: string;
+    /** 1/0 — Laravel's `boolean` rule rejects the strings "true"/"false". */
+    include_inactive?: boolean | 0 | 1;
+    sort?: string;
+    dir?: 'asc' | 'desc';
     tenant_id?: string;
-  }): Promise<GenericReportResponse> {
+  }): Promise<ProfitMarginReport> {
     const { tenant_id, ...rest } = params;
-    const response = await apiClient.get<ApiResponse<GenericReportResponse>>(
+    const response = await apiClient.get<ApiResponse<ProfitMarginReport>>(
       `${this.base}/sales/profit-margin`,
       { params: { ...rest, ...(tenant_id ? { tenant_id } : {}) } },
     );
@@ -336,12 +441,27 @@ class ReportService {
   async returnAnalysis(params: {
     start_date: string;
     end_date: string;
+    /** sales_return | pos_refund — omit for both combined. */
+    source?: ReturnSource;
+    refund_method?: string;
+    status?: string;
     reason?: string;
-    source?: 'sales_return' | 'pos_refund' | 'all';
+    customer_id?: string | null;
+    warehouse_id?: string | null;
+    category_id?: string | null;
+    brand_id?: string | null;
+    product_type?: 'simple' | 'variable' | 'composite' | 'digital' | 'service';
+    /** Percent, 0-100 — flags products above a return rate you care about. */
+    min_return_rate?: number;
+    search?: string;
+    /** 1/0 — Laravel's `boolean` rule rejects the strings "true"/"false". */
+    include_inactive?: boolean | 0 | 1;
+    sort?: string;
+    dir?: 'asc' | 'desc';
     tenant_id?: string;
-  }): Promise<GenericReportResponse> {
+  }): Promise<ReturnAnalysisReport> {
     const { tenant_id, ...rest } = params;
-    const response = await apiClient.get<ApiResponse<GenericReportResponse>>(
+    const response = await apiClient.get<ApiResponse<ReturnAnalysisReport>>(
       `${this.base}/sales/return-analysis`,
       { params: { ...rest, ...(tenant_id ? { tenant_id } : {}) } },
     );
@@ -351,8 +471,9 @@ class ReportService {
   async salesTrend(params: {
     start_date: string;
     end_date: string;
-    period?: 'daily' | 'weekly' | 'monthly';
-    warehouse_id?: number | null;
+    /** day | week | month | quarter — the period bucket size. */
+    group_by?: TrendPeriod;
+    search?: string;
     tenant_id?: string;
   }): Promise<SalesTrendReport> {
     const { tenant_id, ...rest } = params;
@@ -368,10 +489,15 @@ class ReportService {
   async poSummary(params: {
     start_date: string;
     end_date: string;
-    supplier_id?: number | null;
-    warehouse_id?: number | null;
-    status?: string;
-    payment_status?: string;
+    status?: PurchaseOrderStatus;
+    payment_status?: PurchasePaymentStatus;
+    supplier_id?: string | null;
+    warehouse_id?: string | null;
+    /** 1/0 — only POs past their expected delivery date. */
+    late_only?: boolean | 0 | 1;
+    search?: string;
+    sort?: string;
+    dir?: 'asc' | 'desc';
     tenant_id?: string;
   }): Promise<PoSummaryReport> {
     const { tenant_id, ...rest } = params;
@@ -384,11 +510,19 @@ class ReportService {
   async supplierPerformance(params: {
     start_date: string;
     end_date: string;
-    supplier_id?: number | null;
+    /** purchase_orders.status; 'cancelled' is rejected — never counted. */
+    status?: string;
+    supplier_id?: string | null;
+    warehouse_id?: string | null;
+    /** 1/0 — only suppliers with at least one late delivery. */
+    late_only?: boolean | 0 | 1;
+    search?: string;
+    sort?: string;
+    dir?: 'asc' | 'desc';
     tenant_id?: string;
-  }): Promise<GenericReportResponse> {
+  }): Promise<SupplierPerformanceReport> {
     const { tenant_id, ...rest } = params;
-    const response = await apiClient.get<ApiResponse<GenericReportResponse>>(
+    const response = await apiClient.get<ApiResponse<SupplierPerformanceReport>>(
       `${this.base}/purchase/supplier-performance`,
       { params: { ...rest, ...(tenant_id ? { tenant_id } : {}) } },
     );
@@ -412,12 +546,15 @@ class ReportService {
   async grnRegister(params: {
     start_date: string;
     end_date: string;
-    supplier_id?: number | null;
-    warehouse_id?: number | null;
+    warehouse_id?: string | null;
+    movement_type?: StockMovementType;
+    category_id?: string | null;
+    search?: string;
+    include_inactive?: boolean | 0 | 1;
     tenant_id?: string;
-  }): Promise<GenericReportResponse> {
+  }): Promise<GrnRegisterReport> {
     const { tenant_id, ...rest } = params;
-    const response = await apiClient.get<ApiResponse<GenericReportResponse>>(
+    const response = await apiClient.get<ApiResponse<GrnRegisterReport>>(
       `${this.base}/purchase/grn-register`,
       { params: { ...rest, ...(tenant_id ? { tenant_id } : {}) } },
     );
@@ -483,14 +620,14 @@ class ReportService {
   }
 
   async hourlySales(params: {
-    date?: string;
-    start_date?: string;
-    end_date?: string;
-    register_id?: number | null;
+    start_date: string;
+    end_date: string;
+    register_id?: string | null;
+    search?: string;
     tenant_id?: string;
-  }): Promise<GenericReportResponse> {
+  }): Promise<HourlySalesReport> {
     const { tenant_id, ...rest } = params;
-    const response = await apiClient.get<ApiResponse<GenericReportResponse>>(`${this.base}/pos/hourly-sales`, {
+    const response = await apiClient.get<ApiResponse<HourlySalesReport>>(`${this.base}/pos/hourly-sales`, {
       params: { ...rest, ...(tenant_id ? { tenant_id } : {}) },
     });
     return response.data.data;
@@ -513,13 +650,17 @@ class ReportService {
   async posRefundSummary(params: {
     start_date: string;
     end_date: string;
-    reason?: string;
-    refund_method?: string;
-    status?: string;
+    category_id?: string | null;
+    brand_id?: string | null;
+    search?: string;
+    /** 1/0 — Laravel's `boolean` rule rejects the strings "true"/"false". */
+    include_inactive?: boolean | 0 | 1;
+    sort?: string;
+    dir?: 'asc' | 'desc';
     tenant_id?: string;
-  }): Promise<GenericReportResponse> {
+  }): Promise<PosRefundSummaryReport> {
     const { tenant_id, ...rest } = params;
-    const response = await apiClient.get<ApiResponse<GenericReportResponse>>(
+    const response = await apiClient.get<ApiResponse<PosRefundSummaryReport>>(
       `${this.base}/pos/refund-summary`,
       { params: { ...rest, ...(tenant_id ? { tenant_id } : {}) } },
     );
@@ -529,8 +670,16 @@ class ReportService {
   // ── Customer Reports ──────────────────────────────────────────────────────
 
   async customerAging(params: {
-    as_of_date: string;
-    customer_type?: string;
+    /** Date the aging is measured against; defaults to today. */
+    as_of_date?: string;
+    customer_id?: string | null;
+    customer_type?: 'own' | 'retail' | 'wholesale' | 'corporate' | 'dealer';
+    status?: 'active' | 'inactive';
+    /** 1/0 — hide customers whose balance is entirely not-yet-due. */
+    only_overdue?: boolean | 0 | 1;
+    search?: string;
+    sort?: string;
+    dir?: 'asc' | 'desc';
     tenant_id?: string;
   }): Promise<CustomerAgingReport> {
     const { tenant_id, ...rest } = params;
@@ -543,11 +692,22 @@ class ReportService {
   async customerProfitability(params: {
     start_date: string;
     end_date: string;
-    customer_type?: string;
+    /** Drill into one margin band; omit for all of them. */
+    band?: CustomerMarginBand;
+    /** Percentages, so ±100; the API rejects anything outside that. */
+    min_margin?: number;
+    customer_id?: string | null;
+    customer_type?: 'own' | 'retail' | 'wholesale' | 'corporate' | 'dealer';
+    status?: 'active' | 'inactive';
+    /** 1/0 — brings back customers who bought nothing in the period. */
+    include_zero_revenue?: boolean | 0 | 1;
+    search?: string;
+    sort?: string;
+    dir?: 'asc' | 'desc';
     tenant_id?: string;
-  }): Promise<GenericReportResponse> {
+  }): Promise<CustomerProfitabilityReport> {
     const { tenant_id, ...rest } = params;
-    const response = await apiClient.get<ApiResponse<GenericReportResponse>>(
+    const response = await apiClient.get<ApiResponse<CustomerProfitabilityReport>>(
       `${this.base}/customer/profitability`,
       { params: { ...rest, ...(tenant_id ? { tenant_id } : {}) } },
     );
@@ -598,14 +758,25 @@ class ReportService {
   // ── Product Reports ───────────────────────────────────────────────────────
 
   async productProfitability(params: {
-    category_id?: number | null;
-    brand_id?: number | null;
+    start_date?: string;
+    end_date?: string;
+    /** Percentages, so ±100; the API rejects anything outside that. */
     min_margin?: number;
     max_margin?: number;
+    category_id?: string | null;
+    brand_id?: string | null;
+    product_type?: 'simple' | 'variable' | 'composite' | 'digital' | 'service';
+    /** 1/0 — brings back catalogue items that never sold. */
+    include_unsold?: boolean | 0 | 1;
+    search?: string;
+    /** 1/0 — Laravel's `boolean` rule rejects the strings "true"/"false". */
+    include_inactive?: boolean | 0 | 1;
+    sort?: string;
+    dir?: 'asc' | 'desc';
     tenant_id?: string;
-  }): Promise<GenericReportResponse> {
+  }): Promise<ProductProfitabilityReport> {
     const { tenant_id, ...rest } = params;
-    const response = await apiClient.get<ApiResponse<GenericReportResponse>>(
+    const response = await apiClient.get<ApiResponse<ProductProfitabilityReport>>(
       `${this.base}/product/profitability`,
       { params: { ...rest, ...(tenant_id ? { tenant_id } : {}) } },
     );
@@ -680,12 +851,16 @@ class ReportService {
   async stockTransfer(params: {
     start_date: string;
     end_date: string;
-    from_warehouse_id?: number | null;
-    to_warehouse_id?: number | null;
+    warehouse_id?: string | null;
+    movement_type?: StockMovementType;
+    direction?: StockMovementDirection;
+    category_id?: string | null;
+    search?: string;
+    include_inactive?: boolean | 0 | 1;
     tenant_id?: string;
-  }): Promise<GenericReportResponse> {
+  }): Promise<WarehouseTransferReport> {
     const { tenant_id, ...rest } = params;
-    const response = await apiClient.get<ApiResponse<GenericReportResponse>>(`${this.base}/warehouse/transfer`, {
+    const response = await apiClient.get<ApiResponse<WarehouseTransferReport>>(`${this.base}/warehouse/transfer`, {
       params: { ...rest, ...(tenant_id ? { tenant_id } : {}) },
     });
     return response.data.data;

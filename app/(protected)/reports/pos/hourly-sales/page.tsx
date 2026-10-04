@@ -1,14 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import {
-  TrendingUp,
-  Coins,
-  ShoppingCart,
-  BarChart3,
-  Layers,
-  Award,
-} from 'lucide-react';
+import { Clock, Coins, ShoppingCart, TrendingUp, Layers } from 'lucide-react';
 import TenantSelect from '@/components/ui/tenant-select';
 import CustomDatePicker from '@/components/ui/date-picker';
 import reportService from '@/services/reportService';
@@ -19,45 +12,31 @@ import {
   ReportFilters,
   FilterRow,
   FilterField,
-  filterSelectClass,
+
   ReportSummaryCards,
   ReportTable,
   ReportExportBar,
+  filterInputClass,
   type ReportColumn,
   type SummaryCard,
 } from '@/components/reports';
 import { useServerReportExport } from '@/hooks/reports/use-server-report-export';
 import { usePermissions } from '@/hooks/use-permissions';
 import { useAuthStore } from '@/stores/auth-store';
-import type { SalesTrendReport, SalesTrendRow, TrendPeriod } from '@/types/report.types';
+import type { HourlySalesReport, HourlySalesRow } from '@/types/report.types';
 
-/** Kept in step with App\Reports\Sales\SalesTrendReport::PERIODS. */
-const PERIODS: { value: TrendPeriod; label: string }[] = [
-  { value: 'day', label: 'Daily' },
-  { value: 'week', label: 'Weekly' },
-  { value: 'month', label: 'Monthly' },
-  { value: 'quarter', label: 'Quarterly' },
-];
-
-const PERIOD_UNIT: Record<TrendPeriod, string> = {
-  day: 'day',
-  week: 'week',
-  month: 'month',
-  quarter: 'quarter',
-};
-
-export default function SalesTrendPage() {
+export default function HourlySalesPage() {
   const { isSuperAdmin } = usePermissions();
   const authUser = useAuthStore(s => s.user);
 
-  const [data, setData] = useState<SalesTrendReport | null>(null);
+  const [data, setData] = useState<HourlySalesReport | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const [selectedTenantId, setSelectedTenantId] = useState('');
   const [startDate, setStartDate] = useState(firstDayOfMonthISO());
   const [endDate, setEndDate] = useState(todayISO());
-  const [groupBy, setGroupBy] = useState<TrendPeriod>('day');
+  const [search, setSearch] = useState('');
 
   const scopeTenantId = (isSuperAdmin ? selectedTenantId : authUser?.tenant_id) || '';
 
@@ -65,7 +44,7 @@ export default function SalesTrendPage() {
     const params: Record<string, any> = {};
     if (startDate) params.start_date = startDate;
     if (endDate) params.end_date = endDate;
-    if (groupBy !== 'day') params.group_by = groupBy;
+    if (search.trim()) params.search = search.trim();
     if (scopeTenantId) params.tenant_id = scopeTenantId;
     return params;
   };
@@ -74,7 +53,7 @@ export default function SalesTrendPage() {
     setLoading(true);
     setError(null);
     try {
-      const res = await reportService.salesTrend(params as any);
+      const res = await reportService.hourlySales(params as any);
       setData(res);
     } catch (e: any) {
       const msg = e?.response?.data?.message || e?.message || 'Failed to load report';
@@ -91,79 +70,65 @@ export default function SalesTrendPage() {
     setSelectedTenantId('');
     setStartDate(firstDayOfMonthISO());
     setEndDate(todayISO());
-    setGroupBy('day');
+    setSearch('');
     setData(null);
     setError(null);
   };
 
   const summary = data?.summary;
-  const unit = PERIOD_UNIT[summary?.group_by ?? 'day'];
-  const posShare =
-    summary && summary.total_revenue > 0
-      ? (summary.pos_revenue / summary.total_revenue) * 100
-      : 0;
 
   const cards: SummaryCard[] = summary
     ? [
         {
-          label: 'Total Revenue',
+          label: 'Revenue',
           value: formatCurrency(summary.total_revenue),
           color: 'green',
           icon: Coins,
-          subValue: `${formatNumber(summary.total_units)} units · ${formatPercent(summary.margin_pct)} margin`,
+          subValue: `${formatCurrency(summary.gross_profit)} gross profit`,
         },
         {
-          label: 'Avg Order Value',
-          value: formatCurrency(summary.avg_order_value),
+          label: 'Orders',
+          value: formatNumber(summary.order_count),
           color: 'blue',
           icon: ShoppingCart,
-          subValue: `${formatNumber(summary.order_count)} orders`,
+          subValue: `${formatNumber(summary.total_units)} units`,
         },
         {
-          label: 'vs Previous Period',
-          value:
-            summary.growth_pct !== null
-              ? formatPercent(Math.abs(summary.growth_pct))
-              : '—',
-          color: (summary.growth_pct ?? 0) < 0 ? 'red' : 'green',
-          icon: TrendingUp,
-          subValue: `was ${formatCurrency(summary.prev_revenue)}`,
-        },
-        {
-          label: 'POS Share',
-          value: formatPercent(posShare),
+          label: 'Avg Order',
+          value: formatCurrency(summary.avg_order_value),
           color: 'purple',
-          icon: BarChart3,
-          subValue: `${formatCurrency(summary.so_revenue)} from sales orders`,
+          icon: TrendingUp,
         },
         {
-          label: `Avg per ${unit}`,
-          value: formatCurrency(summary.avg_period_revenue),
+          label: 'Busiest Hour',
+          value: summary.busiest_hour?.hour ?? '—',
           color: 'orange',
-          icon: Layers,
-          subValue: `${formatNumber(summary.active_periods)} of ${formatNumber(summary.total_periods)} ${unit}s traded`,
+          icon: Clock,
+          subValue: summary.busiest_hour
+            ? `${formatCurrency(summary.busiest_hour.revenue)} · ${formatNumber(summary.busiest_hour.orders)} orders`
+            : 'no sales in range',
         },
         {
-          label: 'Best Period',
-          value: summary.best_period?.period ?? '—',
-          color: 'green',
-          icon: Award,
-          subValue: summary.best_period ? formatCurrency(summary.best_period.revenue) : 'no sales in range',
+          label: 'Trading Hours',
+          value: formatNumber(summary.trading_hours),
+          color: 'amber',
+          icon: Layers,
+          subValue: `${formatCurrency(summary.avg_hourly_revenue)} per trading hour`,
         },
       ]
     : [];
 
-  const columns: ReportColumn<SalesTrendRow>[] = [
+  const columns: ReportColumn<HourlySalesRow>[] = [
     {
-      key: 'period',
-      header: 'Period',
+      key: 'hour_label',
+      header: 'Hour',
       cell: (value: string) => <span className="font-mono text-xs font-medium">{value}</span>,
     },
-    { key: 'pos_revenue', header: 'POS Revenue', format: 'currency', align: 'right' },
-    { key: 'so_revenue', header: 'Sales Order Revenue', format: 'currency', align: 'right' },
+    { key: 'order_count', header: 'Orders', format: 'number', align: 'right' },
+    { key: 'units_sold', header: 'Units', format: 'qty', align: 'right' },
     {
-      key: 'total_revenue',
-      header: 'Total Revenue',
+      key: 'revenue',
+      header: 'Revenue',
       format: 'currency',
       align: 'right',
       cell: (value: number) => (
@@ -172,56 +137,45 @@ export default function SalesTrendPage() {
         </span>
       ),
     },
-    { key: 'total_cost', header: 'Cost', format: 'currency', align: 'right' },
+    { key: 'cost', header: 'Cost', format: 'currency', align: 'right' },
     { key: 'gross_profit', header: 'Gross Profit', format: 'currency', align: 'right' },
-    {
-      key: 'margin_pct',
-      header: 'Margin %',
-      align: 'right',
-      cell: (value: number) => (
-        <span className={value === 0 ? 'text-muted-foreground' : ''}>{formatPercent(value, 1)}</span>
-      ),
-    },
-    { key: 'units_sold', header: 'Units', format: 'qty', align: 'right' },
-    { key: 'order_count', header: 'Orders', format: 'number', align: 'right' },
     { key: 'avg_order_value', header: 'Avg Order', format: 'currency', align: 'right' },
+    { key: 'units_per_order', header: 'Units / Order', format: 'number', align: 'right' },
+    { key: 'share_pct', header: 'Share of Day %', format: 'percent', align: 'right' },
   ];
 
   const totalsRow = summary
     ? {
-        period: 'Totals',
-        pos_revenue: formatCurrency(summary.pos_revenue),
-        so_revenue: formatCurrency(summary.so_revenue),
-        total_revenue: formatCurrency(summary.total_revenue),
-        total_cost: formatCurrency(summary.total_cost),
-        gross_profit: formatCurrency(summary.gross_profit),
-        margin_pct: formatPercent(summary.margin_pct, 1),
-        units_sold: formatNumber(summary.total_units, 2),
+        hour_label: 'Totals',
         order_count: formatNumber(summary.order_count),
+        units_sold: formatNumber(summary.total_units, 2),
+        revenue: formatCurrency(summary.total_revenue),
+        cost: formatCurrency(summary.total_cost),
+        gross_profit: formatCurrency(summary.gross_profit),
         avg_order_value: formatCurrency(summary.avg_order_value),
+        share_pct: formatPercent(100, 0),
       }
     : undefined;
 
   const { loading: exportLoading, exportPDF, exportExcel, exportCSV, printReport: handlePrint } =
-    useServerReportExport('sales', 'trend', buildParams);
+    useServerReportExport('pos', 'hourly-sales', buildParams);
 
   const generatedAt = data?.generated_at ? new Date(data.generated_at).toLocaleString() : undefined;
 
   const description = summary
     ? [
         `${formatDate(summary.start_date, 'long')} – ${formatDate(summary.end_date, 'long')}`,
-        `vs ${formatDate(summary.prev_period_start, 'short')} – ${formatDate(summary.prev_period_end, 'short')}`,
         generatedAt ? `generated ${generatedAt}` : null,
       ]
         .filter(Boolean)
         .join(' · ')
-    : 'Revenue over time, with the POS counter and sales orders shown separately';
+    : 'When the counter trades, hour by hour — for shift planning and staffing';
 
   return (
     <ReportLayout
-      title="Sales Trend"
+      title="Hourly Sales"
       description={description}
-      icon={TrendingUp}
+      icon={Clock}
       filters={
         <ReportFilters onApply={generate} onReset={reset} loading={loading} actionsPlacement="below">
           {isSuperAdmin && (
@@ -245,18 +199,14 @@ export default function SalesTrendPage() {
             <FilterField label="End Date">
               <CustomDatePicker value={endDate} onChange={setEndDate} compact />
             </FilterField>
-            <FilterField label="Group By">
-              <select
-                className={filterSelectClass}
-                value={groupBy}
-                onChange={(e) => setGroupBy(e.target.value as TrendPeriod)}
-              >
-                {PERIODS.map((p) => (
-                  <option key={p.value} value={p.value}>
-                    {p.label}
-                  </option>
-                ))}
-              </select>
+            <FilterField label="Search">
+              <input
+                type="search"
+                className={filterInputClass}
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                placeholder="Hour, e.g. 14"
+              />
             </FilterField>
           </FilterRow>
         </ReportFilters>
@@ -280,12 +230,11 @@ export default function SalesTrendPage() {
         <ReportTable
           columns={columns}
           data={data.data}
-          pageSize={25}
+          pageSize={24}
           totalsRow={totalsRow}
-          rowKey={(row) => row.period}
-          searchKeys={['period']}
-          showSerial
-          serialHeader="SL"
+          rowKey={(row) => row.hour_label}
+          searchKeys={['hour_label']}
+          showSerial={false}
         />
       )}
     </ReportLayout>

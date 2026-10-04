@@ -9,12 +9,12 @@ import { todayISO, firstDayOfMonthISO, formatCurrency } from '@/lib/utils/format
 import { exportToPDF, printReport, exportColumnsToExcel, exportColumnsToCSV } from '@/lib/utils/export';
 import { notify } from '@/lib/notifications';
 import {
-  ReportLayout, ReportFilters, FilterField, filterInputClass, filterSelectClass,
+  ReportLayout, ReportFilters, FilterField, filterInputClass,
   ReportSummaryCards, ReportTable, ReportExportBar,
 } from '@/components/reports';
 import { usePermissions } from '@/hooks/use-permissions';
 import { useAuthStore } from '@/stores/auth-store';
-import type { GrnRegisterReport, GrnRegisterRow } from '@/types/report.types';
+import type { GrnRegisterReport } from '@/types/report.types';
 import type { SummaryCard } from '@/components/reports/ReportSummaryCards';
 import type { ReportColumn } from '@/components/reports/ReportTable';
 
@@ -67,16 +67,17 @@ export default function GrnRegisterPage() {
   ] : [];
 
   const columns: ReportColumn[] = [
-    { key: 'grn_date', header: 'GRN Date', format: 'date' },
-    { key: 'po_number', header: 'PO #' },
-    { key: 'supplier_name', header: 'Supplier' },
-    { key: 'warehouse_name', header: 'Warehouse' },
+    { key: 'date', header: 'Received', format: 'date' },
+    { key: 'reference', header: 'Reference #' },
     { key: 'product_name', header: 'Product' },
     { key: 'variation_name', header: 'Variation' },
-    { key: 'qty_received', header: 'Qty Received', format: 'qty', align: 'right' },
+    { key: 'sku', header: 'SKU' },
+    { key: 'warehouse_name', header: 'Warehouse' },
+    { key: 'type_label', header: 'Type' },
+    { key: 'qty_change', header: 'Qty Received', format: 'qty', align: 'right' },
     { key: 'unit_cost', header: 'Unit Cost', format: 'currency', align: 'right' },
     { key: 'total_cost', header: 'Total Cost', format: 'currency', align: 'right' },
-    { key: 'received_by', header: 'Received By' },
+    { key: 'created_by', header: 'Received By' },
   ];
 
   return (

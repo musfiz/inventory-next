@@ -2,17 +2,17 @@
 
 import { useState } from 'react';
 import {
-  PackageCheck,
+  AlertTriangle,
   Coins,
   Layers,
-  AlertTriangle,
-  CircleAlert,
+  PackageX,
+  XCircle,
 } from 'lucide-react';
 import TenantSelect from '@/components/ui/tenant-select';
 import CustomSelect, { type SelectOption } from '@/components/ui/custom-select';
 import reportService from '@/services/reportService';
 import commonService from '@/services/commonService';
-import { formatCurrency, formatDate, formatNumber, formatPercent } from '@/lib/utils/format';
+import { formatCurrency, formatNumber, formatPercent } from '@/lib/utils/format';
 import { notify } from '@/lib/notifications';
 import {
   ReportLayout,
@@ -31,17 +31,47 @@ import {
 import { useServerReportExport } from '@/hooks/reports/use-server-report-export';
 import { usePermissions } from '@/hooks/use-permissions';
 import { useAuthStore } from '@/stores/auth-store';
-import type { ReorderReport, ReorderRow, ReorderSeverity } from '@/types/report.types';
+import type { LowStockReport, LowStockRow, LowStockStatus } from '@/types/report.types';
 
-/** Kept in step with App\Reports\Inventory\ReorderReport::SEVERITIES. */
-const SEVERITIES: { value: ReorderSeverity; label: string }[] = [
-  { value: 'critical', label: 'Critical (out of stock)' },
-  { value: 'low', label: 'Low (below reorder point)' },
+/** Kept in step with App\Reports\Inventory\LowStockReport::STATUSES. */
+const STATUSES: { value: LowStockStatus; label: string }[] = [
+  { value: 'out_of_stock', label: 'Out of Stock' },
+  { value: 'critical', label: 'Critical (under 50% of min)' },
+  { value: 'low', label: 'Low (below min)' },
 ];
 
-const SEVERITY_BADGES: Record<string, string> = {
-  critical: 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400',
+const STATUS_BADGES: Record<string, string> = {
+  out_of_stock: 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400',
+  critical: 'bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-400',
   low: 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400',
+};
+
+const STATUS_LABELS: Record<string, string> = {
+  out_of_stock: 'Out of Stock',
+  critical: 'Critical',
+  low: 'Low',
+};
+
+/** Fill-rate bar colour: red when nearly empty, amber when under the minimum. */
+const fillBar = (pct: number) => {
+  const width = Math.max(0, Math.min(100, pct));
+  const tone =
+    width <= 0
+      ? 'bg-red-600'
+      : width < 50
+        ? 'bg-red-500'
+        : width < 100
+          ? 'bg-amber-500'
+          : 'bg-green-500';
+
+  return (
+    <div className="flex items-center justify-end gap-2">
+      <div className="h-1.5 w-14 overflow-hidden rounded-full bg-gray-200 dark:bg-gray-700">
+        <div className={`h-full ${tone}`} style={{ width: `${width}%` }} />
+      </div>
+      <span className="tabular-nums">{formatPercent(pct, 0)}</span>
+    </div>
+  );
 };
 
 const PRODUCT_TYPES = [
@@ -53,11 +83,11 @@ const PRODUCT_TYPES = [
   { value: 'service', label: 'Service' },
 ];
 
-export default function ReorderPage() {
+export default function LowStockPage() {
   const { isSuperAdmin } = usePermissions();
   const authUser = useAuthStore(s => s.user);
 
-  const [data, setData] = useState<ReorderReport | null>(null);
+  const [data, setData] = useState<LowStockReport | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -65,7 +95,7 @@ export default function ReorderPage() {
   const [category, setCategory] = useState<SelectOption | null>(null);
   const [brand, setBrand] = useState<SelectOption | null>(null);
   const [warehouse, setWarehouse] = useState<SelectOption | null>(null);
-  const [severity, setSeverity] = useState<ReorderSeverity | ''>('');
+  const [status, setStatus] = useState<LowStockStatus | ''>('');
   const [productType, setProductType] = useState('');
   const [search, setSearch] = useState('');
   const [includeInactive, setIncludeInactive] = useState(false);
@@ -80,7 +110,7 @@ export default function ReorderPage() {
     if (category) params.category_id = category.value;
     if (brand) params.brand_id = brand.value;
     if (warehouse) params.warehouse_id = warehouse.value;
-    if (severity) params.severity = severity;
+    if (status) params.status = status;
     if (productType) params.product_type = productType;
     if (search.trim()) params.search = search.trim();
     params.include_inactive = includeInactive ? 1 : 0;
@@ -92,7 +122,7 @@ export default function ReorderPage() {
     setLoading(true);
     setError(null);
     try {
-      const res = await reportService.reorderReport(params as any);
+      const res = await reportService.lowStockReport(params as any);
       setData(res);
     } catch (e: any) {
       const msg = e?.response?.data?.message || e?.message || 'Failed to load report';
@@ -105,15 +135,15 @@ export default function ReorderPage() {
 
   const generate = () => fetchReport(buildParams());
 
-  /** Clicking an already-active severity clears it, so the card toggles. */
-  const applySeverity = (value: ReorderSeverity) => {
-    const next = severity === value ? '' : value;
-    setSeverity(next);
+  /** Clicking an already-active status clears it, so the card toggles. */
+  const applyStatus = (value: LowStockStatus) => {
+    const next = status === value ? '' : value;
+    setStatus(next);
     const params = buildParams();
     if (next === '') {
-      delete params.severity;
+      delete params.status;
     } else {
-      params.severity = next;
+      params.status = next;
     }
     fetchReport(params);
   };
@@ -123,7 +153,7 @@ export default function ReorderPage() {
     setCategory(null);
     setBrand(null);
     setWarehouse(null);
-    setSeverity('');
+    setStatus('');
     setProductType('');
     setSearch('');
     setIncludeInactive(false);
@@ -170,45 +200,54 @@ export default function ReorderPage() {
   };
 
   const summary = data?.summary;
-  const severityByKey = (key: ReorderSeverity) => summary?.by_severity?.find((s) => s.key === key);
+  const statusByKey = (key: LowStockStatus) => summary?.by_status?.find((s) => s.key === key);
 
   const cards: SummaryCard[] = summary
     ? [
         {
-          label: 'Suggested Order Value',
-          value: formatCurrency(summary.total_suggested_value),
-          color: 'purple',
+          label: 'Shortfall Value',
+          value: formatCurrency(summary.total_shortfall_value),
+          color: 'red',
           icon: Coins,
-          subValue: `${formatNumber(summary.total_suggested_qty, 2)} units to order`,
+          subValue: `${formatNumber(summary.total_shortfall_qty, 2)} units below minimum`,
         },
         {
-          label: 'Lines to Reorder',
+          label: 'Lines Below Min',
           value: formatNumber(summary.total_lines),
-          color: 'blue',
+          color: 'orange',
           icon: Layers,
         },
         {
-          label: 'Critical',
-          value: formatNumber(severityByKey('critical')?.lines ?? 0),
+          label: 'Out of Stock',
+          value: formatNumber(statusByKey('out_of_stock')?.lines ?? 0),
           color: 'red',
+          icon: XCircle,
+          subValue: formatCurrency(statusByKey('out_of_stock')?.shortfall_value ?? 0),
+          onClick: () => applyStatus('out_of_stock'),
+          active: status === 'out_of_stock',
+        },
+        {
+          label: 'Critical',
+          value: formatNumber(statusByKey('critical')?.lines ?? 0),
+          color: 'orange',
           icon: AlertTriangle,
-          subValue: `${formatCurrency(severityByKey('critical')?.suggested_value ?? 0)} · ${formatPercent(severityByKey('critical')?.share_pct ?? 0)}`,
-          onClick: () => applySeverity('critical'),
-          active: severity === 'critical',
+          subValue: `${formatCurrency(statusByKey('critical')?.shortfall_value ?? 0)} · ${formatPercent(statusByKey('critical')?.share_pct ?? 0)}`,
+          onClick: () => applyStatus('critical'),
+          active: status === 'critical',
         },
         {
           label: 'Low',
-          value: formatNumber(severityByKey('low')?.lines ?? 0),
-          color: 'orange',
-          icon: CircleAlert,
-          subValue: `${formatCurrency(severityByKey('low')?.suggested_value ?? 0)} · ${formatPercent(severityByKey('low')?.share_pct ?? 0)}`,
-          onClick: () => applySeverity('low'),
-          active: severity === 'low',
+          value: formatNumber(statusByKey('low')?.lines ?? 0),
+          color: 'amber',
+          icon: PackageX,
+          subValue: `${formatCurrency(statusByKey('low')?.shortfall_value ?? 0)} · ${formatPercent(statusByKey('low')?.share_pct ?? 0)}`,
+          onClick: () => applyStatus('low'),
+          active: status === 'low',
         },
       ]
     : [];
 
-  const columns: ReportColumn<ReorderRow>[] = [
+  const columns: ReportColumn<LowStockRow>[] = [
     { key: 'product_name', header: 'Product' },
     { key: 'variation_name', header: 'Variation' },
     {
@@ -218,29 +257,24 @@ export default function ReorderPage() {
     },
     { key: 'warehouse_name', header: 'Warehouse' },
     { key: 'current_qty', header: 'Current Qty', format: 'qty', align: 'right' },
+    { key: 'reserved_qty', header: 'Reserved', format: 'qty', align: 'right' },
     { key: 'available_qty', header: 'Available', format: 'qty', align: 'right' },
-    { key: 'reorder_point', header: 'Reorder Point', format: 'qty', align: 'right' },
-    { key: 'target_qty', header: 'Target Qty', format: 'qty', align: 'right' },
-    { key: 'suggested_qty', header: 'Suggested Qty', format: 'qty', align: 'right' },
+    { key: 'min_quantity', header: 'Min Qty', format: 'qty', align: 'right' },
+    { key: 'shortfall_qty', header: 'Shortfall', format: 'qty', align: 'right' },
+    { key: 'fill_pct', header: 'Fill %', align: 'right', cell: (value: number) => fillBar(value) },
     { key: 'unit_cost', header: 'Unit Cost', format: 'currency', align: 'right' },
-    { key: 'suggested_value', header: 'Suggested Value', format: 'currency', align: 'right' },
+    { key: 'shortfall_value', header: 'Shortfall Value', format: 'currency', align: 'right' },
     {
-      key: 'last_received_date',
-      header: 'Last Received',
-      cell: (value: string | null) => (value ? formatDate(value) : <span className="text-muted-foreground">Never</span>),
-    },
-    { key: 'supplier_name', header: 'Supplier' },
-    {
-      key: 'severity',
-      header: 'Severity',
+      key: 'status',
+      header: 'Status',
       align: 'center',
-      cell: (_value: unknown, row: ReorderRow) => (
+      cell: (_value: unknown, row: LowStockRow) => (
         <span
           className={`inline-block whitespace-nowrap rounded px-2 py-0.5 text-xs font-medium ${
-            SEVERITY_BADGES[row.severity] || 'bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-400'
+            STATUS_BADGES[row.status] || 'bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-400'
           }`}
         >
-          {row.severity === 'critical' ? 'Critical' : 'Low'}
+          {STATUS_LABELS[row.status] || row.status}
         </span>
       ),
     },
@@ -253,30 +287,30 @@ export default function ReorderPage() {
           data.data.reduce((s, r) => s + r.current_qty, 0),
           2,
         ),
-        suggested_qty: formatNumber(summary.total_suggested_qty, 2),
-        suggested_value: formatCurrency(summary.total_suggested_value),
+        shortfall_qty: formatNumber(summary.total_shortfall_qty, 2),
+        shortfall_value: formatCurrency(summary.total_shortfall_value),
       }
     : undefined;
 
   const { loading: exportLoading, exportPDF, exportExcel, exportCSV, printReport: handlePrint } =
-    useServerReportExport('inventory', 'reorder', buildParams);
+    useServerReportExport('inventory', 'low-stock', buildParams);
 
   const generatedAt = data?.generated_at ? new Date(data.generated_at).toLocaleString() : undefined;
 
   const description = summary
     ? [
-        `${formatNumber(summary.total_lines)} lines at or below their reorder trigger`,
+        `${formatNumber(summary.total_lines)} lines below their minimum`,
         generatedAt ? `generated ${generatedAt}` : null,
       ]
         .filter(Boolean)
         .join(' · ')
-    : 'The purchase list: lines at or below their reorder point, with suggested quantities';
+    : 'Stock that still exists but has fallen to or below its minimum level';
 
   return (
     <ReportLayout
-      title="Reorder Report"
+      title="Low Stock"
       description={description}
-      icon={PackageCheck}
+      icon={AlertTriangle}
       filters={
         <ReportFilters onApply={generate} onReset={reset} loading={loading} actionsPlacement="below">
           {isSuperAdmin && (
@@ -341,14 +375,14 @@ export default function ReorderPage() {
           </FilterRow>
 
           <FilterRow>
-            <FilterField label="Severity">
+            <FilterField label="Status">
               <select
                 className={filterSelectClass}
-                value={severity}
-                onChange={(e) => setSeverity(e.target.value as ReorderSeverity | '')}
+                value={status}
+                onChange={(e) => setStatus(e.target.value as LowStockStatus | '')}
               >
-                <option value="">All Severities</option>
-                {SEVERITIES.map((s) => (
+                <option value="">All Statuses</option>
+                {STATUSES.map((s) => (
                   <option key={s.value} value={s.value}>
                     {s.label}
                   </option>
@@ -370,7 +404,7 @@ export default function ReorderPage() {
                 className={filterInputClass}
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
-                placeholder="Name, SKU or supplier"
+                placeholder="Name, SKU or barcode"
               />
             </FilterField>
           </FilterRow>
@@ -409,7 +443,7 @@ export default function ReorderPage() {
           pageSize={25}
           totalsRow={totalsRow}
           rowKey={(row) => `${row.sku}-${row.warehouse_name}`}
-          searchKeys={['product_name', 'variation_name', 'sku', 'barcode', 'warehouse_name', 'supplier_name']}
+          searchKeys={['product_name', 'variation_name', 'sku', 'barcode', 'warehouse_name']}
           showSerial
           serialHeader="SL"
         />

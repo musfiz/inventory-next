@@ -48,6 +48,7 @@ import {
   BarChart3,
   Percent,
   CalendarClock,
+  Clock,
   PackageCheck,
   Coins,
   ClipboardList,
@@ -385,7 +386,8 @@ const navigation: NavigationItem[] = [
           { name: 'ABC Analysis', href: '/reports/inventory/abc-analysis', icon: PieChart, permission: 'view-abc-analysis-report' },
           { name: 'Dead Stock', href: '/reports/inventory/dead-stock', icon: Archive, permission: 'view-dead-stock-report' },
           { name: 'Stock Adjustment', href: '/reports/inventory/stock-adjustment', icon: Scale, permission: 'view-stock-adjustment-report' },
-          { name: 'Reorder / Low Stock', href: '/reports/inventory/reorder', icon: PackageCheck, permission: 'view-reorder-report' },
+          { name: 'Reorder Report', href: '/reports/inventory/reorder', icon: PackageCheck, permission: 'view-reorder-report' },
+          { name: 'Low Stock', href: '/reports/inventory/low-stock', icon: AlertTriangle, permission: 'view-low-stock-report' },
           { name: 'Stock Movement', href: '/reports/inventory/stock-movement', icon: History, permission: 'view-stock-movement-report' },
           { name: 'Batch & Expiry', href: '/reports/inventory/batch-expiry', icon: CalendarClock, permission: 'view-batch-expiry-report' },
           { name: 'Stock Status', href: '/reports/product/stock-status', icon: BarChart3, permission: 'view-stock-status-report' },
@@ -424,13 +426,14 @@ const navigation: NavigationItem[] = [
       {
         name: 'POS Reports',
         icon: MdOutlinePointOfSale,
-        permissions: ['view-pos-daily-sales-report', 'view-pos-session-report', 'view-cashier-performance-report', 'view-payment-breakdown-report', 'view-pos-refund-report'],
+        permissions: ['view-pos-daily-sales-report', 'view-pos-session-report', 'view-cashier-performance-report', 'view-payment-breakdown-report', 'view-pos-refund-report', 'view-hourly-sales-report'],
         children: [
           { name: 'Daily Sales', href: '/reports/pos/daily-sales', icon: BarChart3, permission: 'view-pos-daily-sales-report' },
           { name: 'Session Summary', href: '/reports/pos/session-summary', icon: FileText, permission: 'view-pos-session-report' },
           { name: 'Cashier Performance', href: '/reports/pos/cashier-performance', icon: Users, permission: 'view-cashier-performance-report' },
           { name: 'Payment Breakdown', href: '/reports/pos/payment-breakdown', icon: MdPayment, permission: 'view-payment-breakdown-report' },
           { name: 'Refund Summary', href: '/reports/pos/refund-summary', icon: TbCreditCardRefund, permission: 'view-pos-refund-report' },
+          { name: 'Hourly Sales', href: '/reports/pos/hourly-sales', icon: Clock, permission: 'view-hourly-sales-report' },
         ],
       },
       {

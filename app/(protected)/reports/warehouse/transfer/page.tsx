@@ -9,12 +9,12 @@ import { todayISO, firstDayOfMonthISO, formatCurrency } from '@/lib/utils/format
 import { exportToPDF, printReport, exportColumnsToExcel, exportColumnsToCSV } from '@/lib/utils/export';
 import { notify } from '@/lib/notifications';
 import {
-  ReportLayout, ReportFilters, FilterField, filterInputClass, filterSelectClass,
+  ReportLayout, ReportFilters, FilterField,
   ReportSummaryCards, ReportTable, ReportExportBar,
 } from '@/components/reports';
 import { usePermissions } from '@/hooks/use-permissions';
 import { useAuthStore } from '@/stores/auth-store';
-import type { GenericReportResponse } from '@/types/report.types';
+import type { WarehouseTransferReport } from '@/types/report.types';
 import type { SummaryCard } from '@/components/reports/ReportSummaryCards';
 import type { ReportColumn } from '@/components/reports/ReportTable';
 
@@ -22,7 +22,7 @@ export default function StockTransferPage() {
   const { isSuperAdmin } = usePermissions();
   const authUser = useAuthStore(s => s.user);
   const reportRef = useRef<HTMLDivElement>(null);
-  const [data, setData] = useState<GenericReportResponse | null>(null);
+  const [data, setData] = useState<WarehouseTransferReport | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [startDate, setStartDate] = useState(firstDayOfMonthISO());
@@ -69,11 +69,13 @@ export default function StockTransferPage() {
     { key: 'date', header: 'Date', format: 'date' },
     { key: 'product_name', header: 'Product' },
     { key: 'variation_name', header: 'Variation' },
-    { key: 'from_warehouse', header: 'From Warehouse' },
-    { key: 'to_warehouse', header: 'To Warehouse' },
-    { key: 'quantity', header: 'Qty', format: 'qty', align: 'right' },
-    { key: 'value', header: 'Value', format: 'currency', align: 'right' },
-    { key: 'transfer_by', header: 'Transfer By' },
+    { key: 'sku', header: 'SKU' },
+    { key: 'warehouse_name', header: 'Warehouse' },
+    { key: 'type_label', header: 'Leg' },
+    { key: 'qty_change', header: 'Qty', format: 'qty', align: 'right' },
+    { key: 'total_cost', header: 'Value', format: 'currency', align: 'right' },
+    { key: 'reference', header: 'Reference #' },
+    { key: 'created_by', header: 'Transfer By' },
   ];
 
   return (

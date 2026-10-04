@@ -1,47 +1,135 @@
 'use client';
 
-import { useState, useRef } from 'react';
-import { History } from 'lucide-react';
-import CustomDatePicker from '@/components/ui/date-picker';
+import { useState } from 'react';
+import {
+  History,
+  ArrowDownToLine,
+  ArrowUpFromLine,
+  Scale,
+  Coins,
+  Layers,
+} from 'lucide-react';
 import TenantSelect from '@/components/ui/tenant-select';
+import CustomSelect, { type SelectOption } from '@/components/ui/custom-select';
+import CustomDatePicker from '@/components/ui/date-picker';
 import reportService from '@/services/reportService';
-import { todayISO, firstDayOfMonthISO } from '@/lib/utils/format';
-import { exportToPDF, printReport, exportColumnsToExcel, exportColumnsToCSV } from '@/lib/utils/export';
+import commonService from '@/services/commonService';
+import { formatCurrency, formatDate, formatNumber, todayISO, firstDayOfMonthISO } from '@/lib/utils/format';
 import { notify } from '@/lib/notifications';
-import { ReportLayout, ReportFilters, FilterField, filterInputClass, filterSelectClass, ReportSummaryCards, ReportTable, ReportExportBar } from '@/components/reports';
+import {
+  ReportLayout,
+  ReportFilters,
+  FilterRow,
+  FilterField,
+  FilterCheckbox,
+  filterInputClass,
+  filterSelectClass,
+  ReportSummaryCards,
+  ReportTable,
+  ReportExportBar,
+  type ReportColumn,
+  type SummaryCard,
+} from '@/components/reports';
+import { useServerReportExport } from '@/hooks/reports/use-server-report-export';
 import { usePermissions } from '@/hooks/use-permissions';
 import { useAuthStore } from '@/stores/auth-store';
-import type { StockMovementReport } from '@/types/report.types';
-import type { SummaryCard } from '@/components/reports/ReportSummaryCards';
-import type { ReportColumn } from '@/components/reports/ReportTable';
+import type {
+  StockMovementReport,
+  StockMovementRow,
+  StockMovementType,
+  StockMovementDirection,
+} from '@/types/report.types';
+
+/**
+ * Kept in step with App\Reports\Inventory\StockMovementReport::TYPES —
+ * the stock_movements enum. Inbound types first, then outbound, then
+ * adjustment, which can go either way.
+ */
+const TYPES: { value: StockMovementType; label: string }[] = [
+  { value: 'purchase', label: 'Purchase' },
+  { value: 'return', label: 'Return' },
+  { value: 'production', label: 'Production' },
+  { value: 'transfer_in', label: 'Transfer In' },
+  { value: 'sales', label: 'Sales' },
+  { value: 'transfer_out', label: 'Transfer Out' },
+  { value: 'consumption', label: 'Consumption' },
+  { value: 'damage', label: 'Damage' },
+  { value: 'expiry', label: 'Expiry' },
+  { value: 'adjustment', label: 'Adjustment' },
+];
+
+/** Badge tone by movement type. */
+const TYPE_BADGES: Record<string, string> = {
+  purchase: 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400',
+  return: 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400',
+  production: 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400',
+  transfer_in: 'bg-teal-100 text-teal-700 dark:bg-teal-900/30 dark:text-teal-400',
+  sales: 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400',
+  transfer_out: 'bg-teal-100 text-teal-700 dark:bg-teal-900/30 dark:text-teal-400',
+  consumption: 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400',
+  damage: 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400',
+  expiry: 'bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-400',
+  adjustment: 'bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-400',
+};
+
+const PRODUCT_TYPES = [
+  { value: '', label: 'All Types' },
+  { value: 'simple', label: 'Simple' },
+  { value: 'variable', label: 'Variable' },
+  { value: 'composite', label: 'Composite' },
+  { value: 'digital', label: 'Digital' },
+  { value: 'service', label: 'Service' },
+];
 
 export default function StockMovementPage() {
   const { isSuperAdmin } = usePermissions();
   const authUser = useAuthStore(s => s.user);
-  const reportRef = useRef<HTMLDivElement>(null);
+
   const [data, setData] = useState<StockMovementReport | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  const [selectedTenantId, setSelectedTenantId] = useState('');
+  const [category, setCategory] = useState<SelectOption | null>(null);
+  const [brand, setBrand] = useState<SelectOption | null>(null);
+  const [warehouse, setWarehouse] = useState<SelectOption | null>(null);
   const [startDate, setStartDate] = useState(firstDayOfMonthISO());
   const [endDate, setEndDate] = useState(todayISO());
-  const [movementType, setMovementType] = useState('all');
-  const [selectedTenantId, setSelectedTenantId] = useState<string>('');
+  const [movementType, setMovementType] = useState<StockMovementType | ''>('');
+  const [direction, setDirection] = useState<StockMovementDirection | ''>('');
+  const [productType, setProductType] = useState('');
+  const [search, setSearch] = useState('');
+  const [includeInactive, setIncludeInactive] = useState(false);
 
-  const generate = async () => {
+  const scopeTenantId = (isSuperAdmin ? selectedTenantId : authUser?.tenant_id) || '';
+  const scopeReady = !isSuperAdmin || !!selectedTenantId;
+  const businessTypeId =
+    (authUser as any)?.tenant?.business_type?.id ?? (authUser as any)?.business_type?.id ?? undefined;
+
+  const buildParams = (): Record<string, any> => {
+    const params: Record<string, any> = {};
+    if (category) params.category_id = category.value;
+    if (brand) params.brand_id = brand.value;
+    if (warehouse) params.warehouse_id = warehouse.value;
+    if (startDate) params.start_date = startDate;
+    if (endDate) params.end_date = endDate;
+    if (movementType) params.movement_type = movementType;
+    if (direction) params.direction = direction;
+    if (productType) params.product_type = productType;
+    if (search.trim()) params.search = search.trim();
+    params.include_inactive = includeInactive ? 1 : 0;
+    if (scopeTenantId) params.tenant_id = scopeTenantId;
+    return params;
+  };
+
+  const fetchReport = async (params: Record<string, any>) => {
     setLoading(true);
     setError(null);
     try {
-      const params: any = {
-        start_date: startDate,
-        end_date: endDate,
-        movement_type: movementType === 'all' ? undefined : movementType,
-      };
-      const tenantId = isSuperAdmin ? selectedTenantId : authUser?.tenant_id;
-      if (tenantId) params.tenant_id = tenantId;
-      const result = await reportService.stockMovementReport(params);
-      setData(result);
-    } catch (err: any) {
-      const msg = err?.response?.data?.message || 'Failed to generate report';
+      const res = await reportService.stockMovementReport(params as any);
+      setData(res);
+    } catch (e: any) {
+      const msg = e?.response?.data?.message || e?.message || 'Failed to load report';
       setError(msg);
       notify.error(msg);
     } finally {
@@ -49,90 +137,363 @@ export default function StockMovementPage() {
     }
   };
 
+  const generate = () => fetchReport(buildParams());
+
   const reset = () => {
-    setData(null);
-    setError(null);
+    setSelectedTenantId('');
+    setCategory(null);
+    setBrand(null);
+    setWarehouse(null);
     setStartDate(firstDayOfMonthISO());
     setEndDate(todayISO());
-    setMovementType('all');
-    setSelectedTenantId('');
+    setMovementType('');
+    setDirection('');
+    setProductType('');
+    setSearch('');
+    setIncludeInactive(false);
+    setData(null);
+    setError(null);
   };
 
-  const cards: SummaryCard[] = data
+  const loadCategories = async (inputValue: string): Promise<SelectOption[]> => {
+    if (!scopeReady) return [];
+    try {
+      const rows = await commonService.getCategoriesForDropdown({
+        search: inputValue,
+        tenant_id: scopeTenantId || undefined,
+        business_type_id: scopeTenantId ? undefined : businessTypeId,
+      });
+      return (rows || []).map((c: any) => ({ value: String(c.id), label: c.name }));
+    } catch {
+      return [];
+    }
+  };
+
+  const loadBrands = async (inputValue: string): Promise<SelectOption[]> => {
+    if (!scopeReady) return [];
+    try {
+      const rows = await commonService.getBrandsForDropdown({
+        search: inputValue,
+        tenant_id: scopeTenantId || undefined,
+        business_type_id: scopeTenantId ? undefined : businessTypeId,
+      });
+      return (rows || []).map((b: any) => ({ value: String(b.id), label: b.name }));
+    } catch {
+      return [];
+    }
+  };
+
+  const loadWarehouses = async (inputValue: string): Promise<SelectOption[]> => {
+    if (!scopeReady) return [];
+    try {
+      const rows = await commonService.getWarehousesByTenant({ search: inputValue, tenant_id: scopeTenantId });
+      return (rows || []).map((w: any) => ({ value: String(w.id), label: w.name }));
+    } catch {
+      return [];
+    }
+  };
+
+  const summary = data?.summary;
+
+  const cards: SummaryCard[] = summary
     ? [
-        { label: 'Total In', value: data.summary.total_in, color: 'green' },
-        { label: 'Total Out', value: data.summary.total_out, color: 'red' },
-        { label: 'Net Change', value: data.summary.net_change, color: 'blue' },
+        {
+          label: 'Stock In',
+          value: formatNumber(summary.total_in, 2),
+          color: 'green',
+          icon: ArrowDownToLine,
+          subValue: `${formatPercentOf(summary.total_in, summary.total_in + summary.total_out)} of movement volume`,
+        },
+        {
+          label: 'Stock Out',
+          value: formatNumber(summary.total_out, 2),
+          color: 'red',
+          icon: ArrowUpFromLine,
+          subValue: `${formatPercentOf(summary.total_out, summary.total_in + summary.total_out)} of movement volume`,
+        },
+        {
+          label: 'Net Change',
+          value: formatNumber(summary.net_change, 2),
+          color: summary.net_change < 0 ? 'orange' : 'green',
+          icon: Scale,
+        },
+        {
+          label: 'Movement Value',
+          value: formatCurrency(summary.total_value),
+          color: 'blue',
+          icon: Coins,
+          subValue: `${formatNumber(summary.total_lines)} lines`,
+        },
+        {
+          label: 'Lines Posted',
+          value: formatNumber(summary.total_lines),
+          color: 'purple',
+          icon: Layers,
+        },
       ]
     : [];
 
-  const columns: ReportColumn[] = [
-    { key: 'date', header: 'Date', format: 'datetime' },
-    { key: 'product_name', header: 'Product', format: 'text' },
-    { key: 'sku', header: 'SKU', format: 'text' },
-    { key: 'warehouse_name', header: 'Warehouse', format: 'text' },
-    { key: 'movement_type', header: 'Type', format: 'text' },
-    { key: 'reference_type', header: 'Ref Type', format: 'text' },
-    { key: 'reference_number', header: 'Ref #', format: 'text' },
-    { key: 'qty_before', header: 'Qty Before', format: 'qty', align: 'right' },
-    { key: 'qty_change', header: 'Qty Change', format: 'qty', align: 'right' },
+  const columns: ReportColumn<StockMovementRow>[] = [
+    {
+      key: 'date',
+      header: 'Date',
+      cell: (value: string) => <span>{value ? formatDate(value, 'long') : '—'}</span>,
+    },
+    { key: 'product_name', header: 'Product' },
+    { key: 'variation_name', header: 'Variation' },
+    {
+      key: 'sku',
+      header: 'SKU',
+      cell: (value: string) => <span className="font-mono text-xs">{value}</span>,
+    },
+    { key: 'warehouse_name', header: 'Warehouse' },
+    {
+      key: 'movement_type',
+      header: 'Type',
+      align: 'center',
+      cell: (_value: unknown, row: StockMovementRow) => (
+        <span
+          className={`inline-block whitespace-nowrap rounded px-2 py-0.5 text-xs font-medium ${
+            TYPE_BADGES[row.movement_type] || 'bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-400'
+          }`}
+        >
+          {row.type_label}
+        </span>
+      ),
+    },
+    {
+      key: 'qty_before',
+      header: 'Qty Before',
+      format: 'qty',
+      align: 'right',
+    },
+    {
+      key: 'qty_change',
+      header: 'Qty Change',
+      align: 'right',
+      cell: (value: number) => (
+        <span
+          className={
+            value < 0
+              ? 'font-medium text-red-600 dark:text-red-400'
+              : value > 0
+                ? 'font-medium text-green-600 dark:text-green-400'
+                : ''
+          }
+        >
+          {value > 0 ? '+' : ''}
+          {formatNumber(value, 2)}
+        </span>
+      ),
+    },
     { key: 'qty_after', header: 'Qty After', format: 'qty', align: 'right' },
-    { key: 'reason', header: 'Reason', format: 'text' },
-    { key: 'created_by', header: 'Created By', format: 'text' },
+    { key: 'unit_cost', header: 'Unit Cost', format: 'currency', align: 'right' },
+    { key: 'total_cost', header: 'Value', format: 'currency', align: 'right' },
+    { key: 'reference', header: 'Reference' },
+    { key: 'reason', header: 'Reason' },
+    { key: 'created_by', header: 'Posted By' },
   ];
+
+  const totalsRow = summary
+    ? {
+        product_name: 'Totals',
+        qty_change: formatNumber(summary.net_change, 2),
+        total_cost: formatCurrency(summary.total_value),
+      }
+    : undefined;
+
+  const { loading: exportLoading, exportPDF, exportExcel, exportCSV, printReport: handlePrint } =
+    useServerReportExport('inventory', 'stock-movement', buildParams);
+
+  const generatedAt = data?.generated_at ? new Date(data.generated_at).toLocaleString() : undefined;
+
+  const description = summary
+    ? [
+        `${formatDate(summary.start_date, 'long')} – ${formatDate(summary.end_date, 'long')}`,
+        generatedAt ? `generated ${generatedAt}` : null,
+      ]
+        .filter(Boolean)
+        .join(' · ')
+    : 'Every movement posted to the stock ledger, with the balance each one left behind';
 
   return (
     <ReportLayout
       title="Stock Movement Ledger"
+      description={description}
       icon={History}
       filters={
-        <ReportFilters onApply={generate} onReset={reset} loading={loading}>
+        <ReportFilters onApply={generate} onReset={reset} loading={loading} actionsPlacement="below">
           {isSuperAdmin && (
-            <FilterField label="Tenant">
-              <TenantSelect
-                value={selectedTenantId}
-                onChange={(tid) => setSelectedTenantId(tid || '')}
-                placeholder="All Tenants"
+            <FilterRow columns={1}>
+              <FilterField label="Tenant" className="max-w-sm">
+                <TenantSelect
+                  value={selectedTenantId}
+                  onChange={(tid) => {
+                    setSelectedTenantId(tid || '');
+                    setCategory(null);
+                    setBrand(null);
+                    setWarehouse(null);
+                  }}
+                  placeholder="Select a tenant"
+                  compact
+                  isClearable
+                />
+              </FilterField>
+            </FilterRow>
+          )}
+
+          <FilterRow columns={3}>
+            <FilterField label="Category" hint={scopeReady ? undefined : 'select a tenant first'}>
+              <CustomSelect
+                key={`cat-${scopeTenantId || 'unscoped'}`}
+                value={category}
+                onChange={setCategory}
+                loadOptions={loadCategories}
+                defaultOptions={scopeReady}
+                isClearable
+                isDisabled={!scopeReady}
+                compact
+                placeholder={scopeReady ? 'All categories' : 'Select a tenant first'}
               />
             </FilterField>
-          )}
-          <FilterField label="Start Date">
-            <CustomDatePicker value={startDate} onChange={setStartDate} />
-          </FilterField>
-          <FilterField label="End Date">
-            <CustomDatePicker value={endDate} onChange={setEndDate} />
-          </FilterField>
-          <FilterField label="Movement Type">
-            <select className={filterSelectClass} value={movementType} onChange={(e) => setMovementType(e.target.value)}>
-              <option value="all">All</option>
-              <option value="in">In</option>
-              <option value="out">Out</option>
-              <option value="adjustment">Adjustment</option>
-              <option value="transfer">Transfer</option>
-              <option value="return">Return</option>
-            </select>
-          </FilterField>
+            <FilterField label="Brand" hint={scopeReady ? undefined : 'select a tenant first'}>
+              <CustomSelect
+                key={`brand-${scopeTenantId || 'unscoped'}`}
+                value={brand}
+                onChange={setBrand}
+                loadOptions={loadBrands}
+                defaultOptions={scopeReady}
+                isClearable
+                isDisabled={!scopeReady}
+                compact
+                placeholder={scopeReady ? 'All brands' : 'Select a tenant first'}
+              />
+            </FilterField>
+            <FilterField label="Warehouse" hint={scopeReady ? undefined : 'select a tenant first'}>
+              <CustomSelect
+                key={`wh-${scopeTenantId || 'unscoped'}`}
+                value={warehouse}
+                onChange={setWarehouse}
+                loadOptions={loadWarehouses}
+                defaultOptions={scopeReady}
+                isClearable
+                isDisabled={!scopeReady}
+                compact
+                placeholder={scopeReady ? 'All warehouses' : 'Select a tenant first'}
+              />
+            </FilterField>
+          </FilterRow>
+
+          <FilterRow columns={3}>
+            <FilterField label="Start Date">
+              <CustomDatePicker value={startDate} onChange={setStartDate} compact />
+            </FilterField>
+            <FilterField label="End Date">
+              <CustomDatePicker value={endDate} onChange={setEndDate} compact />
+            </FilterField>
+            <FilterField label="Movement Type">
+              <select
+                className={filterSelectClass}
+                value={movementType}
+                onChange={(e) => setMovementType(e.target.value as StockMovementType | '')}
+              >
+                <option value="">All Types</option>
+                {TYPES.map((t) => (
+                  <option key={t.value} value={t.value}>
+                    {t.label}
+                  </option>
+                ))}
+              </select>
+            </FilterField>
+          </FilterRow>
+
+          <FilterRow>
+            <FilterField label="Direction">
+              <select
+                className={filterSelectClass}
+                value={direction}
+                onChange={(e) => setDirection(e.target.value as StockMovementDirection | '')}
+              >
+                <option value="">In and Out</option>
+                <option value="in">Stock In</option>
+                <option value="out">Stock Out</option>
+              </select>
+            </FilterField>
+            <FilterField label="Product Type">
+              <select className={filterSelectClass} value={productType} onChange={(e) => setProductType(e.target.value)}>
+                {PRODUCT_TYPES.map((t) => (
+                  <option key={t.value} value={t.value}>
+                    {t.label}
+                  </option>
+                ))}
+              </select>
+            </FilterField>
+            <FilterField label="Search">
+              <input
+                type="search"
+                className={filterInputClass}
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                placeholder="Name, SKU, reference or reason"
+              />
+            </FilterField>
+          </FilterRow>
+
+          <FilterRow>
+            <FilterField label="Options">
+              <FilterCheckbox
+                label="Include inactive"
+                activeHint="Adds archived products to the report"
+                checked={includeInactive}
+                onChange={setIncludeInactive}
+              />
+            </FilterField>
+          </FilterRow>
         </ReportFilters>
       }
-      summaryCards={<ReportSummaryCards cards={cards} />}
+      summaryCards={cards.length > 0 ? <ReportSummaryCards cards={cards} /> : undefined}
       loading={loading}
       error={error}
       hasData={!!data}
       actions={
         <ReportExportBar
-          onExportPDF={() => { if (reportRef.current) exportToPDF(reportRef.current, 'stock-movement'); }}
-          onExportExcel={() => { if (data) exportColumnsToExcel(data.data, columns.map(c => ({ key: c.key, label: c.header })), 'stock-movement', 'Stock Movement'); }}
-          onExportCSV={() => { if (data) exportColumnsToCSV(data.data, columns.map(c => ({ key: c.key, label: c.header })), 'stock-movement'); }}
-          onPrint={() => printReport('report-print', 'Stock Movement Ledger')}
+          onExportPDF={exportPDF}
+          onExportExcel={exportExcel}
+          onExportCSV={exportCSV}
+          onPrint={handlePrint}
+          loading={!!exportLoading}
           disabled={!data}
         />
       }
-      printRef={reportRef}
-      printId="report-print"
     >
-      <div ref={reportRef} id="report-print">
-        <ReportTable columns={columns} data={data?.data ?? []} pageSize={25} />
-      </div>
+      {data && (
+        <ReportTable
+          columns={columns}
+          data={data.data}
+          pageSize={25}
+          totalsRow={totalsRow}
+          rowKey={(row) => row.id}
+          searchKeys={[
+            'product_name',
+            'variation_name',
+            'sku',
+            'barcode',
+            'warehouse_name',
+            'type_label',
+            'reference',
+            'reason',
+            'created_by',
+          ]}
+          showSerial
+          serialHeader="SL"
+        />
+      )}
     </ReportLayout>
   );
+}
+
+/** Share of the period's gross movement volume, guarding a zero denominator. */
+function formatPercentOf(part: number, whole: number): string {
+  if (whole <= 0) return '0%';
+  return `${Math.round((part / whole) * 100)}%`;
 }
