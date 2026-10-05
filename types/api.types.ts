@@ -472,6 +472,24 @@ export interface UserListResponse {
   per_page: number;
 }
 
+/**
+ * The real shape of `GET /api/v1/users`.
+ *
+ * `UserController::index` returns `ApiResponse::paginated()`, which emits a bare
+ * array under `data` plus a `pagination` block — not the `UserListResponse`
+ * above, which nothing on the backend produces. Reading `.users` off this
+ * response yields `undefined`.
+ */
+export interface UserPaginatedResponse {
+  data: User[];
+  pagination: {
+    page: number;
+    pageSize: number;
+    total: number;
+    totalPages: number;
+  };
+}
+
 export interface CreateUserRequest {
   name: string;
   email: string;

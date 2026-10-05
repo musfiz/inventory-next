@@ -146,7 +146,7 @@ export default function PosRefundSummaryPage() {
           value: formatPercent(summary.refund_rate_pct),
           color: summary.refund_rate_pct > 5 ? 'orange' : 'green',
           icon: TrendingUp,
-          subValue: `${formatNumber(summary.total_units_refunded)} of ${formatNumber(summary.total_units_sold)} units sold`,
+          subValue: `${formatNumber(summary.total_units_refunded)} of ${formatNumber(summary.total_units_sold)} units sold in period`,
         },
         {
           label: 'Refund Lines',
@@ -214,7 +214,11 @@ export default function PosRefundSummaryPage() {
   const totalsRow = summary
     ? {
         product_name: 'Totals',
-        quantity: formatNumber(summary.total_units_sold, 2),
+        // Sums the column that is actually on screen. The rows are refunded
+        // lines only, so `total_units_sold` — every unit rung in the period —
+        // would not be the total of this column and is reported on the
+        // Refund Rate card instead.
+        quantity: formatNumber(summary.units_on_refunded_lines, 2),
         quantity_returned: formatNumber(summary.total_units_refunded, 2),
         refund_rate_pct: formatPercent(summary.refund_rate_pct, 1),
         refund_value: formatCurrency(summary.total_refund_value),

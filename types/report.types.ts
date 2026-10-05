@@ -54,6 +54,85 @@ export interface GenericReportResponse<T = Record<string, any>> {
   [key: string]: any;
 }
 
+// ── AR Aging (Receivables, ledger-based) ─────────────────────────────────────
+// GET /api/v1/reports/accounting/ar-aging — App\Reports\Accounting\ArAgingReport
+//
+// The receivables book as the *ledger* sees it: the total ties to the AR
+// control account on the Balance Sheet. `ReceivablesReport` in
+// accounting.types.ts is the older /reports/receivables shape, which pivots
+// invoices only and stops at Current / 31-60 / 61-90 / 90+.
+
+/** Kept in step with App\Reports\Accounting\ArAgingReport::BUCKETS. */
+export type ArAgingBucket = 'current' | 'd_1_30' | 'd_31_60' | 'd_61_90' | 'd_90_plus';
+
+/** A zero credit limit means "none configured", not "no credit left". */
+export type ArCreditStatus = 'within_limit' | 'over_limit' | 'no_limit';
+
+export interface ArAgingRow {
+  customer_id: string;
+  customer_name: string;
+  phone: string | null;
+  email: string | null;
+  customer_type: string | null;
+  status: string | null;
+  payment_terms: string | null;
+  /** Net AR on the ledger for this customer. Buckets + unallocated add up to it. */
+  total_outstanding: number;
+  /** Ledger balance pivoted across aging buckets — the AR statement shape. */
+  current: number;
+  d_1_30: number;
+  d_31_60: number;
+  d_61_90: number;
+  d_90_plus: number;
+  total_overdue: number;
+  overdue_pct: number;
+  oldest_days_overdue: number;
+  invoice_count: number;
+  /** Comma-separated invoice numbers this balance was aged against. */
+  invoice_numbers: string;
+  /** Ledger money with no open invoice to age it against — in no bucket. */
+  unallocated_value: number;
+  credit_limit: number;
+  /** Null when no credit limit is configured. */
+  available_credit: number | null;
+  credit_status: ArCreditStatus;
+}
+
+export interface ArAgingBucketSummary {
+  key: ArAgingBucket;
+  label: string;
+  amount: number;
+  customers: number;
+  share_pct: number;
+}
+
+export interface ArAgingReport {
+  data: ArAgingRow[];
+  summary: {
+    as_of_date: string;
+    customer_count: number;
+    invoice_count: number;
+    total_outstanding: number;
+    total_current: number;
+    total_overdue: number;
+    overdue_pct: number;
+    overdue_customer_count: number;
+    over_limit_customer_count: number;
+    oldest_days_overdue: number;
+    unallocated_value: number;
+    /** Net balance of the AR control accounts, whole tenant — ties to the Balance Sheet. */
+    control_account_balance: number;
+    /** AR belonging to no live customer: opening balances, manual journals. */
+    unattributed_value: number;
+    control_accounts: string;
+    /** Always healthiest-first, empty buckets included. */
+    by_bucket: ArAgingBucketSummary[];
+  };
+  columns?: ReportColumnMeta[];
+  filters_applied?: string[];
+  generated_at?: string;
+}
+
 // ── AP Aging (Payables) ─────────────────────────────────────────────────────
 // Mirrors ReceivablesReport structure from accounting.types.ts
 
@@ -857,9 +936,17 @@ export interface PosRefundSummaryReport {
   summary: {
     start_date: string;
     end_date: string;
+    /** Refunded order lines in the period. */
     total_refunds: number;
+    /** Distinct invoices those refunds came off. */
     total_orders: number;
+    /** Every unit rung in the period — the denominator for `refund_rate_pct`. */
     total_units_sold: number;
+    /**
+     * Units sold on refunded lines only. This is what the table's "Qty Sold"
+     * column adds up to, and is NOT the period's sales volume.
+     */
+    units_on_refunded_lines: number;
     total_units_refunded: number;
     total_refund_value: number;
     refund_rate_pct: number;
@@ -978,6 +1065,7 @@ export interface SalesTrendReport {
 export interface HourlySalesRow {
   hour: number;
   hour_label: string;
+  /** Time-of-day on a placeholder date — what a till tape shows. */
   hour_start: string | null;
   order_count: number;
   units_sold: number;
@@ -986,8 +1074,15 @@ export interface HourlySalesRow {
   gross_profit: number;
   avg_order_value: number;
   units_per_order: number;
-  /** This hour's slice of the day's revenue. */
+  /** This hour's slice of the period's revenue. */
   share_pct: number;
+}
+
+/** Breakdown row shape the shared PDF summary partial understands. */
+export interface HourlySalesBreakdown {
+  label: string;
+  value: number;
+  share_pct?: number | null;
 }
 
 export interface HourlySalesReport {
@@ -995,15 +1090,18 @@ export interface HourlySalesReport {
   summary: {
     start_date: string;
     end_date: string;
+    /** Completed/confirmed sales only — cancelled, draft and quote rows excluded. */
     total_revenue: number;
     total_cost: number;
     gross_profit: number;
     order_count: number;
     total_units: number;
     avg_order_value: number;
+    /** Hours of the 24 that saw at least one completed sale. */
     trading_hours: number;
+    /** total_revenue ÷ trading_hours — average per *trading* hour. */
     avg_hourly_revenue: number;
-    busiest_hour: { hour: string; revenue: number; orders: number } | null;
+    busiest_hour: HourlySalesBreakdown[] | null;
   };
   columns?: ReportColumnMeta[];
   filters_applied?: string[];
@@ -1013,47 +1111,142 @@ export interface HourlySalesReport {
 
 
 // ── Cashier Performance ─────────────────────────────────────────────────────
+// Per-cashier takings from completed/confirmed POS sales only. The previous
+// row shape described columns the endpoint never returned (register_name,
+// refund_count, cash_variance, items_per_sale).
 
 export interface CashierPerformanceRow {
+  /** Stable join key used to build `rank`; not a displayed column. */
+  cashier_key: string;
+  cashier_id: string | null;
+  /** 'Unassigned' when pos_orders.created_by is null. */
   cashier_name: string;
-  register_name: string;
-  sessions: number;
-  sale_count: number;
+  register_count: number;
+  session_count: number;
+  order_count: number;
+  units_sold: number;
+  avg_order_value: number;
+  /** Gross takings, tax included — the till number. */
   total_sales: number;
-  refund_count: number;
-  refund_amount: number;
-  avg_sale: number;
-  cash_variance: number;
-  items_per_sale: number;
+  /** Line revenue ex-tax, net of returns — the margin basis. */
+  net_revenue: number;
+  /** Carried so the discount rate is readable against its own base. */
+  sub_total: number;
+  /** Order-level + line-level discount. */
+  total_discount: number;
+  total_tax: number;
+  total_returned: number;
+  gross_profit: number;
+  gross_margin_pct: number | null;
+  discount_rate_pct: number | null;
+  unpaid_order_count: number;
+  /** Leaderboard position by gross sales, independent of the sort column. */
+  rank: number | null;
+  /** Share of the period's gross sales. */
+  sales_share_pct: number | null;
+}
+
+/** Breakdown row shape the shared PDF summary partial understands. */
+export interface CashierPerformanceBreakdown {
+  label: string;
+  value: number;
+  share_pct?: number | null;
 }
 
 export interface CashierPerformanceReport {
   data: CashierPerformanceRow[];
   summary: {
-    top_performer: string;
+    start_date: string;
+    end_date: string;
+    cashier_count: number;
+    order_count: number;
     total_sales: number;
-    avg_variance: number;
+    net_revenue: number;
+    total_discount: number;
+    total_tax: number;
+    total_returned: number;
+    total_units: number;
+    gross_profit: number;
+    gross_margin_pct: number | null;
+    discount_rate_pct: number | null;
+    avg_order_value: number;
+    avg_units_per_order: number;
+    avg_sales_per_cashier: number;
+    avg_orders_per_cashier: number;
+    unpaid_order_count: number;
+    top_cashier: CashierPerformanceBreakdown[] | null;
+    highest_units_cashier: CashierPerformanceBreakdown[] | null;
   };
+  columns?: ReportColumnMeta[];
+  filters_applied?: string[];
+  generated_at?: string;
 }
 
 // ── Payment Breakdown ───────────────────────────────────────────────────────
 
+// ── POS Payment Breakdown ────────────────────────────────────────────────────
+// Per-method movement of money at the counter. All nine `payments`
+// .payment_method values are returned, zero-filled, so an unused method is a
+// visible zero row rather than a missing one. The previous row shape described
+// columns the endpoint never returned (total_amount, processing_fees,
+// pct_of_total).
+
 export interface PaymentBreakdownRow {
   payment_method: string;
+  /** Every attempt at this method, settled or not. */
   transaction_count: number;
-  total_amount: number;
-  processing_fees: number;
+  /** How many of those attempts settled — `avg_transaction`'s denominator. */
+  received_count: number;
+  /** Money in: settled sales + refund settlements that collected money back. */
+  received: number;
+  /** Money out: refund settlements flagged refunded. */
+  refunded: number;
   net_amount: number;
-  pct_of_total: number;
+  /** Money the register believes it took but which is not settled. */
+  pending: number;
+  /** Attempts that failed or were cancelled — took no money. */
+  failed_count: number;
+  /** received ÷ received_count, so failures do not dilute it. */
+  avg_transaction: number;
+  /** Largest *settled* transaction — never a failed or pending attempt. */
+  largest_transaction: number;
+  /** Share of the period's received money. */
+  share_pct: number;
+}
+
+/** Breakdown row shape the shared PDF summary partial understands. */
+export interface PaymentBreakdownBreakdown {
+  label: string;
+  value: number;
+  share_pct?: number | null;
 }
 
 export interface PaymentBreakdownReport {
   data: PaymentBreakdownRow[];
   summary: {
-    total_collected: number;
-    cash_pct: number;
-    digital_pct: number;
+    start_date: string;
+    end_date: string;
+    /** All nine methods, zero-filled — so this is 9 even with no activity. */
+    method_count: number;
+    /** Methods that actually took money. */
+    active_method_count: number;
+    transaction_count: number;
+    received_count: number;
+    total_received: number;
+    total_refunded: number;
+    net_amount: number;
+    total_pending: number;
+    avg_transaction: number;
+    /** Cash is the figure a drawer can be checked against. */
+    cash_received: number;
+    cash_share_pct: number | null;
+    digital_received: number;
+    digital_share_pct: number | null;
+    top_method: PaymentBreakdownBreakdown[] | null;
   };
+  columns?: ReportColumnMeta[];
+  filters_applied?: string[];
+  generated_at?: string;
 }
 
 // ── POS Refund Summary ──────────────────────────────────────────────────────
@@ -1082,54 +1275,164 @@ export interface TaxReturnReport {
 
 // ── POS Report Types ────────────────────────────────────────────────────────
 
+/**
+ * One rung sale. The field names come from `PosDailySalesReport::mapRow()`
+ * (RPT-POS-003) — the report was rebuilt on the ReportDefinition pipeline and
+ * these are its actual keys, not the legacy `posSummary` shape.
+ */
 export interface PosDailySalesRow {
-  order_number: string;
-  time: string;
+  pos_order_id: string;
+  session_id: string;
+  register_id: string;
+  invoice_number: string;
+  /** Full timestamp the sale was rung. */
+  order_ts: string | null;
+  order_date: string | null;
+  /** Time-of-day only (HH:MM:SS) — what a till tape shows. */
+  order_time: string | null;
   customer_name: string | null;
-  item_count: number;
-  subtotal: number;
-  discount: number;
-  tax: number;
+  customer_phone: string | null;
+  cashier_name: string | null;
+  register_name: string | null;
+  session_number: string | null;
+  line_count: number;
+  units_sold: number;
+  sub_total: number;
+  /** `pos_orders.discount_amount` — order-level only. */
+  order_discount: number;
+  /** Sum of `pos_order_items.discount_amount` — line-level. */
+  line_discount: number;
+  /** order + line discount: what was actually given away. */
+  total_discount: number;
+  tax_amount: number;
+  /** Gross takings, tax included. */
   grand_total: number;
-  payment_method: string;
-  payment_status: string;
-  cashier_name: string;
+  paid_amount: number;
+  /** grand_total − returned_amount − paid_amount, floored at zero. */
+  amount_due: number;
+  returned_amount: number;
+  /** Line revenue ex-tax, net of returns — the margin basis. */
+  line_revenue: number;
+  line_cost: number;
+  gross_profit: number;
+  payment_method: string | null;
+  payment_status: string | null;
 }
 
 export interface PosDailySalesReport {
   data: PosDailySalesRow[];
   summary: {
+    start_date: string;
+    end_date: string;
+    order_count: number;
+    /** Gross takings — the till number, tax included. */
     total_sales: number;
+    total_subtotal: number;
     total_discount: number;
     total_tax: number;
-    order_count: number;
-    by_payment_method: { method: string; count: number; amount: number }[];
+    total_units: number;
+    avg_order_value: number;
+    avg_units_per_order: number;
+    total_paid: number;
+    total_due: number;
+    total_returned: number;
+    /** total_sales − total_returned. */
+    net_sales: number;
+    /** Ex-tax revenue the margin percentage is measured against. */
+    line_revenue: number;
+    gross_profit: number;
+    gross_margin_pct: number | null;
+    discount_rate_pct: number | null;
+    tax_rate_pct: number | null;
+    unpaid_order_count: number;
   };
+  columns?: ReportColumnMeta[];
+  filters_applied?: string[];
+  generated_at?: string;
+}
+
+/**
+ * One cashier shift. Field names come from
+ * `PosSessionSummaryReport::mapRow()` (RPT-POS-004).
+ */
+export interface PosSessionSummaryRow {
+  id: string;
+  session_number: string;
+  cashier_name: string;
+  register_name: string | null;
+  /** Reached through the register — `pos_sessions` has no warehouse_id. */
+  warehouse_name: string | null;
+  status: 'open' | 'closed' | 'paused' | 'suspended' | string;
+  start_time: string | null;
+  end_time: string | null;
+  duration_hours: number;
+  /** How much of the shift fell inside the requested window. */
+  overlap_hours: number;
+  order_count: number;
+  units_sold: number;
+  total_sales: number;
+  total_refunds: number;
+  total_discount: number;
+  total_tax: number;
+  avg_order_value: number;
+  cash_sales: number;
+  card_sales: number;
+  /** bKash + Nagad + Rocket combined. */
+  mobile_sales: number;
+  credit_sales: number;
+  opening_balance: number;
+  cash_in: number;
+  cash_out: number;
+  /** opening_balance + cash_sales + cash_in − cash_out. */
+  expected_cash: number;
+  /** Counted at close; null while the session is still open. */
+  actual_cash: number | null;
+  /** actual_cash − expected_cash; null until counted. */
+  cash_variance: number | null;
+  variance_status: 'Not counted' | 'Over' | 'Short' | 'Balanced' | string;
+  /**
+   * The register's own tallies, next to the recomputed figures above, so a
+   * drifted session counter is visible rather than silently believed.
+   */
+  registered_order_count: number;
+  registered_sales: number;
 }
 
 export interface PosSessionSummaryReport {
-  session: {
-    id: number;
-    register_name: string;
-    cashier_name: string;
-    start_time: string;
-    end_time: string | null;
+  data: PosSessionSummaryRow[];
+  summary: {
+    start_date: string;
+    end_date: string;
+    session_count: number;
+    open_session_count: number;
+    closed_session_count: number;
+    order_count: number;
+    total_sales: number;
+    total_refunds: number;
+    total_discount: number;
+    total_tax: number;
+    total_units: number;
+    avg_order_value: number;
+    avg_session_sales: number;
+    net_sales: number;
+    total_cash_sales: number;
+    total_card_sales: number;
+    total_mobile_sales: number;
+    total_credit_sales: number;
+    /** Sessions that have a counted drawer — the reconciliation basis. */
+    counted_session_count: number;
+    expected_cash_total: number;
+    actual_cash_total: number;
+    cash_variance_total: number;
+    /** Every session shown, open shifts included. */
+    expected_cash_all_sessions: number;
+    over_sessions: number;
+    short_sessions: number;
+    balanced_sessions: number;
   };
-  opening_balance: number;
-  cash_sales: number;
-  card_sales: number;
-  bkash_sales: number;
-  nagad_sales: number;
-  rocket_sales: number;
-  bank_transfer_sales: number;
-  credit_sales: number;
-  total_sales: number;
-  refunds: number;
-  cash_in: number;
-  cash_out: number;
-  expected_cash: number;
-  actual_cash: number;
-  variance: number;
+  columns?: ReportColumnMeta[];
+  filters_applied?: string[];
+  generated_at?: string;
 }
 
 // ── Supplier Performance ────────────────────────────────────────────────────
@@ -1207,21 +1510,58 @@ export interface SupplierPerformanceReport {
 // ── Purchase by Supplier ────────────────────────────────────────────────────
 
 export interface PurchaseBySupplierRow {
-  supplier_name: string;
+  supplier_id: string;
+  supplier_name: string | null;
+  supplier_code: string | null;
+  email: string | null;
+  phone: string | null;
   po_count: number;
-  total_items: number;
-  total_quantity: number;
+  /** Order lines across all of the supplier's POs. */
+  line_count: number;
+  /** Distinct products supplied — counted per supplier, not per order. */
+  product_count: number;
+  quantity_ordered: number;
+  quantity_received: number;
+  /** Floors at zero; an over-delivery shows as no pending units. */
+  pending_quantity: number;
+  receiving_rate_pct: number;
+  /** grand_total, falling back to the legacy total_amount. */
   total_value: number;
   total_paid: number;
   total_due: number;
+  /** Share of the filtered total, so the column adds to 100%. */
+  share_of_spend_pct: number;
+  avg_order_value: number;
+  first_order_date: string | null;
+  last_order_date: string | null;
 }
 
 export interface PurchaseBySupplierReport {
   data: PurchaseBySupplierRow[];
   summary: {
-    total_spend: number;
-    top_supplier: string;
+    start_date: string;
+    end_date: string;
+    total_suppliers: number;
+    total_pos: number;
+    total_lines: number;
+    /** Supplier-product relationships: distinct products summed per supplier. */
+    total_products: number;
+    total_quantity_ordered: number;
+    total_quantity_received: number;
+    receiving_rate_pct: number;
+    total_value: number;
+    total_paid: number;
+    total_due: number;
+    avg_order_value: number;
+    unpaid_suppliers: number;
+    top_supplier: string | null;
+    top_supplier_value: number | null;
+    top_supplier_orders: number | null;
+    top_supplier_share_pct: number | null;
   };
+  columns?: ReportColumnMeta[];
+  filters_applied?: string[];
+  generated_at?: string;
 }
 
 // ── GRN Register ────────────────────────────────────────────────────────────
@@ -1459,66 +1799,230 @@ export interface CustomerAgingReport {
 
 // ── Supplier Statement ──────────────────────────────────────────────────────
 
+/** Matches the supplier_payments.payment_method enum. */
+export type SupplierPaymentMethod =
+  | 'cash'
+  | 'card'
+  | 'bkash'
+  | 'nagad'
+  | 'rocket'
+  | 'bank_transfer'
+  | 'check'
+  | 'credit'
+  | 'other';
+
+export interface SupplierPaymentAllocation {
+  supplier_payment_id: string;
+  payment_number: string;
+  purchase_order_id: string;
+  po_number: string;
+  applied_amount: number;
+}
+
+export interface SupplierPaymentResult {
+  supplier_id: string;
+  supplier_name: string;
+  paid_amount: number;
+  payment_method: SupplierPaymentMethod;
+  payment_date: string;
+  allocations: SupplierPaymentAllocation[];
+  /** What is still owed after this payment. */
+  outstanding_payable: number;
+}
+
+/** Kept in step with App\Reports\Purchase\SupplierStatementReport::TYPES. */
+export type SupplierStatementType = 'purchase' | 'payment' | 'return';
+
 export interface SupplierStatementRow {
   date: string;
   document_number: string;
+  /** Display label, e.g. "Purchase Return". */
   type: string;
+  /** Machine key behind the label, for filtering and styling. */
+  type_key: SupplierStatementType;
+  description: string;
+  /** Purchases increase what we owe. */
   debit: number;
+  /** Payments and returns reduce it. */
   credit: number;
+  /** Running balance across the whole account, not the filtered view. */
   balance: number;
 }
 
 export interface SupplierStatementReport {
   data: SupplierStatementRow[];
   summary: {
+    supplier_id: string | null;
+    supplier_name: string | null;
+    start_date: string;
+    end_date: string;
     opening_balance: number;
-    closing_balance: number;
     total_purchased: number;
     total_paid: number;
+    total_returned: number;
+    /** Everything on the credit side: payments plus returns. */
+    total_credited: number;
+    document_count: number;
+    /** The account position the statement ends on. */
+    closing_balance: number;
+    /** What supplier/aging reports as total_payable on the same date. */
+    outstanding_payable: number;
+    /** Negative closing balance — we have been overpaid. */
+    over_credited: number;
   };
+  columns?: ReportColumnMeta[];
+  filters_applied?: string[];
+  generated_at?: string;
 }
 
 // ── Supplier Scorecard ──────────────────────────────────────────────────────
 
+/** Kept in step with App\Reports\Purchase\SupplierScorecardReport::GRADES. */
+export type SupplierGrade = 'excellent' | 'good' | 'fair' | 'poor';
+
 export interface SupplierScorecardRow {
+  supplier_id: string;
   supplier_name: string;
-  total_spend: number;
+  supplier_code: string | null;
+  supplier_status: string | null;
   po_count: number;
-  on_time_pct: number;
-  return_rate_pct: number;
-  price_competitiveness: number | null;
-  lead_time_days: number;
-  overall_score: number;
+  total_purchase_value: number;
+  return_count: number;
+  return_value: number;
+  delivered_pos: number;
+  late_pos: number;
+  /** Deliveries with a receipt timestamp — what on-time and lead time rest on. */
+  measured_pos: number;
+  /** Lines priced against a real benchmark, and the spend they covered. */
+  price_lines_compared: number;
+  price_spend_covered: number;
+  on_time_delivery_pct: number | null;
+  avg_lead_time_days: number | null;
+  return_rate_pct: number | null;
+  /** 100 = exactly the peer benchmark, above 100 = dearer. */
+  price_index_pct: number | null;
+  /** Points each dimension contributed, 0-100. Null = not measurable. */
+  on_time_points: number | null;
+  lead_time_points: number | null;
+  returns_points: number | null;
+  price_points: number | null;
+  /** How many of the four dimensions actually backed the score. */
+  components_scored: number;
+  /** Null when there is no delivery evidence — not zero. */
+  score: number | null;
+  grade: SupplierGrade | null;
+  score_band: string | null;
+  /** Structured flags for badges; `flags` is the joined string for exports. */
+  flag_list: string[];
+  flags: string;
+}
+
+export interface SupplierGradeCount {
+  grade: SupplierGrade;
+  label: string;
+  value: number;
 }
 
 export interface SupplierScorecardReport {
   data: SupplierScorecardRow[];
   summary: {
-    best_supplier: string;
-    worst_supplier: string;
-    avg_score: number;
+    start_date: string;
+    end_date: string;
+    total_suppliers: number;
+    scored_suppliers: number;
+    /** Suppliers with no receipt movement — absent from the grade counts. */
+    unscored_suppliers: number;
+    by_grade: SupplierGradeCount[];
+    needs_attention: number;
+    avg_score: number | null;
+    best_supplier: string | null;
+    best_supplier_score: number | null;
+    worst_supplier: string | null;
+    worst_supplier_score: number | null;
+    total_pos: number;
+    total_purchase_value: number;
+    total_return_value: number;
+    total_return_count: number;
+    return_rate_pct: number | null;
+    delivered_pos: number;
+    measured_pos: number;
+    late_pos: number;
+    /** Share of deliveries behind the on-time and lead-time figures. */
+    delivery_coverage_pct: number | null;
+    /** Share of spend behind the price index. */
+    price_coverage_pct: number | null;
   };
+  columns?: ReportColumnMeta[];
+  filters_applied?: string[];
+  generated_at?: string;
 }
 
 // ── Supplier Report Types ───────────────────────────────────────────────────
 
+/** Kept in step with App\Reports\Purchase\SupplierAgingReport::BUCKETS. */
+export type SupplierAgingBucket = 'current' | 'd_1_30' | 'd_31_60' | 'd_61_90' | 'd_90_plus';
+
+/** A zero credit limit means "none configured", not "no credit left". */
+export type SupplierCreditStatus = 'within_limit' | 'over_limit' | 'no_limit';
+
 export interface SupplierAgingRow {
+  supplier_id: string;
   supplier_name: string;
+  code: string | null;
   phone: string | null;
+  email: string | null;
+  supplier_status: string | null;
+  payment_terms: string | null;
   total_payable: number;
+  /** Balance pivoted across aging buckets — the AP statement shape. */
   current: number;
+  d_1_30: number;
   d_31_60: number;
   d_61_90: number;
   d_90_plus: number;
+  total_overdue: number;
+  overdue_pct: number;
+  oldest_days_overdue: number;
+  po_count: number;
+  /** Comma-separated PO numbers behind this balance. */
+  po_numbers: string;
+  credit_limit: number;
+  /** Null when no credit limit is configured. */
+  available_credit: number | null;
+  credit_status: SupplierCreditStatus;
+}
+
+export interface SupplierAgingBucketSummary {
+  key: SupplierAgingBucket;
+  label: string;
+  amount: number;
+  suppliers: number;
+  share_pct: number;
 }
 
 export interface SupplierAgingReport {
-  as_of_date: string;
   data: SupplierAgingRow[];
   summary: {
+    as_of_date: string;
+    total_suppliers: number;
+    po_count: number;
     total_payable: number;
+    total_current: number;
+    total_overdue: number;
+    overdue_pct: number;
     overdue_supplier_count: number;
+    over_limit_suppliers: number;
+    oldest_days_overdue: number;
+    /** Always healthiest-first, empty buckets included. */
+    by_bucket: SupplierAgingBucketSummary[];
+    /** POs issued but not received — an intent, not yet a liability. */
+    open_commitment_value: number;
+    /** Returns raised against no single PO, so kept out of the buckets. */
+    unlinked_return_value: number;
   };
+  columns?: ReportColumnMeta[];
+  filters_applied?: string[];
+  generated_at?: string;
 }
 
 // ── Product Profitability ───────────────────────────────────────────────────

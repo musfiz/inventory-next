@@ -1,42 +1,114 @@
 'use client';
 
-import { useState, useRef } from 'react';
-import { HandCoins } from 'lucide-react';
-import CustomDatePicker from '@/components/ui/date-picker';
+import { useState } from 'react';
+import {
+  CalendarClock,
+  Wallet,
+  AlertTriangle,
+  Users,
+  Layers,
+  BadgeCheck,
+  ShieldAlert,
+  Scale,
+  Coins,
+} from 'lucide-react';
 import TenantSelect from '@/components/ui/tenant-select';
+import CustomSelect, { type SelectOption } from '@/components/ui/custom-select';
+import CustomDatePicker from '@/components/ui/date-picker';
 import reportService from '@/services/reportService';
-import { todayISO, formatCurrency } from '@/lib/utils/format';
-import { exportToPDF, printReport, exportColumnsToExcel, exportColumnsToCSV } from '@/lib/utils/export';
+import customerService from '@/services/customerService';
+import { formatCurrency, formatDate, formatNumber, formatPercent, todayISO } from '@/lib/utils/format';
 import { notify } from '@/lib/notifications';
-import type { ReceivablesReport } from '@/types/accounting.types';
-import { ReportLayout, ReportFilters, FilterField, ReportSummaryCards, ReportTable, ReportExportBar } from '@/components/reports';
-import type { SummaryCard } from '@/components/reports';
-import type { ExportColumn } from '@/lib/utils/export';
+import {
+  ReportLayout,
+  ReportFilters,
+  FilterRow,
+  FilterField,
+  FilterCheckbox,
+  filterInputClass,
+  filterSelectClass,
+  ReportSummaryCards,
+  ReportTable,
+  ReportExportBar,
+  type ReportColumn,
+  type SummaryCard,
+} from '@/components/reports';
+import { useServerReportExport } from '@/hooks/reports/use-server-report-export';
 import { usePermissions } from '@/hooks/use-permissions';
 import { useAuthStore } from '@/stores/auth-store';
+import type { ArAgingReport, ArAgingRow, ArAgingBucket } from '@/types/report.types';
+
+/** Kept in step with App\Reports\Accounting\ArAgingReport::BUCKETS. */
+const BUCKETS: { value: ArAgingBucket; label: string }[] = [
+  { value: 'current', label: 'Current (not yet due)' },
+  { value: 'd_1_30', label: '1-30 Days Overdue' },
+  { value: 'd_31_60', label: '31-60 Days Overdue' },
+  { value: 'd_61_90', label: '61-90 Days Overdue' },
+  { value: 'd_90_plus', label: '90+ Days Overdue' },
+];
+
+const CREDIT_BADGES: Record<string, string> = {
+  within_limit: 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400',
+  over_limit: 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400',
+  no_limit: 'bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-400',
+};
+
+const CREDIT_LABELS: Record<string, string> = {
+  within_limit: 'Within Limit',
+  over_limit: 'Over Limit',
+  no_limit: 'No Limit Set',
+};
+
+const CUSTOMER_TYPES = [
+  { value: '', label: 'All Types' },
+  { value: 'retail', label: 'Retail' },
+  { value: 'wholesale', label: 'Wholesale' },
+  { value: 'corporate', label: 'Corporate' },
+  { value: 'dealer', label: 'Dealer' },
+  { value: 'own', label: 'Own' },
+];
 
 export default function ARAgingPage() {
   const { isSuperAdmin } = usePermissions();
   const authUser = useAuthStore(s => s.user);
-  const reportRef = useRef<HTMLDivElement>(null);
-  const [data, setData] = useState<ReceivablesReport | null>(null);
+
+  const [data, setData] = useState<ArAgingReport | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [asOfDate, setAsOfDate] = useState(todayISO());
-  const [selectedTenantId, setSelectedTenantId] = useState<string>('');
 
-  const generate = async () => {
+  const [selectedTenantId, setSelectedTenantId] = useState('');
+  const [customer, setCustomer] = useState<SelectOption | null>(null);
+  const [asOfDate, setAsOfDate] = useState(todayISO());
+  const [customerType, setCustomerType] = useState('');
+  const [status, setStatus] = useState('');
+  const [search, setSearch] = useState('');
+  const [onlyOverdue, setOnlyOverdue] = useState(false);
+  const [bucket, setBucket] = useState<ArAgingBucket | ''>('');
+
+  const scopeTenantId = (isSuperAdmin ? selectedTenantId : authUser?.tenant_id) || '';
+  const scopeReady = !isSuperAdmin || !!selectedTenantId;
+
+  const buildParams = (): Record<string, any> => {
+    const params: Record<string, any> = {};
+    if (customer) params.customer_id = customer.value;
+    if (asOfDate) params.as_of_date = asOfDate;
+    if (customerType) params.customer_type = customerType;
+    if (status) params.status = status;
+    if (search.trim()) params.search = search.trim();
+    if (bucket) params.bucket = bucket;
+    params.only_overdue = onlyOverdue ? 1 : 0;
+    if (scopeTenantId) params.tenant_id = scopeTenantId;
+    return params;
+  };
+
+  const fetchReport = async (params: Record<string, any>) => {
     setLoading(true);
     setError(null);
     try {
-      const params: { as_of_date: string; tenant_id?: string } = { as_of_date: asOfDate };
-      const tenantId = isSuperAdmin ? selectedTenantId : authUser?.tenant_id;
-      if (tenantId) params.tenant_id = tenantId;
-      const result = await reportService.receivables(params);
-      setData(result);
-      notify.success('Report generated');
-    } catch (err: any) {
-      const msg = err?.response?.data?.message || 'Failed to generate report';
+      const res = await reportService.arAging(params as any);
+      setData(res);
+    } catch (e: any) {
+      const msg = e?.response?.data?.message || e?.message || 'Failed to load report';
       setError(msg);
       notify.error(msg);
     } finally {
@@ -44,111 +116,387 @@ export default function ARAgingPage() {
     }
   };
 
+  const generate = () => fetchReport(buildParams());
+
+  /** Clicking an already-active bucket clears it, so the card toggles. */
+  const applyBucket = (value: ArAgingBucket) => {
+    const next = bucket === value ? '' : value;
+    setBucket(next);
+    const params = buildParams();
+    if (next === '') {
+      delete params.bucket;
+    } else {
+      params.bucket = next;
+    }
+    fetchReport(params);
+  };
+
   const reset = () => {
+    setSelectedTenantId('');
+    setCustomer(null);
+    setAsOfDate(todayISO());
+    setCustomerType('');
+    setStatus('');
+    setSearch('');
+    setOnlyOverdue(false);
+    setBucket('');
     setData(null);
     setError(null);
   };
 
-  const cards: SummaryCard[] = data
+  const loadCustomers = async (inputValue: string): Promise<SelectOption[]> => {
+    if (!scopeReady) return [];
+    try {
+      const res = await customerService.getCustomers({
+        search: inputValue,
+        per_page: 25,
+        ...(scopeTenantId ? { tenant_id: scopeTenantId } : {}),
+      });
+      const rows = res?.data?.data ?? res?.data ?? [];
+      return (Array.isArray(rows) ? rows : []).map((c: any) => ({
+        value: String(c.id),
+        label: c.name,
+      }));
+    } catch {
+      return [];
+    }
+  };
+
+  const summary = data?.summary;
+  const bucketByKey = (key: ArAgingBucket) => summary?.by_bucket?.find(b => b.key === key);
+
+  /**
+   * AR the ledger owes a customer with no open invoice behind it. Broken out
+   * as its own card because it is money in the control account that no aging
+   * bucket claims — usually an uninvoiced manual journal or an opening balance.
+   */
+  const unallocated = summary?.unallocated_value ?? 0;
+  const unattributed = summary?.unattributed_value ?? 0;
+
+  const cards: SummaryCard[] = summary
     ? [
-        { label: 'Total Outstanding', value: formatCurrency(data.total_outstanding), color: 'red' },
-        { label: 'Current (0-30)', value: formatCurrency(data.total_current), color: 'green' },
-        { label: '31-60 Days', value: formatCurrency(data.total_31_60), color: 'orange' },
-        { label: '61-90 Days', value: formatCurrency(data.total_61_90), color: 'amber' },
-        { label: '90+ Days', value: formatCurrency(data.total_90_plus), color: 'red' },
-        { label: 'Customer Count', value: data.customer_count, color: 'blue' },
+        {
+          label: 'Total Receivable',
+          value: formatCurrency(summary.total_outstanding),
+          color: 'red',
+          icon: Wallet,
+          subValue: `${formatNumber(summary.customer_count)} customers · ${formatNumber(summary.invoice_count)} invoices`,
+        },
+        {
+          label: 'Total Overdue',
+          value: formatCurrency(summary.total_overdue),
+          color: 'orange',
+          icon: AlertTriangle,
+          subValue: `${formatPercent(summary.overdue_pct)} of the book`,
+        },
+        {
+          label: 'Overdue Customers',
+          value: formatNumber(summary.overdue_customer_count),
+          color: 'amber',
+          icon: Users,
+        },
+        {
+          label: 'Oldest Debt',
+          value: summary.oldest_days_overdue > 0 ? `${formatNumber(summary.oldest_days_overdue)}d` : '—',
+          color: summary.oldest_days_overdue > 90 ? 'red' : 'blue',
+          icon: CalendarClock,
+        },
+        {
+          label: 'Current (Not Due)',
+          value: formatCurrency(summary.total_current),
+          color: 'green',
+          icon: BadgeCheck,
+          subValue: `${formatNumber(bucketByKey('current')?.customers ?? 0)} customers`,
+          onClick: () => applyBucket('current'),
+          active: bucket === 'current',
+        },
+        {
+          label: 'Over Credit Limit',
+          value: formatNumber(summary.over_limit_customer_count),
+          color: summary.over_limit_customer_count > 0 ? 'red' : 'green',
+          icon: ShieldAlert,
+          subValue:
+            summary.over_limit_customer_count > 0 ? 'needs a stop on further sales' : 'all within limits',
+        },
+        {
+          label: '90+ Days',
+          value: formatCurrency(bucketByKey('d_90_plus')?.amount ?? 0),
+          color: 'red',
+          icon: Layers,
+          subValue: `${formatNumber(bucketByKey('d_90_plus')?.customers ?? 0)} customers · ${formatPercent(bucketByKey('d_90_plus')?.share_pct ?? 0)}`,
+          onClick: () => applyBucket('d_90_plus'),
+          active: bucket === 'd_90_plus',
+        },
       ]
     : [];
 
-  const columns = [
-    { key: 'customer_name', header: 'Customer', format: 'text' as const },
-    { key: 'customer_phone', header: 'Phone', format: 'text' as const },
-    { key: 'invoice_count', header: 'Invoices', format: 'number' as const, align: 'right' as const },
-    { key: 'current', header: 'Current', format: 'currency' as const, align: 'right' as const, accessor: (row: any) => row.aging.current },
-    { key: 'd_31_60', header: '31-60', format: 'currency' as const, align: 'right' as const, accessor: (row: any) => row.aging.d_31_60 },
-    { key: 'd_61_90', header: '61-90', format: 'currency' as const, align: 'right' as const, accessor: (row: any) => row.aging.d_61_90 },
-    { key: 'd_90_plus', header: '90+', format: 'currency' as const, align: 'right' as const, accessor: (row: any) => row.aging.d_90_plus },
-    { key: 'total', header: 'Total', format: 'currency' as const, align: 'right' as const, accessor: (row: any) => row.aging.total },
+  /** One card per aging bucket, so the ladder itself is the drill-down. */
+  const bucketCards: SummaryCard[] = BUCKETS.map(b => {
+    const stat = bucketByKey(b.value);
+    const tone =
+      b.value === 'current' ? 'green' : b.value === 'd_90_plus' ? 'red' : b.value === 'd_1_30' ? 'orange' : 'amber';
+    return {
+      label: b.label,
+      value: formatCurrency(stat?.amount ?? 0),
+      color: tone,
+      subValue: `${formatNumber(stat?.customers ?? 0)} customers · ${formatPercent(stat?.share_pct ?? 0)}`,
+      onClick: () => applyBucket(b.value),
+      active: bucket === b.value,
+    } as SummaryCard;
+  });
+
+  /**
+   * Ledger reconciliation: what the AR control account holds vs what this report
+   * could attribute to a live customer. A gap here means opening balances or
+   * manual journals — money in AR with no customer to age it against.
+   */
+  const ledgerCards: SummaryCard[] = summary
+    ? [
+        {
+          label: 'AR Control Account',
+          value: formatCurrency(summary.control_account_balance),
+          color: 'blue',
+          icon: Scale,
+          subValue: summary.control_accounts || undefined,
+        },
+        {
+          label: 'Unallocated to Invoices',
+          value: formatCurrency(unallocated),
+          color: unallocated > 0 ? 'amber' : 'green',
+          subValue: unallocated > 0 ? 'owed to a customer, no open invoice' : 'every taka sits on an invoice',
+        },
+        {
+          label: 'No Customer',
+          value: formatCurrency(unattributed),
+          color: unattributed > 0 ? 'amber' : 'green',
+          subValue: unattributed > 0 ? 'opening balances or manual journals' : 'all AR has a customer',
+        },
+      ]
+    : [];
+
+  /** Money column, dimmed when the bucket is empty for this customer. */
+  const bucketCell = (value: number) => (
+    <span className={value > 0 ? '' : 'text-muted-foreground'}>{formatCurrency(value)}</span>
+  );
+
+  const columns: ReportColumn<ArAgingRow>[] = [
+    { key: 'customer_name', header: 'Customer' },
+    { key: 'phone', header: 'Phone' },
+    {
+      key: 'total_outstanding',
+      header: 'Total Receivable',
+      format: 'currency',
+      align: 'right',
+      cell: (value: number) => <span className="font-medium">{formatCurrency(value)}</span>,
+    },
+    { key: 'current', header: 'Current', align: 'right', cell: (value: number) => bucketCell(value) },
+    { key: 'd_1_30', header: '1-30 Days', align: 'right', cell: (value: number) => bucketCell(value) },
+    { key: 'd_31_60', header: '31-60 Days', align: 'right', cell: (value: number) => bucketCell(value) },
+    { key: 'd_61_90', header: '61-90 Days', align: 'right', cell: (value: number) => bucketCell(value) },
+    { key: 'd_90_plus', header: '90+ Days', align: 'right', cell: (value: number) => bucketCell(value) },
+    {
+      key: 'total_overdue',
+      header: 'Total Overdue',
+      align: 'right',
+      cell: (value: number) => (
+        <span className={value > 0 ? 'font-medium text-red-600 dark:text-red-400' : 'text-muted-foreground'}>
+          {formatCurrency(value)}
+        </span>
+      ),
+    },
+    { key: 'overdue_pct', header: 'Overdue %', format: 'percent', align: 'right' },
+    { key: 'oldest_days_overdue', header: 'Oldest Days', format: 'number', align: 'right' },
+    { key: 'invoice_count', header: 'Invoices', format: 'number', align: 'right' },
+    {
+      key: 'unallocated_value',
+      header: 'Unallocated',
+      align: 'right',
+      cell: (value: number) =>
+        value > 0 ? (
+          <span className="font-medium text-amber-600 dark:text-amber-400">{formatCurrency(value)}</span>
+        ) : (
+          <span className="text-muted-foreground">—</span>
+        ),
+    },
+    { key: 'credit_limit', header: 'Credit Limit', format: 'currency', align: 'right' },
+    {
+      key: 'available_credit',
+      header: 'Available Credit',
+      align: 'right',
+      cell: (value: number | null) =>
+        value === null ? (
+          <span className="text-muted-foreground">—</span>
+        ) : (
+          <span className={value < 0 ? 'font-medium text-red-600 dark:text-red-400' : ''}>
+            {formatCurrency(value)}
+          </span>
+        ),
+    },
+    {
+      key: 'credit_status',
+      header: 'Credit',
+      align: 'center',
+      cell: (_value: unknown, row: ArAgingRow) => (
+        <span
+          className={`inline-block whitespace-nowrap rounded px-2 py-0.5 text-xs font-medium ${
+            CREDIT_BADGES[row.credit_status] || CREDIT_BADGES.no_limit
+          }`}
+        >
+          {CREDIT_LABELS[row.credit_status] || row.credit_status}
+        </span>
+      ),
+    },
   ];
 
-  const exportColumns: ExportColumn[] = [
-    { key: 'customer_name', label: 'Customer' },
-    { key: 'customer_phone', label: 'Phone' },
-    { key: 'invoice_count', label: 'Invoices' },
-    { key: 'aging.current', label: 'Current' },
-    { key: 'aging.d_31_60', label: '31-60' },
-    { key: 'aging.d_61_90', label: '61-90' },
-    { key: 'aging.d_90_plus', label: '90+' },
-    { key: 'aging.total', label: 'Total' },
-  ];
-
-  const exportData = data?.customers.map((c) => ({
-    customer_name: c.customer_name,
-    customer_phone: c.customer_phone ?? '',
-    invoice_count: c.invoice_count,
-    'aging.current': c.aging.current,
-    'aging.d_31_60': c.aging.d_31_60,
-    'aging.d_61_90': c.aging.d_61_90,
-    'aging.d_90_plus': c.aging.d_90_plus,
-    'aging.total': c.aging.total,
-  })) ?? [];
-
-  const filename = `AR_Aging_${asOfDate}`;
-
-  const totalsRow = data
+  const totalsRow = summary
     ? {
         customer_name: 'Totals',
-        customer_phone: '',
-        invoice_count: data.customer_count,
-        current: formatCurrency(data.total_current),
-        d_31_60: formatCurrency(data.total_31_60),
-        d_61_90: formatCurrency(data.total_61_90),
-        d_90_plus: formatCurrency(data.total_90_plus),
-        total: formatCurrency(data.total_outstanding),
+        total_outstanding: formatCurrency(summary.total_outstanding),
+        current: formatCurrency(summary.total_current),
+        d_1_30: formatCurrency(bucketByKey('d_1_30')?.amount ?? 0),
+        d_31_60: formatCurrency(bucketByKey('d_31_60')?.amount ?? 0),
+        d_61_90: formatCurrency(bucketByKey('d_61_90')?.amount ?? 0),
+        d_90_plus: formatCurrency(bucketByKey('d_90_plus')?.amount ?? 0),
+        total_overdue: formatCurrency(summary.total_overdue),
+        overdue_pct: formatPercent(summary.overdue_pct, 1),
+        invoice_count: formatNumber(summary.invoice_count),
+        unallocated_value: formatCurrency(summary.unallocated_value),
       }
     : undefined;
 
+  const { loading: exportLoading, exportPDF, exportExcel, exportCSV, printReport: handlePrint } =
+    useServerReportExport('accounting', 'ar-aging', buildParams);
+
+  const generatedAt = data?.generated_at ? new Date(data.generated_at).toLocaleString() : undefined;
+
+  const description = summary
+    ? [
+        `Ledger receivables as of ${formatDate(summary.as_of_date, 'long')}`,
+        generatedAt ? `generated ${generatedAt}` : null,
+      ]
+        .filter(Boolean)
+        .join(' · ')
+    : 'The receivables book off the AR control account, aged per customer';
+
   return (
     <ReportLayout
-      title="AR Aging (Receivables)"
-      icon={HandCoins}
-      description="Accounts Receivable Aging Summary"
+      title="AR Aging"
+      description={description}
+      icon={Coins}
       filters={
-        <ReportFilters onApply={generate} onReset={reset} loading={loading}>
+        <ReportFilters onApply={generate} onReset={reset} loading={loading} actionsPlacement="below">
           {isSuperAdmin && (
-            <FilterField label="Tenant">
-              <TenantSelect
-                value={selectedTenantId}
-                onChange={(tid) => setSelectedTenantId(tid || '')}
-                placeholder="All Tenants"
+            <FilterRow columns={1}>
+              <FilterField label="Tenant" className="max-w-sm">
+                <TenantSelect
+                  value={selectedTenantId}
+                  onChange={tid => {
+                    setSelectedTenantId(tid || '');
+                    setCustomer(null);
+                  }}
+                  placeholder="Select a tenant"
+                  compact
+                  isClearable
+                />
+              </FilterField>
+            </FilterRow>
+          )}
+
+          <FilterRow columns={3}>
+            <FilterField label="As Of Date" hint="Debt is aged against this date">
+              <CustomDatePicker value={asOfDate} onChange={setAsOfDate} compact />
+            </FilterField>
+            <FilterField label="Customer" hint={scopeReady ? undefined : 'select a tenant first'}>
+              <CustomSelect
+                key={`cust-${scopeTenantId || 'unscoped'}`}
+                value={customer}
+                onChange={setCustomer}
+                loadOptions={loadCustomers}
+                isClearable
+                isDisabled={!scopeReady}
+                compact
+                placeholder={scopeReady ? 'All customers' : 'Select a tenant first'}
               />
             </FilterField>
-          )}
-          <FilterField label="As of Date">
-            <CustomDatePicker value={asOfDate} onChange={setAsOfDate} />
-          </FilterField>
+            <FilterField label="Customer Type">
+              <select className={filterSelectClass} value={customerType} onChange={e => setCustomerType(e.target.value)}>
+                {CUSTOMER_TYPES.map(t => (
+                  <option key={t.value} value={t.value}>
+                    {t.label}
+                  </option>
+                ))}
+              </select>
+            </FilterField>
+          </FilterRow>
+
+          <FilterRow>
+            <FilterField label="Status">
+              <select className={filterSelectClass} value={status} onChange={e => setStatus(e.target.value)}>
+                <option value="">All Customers</option>
+                <option value="active">Active</option>
+                <option value="inactive">Inactive</option>
+                <option value="blacklisted">Blacklisted</option>
+              </select>
+            </FilterField>
+            <FilterField label="Search">
+              <input
+                type="search"
+                className={filterInputClass}
+                value={search}
+                onChange={e => setSearch(e.target.value)}
+                placeholder="Customer, phone or email"
+              />
+            </FilterField>
+            <FilterField label="Options">
+              <FilterCheckbox
+                label="Overdue only"
+                activeHint="Hides customers whose balance is entirely not yet due"
+                checked={onlyOverdue}
+                onChange={setOnlyOverdue}
+              />
+            </FilterField>
+          </FilterRow>
         </ReportFilters>
       }
-      summaryCards={<ReportSummaryCards cards={cards} />}
+      summaryCards={
+        cards.length > 0 ? (
+          <>
+            <ReportSummaryCards cards={cards} />
+            <div className="mt-3">
+              <ReportSummaryCards cards={bucketCards} />
+            </div>
+            <div className="mt-3">
+              <ReportSummaryCards cards={ledgerCards} />
+            </div>
+          </>
+        ) : undefined
+      }
       loading={loading}
       error={error}
       hasData={!!data}
       actions={
-        data ? (
-          <ReportExportBar
-            onExportPDF={async () => { if (reportRef.current) await exportToPDF(reportRef.current, filename); }}
-            onExportExcel={() => exportColumnsToExcel(exportData, exportColumns, filename)}
-            onExportCSV={() => exportColumnsToCSV(exportData, exportColumns, filename)}
-            onPrint={() => printReport('report-print', 'AR Aging (Receivables)')}
-          />
-        ) : undefined
+        <ReportExportBar
+          onExportPDF={exportPDF}
+          onExportExcel={exportExcel}
+          onExportCSV={exportCSV}
+          onPrint={handlePrint}
+          loading={!!exportLoading}
+          disabled={!data}
+        />
       }
-      printRef={reportRef}
-      printId="report-print"
     >
-      <div ref={reportRef} id="report-print">
-        <ReportTable columns={columns} data={data?.customers ?? []} pageSize={25} totalsRow={totalsRow} />
-      </div>
+      {data && (
+        <ReportTable
+          columns={columns}
+          data={data.data}
+          pageSize={25}
+          totalsRow={totalsRow}
+          rowKey={row => row.customer_id}
+          searchKeys={['customer_name', 'phone', 'email', 'invoice_numbers']}
+          showSerial
+          serialHeader="SL"
+        />
+      )}
     </ReportLayout>
   );
 }

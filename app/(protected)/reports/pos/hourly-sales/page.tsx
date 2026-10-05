@@ -1,27 +1,28 @@
 'use client';
 
-import { useState } from 'react';
 import { Clock, Coins, ShoppingCart, TrendingUp, Layers } from 'lucide-react';
-import TenantSelect from '@/components/ui/tenant-select';
-import CustomDatePicker from '@/components/ui/date-picker';
-import reportService from '@/services/reportService';
-import { formatCurrency, formatDate, formatNumber, formatPercent, todayISO, firstDayOfMonthISO } from '@/lib/utils/format';
-import { notify } from '@/lib/notifications';
+import { useState } from 'react';
 import {
   ReportLayout,
   ReportFilters,
   FilterRow,
   FilterField,
-
   ReportSummaryCards,
   ReportTable,
   ReportExportBar,
-  filterInputClass,
+  filterSearchInputClass,
   type ReportColumn,
   type SummaryCard,
 } from '@/components/reports';
+import CustomSelect, { type SelectOption } from '@/components/ui/custom-select';
+import CustomDatePicker from '@/components/ui/date-picker';
+import TenantSelect from '@/components/ui/tenant-select';
 import { useServerReportExport } from '@/hooks/reports/use-server-report-export';
 import { usePermissions } from '@/hooks/use-permissions';
+import { notify } from '@/lib/notifications';
+import { formatCurrency, formatDate, formatNumber, formatPercent, todayISO, firstDayOfMonthISO } from '@/lib/utils/format';
+import { posRegisterService } from '@/services';
+import reportService from '@/services/reportService';
 import { useAuthStore } from '@/stores/auth-store';
 import type { HourlySalesReport, HourlySalesRow } from '@/types/report.types';
 
@@ -36,17 +37,34 @@ export default function HourlySalesPage() {
   const [selectedTenantId, setSelectedTenantId] = useState('');
   const [startDate, setStartDate] = useState(firstDayOfMonthISO());
   const [endDate, setEndDate] = useState(todayISO());
+  const [register, setRegister] = useState<SelectOption | null>(null);
   const [search, setSearch] = useState('');
 
   const scopeTenantId = (isSuperAdmin ? selectedTenantId : authUser?.tenant_id) || '';
+  /** Registers are per-tenant, so the dropdown follows the selected tenant. */
+  const scopeReady = !isSuperAdmin || !!selectedTenantId;
 
   const buildParams = (): Record<string, any> => {
     const params: Record<string, any> = {};
     if (startDate) params.start_date = startDate;
     if (endDate) params.end_date = endDate;
+    if (register) params.register_id = register.value;
     if (search.trim()) params.search = search.trim();
     if (scopeTenantId) params.tenant_id = scopeTenantId;
     return params;
+  };
+
+  const loadRegisters = async (inputValue: string): Promise<SelectOption[]> => {
+    if (!scopeReady) return [];
+    try {
+      const rows = await posRegisterService.dropdown(scopeTenantId || undefined);
+      const q = inputValue.trim().toLowerCase();
+      return (rows || [])
+        .map((r: any) => ({ value: String(r.id), label: r.name }))
+        .filter((o: SelectOption) => !q || o.label.toLowerCase().includes(q));
+    } catch {
+      return [];
+    }
   };
 
   const fetchReport = async (params: Record<string, any>) => {
@@ -70,12 +88,14 @@ export default function HourlySalesPage() {
     setSelectedTenantId('');
     setStartDate(firstDayOfMonthISO());
     setEndDate(todayISO());
+    setRegister(null);
     setSearch('');
     setData(null);
     setError(null);
   };
 
   const summary = data?.summary;
+  const busiest = summary?.busiest_hour?.[0];
 
   const cards: SummaryCard[] = summary
     ? [
@@ -101,11 +121,13 @@ export default function HourlySalesPage() {
         },
         {
           label: 'Busiest Hour',
-          value: summary.busiest_hour?.hour ?? '—',
+          value: busiest?.label ?? '—',
           color: 'orange',
           icon: Clock,
-          subValue: summary.busiest_hour
-            ? `${formatCurrency(summary.busiest_hour.revenue)} · ${formatNumber(summary.busiest_hour.orders)} orders`
+          subValue: busiest
+            ? `${formatCurrency(busiest.value)}${
+                busiest.share_pct != null ? ` · ${formatPercent(busiest.share_pct)} of revenue` : ''
+              }`
             : 'no sales in range',
         },
         {
@@ -141,7 +163,7 @@ export default function HourlySalesPage() {
     { key: 'gross_profit', header: 'Gross Profit', format: 'currency', align: 'right' },
     { key: 'avg_order_value', header: 'Avg Order', format: 'currency', align: 'right' },
     { key: 'units_per_order', header: 'Units / Order', format: 'number', align: 'right' },
-    { key: 'share_pct', header: 'Share of Day %', format: 'percent', align: 'right' },
+    { key: 'share_pct', header: 'Share %', format: 'percent', align: 'right' },
   ];
 
   const totalsRow = summary
@@ -192,17 +214,30 @@ export default function HourlySalesPage() {
             </FilterRow>
           )}
 
-          <FilterRow columns={3}>
+          <FilterRow columns={4}>
             <FilterField label="Start Date">
               <CustomDatePicker value={startDate} onChange={setStartDate} compact />
             </FilterField>
             <FilterField label="End Date">
               <CustomDatePicker value={endDate} onChange={setEndDate} compact />
             </FilterField>
-            <FilterField label="Search">
+            <FilterField label="Register" hint={scopeReady ? undefined : 'select a tenant first'}>
+              <CustomSelect
+                key={`reg-${scopeTenantId || 'unscoped'}`}
+                value={register}
+                onChange={setRegister}
+                loadOptions={loadRegisters}
+                defaultOptions={scopeReady}
+                isClearable
+                isDisabled={!scopeReady}
+                compact
+                placeholder={scopeReady ? 'All registers' : 'Select a tenant first'}
+              />
+            </FilterField>
+            <FilterField label="Search" hint="matches the hour label">
               <input
                 type="search"
-                className={filterInputClass}
+                className={filterSearchInputClass}
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
                 placeholder="Hour, e.g. 14"

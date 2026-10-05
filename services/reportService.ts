@@ -45,12 +45,24 @@ import type {
   SalesTrendReport,
   PosDailySalesReport,
   PosSessionSummaryReport,
+  CashierPerformanceReport,
+  PaymentBreakdownReport,
   PoSummaryReport,
   SupplierPerformanceReport,
+  PurchaseBySupplierReport,
   PurchaseOrderStatus,
   PurchasePaymentStatus,
   CustomerAgingReport,
+  ArAgingReport,
+  ArAgingBucket,
   SupplierAgingReport,
+  SupplierAgingBucket,
+  SupplierStatementReport,
+  SupplierStatementType,
+  SupplierScorecardReport,
+  SupplierGrade,
+  SupplierPaymentMethod,
+  SupplierPaymentResult,
   WarehouseStockReport,
   AuditLogReport,
   ExportFormat,
@@ -59,6 +71,39 @@ import type {
 
 class ReportService {
   private base = '/api/v1/reports';
+
+  // ── Accounting Reports ───────────────────────────────────────────────────
+
+  /**
+   * AR Aging — the ledger receivables book, aged per customer.
+   *
+   * Distinct from `receivables()` (the older /reports/receivables endpoint):
+   * this one reads the AR control account off the posted ledger, so its total
+   * reconciles with the Balance Sheet, and it supports the full filter set,
+   * sorting and the server-side PDF/Excel/CSV export.
+   */
+  async arAging(params: {
+    /** Date the aging is measured against; defaults to today. */
+    as_of_date?: string;
+    customer_id?: string | null;
+    /** Drill into one aging bucket; omit for all of them. */
+    bucket?: ArAgingBucket;
+    customer_type?: 'own' | 'retail' | 'wholesale' | 'corporate' | 'dealer';
+    status?: 'active' | 'inactive' | 'blacklisted';
+    /** 1/0 — hide customers whose balance is entirely not-yet-due. */
+    only_overdue?: boolean | 0 | 1;
+    search?: string;
+    sort?: string;
+    dir?: 'asc' | 'desc';
+    tenant_id?: string;
+  }): Promise<ArAgingReport> {
+    const { tenant_id, ...rest } = params;
+    const response = await apiClient.get<ApiResponse<ArAgingReport>>(
+      `${this.base}/accounting/ar-aging`,
+      { params: { ...rest, ...(tenant_id ? { tenant_id } : {}) } },
+    );
+    return response.data.data;
+  }
 
   // ── Accounting (existing endpoints) ───────────────────────────────────────
 
@@ -532,11 +577,18 @@ class ReportService {
   async purchaseBySupplier(params: {
     start_date: string;
     end_date: string;
-    category_id?: number | null;
+    status?: PurchaseOrderStatus;
+    supplier_id?: string | null;
+    warehouse_id?: string | null;
+    /** 1/0 — only suppliers with an outstanding balance. */
+    unpaid_only?: boolean | 0 | 1;
+    search?: string;
+    sort?: string;
+    dir?: 'asc' | 'desc';
     tenant_id?: string;
-  }): Promise<GenericReportResponse> {
+  }): Promise<PurchaseBySupplierReport> {
     const { tenant_id, ...rest } = params;
-    const response = await apiClient.get<ApiResponse<GenericReportResponse>>(
+    const response = await apiClient.get<ApiResponse<PurchaseBySupplierReport>>(
       `${this.base}/purchase/by-supplier`,
       { params: { ...rest, ...(tenant_id ? { tenant_id } : {}) } },
     );
@@ -579,10 +631,16 @@ class ReportService {
   // ── POS Reports ───────────────────────────────────────────────────────────
 
   async posDailySales(params: {
-    date: string;
-    register_id?: number | null;
-    session_id?: number | null;
-    cashier_id?: number | null;
+    /** Single day — the register's natural filter. */
+    date?: string;
+    /** Wins over `date` when both are sent. */
+    start_date?: string;
+    end_date?: string;
+    register_id?: string | null;
+    session_id?: string | null;
+    payment_method?: string | null;
+    payment_status?: string | null;
+    search?: string;
     tenant_id?: string;
   }): Promise<PosDailySalesReport> {
     const { tenant_id, ...rest } = params;
@@ -593,8 +651,17 @@ class ReportService {
   }
 
   async posSessionSummary(params: {
-    session_id?: number | null;
-    date?: string;
+    start_date?: string;
+    end_date?: string;
+    status?: string | null;
+    /** Reached through the register — pos_sessions has no warehouse_id. */
+    warehouse_id?: string | null;
+    register_id?: string | null;
+    cashier_id?: string | null;
+    variance_only?: boolean | number;
+    search?: string;
+    sort?: string;
+    dir?: 'asc' | 'desc';
     tenant_id?: string;
   }): Promise<PosSessionSummaryReport> {
     const { tenant_id, ...rest } = params;
@@ -606,13 +673,25 @@ class ReportService {
   }
 
   async cashierPerformance(params: {
-    start_date: string;
-    end_date: string;
-    cashier_id?: number | null;
+    /** Defaults to the first of the current month server-side. */
+    start_date?: string;
+    /** Defaults to today server-side. */
+    end_date?: string;
+    cashier_id?: string | null;
+    register_id?: string | null;
+    /** Reached through the register — pos_orders has no warehouse_id. */
+    warehouse_id?: string | null;
+    payment_method?: string | null;
+    payment_status?: string | null;
+    /** Cashier name, matched server-side with LIKE. */
+    search?: string;
+    /** Defaults to total_sales. Whitelisted server-side. */
+    sort?: string;
+    dir?: 'asc' | 'desc';
     tenant_id?: string;
-  }): Promise<GenericReportResponse> {
+  }): Promise<CashierPerformanceReport> {
     const { tenant_id, ...rest } = params;
-    const response = await apiClient.get<ApiResponse<GenericReportResponse>>(
+    const response = await apiClient.get<ApiResponse<CashierPerformanceReport>>(
       `${this.base}/pos/cashier-performance`,
       { params: { ...rest, ...(tenant_id ? { tenant_id } : {}) } },
     );
@@ -634,13 +713,27 @@ class ReportService {
   }
 
   async paymentBreakdown(params: {
-    start_date: string;
-    end_date: string;
-    register_id?: number | null;
+    /** Defaults to the first of the current month server-side. */
+    start_date?: string;
+    /** Defaults to today server-side. */
+    end_date?: string;
+    payment_method?: string | null;
+    /** payments.status — pending, completed, failed, cancelled, refunded. */
+    status?: string | null;
+    /** Only the two reference types that touch a POS order. */
+    reference_type?: 'pos' | 'refund' | null;
+    register_id?: string | null;
+    session_id?: string | null;
+    cashier_id?: string | null;
+    /** Payment method, matched server-side with LIKE. */
+    search?: string;
+    /** Defaults to net_amount. Whitelisted server-side. */
+    sort?: string;
+    dir?: 'asc' | 'desc';
     tenant_id?: string;
-  }): Promise<GenericReportResponse> {
+  }): Promise<PaymentBreakdownReport> {
     const { tenant_id, ...rest } = params;
-    const response = await apiClient.get<ApiResponse<GenericReportResponse>>(
+    const response = await apiClient.get<ApiResponse<PaymentBreakdownReport>>(
       `${this.base}/pos/payment-breakdown`,
       { params: { ...rest, ...(tenant_id ? { tenant_id } : {}) } },
     );
@@ -652,6 +745,8 @@ class ReportService {
     end_date: string;
     category_id?: string | null;
     brand_id?: string | null;
+    /** products.type — simple, variable, composite, digital or service. */
+    product_type?: string | null;
     search?: string;
     /** 1/0 — Laravel's `boolean` rule rejects the strings "true"/"false". */
     include_inactive?: boolean | 0 | 1;
@@ -717,7 +812,17 @@ class ReportService {
   // ── Supplier Reports ──────────────────────────────────────────────────────
 
   async supplierAging(params: {
-    as_of_date: string;
+    /** Date the aging is measured against; defaults to today. */
+    as_of_date?: string;
+    supplier_id?: string | null;
+    /** Drill into one aging bucket; omit for all of them. */
+    bucket?: SupplierAgingBucket;
+    supplier_status?: 'active' | 'inactive' | 'blacklisted';
+    /** 1/0 — hide suppliers whose balance is entirely not-yet-due. */
+    only_overdue?: boolean | 0 | 1;
+    search?: string;
+    sort?: string;
+    dir?: 'asc' | 'desc';
     tenant_id?: string;
   }): Promise<SupplierAgingReport> {
     const { tenant_id, ...rest } = params;
@@ -728,27 +833,56 @@ class ReportService {
   }
 
   async supplierStatement(params: {
-    supplier_id: number;
-    start_date: string;
-    end_date: string;
+    /** Required — a statement is one supplier's account. UUID, not a number. */
+    supplier_id: string;
+    start_date?: string;
+    end_date?: string;
+    /** Show only one kind of document; omit for all of them. */
+    type?: SupplierStatementType;
+    search?: string;
     tenant_id?: string;
-  }): Promise<GenericReportResponse> {
+  }): Promise<SupplierStatementReport> {
     const { tenant_id, ...rest } = params;
-    const response = await apiClient.get<ApiResponse<GenericReportResponse>>(
+    const response = await apiClient.get<ApiResponse<SupplierStatementReport>>(
       `${this.base}/supplier/statement`,
       { params: { ...rest, ...(tenant_id ? { tenant_id } : {}) } },
     );
     return response.data.data;
   }
 
+  /**
+   * Settles part or all of a payable: writes a dated supplier_payments voucher
+   * per allocation and moves the order's paid_amount.
+   */
+  async recordSupplierPayment(
+    supplierId: string,
+    data: {
+      amount: number;
+      payment_method: SupplierPaymentMethod;
+      payment_date?: string;
+      notes?: string;
+    },
+  ): Promise<SupplierPaymentResult> {
+    const response = await apiClient.post<ApiResponse<SupplierPaymentResult>>(
+      `/api/v1/suppliers/${supplierId}/record-payment`,
+      data,
+    );
+    return response.data.data;
+  }
+
   async supplierScorecard(params: {
-    start_date: string;
-    end_date: string;
-    supplier_id?: number | null;
+    start_date?: string;
+    end_date?: string;
+    /** UUID — every suppliers.id is a UUID, not a number. */
+    supplier_id?: string;
+    warehouse_id?: string;
+    /** Computed grade; filtering by it happens server-side, not in SQL. */
+    grade?: SupplierGrade;
+    search?: string;
     tenant_id?: string;
-  }): Promise<GenericReportResponse> {
+  }): Promise<SupplierScorecardReport> {
     const { tenant_id, ...rest } = params;
-    const response = await apiClient.get<ApiResponse<GenericReportResponse>>(
+    const response = await apiClient.get<ApiResponse<SupplierScorecardReport>>(
       `${this.base}/supplier/scorecard`,
       { params: { ...rest, ...(tenant_id ? { tenant_id } : {}) } },
     );

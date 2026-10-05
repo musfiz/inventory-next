@@ -5,7 +5,7 @@ import type {
   RegisterUserRequest,
   RegisterUserResponse,
   UserListParams,
-  UserListResponse,
+  UserPaginatedResponse,
   CreateUserRequest,
   UpdateUserRequest,
   UpdateProfileRequest,
@@ -35,9 +35,12 @@ class UserService {
   /**
    * Get list of users in tenant
    * GET /api/v1/users
+   *
+   * Returns `{ data, pagination }` — see {@link UserPaginatedResponse}. Read
+   * the array off `.data`, not `.users`.
    */
-  async getUsers(params?: UserListParams): Promise<UserListResponse> {
-    const response = await apiClient.get<ApiResponse<UserListResponse>>('/api/v1/users', {
+  async getUsers(params?: UserListParams): Promise<UserPaginatedResponse> {
+    const response = await apiClient.get<ApiResponse<UserPaginatedResponse>>('/api/v1/users', {
       params,
     });
     return response.data.data;
