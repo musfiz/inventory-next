@@ -1,18 +1,129 @@
 'use client';
 
 import { ColumnDef } from '@tanstack/react-table';
-import { List, Plus, Edit, Trash2 } from 'lucide-react';
+import { List, Plus, Edit, Trash2, X, AlertTriangle, CheckCircle2 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { GiSave } from 'react-icons/gi';
+import { ImDownload } from 'react-icons/im';
+import { RiFileExcel2Line } from 'react-icons/ri';
+import { TiUploadOutline } from 'react-icons/ti';
 import CustomSelect from '@/components/ui/custom-select';
 import DataTable from '@/components/ui/datatable';
+import TenantSelect from '@/components/ui/tenant-select';
 import { usePermissions } from '@/hooks/use-permissions';
 import { notify, confirm } from '@/lib/notifications';
 import { supplierService, commonService } from '@/services';
+import { useAuthStore } from '@/stores/auth-store';
+import type { BulkImportRowError, BulkImportStats } from '@/types/api.types';
 
 const inputCls = (hasError?: boolean) =>
   `w-full px-2.5 py-1 text-xs bg-white dark:bg-gray-700 border ${hasError ? 'border-red-500' : 'border-gray-300 dark:border-gray-600'} rounded text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-1 focus:ring-indigo-500`;
+
+/** Extensions the bulk import endpoint accepts (max 10MB). */
+const BULK_FILE_EXTENSIONS = ['.xls', '.xlsx', '.csv'];
+const BULK_MAX_BYTES = 10 * 1024 * 1024;
+
+/** Outcome of one bulk upload attempt, shaped so success and 422 share a renderer. */
+interface BulkOutcome {
+  message: string;
+  stats: BulkImportStats | null;
+  errors: BulkImportRowError[];
+}
+
+function formatFileSize(bytes: number): string {
+  if (bytes < 1024) return `${bytes} B`;
+  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
+  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+}
+
+function StatTile({ label, value, tone }: { label: string; value: number; tone: string }) {
+  return (
+    <div className={`rounded-md px-2.5 py-2 text-center ${tone}`}>
+      <p className="text-lg font-bold leading-none">{value}</p>
+      <p className="text-[10px] font-medium uppercase tracking-wide mt-1">{label}</p>
+    </div>
+  );
+}
+
+/**
+ * Result of a bulk upload: the counters, which duplicate names were dropped, and
+ * the per-row validation failures. Rendered inline in the upload panel so a
+ * partial import does not look like a failure — the operator can fix the listed
+ * rows and re-upload without hunting through a toast that has already vanished.
+ */
+function BulkOutcomePanel({ outcome, onDismiss }: { outcome: BulkOutcome; onDismiss: () => void }) {
+  const stats = outcome.stats;
+  const duplicates = stats?.duplicate_names ?? [];
+  const hasWarnings = outcome.errors.length > 0 || (stats?.skipped ?? 0) > 0;
+  const clean = outcome.errors.length === 0 && (stats?.skipped ?? 0) === 0;
+
+  const shell = clean
+    ? 'border-emerald-200 dark:border-emerald-800 bg-emerald-50/70 dark:bg-emerald-900/20'
+    : hasWarnings
+      ? 'border-amber-200 dark:border-amber-800 bg-amber-50/70 dark:bg-amber-900/20'
+      : 'border-red-200 dark:border-red-800 bg-red-50/70 dark:bg-red-900/20';
+
+  const HeadIcon = clean ? CheckCircle2 : AlertTriangle;
+  const headText = clean
+    ? 'text-emerald-700 dark:text-emerald-300'
+    : hasWarnings
+      ? 'text-amber-700 dark:text-amber-300'
+      : 'text-red-700 dark:text-red-300';
+
+  return (
+    <div className={`rounded-md border p-3 ${shell}`}>
+      <div className="flex items-start gap-2">
+        <HeadIcon className={`w-4 h-4 mt-0.5 shrink-0 ${headText}`} />
+        <p className={`text-xs font-semibold flex-1 ${headText}`}>{outcome.message}</p>
+        <button
+          type="button"
+          onClick={onDismiss}
+          className="p-0.5 text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 cursor-pointer"
+          title="Dismiss"
+          aria-label="Dismiss"
+        >
+          <X className="w-3.5 h-3.5" />
+        </button>
+      </div>
+
+      {stats && (
+        <div className="grid grid-cols-3 gap-2 mt-2.5">
+          <StatTile label="Imported" value={stats.imported} tone="bg-emerald-100/70 dark:bg-emerald-900/40 text-emerald-700 dark:text-emerald-200" />
+          <StatTile label="Skipped" value={stats.skipped} tone="bg-amber-100/70 dark:bg-amber-900/40 text-amber-700 dark:text-amber-200" />
+          <StatTile label="Duplicates" value={stats.duplicates} tone="bg-amber-100/70 dark:bg-amber-900/40 text-amber-700 dark:text-amber-200" />
+        </div>
+      )}
+
+      {duplicates.length > 0 && (
+        <p className="text-[11px] text-amber-700 dark:text-amber-300 mt-2">
+          <span className="font-semibold">Skipped as duplicate name:</span>{' '}
+          {duplicates.slice(0, 12).join(', ')}
+          {duplicates.length > 12 ? ` and ${duplicates.length - 12} more` : ''}
+        </p>
+      )}
+
+      {outcome.errors.length > 0 && (
+        <div className="mt-2.5">
+          <p className="text-[11px] font-semibold text-red-700 dark:text-red-300">
+            {outcome.errors.length} row(s) rejected
+          </p>
+          <ul className="mt-1 space-y-0.5 max-h-32 overflow-y-auto">
+            {outcome.errors.map((e, i) => (
+              <li key={`${e.row}-${i}`} className="text-[11px] text-red-600 dark:text-red-400 flex gap-1.5">
+                <span className="font-mono shrink-0">Row {e.row}</span>
+                <span className="min-w-0">
+                  {e.attribute ? <span className="font-medium">{e.attribute}: </span> : null}
+                  {e.errors.join(', ')}
+                </span>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+    </div>
+  );
+}
 
 function FormRow({ label, required, error, children, className = '', labelWidth = 'w-20', fieldWidth = 'flex-1 min-w-0' }: { label: string; required?: boolean; error?: string | null; children: React.ReactNode; className?: string; labelWidth?: string; fieldWidth?: string }) {
   const errorMl =
@@ -66,6 +177,20 @@ export default function SupplierListPage() {
   const [formErrors, setFormErrors] = useState<any>({});
   const [selectedTenant, setSelectedTenant] = useState<any>(null);
   const [defaultTenantOptions, setDefaultTenantOptions] = useState<any[]>([]);
+
+  // Tenant-wise list filter
+  const authUser = useAuthStore(s => s.user);
+  const [selectedTenantId, setSelectedTenantId] = useState<string>('');
+
+  // Bulk upload state
+  const [showBulkUpload, setShowBulkUpload] = useState(false);
+  const [uploading, setUploading] = useState(false);
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [dragActive, setDragActive] = useState(false);
+  const [bulkTenantId, setBulkTenantId] = useState<string>('');
+  const [bulkOutcome, setBulkOutcome] = useState<BulkOutcome | null>(null);
+  const [bulkErrors, setBulkErrors] = useState<{ [key: string]: string }>({});
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
 
   const loadTenantOptions = async (input: string) => {
     if (!isSuperAdmin) return [];
@@ -210,6 +335,130 @@ export default function SupplierListPage() {
     }
   };
 
+  // ── Bulk upload handlers ───────────────────────────────────────────────────
+
+  const clearBulkFile = () => {
+    setSelectedFile(null);
+    setBulkOutcome(null);
+    if (fileInputRef.current) {
+      fileInputRef.current.value = '';
+    }
+  };
+
+  const closeBulkUpload = () => {
+    setShowBulkUpload(false);
+    setUploading(false);
+    clearBulkFile();
+    setBulkErrors({});
+  };
+
+  const openBulkUpload = () => {
+    setShowBulkUpload(true);
+    setBulkOutcome(null);
+    setBulkErrors({});
+    // Super admins must name the target tenant; pre-select whatever the list is
+    // already filtered to so the common case needs no extra choice.
+    setBulkTenantId(
+      selectedTenantId || (isSuperAdmin ? '' : (authUser?.tenant_id ? String(authUser.tenant_id) : ''))
+    );
+  };
+
+  const handleDownloadSampleExcel = async () => {
+    try {
+      await supplierService.downloadSupplierSampleExcel(
+        isSuperAdmin ? selectedTenantId || undefined : undefined
+      );
+      notify.success('Sample Excel downloaded successfully');
+    } catch {
+      notify.error('Failed to download sample file');
+    }
+  };
+
+  const handleFileSelect = (file: File) => {
+    const fileName = file.name.toLowerCase();
+    const isValidExt = BULK_FILE_EXTENSIONS.some(ext => fileName.endsWith(ext));
+
+    if (!isValidExt) {
+      notify.error(`Invalid file type. Please upload an Excel or CSV file (${BULK_FILE_EXTENSIONS.join(', ')}).`);
+      return;
+    }
+
+    if (file.size > BULK_MAX_BYTES) {
+      notify.error('File size exceeds 10MB limit.');
+      return;
+    }
+
+    setSelectedFile(file);
+    setBulkOutcome(null);
+  };
+
+  const handleBulkUpload = async (e: React.FormEvent) => {
+    e.preventDefault();
+
+    if (!selectedFile) {
+      notify.error('Please select a file to upload');
+      return;
+    }
+
+    // The API rejects a super admin upload with 422 unless a tenant is named,
+    // so catch it here rather than letting the request round-trip.
+    const tenantId = isSuperAdmin ? bulkTenantId : authUser?.tenant_id;
+    if (isSuperAdmin && !bulkTenantId) {
+      setBulkErrors({ tenant_id: 'Tenant is required' });
+      return;
+    }
+
+    try {
+      setUploading(true);
+      setBulkErrors({});
+      setBulkOutcome(null);
+
+      const result = await supplierService.supplierBulkImport(
+        selectedFile,
+        tenantId ? String(tenantId) : undefined
+      );
+
+      setBulkOutcome({
+        message: result.message,
+        stats: result.data?.stats ?? null,
+        errors: result.data?.errors ?? [],
+      });
+      notify.success(result.message);
+      setRefreshKey(k => k + 1);
+    } catch (err: unknown) {
+      const axiosError = err as {
+        response?: { data?: { message?: string; errors?: unknown } };
+      };
+      const payload = axiosError.response?.data;
+      const message = payload?.message || 'Bulk upload failed';
+
+      // Two different 422 shapes come back from this endpoint: a flat
+      // { file: [...] } object when the upload itself is rejected, and an array
+      // of row failures when the spreadsheet parsed but rows were invalid.
+      if (Array.isArray(payload?.errors)) {
+        setBulkOutcome({
+          message,
+          stats: null,
+          errors: payload.errors as BulkImportRowError[],
+        });
+      } else if (payload?.errors && typeof payload.errors === 'object') {
+        setBulkErrors(
+          Object.fromEntries(
+            Object.entries(payload.errors as Record<string, string[]>).map(([k, v]) => [
+              k,
+              v.join(', '),
+            ])
+          )
+        );
+        notify.error(message);
+      } else {
+        setBulkOutcome({ message, stats: null, errors: [] });
+      }
+    } finally {
+      setUploading(false);
+    }
+  };
+
   const columns: ColumnDef<any>[] = [
     {
       id: 'serial',
@@ -252,7 +501,16 @@ export default function SupplierListPage() {
     },
   ];
 
-  const buildApiEndpoint = () => 'suppliers';
+  // Tenant-wise list filter. A tenant user is pinned to their own tenant by the
+  // API regardless, but sending it keeps the DataTable's filterParamsKey stable
+  // so switching tenants (super admin) resets to page 1 instead of showing a
+  // page that no longer exists.
+  const filterParams: Record<string, string | undefined | null> = {};
+  if (isSuperAdmin) {
+    filterParams.tenant_id = selectedTenantId || undefined;
+  } else if (authUser?.tenant_id) {
+    filterParams.tenant_id = String(authUser.tenant_id);
+  }
 
   return (
     <div className="space-y-2">
@@ -261,39 +519,232 @@ export default function SupplierListPage() {
           <List className="w-5 h-5 text-blue-600 dark:text-blue-400" />
           {showForm ? (isEditing ? 'Edit Supplier' : 'Add Supplier') : 'Supplier'}
         </h1>
-        <button
-          onClick={() => {
-            setShowForm(true);
-            setIsEditing(false);
-            setFormErrors({});
-            setSelectedTenant(null);
-            setFormData({
-              tenant_id: undefined,
-              name: '',
-              company_name: '',
-              contact_person: '',
-              phone: '',
-              email: '',
-              address: '',
-              city: '',
-              state: '',
-              country: 'Bangladesh',
-              postal_code: '',
-              vat_number: '',
-              tin_number: '',
-              trade_license: '',
-              website: '',
-              payment_terms: '',
-              credit_limit: 0,
-              status: 'active',
-            });
-          }}
-          className="flex items-center gap-2 px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium rounded-sm transition-colors duration-200"
-        >
-          <Plus className="w-4 h-4" />
-          Add Supplier
-        </button>
+        <div className="flex items-center gap-2">
+          {isSuperAdmin && (
+            <div className="w-52">
+              <TenantSelect
+                value={selectedTenantId}
+                onChange={(tid) => setSelectedTenantId(tid || '')}
+                placeholder="All Tenants"
+                isClearable
+                compact
+              />
+            </div>
+          )}
+          <button
+            onClick={handleDownloadSampleExcel}
+            className="flex items-center gap-2 px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-medium rounded-sm transition-colors duration-200 cursor-pointer"
+            title="Download the two-column supplier template"
+          >
+            <ImDownload className="w-4 h-4" />
+            Supplier Sample (Excel)
+          </button>
+          <button
+            onClick={() => (showBulkUpload ? closeBulkUpload() : openBulkUpload())}
+            className="flex items-center gap-2 px-3 py-1.5 bg-green-600 hover:bg-green-700 text-white text-sm font-medium rounded-sm transition-colors duration-200 cursor-pointer"
+            aria-expanded={showBulkUpload}
+          >
+            <RiFileExcel2Line className="w-4 h-4" />
+            Supplier Upload (Bulk)
+          </button>
+          <button
+            onClick={() => {
+              setShowForm(true);
+              setIsEditing(false);
+              setFormErrors({});
+              setSelectedTenant(null);
+              setFormData({
+                tenant_id: undefined,
+                name: '',
+                company_name: '',
+                contact_person: '',
+                phone: '',
+                email: '',
+                address: '',
+                city: '',
+                state: '',
+                country: 'Bangladesh',
+                postal_code: '',
+                vat_number: '',
+                tin_number: '',
+                trade_license: '',
+                website: '',
+                payment_terms: '',
+                credit_limit: 0,
+                status: 'active',
+              });
+            }}
+            className="flex items-center gap-2 px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium rounded-sm transition-colors duration-200"
+          >
+            <Plus className="w-4 h-4" />
+            Add Supplier
+          </button>
+        </div>
       </div>
+
+      {/* Bulk Supplier Upload */}
+      {showBulkUpload && (
+        <div className="bg-white dark:bg-gray-800 rounded-md shadow-sm border border-gray-200 dark:border-gray-700 p-4 mb-1">
+          <div className="flex items-start justify-between mb-3">
+            <div>
+              <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100">Bulk Supplier Upload</h2>
+              <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
+                The file needs exactly two columns —{' '}
+                <span className="font-medium text-gray-700 dark:text-gray-300">Name</span> and{' '}
+                <span className="font-medium text-gray-700 dark:text-gray-300">Mobile No</span>. Supplier codes
+                are generated automatically. Download the sample first if you are unsure of the layout.
+              </p>
+            </div>
+            <button
+              type="button"
+              onClick={closeBulkUpload}
+              disabled={uploading}
+              className="p-1 text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 disabled:opacity-50 cursor-pointer"
+              title="Close"
+              aria-label="Close bulk upload"
+            >
+              <X className="w-4 h-4" />
+            </button>
+          </div>
+
+          <form onSubmit={handleBulkUpload} className="space-y-3">
+            {/* Target tenant — required for super admins, implied for everyone else */}
+            {isSuperAdmin && (
+              <div className="w-1/3 min-w-[260px]">
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                  Tenant <span className="text-red-500">*</span>
+                </label>
+                <TenantSelect
+                  value={bulkTenantId}
+                  onChange={(tid) => {
+                    setBulkTenantId(tid || '');
+                    if (tid && bulkErrors.tenant_id) {
+                      setBulkErrors(prev => {
+                        const next = { ...prev };
+                        delete next.tenant_id;
+                        return next;
+                      });
+                    }
+                  }}
+                  placeholder="Select tenant"
+                  isDisabled={uploading}
+                  isInvalid={!!bulkErrors.tenant_id}
+                  isClearable
+                  compact
+                />
+                <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
+                  Every row will be created under this tenant.
+                </p>
+                {bulkErrors.tenant_id && <p className="mt-1 text-xs text-red-500">{bulkErrors.tenant_id}</p>}
+              </div>
+            )}
+
+            {/* File Upload Field */}
+            <div className="w-1/3 min-w-[260px]">
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                Select File <span className="text-red-500">*</span>
+              </label>
+              <div
+                onDragOver={e => {
+                  e.preventDefault();
+                  if (!uploading) setDragActive(true);
+                }}
+                onDragLeave={() => setDragActive(false)}
+                onDrop={e => {
+                  e.preventDefault();
+                  setDragActive(false);
+                  const f = e.dataTransfer?.files?.[0];
+                  if (f && !uploading) handleFileSelect(f);
+                }}
+                className={`border-2 border-dashed rounded-sm text-center cursor-pointer transition-colors bg-gray-50 dark:bg-gray-700 ${
+                  dragActive
+                    ? 'border-green-500 bg-green-50 dark:bg-green-900/20'
+                    : 'border-gray-300 dark:border-gray-600 hover:border-indigo-500'
+                }`}
+                onClick={() => !uploading && fileInputRef.current?.click()}
+              >
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  accept=".xls,.xlsx,.csv"
+                  onChange={e => {
+                    const f = e.target.files?.[0];
+                    if (f) handleFileSelect(f);
+                  }}
+                  className="hidden"
+                  disabled={uploading}
+                />
+
+                {selectedFile ? (
+                  <div className="flex items-center justify-center gap-2 p-4">
+                    <RiFileExcel2Line className="w-5 h-5 text-green-600 shrink-0" />
+                    <span className="text-sm text-gray-700 dark:text-gray-300 truncate">{selectedFile.name}</span>
+                    <span className="text-xs text-gray-400 shrink-0">{formatFileSize(selectedFile.size)}</span>
+                    <button
+                      type="button"
+                      onClick={e => {
+                        e.stopPropagation();
+                        clearBulkFile();
+                      }}
+                      disabled={uploading}
+                      className="ml-1 p-0.5 text-red-500 hover:text-red-700 disabled:opacity-50 cursor-pointer"
+                      title="Remove file"
+                      aria-label="Remove file"
+                    >
+                      <X className="w-4 h-4" />
+                    </button>
+                  </div>
+                ) : (
+                  <div className="p-4">
+                    <div className="font-medium text-sm text-gray-700 dark:text-gray-300">
+                      Click or drop Excel / CSV file here
+                    </div>
+                    <div className="text-xs text-gray-500 mt-0.5">.xls, .xlsx, .csv — max 10MB</div>
+                  </div>
+                )}
+              </div>
+              <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
+                Accepted file types: .xls, .xlsx, .csv
+                {bulkErrors.file && <span className="text-red-500"> — {bulkErrors.file}</span>}
+              </p>
+            </div>
+
+            {bulkOutcome && <BulkOutcomePanel outcome={bulkOutcome} onDismiss={() => setBulkOutcome(null)} />}
+
+            {/* Action Buttons */}
+            <div className="flex gap-2 mt-2">
+              <button
+                type="submit"
+                disabled={uploading || !selectedFile}
+                className="px-3 py-1.5 bg-rose-500 text-white text-sm font-medium rounded-sm hover:bg-rose-700 transition-colors flex items-center gap-2 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                <TiUploadOutline className="w-4 h-4" />
+                {uploading ? 'Uploading...' : 'Upload File'}
+              </button>
+
+              <button
+                type="button"
+                onClick={closeBulkUpload}
+                disabled={uploading}
+                className="px-3 py-1.5 bg-gray-600 text-white text-sm font-medium rounded-sm hover:bg-gray-700 transition-colors flex items-center gap-2 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                <X className="w-4 h-4" />
+                Close
+              </button>
+
+              <button
+                type="button"
+                onClick={handleDownloadSampleExcel}
+                disabled={uploading}
+                className="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50 text-white text-sm font-medium rounded-sm transition-colors flex items-center gap-2 cursor-pointer"
+              >
+                <ImDownload className="w-4 h-4" />
+                Sample
+              </button>
+            </div>
+          </form>
+        </div>
+      )}
 
       {showForm && (
         <div className="space-y-3">
@@ -588,10 +1039,11 @@ export default function SupplierListPage() {
       <DataTable
         key={refreshKey}
         columns={columns}
-        apiEndpoint={buildApiEndpoint()}
+        apiEndpoint="suppliers"
         pageSize={15}
         enableSearch={true}
         searchPlaceholder="Search by supplier name, code..."
+        filterParams={filterParams}
       />
     </div>
   );

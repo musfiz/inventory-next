@@ -1372,3 +1372,40 @@ export interface CreateBlogPostRequest {
   meta_description?: string;
   is_published?: boolean;
 }
+
+// ── Bulk import (shared by customers, suppliers, brands, categories) ──────────
+
+/**
+ * Counters returned by the /bulk-import/* endpoints. `duplicates` and
+ * `duplicate_names` are absent on imports that do not detect duplicates.
+ */
+export interface BulkImportStats {
+  imported: number;
+  skipped: number;
+  duplicates: number;
+  duplicate_names?: string[];
+  total: number;
+}
+
+/** A single spreadsheet row that failed validation. `row` is 1-based, header included. */
+export interface BulkImportRowError {
+  row: number;
+  attribute: string;
+  errors: string[];
+  values?: Record<string, unknown>;
+}
+
+/**
+ * Success shape (HTTP 200). Two different 422 shapes come back from these
+ * endpoints and callers must tell them apart:
+ *  - `{ success: false, message, errors: BulkImportRowError[] }` — rows rejected
+ *  - `{ success: false, message, errors: { file: string[] } }` — upload rejected
+ */
+export interface BulkImportResult {
+  success: boolean;
+  message: string;
+  data?: {
+    stats: BulkImportStats;
+    errors: BulkImportRowError[];
+  };
+}

@@ -1,5 +1,5 @@
 import apiClient from '@/lib/api/axios';
-import type { ApiResponse } from '@/types/api.types';
+import type { ApiResponse, BulkImportResult } from '@/types/api.types';
 
 export interface Customer {
   id: number;
@@ -23,29 +23,9 @@ export interface Customer {
   status?: 'active' | 'inactive' | 'blacklisted';
 }
 
-export interface BulkImportStats {
-  imported: number;
-  skipped: number;
-  duplicates: number;
-  duplicate_names?: string[];
-  total: number;
-}
-
-export interface BulkImportRowError {
-  row: number;
-  attribute: string;
-  errors: string[];
-  values?: Record<string, unknown>;
-}
-
-export interface BulkImportResult {
-  success: boolean;
-  message: string;
-  data?: {
-    stats: BulkImportStats;
-    errors: BulkImportRowError[];
-  };
-}
+// Bulk import payload types live in @/types/api.types — they are shared with
+// supplierService and every other /bulk-import/* caller.
+export type { BulkImportResult, BulkImportRowError, BulkImportStats } from '@/types/api.types';
 
 export interface CustomerStatementOrder {
   id: number;
