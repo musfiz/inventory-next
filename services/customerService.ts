@@ -23,6 +23,30 @@ export interface Customer {
   status?: 'active' | 'inactive' | 'blacklisted';
 }
 
+export interface BulkImportStats {
+  imported: number;
+  skipped: number;
+  duplicates: number;
+  duplicate_names?: string[];
+  total: number;
+}
+
+export interface BulkImportRowError {
+  row: number;
+  attribute: string;
+  errors: string[];
+  values?: Record<string, unknown>;
+}
+
+export interface BulkImportResult {
+  success: boolean;
+  message: string;
+  data?: {
+    stats: BulkImportStats;
+    errors: BulkImportRowError[];
+  };
+}
+
 export interface CustomerStatementOrder {
   id: number;
   invoice_number?: string;
@@ -91,6 +115,49 @@ class CustomerService {
       signal: options?.signal,
     });
     return response.data.data || [];
+  }
+
+  /**
+   * Download customer sample Excel template
+   * GET /api/v1/bulk-import/customers/sample-excel
+   *
+   * Two columns only — Name and Mobile No. tenantId is optional and only read
+   * by the API for super admins; everyone else gets their own tenant.
+   */
+  async downloadCustomerSampleExcel(tenantId?: string | null): Promise<void> {
+    const response = await apiClient.get('/api/v1/bulk-import/customers/sample-excel', {
+      params: tenantId ? { tenant_id: tenantId } : undefined,
+      responseType: 'blob',
+    });
+
+    const url = window.URL.createObjectURL(new Blob([response.data]));
+    const link = document.createElement('a');
+    link.href = url;
+    link.setAttribute('download', `customer_bulk_upload_template_${new Date().toISOString().split('T')[0]}.xlsx`);
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    window.URL.revokeObjectURL(url);
+  }
+
+  /**
+   * Bulk import customers from an Excel or CSV file
+   * POST /api/v1/bulk-import/customers
+   *
+   * Rejects with a 422 whose body is `{ message, errors: BulkImportRowError[] }`
+   * when spreadsheet rows fail validation, so the caller must read errors off
+   * the axios error rather than the resolved value.
+   */
+  async customerBulkImport(file: File, tenantId?: string | null): Promise<BulkImportResult> {
+    const formData = new FormData();
+    formData.append('file', file);
+    if (tenantId) formData.append('tenant_id', tenantId);
+
+    const response = await apiClient.post<BulkImportResult>('/api/v1/bulk-import/customers', formData, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    });
+
+    return response.data;
   }
 }
 
