@@ -899,6 +899,203 @@ export interface SalesReturn {
   settlement_payments?: SalesReturnSettlementPayment[];
 }
 
+// ─── Purchase Return Types ──────────────────────────────────────────────────────
+//
+// Return to Vendor (RTV / RMA) on a Purchase Order. All ids are string UUIDs,
+// matching the backend's purchase_* tables.
+
+export type PurchaseReturnStatus = 'draft' | 'pending' | 'approved' | 'completed' | 'cancelled';
+
+/** Where the goods were when the problem was found. */
+export type PurchaseReturnType =
+  /** Entered stock, then found damaged / wrong / expired / excess. Stock leaves on completion. */
+  | 'post_receipt'
+  /** Refused during the physical GRN check. Never entered stock. Auto-created by the receive endpoint. */
+  | 'rejected_at_receipt';
+
+/** How the vendor settles it. */
+export type PurchaseReturnResolution =
+  /** Reduces what we owe. */
+  | 'credit_note'
+  /** Vendor pays cash back. */
+  | 'refund'
+  /** Vendor sends replacement goods. Reserved for a later phase. */
+  | 'replacement';
+
+export type PurchaseReturnSettlementStatus = 'pending' | 'partial' | 'settled';
+
+export type PurchaseReturnReasonCode =
+  | 'damaged'
+  | 'defective'
+  | 'wrong_item'
+  | 'expired'
+  | 'short_shelf_life'
+  | 'excess'
+  | 'quality_mismatch'
+  | 'other';
+
+export interface PurchaseReturnItem {
+  id: string;
+  purchase_return_id: string;
+  purchase_order_item_id?: string | null;
+  product_id?: string | null;
+  variation_id?: string | null;
+  batch_id?: string | null;
+  quantity_returned: number;
+  /** The PO line's unit cost — the backend values the return on this, not on a client-sent price. */
+  unit_cost: number;
+  /** Net value after the PO's discount ratio. */
+  line_total?: number;
+  tax_amount?: number;
+  reason_code?: PurchaseReturnReasonCode | null;
+  /** Free-text note; reason_code is the structured one. */
+  reason?: string | null;
+  product?: { id: string; name: string } | null;
+  variation?: { id: string; name?: string | null; sku?: string } | null;
+  purchase_order_item?: {
+    id: string;
+    quantity_ordered: number;
+    quantity_received: number;
+    quantity_returned?: number;
+  } | null;
+}
+
+export interface PurchaseReturnSettlement {
+  id: string;
+  purchase_return_id: string;
+  action: 'refund_received' | 'apply_to_payable';
+  amount: number;
+  payment_method: string;
+  reference?: string | null;
+  notes?: string | null;
+  created_by?: string | null;
+  created_at?: string;
+  creator?: { id: string; name: string } | null;
+}
+
+export interface PurchaseReturn {
+  id: string;
+  tenant_id?: string;
+  return_number: string;
+  /** Issued on completion — the document sent to the vendor. Null while pending. */
+  debit_note_number?: string | null;
+  purchase_order_id: string;
+  supplier_id: string;
+  warehouse_id: string;
+  return_date?: string;
+  status: PurchaseReturnStatus;
+  return_type: PurchaseReturnType;
+  resolution: PurchaseReturnResolution;
+  /** Gross, mirroring purchase_orders.sub_total. */
+  sub_total: number;
+  /** The PO's discount given back on that gross. */
+  discount_amount: number;
+  tax_amount: number;
+  total_amount: number;
+  settled_amount: number;
+  settlement_status: PurchaseReturnSettlementStatus;
+  /** The vendor's RMA or credit note reference. */
+  vendor_reference?: string | null;
+  reason?: string | null;
+  notes?: string | null;
+  approved_by?: string | null;
+  approved_at?: string | null;
+  completed_by?: string | null;
+  completed_at?: string | null;
+  cancelled_at?: string | null;
+  created_by?: string | null;
+  created_at?: string;
+  updated_at?: string;
+  /** Computed server-side: total_amount - settled_amount. */
+  outstanding_amount?: number;
+  /** Computed server-side: sub_total - discount_amount. */
+  net_amount?: number;
+  items?: PurchaseReturnItem[];
+  purchase_order?: {
+    id: string;
+    po_number: string;
+    /** The supplier's chalan/invoice number. */
+    supplier_order_no?: string | null;
+    order_date?: string;
+    total_amount?: number;
+    returned_amount?: number;
+    paid_amount?: number;
+    payment_status?: string;
+  } | null;
+  supplier?: {
+    id: string;
+    name: string;
+    phone?: string;
+    email?: string;
+    company_name?: string;
+    address?: string;
+  } | null;
+  warehouse?: { id: string; name: string } | null;
+  creator?: { id: string; name: string } | null;
+  approver?: { id: string; name: string } | null;
+  completedBy?: { id: string; name: string } | null;
+  settlements?: PurchaseReturnSettlement[];
+}
+
+/**
+ * One row of GET /api/v1/purchase-order/{id}/returnable-items.
+ *
+ * `max_returnable` is the smaller of (received − returned − claimed on other
+ * open returns) and (on hand − reserved). Goods already sold cannot go back to
+ * the vendor, so the UI must cap its input at this value, not at the received
+ * quantity.
+ */
+export interface ReturnablePurchaseOrderItem {
+  purchase_order_item_id: string;
+  product_id?: string | null;
+  product_name?: string | null;
+  variation_id?: string | null;
+  variation_name?: string | null;
+  sku?: string | null;
+  unit_cost: number;
+  quantity_ordered: number;
+  quantity_received: number;
+  quantity_returned: number;
+  quantity_rejected: number;
+  /** Claimed by other returns that are still pending or approved. */
+  claimed_on_open_returns: number;
+  available_quantity: number;
+  max_returnable: number;
+  can_return: boolean;
+}
+
+/** Response of GET /api/v1/purchase-order/{id}/returnable-items. */
+export interface ReturnableItemsResponse {
+  purchase_order: {
+    id: string;
+    po_number: string;
+    supplier_order_no?: string | null;
+    supplier_id: string;
+    supplier_name?: string | null;
+    warehouse_id: string;
+    warehouse_name?: string | null;
+    order_date?: string;
+    status?: string;
+    sub_total: number;
+    discount_amount: number;
+    /**
+     * The VAT actually booked on the PO. The effective rate is this divided by
+     * (sub_total - discount_amount) — not `vat_percent`, which `storePurchaseOrder`
+     * lets the client override independently.
+     */
+    tax_amount: number;
+    /** The nominal VAT percentage. */
+    vat: number;
+    tax_percent: number;
+    total_amount: number;
+    paid_amount: number;
+    returned_amount: number;
+    /** total − returned − paid. */
+    net_payable: number;
+  };
+  items: ReturnablePurchaseOrderItem[];
+}
+
 /** Item row returned from GET /api/v1/pos/orders/{id}/items */
 export interface PosOrderItemForRefund {
   id: number;

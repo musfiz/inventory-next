@@ -26,6 +26,7 @@ export { default as binService } from './binService';
 export { default as stockService } from './stockService';
 export { default as supplierService } from './supplierService';
 export { default as purchaseOrderService } from './purchaseOrderService';
+export { default as purchaseReturnService } from './purchaseReturnService';
 export { default as salesOrderService } from './salesOrderService';
 export { default as salesReturnService } from './salesReturnService';
 export { default as paymentService } from './paymentService';

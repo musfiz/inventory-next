@@ -16,6 +16,12 @@ export { SalesReturnCreditNote, PosRefundCreditNote } from './CreditNote';
 export { CreditNoteA4 } from './CreditNoteA4';
 export { CreditNoteThermal } from './CreditNoteThermal';
 
+// Purchase Return (Return to Vendor) — the debit note sent with returned goods.
+export { DebitNoteA4 } from './DebitNoteA4';
+export type { DebitNoteA4Props, DebitNoteCopyLabel } from './DebitNoteA4';
+export { DebitNoteThermal } from './DebitNoteThermal';
+export type { DebitNoteThermalProps, DebitNoteThermalPaperWidth } from './DebitNoteThermal';
+
 // ── Shared utilities ──────────────────────────────────────────────────────────
 export { fmt, fmtDateTime, buildQrUrl } from './shared';
 export type { PayReceiptCommonProps, PrintOrderItem } from './shared';

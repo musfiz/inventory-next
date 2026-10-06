@@ -31,6 +31,7 @@ const ADMIN_PREFIXES = [
   '/product-variations',
   '/purchase',
   '/purchase-orders',
+  '/purchase-order-return',
   '/reports',
   '/restore',
   '/sales-orders',

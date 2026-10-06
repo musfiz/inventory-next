@@ -6,6 +6,7 @@ export { SalesOrderPrintMenu } from './SalesOrderPrintMenu';
 export { PosOrderPrintMenu } from './PosOrderPrintMenu';
 export { PayReceiptPrintMenu } from './PayReceiptPrintMenu';
 export { SalesReturnPrintMenu } from './SalesReturnPrintMenu';
+export { PurchaseReturnPrintMenu } from './PurchaseReturnPrintMenu';
 export { PosRefundPrintMenu } from './PosRefundPrintMenu';
 
 // ── Invoice templates (re-exported for convenience) ───────────────────────────
