@@ -73,7 +73,10 @@ inventory-ui/
 ├── 📁 components/ # Reusable React components
 │ ├── 📁 layout/ # Layout components
 │ │ ├── header.tsx # Top navigation header
-│ │ └── sidebar.tsx # Sidebar navigation menu
+│ │ ├── sidebar.tsx # Sidebar navigation menu
+│ │ ├── demo-banner.tsx # Demo mode notice bar
+│ │ ├── network-monitor.tsx # Mounts the connectivity engine; SWR revalidation
+│ │ └── offline-banner.tsx # Offline / server-unreachable notice pill
 │ │
 │ └── 📁 ui/ # UI components
 │ ├── datatable.tsx # Reusable data table with pagination
@@ -101,7 +104,9 @@ inventory-ui/
 │ ├── notifications.ts # SweetAlert2 notification wrapper
 │ │
 │ ├── 📁 api/
-│ │ └── axios.ts # Axios HTTP client configuration
+│ │ ├── axios.ts # Axios HTTP client configuration
+│ │ ├── network-error.ts # Request-failure classification (offline/timeout/…)
+│ │ └── network-monitor.ts # Connectivity engine + recovery probe
 │ │
 │ └── 📁 utils/
 │ ├── date.ts # Date formatting utilities
@@ -112,10 +117,12 @@ inventory-ui/
 │
 ├── 📁 hooks/ # Custom React hooks
 │ ├── use-auth.ts # Authentication hook
+│ ├── use-offline.ts # Connectivity state + refresh (offline/network errors)
 │ └── use-permissions.ts # Permission checking hook
 │
 ├── 📁 stores/ # State management (Zustand)
-│ └── auth-store.ts # Authentication state store
+│ ├── auth-store.ts # Authentication state store
+│ └── network-store.ts # Connectivity tri-state store
 │
 ├── 📁 types/ # TypeScript type definitions
 │ ├── index.ts # Type exports

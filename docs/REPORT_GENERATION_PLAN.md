@@ -69,7 +69,7 @@ This document provides a complete catalog of every report needed to run a UIMS b
 
 | # | Category | Report | Route | Service Method | Status |
 |---|----------|--------|-------|---------------|--------|
-|  1 | Accounting | Trial Balance | `/reports/trial-balance` | `accountService.trialBalance()` | Working |
+|  1 | Accounting | Trial Balance | `/reports/accounting/trial-balance` | `reportService.trialBalance()` | Working |
 |  2 | Accounting | Profit & Loss | `/reports/profit-loss` | `accountService.profitLoss()` | Working |
 |  3 | Accounting | Cash Flow | `/reports/cash-flow` | `accountService.cashFlow()` | Working |
 |  4 | Accounting | Balance Sheet | `/reports/balance-sheet` | `accountService.balanceSheet()` | Working |
@@ -129,7 +129,7 @@ This document provides a complete catalog of every report needed to run a UIMS b
 
 | # | Endpoint | Controller | Status |
 |---|----------|------------|--------|
-| 1 | `GET /api/v1/reports/trial-balance` | `AccountController@trialBalance` | Working |
+| 1 | `GET /api/v1/reports/accounting/trial-balance` | `AccountingReportController@trialBalance` (`RPT-ACC-004`) | Working (legacy `/reports/trial-balance` still served, deprecated) |
 | 2 | `GET /api/v1/reports/profit-loss` | `AccountController@profitLoss` | Working |
 | 3 | `GET /api/v1/reports/cash-flow` | `AccountController@cashFlow` | Working |
 | 4 | `GET /api/v1/reports/balance-sheet` | `AccountController@balanceSheet` | Working |
@@ -233,13 +233,14 @@ inventory-ui/
 │   │   ├── hourly-sales/page.tsx
 │   │   ├── payment-breakdown/page.tsx
 │   │   └── refund-summary/page.tsx
-│   ├── accounting/                        ← EXISTS: accounting report category (3 reports)
-│   │   ├── ar-aging/page.tsx              ← UI built
-│   │   ├── ap-aging/page.tsx              ← UI built
+│   ├── accounting/                        ← EXISTS: accounting report category (7 reports)
+│   │   ├── ar-aging/page.tsx              ← UI built (RPT-ACC-001)
+│   │   ├── ap-aging/page.tsx              ← UI built (RPT-ACC-002)
+│   │   ├── failed-journal/page.tsx        ← UI built (RPT-ACC-003)
+│   │   ├── trial-balance/page.tsx         ← UI built (RPT-ACC-004)
 │   │   ├── tax-return/page.tsx            ← TODO
 │   │   ├── budget-vs-actual/page.tsx      ← TODO
-│   │   ├── cash-flow-forecast/page.tsx    ← TODO
-│   │   └── failed-journal/page.tsx        ← UI built
+│   │   └── cash-flow-forecast/page.tsx    ← TODO
 │   ├── customer/                          ← EXISTS: customer report category (3 reports)
 │   │   ├── statement/page.tsx
 │   │   ├── aging/page.tsx
@@ -263,7 +264,11 @@ inventory-ui/
 │   │   ├── audit-log/page.tsx
 │   │   ├── activity-log/page.tsx
 │   │   └── alert-history/page.tsx
-│   ├── trial-balance/page.tsx             ← EXISTS
+│   ├── accounting/                         ← EXISTS: accounting report category
+│   │   ├── ar-aging/page.tsx               ← UI built (RPT-ACC-001)
+│   │   ├── ap-aging/page.tsx               ← UI built (RPT-ACC-002)
+│   │   ├── failed-journal/page.tsx         ← UI built (RPT-ACC-003)
+│   │   └── trial-balance/page.tsx          ← UI built (RPT-ACC-004)
 │   ├── profit-loss/page.tsx               ← EXISTS
 │   ├── cash-flow/page.tsx                 ← EXISTS
 │   ├── balance-sheet/page.tsx             ← EXISTS
@@ -888,6 +893,45 @@ GET  /api/v1/reports/pos/daily-sales?date=2026-07-08&register_id=2
 | **Permission** | `view-cash-flow-forecast-report` |
 | **Priority** | P2 — Medium |
 
+#### 4.5.5 Trial Balance
+
+| Field | Value |
+|-------|-------|
+| **Purpose** | Prove the ledger balances before publishing anything |
+| **Business value** | Bookkeeping integrity, audit compliance |
+| **Data source** | `accounts` + `journal_entry_lines` + `journal_entries` |
+| **Backend endpoint** | `GET /api/v1/reports/accounting/trial-balance` (`RPT-ACC-004`, `App\Reports\Accounting\TrialBalanceReport`) |
+| **Frontend page** | `/reports/accounting/trial-balance` (BUILT — `reportService.trialBalance()`) |
+| **Permission** | `view-trial-balance-report` |
+| **Priority** | ✅ Done — P0 |
+
+Filters: `start_date`, `end_date`, `account_id`, `account_type`, `account_subtype`,
+`search`, `only_with_activity`, `only_abnormal`, `only_drift`, `include_inactive`,
+`sort`, `dir`.
+
+Columns: Code, Account, Type, Opening, Debit, Credit, Balance, Side, Check, Cached,
+Drift, Entries, Last Entry.
+
+Three differences from the legacy `accountService.trialBalance()`, which is still
+served at `/api/v1/reports/trial-balance` and now marked deprecated:
+
+1. **Counts `posted` *and* `reversed`.** A reversal here is a *new* posted
+   counter-entry plus a status flip on the original (`AccountingService::reverseEntry`),
+   so summing `posted` alone books the reversal and drops the original — the
+   account shows the flipped amount as if it were real.
+2. **Carries an opening balance**, so `balance` is the account's real balance as
+   at `end_date` and reconciles with the Balance Sheet, rather than describing a
+   month of churn.
+3. **Flags off-side balances** (`Check` column / `is_abnormal`): a credit balance
+   on an asset, a debit balance on a liability. The legacy report had no way to
+   see those — a negative liability just rendered as a negative number.
+
+The `Drift` column reconciles the cached `accounts.balance` (maintained as a
+running total by `postEntry`) against the account's own journal lines. Both are
+**all-time**, because the cache is all-time. `drift_account_count` in the summary
+is counted over every account the tenant owns, not the filtered page, so a filter
+cannot hide an integrity problem.
+
 #### 4.5.6 Failed Journal Queue Report
 
 | Field | Value |
@@ -895,14 +939,26 @@ GET  /api/v1/reports/pos/daily-sales?date=2026-07-08&register_id=2
 | **Purpose** | List all auto-journal failures for admin retry |
 | **Business value** | Bookkeeping integrity, audit compliance |
 | **Data source** | `failed_journal_entries` |
-| **Backend endpoint** | `GET /api/v1/admin/failed-journal-entries` (EXISTS) |
-| **Frontend page** | `/reports/accounting/failed-journal` (MISSING) |
-| **Filters** | `status` (unresolved/resolved/all), `reference_type` |
-| **Columns** | Entry #, Date, Reference Type, Reference #, Error Message, Status, Resolved At, Resolved By |
-| **Summary** | Unresolved count, error breakdown by type |
-| **Export** | Excel, CSV |
+| **Backend endpoint** | `GET /api/v1/reports/accounting/failed-journal` (`RPT-ACC-003`, `App\Reports\Accounting\FailedJournalReport`) |
+| **Frontend page** | `/reports/accounting/failed-journal` (BUILT — `reportService.failedJournal()`) |
+| **Filters** | `status` (unresolved/resolved/all), `as_of_date`, `start_date`, `end_date`, `age_bucket`, `reference_type`, `search`, `only_recurring`, `sort`, `dir` |
+| **Columns** | Occurred, Status, In Queue, Reference Type, Reference #, Reference ID, Description, Lines, Value Not Posted, Imbalance, Error Type, Error Message, Recurs, Resolved At, Resolved By, Resolution Note |
+| **Summary** | Unresolved count, **unresolved value** (the ledger's gap), oldest open failure, unbalanced count, recurring count, unattributed count, queue-age ladder, breakdown by reference type and by error class |
+| **Export** | PDF, Excel, CSV, print |
 | **Permission** | `view-failed-journal-report` |
-| **Priority** | P0 — Critical (controller exists, UI missing) |
+| **Priority** | ✅ Done — P0 |
+
+Notes:
+- The page previously called `GET /api/v1/admin/failed-journal-entries`, which returns a raw
+  paginated model with none of the aggregates above and no sorting or export. That endpoint is
+  still served (it backs the admin list) and `reportService.failedJournalAdminList()` keeps the
+  old shape; retry/resolve stay on `/admin/failed-journal-entries/{id}/retry|resolve`.
+- `failed_value` is the total debit of the lines that never posted — the amount the ledger is out
+  by. `imbalance` (debit − credit) is the diagnostic: non-zero means the posting routine built an
+  unbalanced entry, which will fail again on an unchanged retry.
+- `status` is derived from `resolved_at` (the table has no `status` column) and `age_days` means
+  one thing for both statuses: unresolved → `as_of − occurred_at`, resolved → how long it took to
+  clear.
 
 ---
 
@@ -1576,7 +1632,7 @@ Update `components/layout/sidebar.tsx` to restructure the Report Management sect
     { name: 'POS Refund Summary', href: '/reports/pos/refund-summary', icon: FileSpreadsheet, permission: 'view-pos-refund-report' },
 
     // ── Accounting Reports ──
-    { name: 'Trial Balance', href: '/reports/trial-balance', icon: Scale, permission: 'view-trail-balance' },
+    { name: 'Trial Balance', href: '/reports/accounting/trial-balance', icon: Scale, permission: 'view-trial-balance-report' },
     { name: 'Profit & Loss', href: '/reports/profit-loss', icon: FileText, permission: 'view-profit-loss' },
     { name: 'Cash Flow', href: '/reports/cash-flow', icon: FileText, permission: 'view-cash-flow' },
     { name: 'Balance Sheet', href: '/reports/balance-sheet', icon: Landmark, permission: 'view-balance-sheet' },
@@ -1965,6 +2021,7 @@ $reportPermissions = [
     'view-tax-summary-report',
     'view-cash-flow-forecast-report',
     'view-failed-journal-report',
+    'view-trial-balance-report',
     'view-budget-report',
 
     // Customer Reports

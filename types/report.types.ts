@@ -133,8 +133,282 @@ export interface ArAgingReport {
   generated_at?: string;
 }
 
-// ── AP Aging (Payables) ─────────────────────────────────────────────────────
-// Mirrors ReceivablesReport structure from accounting.types.ts
+// ── AP Aging (Payables, ledger-based) ───────────────────────────────────────
+// GET /api/v1/reports/accounting/ap-aging — App\Reports\Accounting\ApAgingReport
+//
+// The mirror of the AR aging report above: the payables book as the *ledger*
+// sees it, so its total ties to the AP control account on the Balance Sheet.
+// `PayablesReport` below is the older /reports/payables shape — buckets nested
+// per supplier, no 1-30 band, and the residual parked in 90+.
+
+/** Kept in step with App\Reports\Accounting\ApAgingReport::BUCKETS. */
+export type ApAgingBucket = 'current' | 'd_1_30' | 'd_31_60' | 'd_61_90' | 'd_90_plus';
+
+/** A zero credit limit means "none configured", not "no credit left". */
+export type ApCreditStatus = 'within_limit' | 'over_limit' | 'no_limit';
+
+export interface ApAgingRow {
+  supplier_id: string;
+  supplier_name: string;
+  code: string | null;
+  phone: string | null;
+  email: string | null;
+  supplier_status: string | null;
+  payment_terms: string | null;
+  /** Net AP on the ledger for this supplier. Buckets + unallocated add up to it. */
+  total_outstanding: number;
+  /** Ledger balance pivoted across aging buckets — the AP statement shape. */
+  current: number;
+  d_1_30: number;
+  d_31_60: number;
+  d_61_90: number;
+  d_90_plus: number;
+  total_overdue: number;
+  overdue_pct: number;
+  oldest_days_overdue: number;
+  po_count: number;
+  /** Comma-separated PO numbers this balance was aged against. */
+  po_numbers: string;
+  /** Ledger money with no open order to age it against — in no bucket. */
+  unallocated_value: number;
+  credit_limit: number;
+  /** Null when no credit limit is configured. */
+  available_credit: number | null;
+  credit_status: ApCreditStatus;
+}
+
+export interface ApAgingBucketSummary {
+  key: ApAgingBucket;
+  label: string;
+  amount: number;
+  suppliers: number;
+  share_pct: number;
+}
+
+export interface ApAgingReport {
+  data: ApAgingRow[];
+  summary: {
+    as_of_date: string;
+    supplier_count: number;
+    po_count: number;
+    total_outstanding: number;
+    total_current: number;
+    total_overdue: number;
+    overdue_pct: number;
+    overdue_supplier_count: number;
+    over_limit_supplier_count: number;
+    oldest_days_overdue: number;
+    unallocated_value: number;
+    /** Net balance of the AP control accounts, whole tenant — ties to the Balance Sheet. */
+    control_account_balance: number;
+    /** AP belonging to no live supplier: opening balances, manual journals. */
+    unattributed_value: number;
+    control_accounts: string;
+    /** Always healthiest-first, empty buckets included. */
+    by_bucket: ApAgingBucketSummary[];
+  };
+  columns?: ReportColumnMeta[];
+  filters_applied?: string[];
+  generated_at?: string;
+}
+
+// ── Failed Journal Queue ─────────────────────────────────────────────────────
+// GET /api/v1/reports/accounting/failed-journal — RPT-ACC-003
+//
+// Every auto-journal attempt that never became a posted journal entry.
+// `AccountingService::createJournalEntry` is non-fatal by design — a sale must
+// not roll back because the double-entry side failed — so this queue is the only
+// place the ledger's gap becomes visible. `failed_value` is the amount the
+// ledger is out by because of that row.
+//
+// `FailedJournalReport` below is the older `/admin/failed-journal-entries`
+// shape, which the admin list still serves.
+
+/** Kept in step with App\Reports\Accounting\FailedJournalReport::BUCKETS. */
+export type FailedJournalQueueBucket = 'today' | 'd_1_7' | 'd_8_30' | 'd_31_90' | 'd_90_plus';
+
+/** Derived, not stored: a row is resolved once `resolved_at` is set. */
+export type FailedJournalQueueStatus = 'unresolved' | 'resolved';
+
+/** Filter values for the status select; `all` means no status filter. */
+export type FailedJournalQueueStatusFilter = 'unresolved' | 'resolved' | 'all';
+
+export interface FailedJournalQueueRow {
+  id: string;
+  tenant_id: string;
+  /** When the posting attempt failed. */
+  occurred_at: string;
+  status: FailedJournalQueueStatus;
+  /**
+   * Unresolved: as_of − occurred_at (still open).
+   * Resolved: resolved_at − occurred_at (how long it took to clear).
+   * Never negative.
+   */
+  age_days: number;
+  age_bucket: FailedJournalQueueBucket;
+  reference_type: string | null;
+  reference_number: string | null;
+  reference_id: string | null;
+  /** Straight from the attempted header — what the journal was going to say. */
+  description: string | null;
+  line_count: number;
+  /** Total debit of the lines that never posted: the ledger's gap, per row. */
+  failed_value: number;
+  /** debit − credit. Non-zero means the posting routine built a bad entry. */
+  imbalance: number;
+  /** PHP exception class, namespace stripped. */
+  error_class: string;
+  error_message: string | null;
+  /** Open-queue failures sharing this row's (reference_type, reference_id). */
+  recurring_count: number;
+  resolved_at: string | null;
+  resolver_name: string | null;
+  creator_name: string | null;
+  resolution_note: string | null;
+}
+
+// ── Trial Balance (ledger-based) — RPT-ACC-004 ──────────────────────────────
+// GET /api/v1/reports/accounting/trial-balance — App\Reports\Accounting\TrialBalanceReport
+//
+// The ledger's own balance check. Three figures per account, not one:
+// `opening_balance` (everything dated before `start_date`), the period's
+// `period_debit` / `period_credit` movement, and `balance` (opening + movement),
+// which is the account's real balance as at `end_date`.
+//
+// `TrialBalanceRow` in accounting.types.ts is the older `/reports/trial-balance`
+// shape: period movement only, `posted` status only, so a reversed entry reads as
+// a real balance and a carried-forward balance is invisible.
+// GET /api/v1/reports/accounting/trial-balance — App\Reports\Accounting\TrialBalanceReport
+//
+// The ledger's own balance check. Three figures per account, not one:
+// `opening_balance` (everything dated before `start_date`), the period's
+// `period_debit` / `period_credit` movement, and `balance` (opening + movement),
+// which is the account's real balance as at `end_date`.
+//
+// `TrialBalanceRow` in accounting.types.ts is the older `/reports/trial-balance`
+// shape: period movement only, `posted` status only, so a reversed entry reads as
+// a real balance and a carried-forward balance is invisible.
+
+/**
+ * Which column a signed balance belongs in. `flat` is its own value so a zero
+ * balance is not read as a debit.
+ */
+export type TrialBalanceSide = 'debit' | 'credit' | 'flat';
+
+export interface TrialBalanceLedgerRow {
+  account_id: string;
+  code: string;
+  name: string;
+  account_type: string;
+  account_subtype: string;
+  parent_id: string | null;
+  is_active: boolean;
+  /** Debit-positive. Everything dated before `start_date`. */
+  opening_balance: number;
+  period_debit: number;
+  period_credit: number;
+  /** Debit-positive. `opening_balance + period_debit − period_credit`. */
+  balance: number;
+  balance_side: TrialBalanceSide;
+  /** True when the balance sits opposite the side its account type should hold. */
+  is_abnormal: boolean;
+  /** `accounts.balance`, the cache `AccountingService::postEntry` maintains. */
+  cached_balance: number;
+  /** The same account's balance derived from its journal lines. */
+  ledger_balance: number;
+  /** `cached_balance − ledger_balance`. Non-zero means the cache has drifted. */
+  drift: number;
+  entry_count: number;
+  last_entry_date: string | null;
+}
+
+export interface TrialBalanceTypeSummary {
+  key: string;
+  label: string;
+  count: number;
+  debit: number;
+  credit: number;
+  balance: number;
+}
+
+export interface TrialBalanceReportResponse {
+  data: TrialBalanceLedgerRow[];
+  summary: {
+    start_date: string;
+    end_date: string;
+    account_count: number;
+    active_account_count: number;
+    /** Closing balances on the debit side. */
+    total_debit: number;
+    /** Closing balances on the credit side. */
+    total_credit: number;
+    /** `total_debit − total_credit`. */
+    variance: number;
+    /** The headline: every taka of closing balance has a match on the other side. */
+    is_balanced: boolean;
+    period_debit: number;
+    period_credit: number;
+    period_variance: number;
+    is_period_balanced: boolean;
+    abnormal_account_count: number;
+    /** Over every account the tenant owns, not just the rows on screen. */
+    drift_account_count: number;
+    total_drift: number;
+    by_account_type: TrialBalanceTypeSummary[];
+  };
+  columns?: ReportColumnMeta[];
+  filters_applied?: string[];
+  generated_at?: string;
+}
+
+export interface FailedJournalQueueBucketSummary {
+  key: FailedJournalQueueBucket;
+  label: string;
+  count: number;
+  value: number;
+  share_pct: number;
+}
+
+export interface FailedJournalQueueGroup {
+  key: string;
+  label: string;
+  count: number;
+  value: number;
+  share_pct: number;
+}
+
+export interface FailedJournalQueueReport {
+  data: FailedJournalQueueRow[];
+  summary: {
+    as_of_date: string;
+    total_count: number;
+    unresolved_count: number;
+    resolved_count: number;
+    /** Value not posted across the open queue — "what is still wrong right now". */
+    unresolved_value: number;
+    total_value: number;
+    oldest_unresolved_days: number;
+    /** Sum of the lines that never posted — the `Lines` column has a total to foot against. */
+    total_lines: number;
+    /** Entries whose own debit/credit did not add up: a bug, not a transient fault. */
+    unbalanced_count: number;
+    recurring_count: number;
+    /** Failures with no tenant_id — the attempted header never named one. */
+    unattributed_count: number;
+    /** Queue-age ladder over the open queue only; empty buckets included. */
+    by_bucket: FailedJournalQueueBucketSummary[];
+    /** Busiest first: which posting routine is failing. */
+    by_reference_type: FailedJournalQueueGroup[];
+    /** Busiest first: why it is failing. */
+    by_error_class: FailedJournalQueueGroup[];
+  };
+  columns?: ReportColumnMeta[];
+  filters_applied?: string[];
+  generated_at?: string;
+}
+
+// ── Payables (legacy shape) ─────────────────────────────────────────────────
+// Still served by GET /api/v1/reports/payables for older clients.
 
 export interface PayablesAgingBucket {
   current: number;
@@ -165,7 +439,9 @@ export interface PayablesReport {
   suppliers: PayablesSupplier[];
 }
 
-// ── Failed Journal Queue ────────────────────────────────────────────────────
+// ── Failed Journal Queue (legacy admin shape) ────────────────────────────────
+// GET /api/v1/admin/failed-journal-entries. The reporting page uses
+// FailedJournalQueueReport above; this stays for the admin list and retry/resolve.
 
 export interface FailedJournalEntry {
   id: number;
@@ -1256,21 +1532,97 @@ export interface PaymentBreakdownReport {
 
 // ── Tax Return ──────────────────────────────────────────────────────────────
 
+/** Kept in step with App\Reports\Tax\TaxReturnReport::TAX_TYPES. */
+export type TaxReturnTaxType =
+  | 'vat'
+  | 'supplementary_duty'
+  | 'income_tax'
+  | 'withholding'
+  | 'other';
+
+/**
+ * Which half of the return an account belongs to. Output is what the business
+ * owes the authority; input is the tax it can reclaim.
+ */
+export type TaxReturnSide = 'output' | 'input';
+
+/**
+ * One tax account's movement over the filing period.
+ *
+ * Field names come from `TaxReturnReport::mapRow()` (RPT-TAX-001) — these are its
+ * actual keys. The report was rebuilt on the ReportDefinition pipeline and the
+ * old `tax_type`/`taxable_amount` shape it replaced was never what the endpoint
+ * returned.
+ *
+ * Every money figure is **credit-positive**: a credit creates tax owed, a debit
+ * relieves it. So a debit on Input VAT Receivable is *negative* `net_liability` —
+ * input tax reduces the amount due, it does not add to it.
+ */
 export interface TaxReturnRow {
-  tax_type: string;
-  taxable_amount: number;
+  account_id: string;
+  code: string;
+  name: string;
+  tax_type: TaxReturnTaxType;
+  side: TaxReturnSide;
+  is_active: boolean;
+  /** Credit-positive. Everything dated before `start_date`. */
+  opening_balance: number;
+  period_debit: number;
+  period_credit: number;
+  /** Gross credits in the period, on an output account. Always 0 on an input one. */
   tax_collected: number;
+  /** Debits refunded on an output account; credits recovered on an input one. */
+  tax_refunded: number;
+  /** Gross debits in the period, on an input account. Always 0 on an output one. */
   tax_paid: number;
+  /** `period_credit − period_debit`. This row's contribution to the period's tax. */
   net_liability: number;
+  /** `opening_balance + net_liability`. Positive is still owed at `end_date`. */
+  closing_balance: number;
+  entry_count: number;
+  last_entry_date: string | null;
 }
 
-export interface TaxReturnReport {
+export interface TaxReturnTypeSummary {
+  key: TaxReturnTaxType;
+  label: string;
+  account_count: number;
+  collected: number;
+  paid: number;
+  refunded: number;
+  net_liability: number;
+  /** Mirrors `net_liability`, for the PDF summary renderer. */
+  amount: number;
+}
+
+export interface TaxReturnReportResponse {
   data: TaxReturnRow[];
   summary: {
+    start_date: string;
+    end_date: string;
+    tax_account_count: number;
     total_tax_collected: number;
     total_tax_paid: number;
+    total_tax_refunded: number;
+    /** The headline: collected less reclaimable input tax, over the period. */
     net_tax_due: number;
+    /** Positive means remit; negative means the authority owes a refund back. */
+    direction: 'payable' | 'recoverable' | 'nil';
+    /** Opening/closing balances on output (liability) tax accounts. */
+    opening_payable: number;
+    closing_payable: number;
+    /** Opening/closing balances on input (receivable) tax accounts, as positive. */
+    opening_recoverable: number;
+    closing_recoverable: number;
+    /** `closing_payable − closing_recoverable`: the figure carried into next period. */
+    net_position: number;
+    has_activity: boolean;
+    /** Every tax type, including those with nothing filed against them. */
+    by_tax_type: TaxReturnTypeSummary[];
   };
+  columns?: ReportColumnMeta[];
+  filters_applied?: string[];
+  generated_at?: string;
 }
 
 // ── POS Report Types ────────────────────────────────────────────────────────

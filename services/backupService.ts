@@ -1,4 +1,7 @@
-import apiClient from '@/lib/api/axios';
+// Backups dump the whole database and downloads stream a blob, so these calls
+// are legitimately slow. `longRunningApiClient` keeps their timeouts from being
+// read as connectivity evidence — see lib/api/axios.ts.
+import { longRunningApiClient as apiClient } from '@/lib/api/axios';
 import type { ApiResponse } from '@/types/api.types';
 
 /**

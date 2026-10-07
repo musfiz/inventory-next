@@ -173,7 +173,7 @@ These tables are dead weight today. The system "promises" them but does not deli
 | `bank_accounts` (model exists, no controller) | **Bank reconciliation** | Reconcile with bank statement | No UI. |
 | `account_reconciliations` (model exists, no controller) | **Bank rec records** | Difference tracking | No UI. |
 | `fiscal_periods` (model exists, no controller) | **Year / quarter / month lock** | Period close | No UI. |
-| `failed_journal_entries` (controller exists, **no UI**) | **Auto-journal failure queue** | When a sale fails to post a journal, retry from UI | Surface in `journal-entries` page is missing. |
+| `failed_journal_entries` (report UI built) | **Auto-journal failure queue** | When a sale fails to post a journal, retry from UI | Read-only report page is live (`/reports/accounting/failed-journal`, `RPT-ACC-003`). Still missing: per-row Retry / Resolve buttons on that page. |
 | `pos_hold_orders` (model exists, controller route not confirmed) | **Saved carts** | Resume a held cart later | UI flow unclear. |
 | `alerts`, `notifications` (no controllers) | **System alerts engine** | Low-stock, expiry, overdue | Persists but never generated. |
 | `audit_logs`, `activity_logs` (no controllers) | **Audit trail / activity feed** | Compliance | No UI to inspect. |

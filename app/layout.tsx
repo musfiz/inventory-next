@@ -1,6 +1,8 @@
 import type { Metadata } from 'next';
 import { Noto_Sans } from 'next/font/google';
 import './globals.css';
+import NetworkMonitor from '@/components/layout/network-monitor';
+import OfflineBanner from '@/components/layout/offline-banner';
 import NumberScrollGuard from '@/components/ui/number-scroll-guard';
 import TopProgressBar from '@/components/ui/top-progress-bar';
 import { ThemeProvider } from '@/contexts/ThemeContext';
@@ -44,6 +46,10 @@ export default function RootLayout({
         <ThemeProvider>
           <SwrProvider>
             <TopProgressBar />
+            {/* Must sit inside SwrProvider: on recovery it revalidates cached
+                keys so stale data is refetched as soon as the API answers. */}
+            <NetworkMonitor />
+            <OfflineBanner />
             <NumberScrollGuard />
             {children}
           </SwrProvider>

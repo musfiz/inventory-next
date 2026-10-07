@@ -71,6 +71,13 @@ class AccountService {
     return response.data.message;
   }
 
+  /**
+   * @deprecated Prefer `reportService.trialBalance()`
+   *   (`GET /api/v1/reports/accounting/trial-balance`, RPT-ACC-004). Kept for
+   *   clients still on the legacy endpoint, which sums the `posted` status alone
+   *   — so a reversed entry reads as a real balance — and reports only period
+   *   movement, so a balance carried in from before the range is invisible.
+   */
   async trialBalance(params: { start_date: string; end_date: string; tenant_id?: string }): Promise<TrialBalanceReport> {
     const rows = await this.trialBalanceRows(params);
     const totalDebit = rows.reduce((s, r) => s + (r.total_debit ?? 0), 0);

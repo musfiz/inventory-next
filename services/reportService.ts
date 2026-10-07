@@ -1,9 +1,14 @@
-import apiClient from '@/lib/api/axios';
+// Report builds aggregate across the whole dataset, so a slow one is normal
+// rather than exceptional. `longRunningApiClient` keeps their timeouts from
+// being read as connectivity evidence — see lib/api/axios.ts.
+import { longRunningApiClient as apiClient } from '@/lib/api/axios';
 import type { ApiResponse } from '@/types/api.types';
 import type { ReceivablesReport } from '@/types/accounting.types';
 import type {
   PayablesReport,
-  FailedJournalReport,
+  FailedJournalQueueReport,
+  FailedJournalQueueBucket,
+  FailedJournalQueueStatusFilter,
   StockValuationReport,
   CostingMethod,
   ReorderReport,
@@ -55,6 +60,13 @@ import type {
   CustomerAgingReport,
   ArAgingReport,
   ArAgingBucket,
+  ApAgingReport,
+  ApAgingBucket,
+  TrialBalanceReportResponse,
+  TrialBalanceSide,
+  TaxReturnReportResponse,
+  TaxReturnTaxType,
+  TaxReturnSide,
   SupplierAgingReport,
   SupplierAgingBucket,
   SupplierStatementReport,
@@ -105,7 +117,37 @@ class ReportService {
     return response.data.data;
   }
 
-  // ── Accounting (existing endpoints) ───────────────────────────────────────
+  /**
+   * AP Aging — the ledger payables book, aged per supplier.
+   *
+   * Distinct from `payables()` (the older /reports/payables endpoint): this one
+   * reads the AP control account off the posted ledger, so its total reconciles
+   * with the Balance Sheet, and it supports the full filter set, sorting and the
+   * server-side PDF/Excel/CSV export.
+   */
+  async apAging(params: {
+    /** Date the aging is measured against; defaults to today. */
+    as_of_date?: string;
+    supplier_id?: string | null;
+    /** Drill into one aging bucket; omit for all of them. */
+    bucket?: ApAgingBucket;
+    supplier_status?: 'active' | 'inactive' | 'blacklisted';
+    /** 1/0 — hide suppliers whose balance is entirely not-yet-due. */
+    only_overdue?: boolean | 0 | 1;
+    search?: string;
+    sort?: string;
+    dir?: 'asc' | 'desc';
+    tenant_id?: string;
+  }): Promise<ApAgingReport> {
+    const { tenant_id, ...rest } = params;
+    const response = await apiClient.get<ApiResponse<ApAgingReport>>(
+      `${this.base}/accounting/ap-aging`,
+      { params: { ...rest, ...(tenant_id ? { tenant_id } : {}) } },
+    );
+    return response.data.data;
+  }
+
+  // ── Accounting (legacy endpoints) ─────────────────────────────────────────
 
   async receivables(params: { as_of_date: string; tenant_id?: string }): Promise<ReceivablesReport> {
     const { tenant_id, ...rest } = params;
@@ -115,6 +157,7 @@ class ReportService {
     return response.data.data;
   }
 
+  /** @deprecated Prefer {@link apAging}; kept for the legacy /reports/payables shape. */
   async payables(params: { as_of_date: string; tenant_id?: string }): Promise<PayablesReport> {
     const { tenant_id, ...rest } = params;
     const response = await apiClient.get<ApiResponse<PayablesReport>>(`${this.base}/payables`, {
@@ -123,18 +166,91 @@ class ReportService {
     return response.data.data;
   }
 
-  async failedJournal(params?: {
-    status?: 'unresolved' | 'resolved' | 'all';
+  /**
+   * Failed Journal Queue — the auto-journal failures behind the ledger's gap.
+   *
+   * Replaces the admin list this page used to call: that endpoint returns a raw
+   * paginated model with none of the aggregates (how much value never posted,
+   * how long each failure has been open) that make the queue actionable, and it
+   * cannot be filtered, sorted or exported. Retrying and resolving a failure
+   * stay on `/admin/failed-journal-entries/{id}/retry|resolve` — a report reads,
+   * it does not mutate the ledger.
+   */
+  async failedJournal(params: {
+    /** Date queue ages are measured against; defaults to today. */
+    as_of_date?: string;
+    start_date?: string | null;
+    end_date?: string | null;
+    /** Defaults to `all` — a cleared queue and a queue never written look the same otherwise. */
+    status?: FailedJournalQueueStatusFilter;
+    /** Drill into one queue-age bucket. */
+    age_bucket?: FailedJournalQueueBucket;
     reference_type?: string;
-    page?: number;
-    per_page?: number;
+    search?: string;
+    /** 1/0 — only failures sharing a reference with another open one. */
+    only_recurring?: boolean | 0 | 1;
+    sort?: string;
+    dir?: 'asc' | 'desc';
     tenant_id?: string;
-  }): Promise<FailedJournalReport> {
-    const { tenant_id, ...rest } = params ?? {};
-    const response = await apiClient.get<ApiResponse<FailedJournalReport>>(
-      '/api/v1/admin/failed-journal-entries',
+  }): Promise<FailedJournalQueueReport> {
+    const { tenant_id, ...rest } = params;
+    const response = await apiClient.get<ApiResponse<FailedJournalQueueReport>>(
+      `${this.base}/accounting/failed-journal`,
       { params: { ...rest, ...(tenant_id ? { tenant_id } : {}) } },
     );
+    return response.data.data;
+  }
+
+  /**
+   * Trial Balance — the ledger's own proof that it balances.
+   *
+   * Distinct from `accountService.trialBalance()` (the older
+   * `/reports/trial-balance` endpoint): this one counts `posted` **and**
+   * `reversed` journal entries, carries an opening balance so a brought-forward
+   * balance is visible, flags off-side balances, and reconciles the cached
+   * `accounts.balance` against the ledger.
+   */
+  async trialBalance(params: {
+    /** Defaults to the start of the current month. */
+    start_date?: string;
+    /** Defaults to today. */
+    end_date?: string;
+    account_id?: string | null;
+    account_type?: 'asset' | 'liability' | 'equity' | 'revenue' | 'expense' | 'contra';
+    account_subtype?: string;
+    search?: string;
+    /** 1/0 — hide accounts with no movement and no balance. */
+    only_with_activity?: boolean | 0 | 1;
+    /** 1/0 — only balances sitting opposite their account type's normal side. */
+    only_abnormal?: boolean | 0 | 1;
+    /** 1/0 — only accounts whose cached balance disagrees with their ledger. */
+    only_drift?: boolean | 0 | 1;
+    include_inactive?: boolean | 0 | 1;
+    sort?: string;
+    dir?: 'asc' | 'desc';
+    tenant_id?: string;
+  }): Promise<TrialBalanceReportResponse> {
+    const { tenant_id, ...rest } = params;
+    const response = await apiClient.get<ApiResponse<TrialBalanceReportResponse>>(
+      `${this.base}/accounting/trial-balance`,
+      { params: { ...rest, ...(tenant_id ? { tenant_id } : {}) } },
+    );
+    return response.data.data;
+  }
+
+  /**
+   * @deprecated Prefer {@link failedJournal}. Kept only for the admin list's raw
+   * paginated model; the retry/resolve endpoints are unchanged and remain here.
+   */
+  async failedJournalAdminList(params?: {
+    unresolved?: boolean | 0 | 1;
+    per_page?: number;
+    tenant_id?: string;
+  }): Promise<any> {
+    const { tenant_id, ...rest } = params ?? {};
+    const response = await apiClient.get<ApiResponse<any>>('/api/v1/admin/failed-journal-entries', {
+      params: { ...rest, ...(tenant_id ? { tenant_id } : {}) },
+    });
     return response.data.data;
   }
 
@@ -1002,14 +1118,33 @@ class ReportService {
 
   // ── Tax Reports ───────────────────────────────────────────────────────────
 
+  /**
+   * Tax Return (RPT-TAX-001) — the tax position for a filing period.
+   *
+   * Rebuilt on the server's ReportDefinition pipeline: it reads the tenant's
+   * posted tax accounts (2110/2111/2112 output, 1140 input) off the ledger, so
+   * the figure reconciles with the Balance Sheet. The endpoint this replaced
+   * served `tax_type`/`taxable_amount` rows that it never actually returned, and
+   * summed tax off sales and purchase *documents* — counting unposted documents,
+   * ignoring POS sales and returns.
+   */
   async taxReturn(params: {
-    start_date: string;
-    end_date: string;
-    tax_type?: 'vat' | 'sd' | 'combined';
+    /** Defaults to the start of the current month. */
+    start_date?: string;
+    /** Defaults to today. */
+    end_date?: string;
+    tax_type?: TaxReturnTaxType;
+    /** Output is what the business owes; input is what it can reclaim. */
+    side?: TaxReturnSide;
+    search?: string;
+    /** 1/0 — hide tax accounts with no movement and no balance. */
+    only_with_activity?: boolean | 0 | 1;
+    sort?: string;
+    dir?: 'asc' | 'desc';
     tenant_id?: string;
-  }): Promise<GenericReportResponse> {
+  }): Promise<TaxReturnReportResponse> {
     const { tenant_id, ...rest } = params;
-    const response = await apiClient.get<ApiResponse<GenericReportResponse>>(`${this.base}/tax/tax-return`, {
+    const response = await apiClient.get<ApiResponse<TaxReturnReportResponse>>(`${this.base}/tax/tax-return`, {
       params: { ...rest, ...(tenant_id ? { tenant_id } : {}) },
     });
     return response.data.data;

@@ -246,7 +246,7 @@ const navigation: NavigationItem[] = [
   {
     name: 'Accounting Management',
     icon: FileSpreadsheet,
-    permissions: ['view-accounts', 'view-expenses', 'view-journal-entries', 'view-accounts', 'view-trail-balance', 'view-balance-sheet', 'view-profit-loss', 'view-cash-flow'],
+    permissions: ['view-accounts', 'view-expenses', 'view-journal-entries', 'view-accounts', 'view-trial-balance-report', 'view-balance-sheet', 'view-profit-loss', 'view-cash-flow'],
     children: [
       { name: 'Chart of Accounts', href: '/accounts', icon: LayersPlus, permission: 'view-accounts' },
       { name: 'Expenses', href: '/expenses', icon: FileText, permission: 'view-expenses' },
@@ -439,13 +439,13 @@ const navigation: NavigationItem[] = [
       {
         name: 'Accounting Reports',
         icon: FileSpreadsheet,
-        permissions: ['view-ar-aging-report', 'view-ap-aging-report', 'view-failed-journal-report', 'view-tax-return-report', 'view-trail-balance', 'view-balance-sheet', 'view-profit-loss', 'view-cash-flow', 'view-accounts'],
+        permissions: ['view-ar-aging-report', 'view-ap-aging-report', 'view-failed-journal-report', 'view-tax-return-report', 'view-trial-balance-report', 'view-balance-sheet', 'view-profit-loss', 'view-cash-flow', 'view-accounts'],
         children: [
           { name: 'AR Aging', href: '/reports/accounting/ar-aging', icon: Coins, permission: 'view-ar-aging-report' },
           { name: 'AP Aging', href: '/reports/accounting/ap-aging', icon: Coins, permission: 'view-ap-aging-report' },
           { name: 'Failed Journal', href: '/reports/accounting/failed-journal', icon: AlertTriangle, permission: 'view-failed-journal-report' },
           { name: 'Tax Return', href: '/reports/tax/tax-return', icon: Receipt, permission: 'view-tax-return-report' },
-          { name: 'Trial Balance', href: '/reports/trial-balance', icon: Scale, permission: 'view-trail-balance' },
+          { name: 'Trial Balance', href: '/reports/accounting/trial-balance', icon: Scale, permission: 'view-trial-balance-report' },
           { name: 'Balance Sheet', href: '/reports/balance-sheet', icon: Landmark, permission: 'view-balance-sheet' },
           { name: 'Profit & Loss', href: '/reports/profit-loss', icon: FileText, permission: 'view-profit-loss' },
           { name: 'Cash Flow', href: '/reports/cash-flow', icon: FileText, permission: 'view-cash-flow' },
