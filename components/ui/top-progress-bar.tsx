@@ -10,6 +10,21 @@ const NAV_WINDOW = 500; // ms to keep the bar alive for a pure route transition
 const FADE_DELAY = 300; // ms before fade-out / width reset
 
 /**
+ * Routes that must not show the bar.
+ *
+ * The login screen owns a far stronger indicator of its own: the form blurs and
+ * a round loader covers it for the whole duration of the credential check. A 1px
+ * trickle bar above it competes with that and suggests the form is still
+ * interactive when it deliberately is not.
+ */
+const SUPPRESSED_PATHS = ['/login'];
+
+/** True when `pathname` is, or is a child of, one of SUPPRESSED_PATHS. */
+function isSuppressed(pathname: string): boolean {
+  return SUPPRESSED_PATHS.some((p) => pathname === p || pathname.startsWith(`${p}/`));
+}
+
+/**
  * Non-blocking top progress bar mounted once in the root layout.
  *
  * It starts when an API request begins (driven by `useLoadingStore`) or when a
@@ -18,10 +33,15 @@ const FADE_DELAY = 300; // ms before fade-out / width reset
  * settles. It never blocks clicks or keyboard interaction and uses the original
  * indigo→purple→pink gradient bar at the top (`h-1`, `z-100`) — a stable,
  * fixed position so the indicator does not shift during navigation.
+ *
+ * Renders nothing on SUPPRESSED_PATHS, where the page handles its own loading
+ * state.
  */
 export default function TopProgressBar() {
   const pathname = usePathname();
   const activeRequests = useLoadingStore((s) => s.activeRequests);
+
+  const suppressed = isSuppressed(pathname);
 
   const [visible, setVisible] = useState(false);
   const [progress, setProgress] = useState(0);
@@ -86,23 +106,25 @@ export default function TopProgressBar() {
 
   // API request activity
   useEffect(() => {
+    if (suppressed) return;
     // eslint-disable-next-line react-hooks/set-state-in-effect
     if (activeRequests > 0) activate();
     else finish();
     // activate/finish are recreated each render and intentionally excluded.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [activeRequests]);
+  }, [activeRequests, suppressed]);
 
   // Client-side route transitions
   useEffect(() => {
     if (prevPath.current === pathname) return;
     prevPath.current = pathname;
+    if (suppressed) return;
     activate();
     if (navRef.current) clearTimeout(navRef.current);
     navRef.current = setTimeout(finish, NAV_WINDOW);
     // activate/finish are recreated each render and intentionally excluded.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [pathname]);
+  }, [pathname, suppressed]);
 
   // Cleanup timers on unmount
   useEffect(() => {
@@ -112,6 +134,8 @@ export default function TopProgressBar() {
       if (navRef.current) clearTimeout(navRef.current);
     };
   }, []);
+
+  if (suppressed) return null;
 
   return (
     <div

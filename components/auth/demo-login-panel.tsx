@@ -7,16 +7,22 @@ import type { DemoUser } from '@/types/demo';
 interface DemoLoginPanelProps {
   users: DemoUser[];
   onDemoLogin: (userId: string) => Promise<void>;
+  /**
+   * Disabled while another sign-in is in flight (the email/password form).
+   * Without it a demo click would fire a second POST while the first was still
+   * checking, racing two authentications against one form.
+   */
+  disabled?: boolean;
 }
 
-export default function DemoLoginPanel({ users, onDemoLogin }: DemoLoginPanelProps) {
+export default function DemoLoginPanel({ users, onDemoLogin, disabled = false }: DemoLoginPanelProps) {
   const [loadingUserId, setLoadingUserId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   if (users.length === 0) return null;
 
   const handleClick = async (userId: string) => {
-    if (loadingUserId) return;
+    if (loadingUserId || disabled) return;
     setLoadingUserId(userId);
     setError(null);
     try {
@@ -44,7 +50,7 @@ export default function DemoLoginPanel({ users, onDemoLogin }: DemoLoginPanelPro
             <button
               key={user.id}
               type="button"
-              disabled={loadingUserId !== null}
+              disabled={loadingUserId !== null || disabled}
               onClick={() => handleClick(user.id)}
               className="w-full flex items-center justify-between gap-3 px-3 py-2.5 border border-gray-200 dark:border-gray-700 rounded-md bg-gray-50 dark:bg-gray-700/50 hover:bg-indigo-50 dark:hover:bg-indigo-900/30 hover:border-indigo-300 dark:hover:border-indigo-600 disabled:opacity-60 disabled:cursor-not-allowed transition-colors cursor-pointer text-left"
             >

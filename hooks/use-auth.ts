@@ -84,6 +84,21 @@ export const useAuth = ({ middleware, redirectIfAuthenticated }: UseAuthOptions 
       });
   };
 
+  /**
+   * Sign in.
+   *
+   * Awaits the POST rather than firing it and returning, so a caller can hold a
+   * loading state for the real duration of the request and always clear it
+   * again. Previously this returned `undefined` immediately, which meant:
+   *   - `await login(...)` resolved before the credentials were even checked,
+   *     so the form's loading flag was cleared (or left set) at the wrong time;
+   *   - a non-422 failure (419 CSRF, 500) rethrown inside the `.catch` had no
+   *     handler at all — a floating rejected promise and a permanently disabled
+   *     submit button with no message.
+   *
+   * @throws the Axios error when the attempt fails for any reason other than a
+   *         422 validation failure (already delivered via `setErrors`).
+   */
   const login = async ({
     setErrors,
     ...props
@@ -95,14 +110,18 @@ export const useAuth = ({ middleware, redirectIfAuthenticated }: UseAuthOptions 
 
     setErrors([]);
 
-    axios
-      .post('/api/v1/login', props)
-      .then(() => mutate())
-      .catch(error => {
-        if (error.response.status !== 422) throw error;
-
-        setErrors(error.response.data.errors);
-      });
+    try {
+      await axios.post('/api/v1/login', props);
+      await mutate();
+    } catch (error: any) {
+      // 422 is a field-level validation failure — the form renders it inline,
+      // so it is handled here rather than rethrown.
+      if (error.response?.status === 422) {
+        setErrors(error.response.data.errors ?? error.response.data);
+        return;
+      }
+      throw error;
+    }
   };
 
   const demoLogin = async (

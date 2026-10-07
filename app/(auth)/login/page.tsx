@@ -1,11 +1,13 @@
 'use client';
 
-import { Mail, Lock, Eye, EyeOff, Loader2 } from 'lucide-react';
+import { Mail, Lock, Eye, EyeOff } from 'lucide-react';
 import Link from 'next/link';
 import { useState, Suspense, useEffect } from 'react';
 import DemoLoginPanel from '@/components/auth/demo-login-panel';
 import PageLoader from '@/components/ui/page-loader';
+import Spinner from '@/components/ui/spinner';
 import { useAuth } from '@/hooks/use-auth';
+import { notify } from '@/lib/notifications';
 import { demoService } from '@/services/demoService';
 import type { DemoUser } from '@/types/demo';
 
@@ -45,20 +47,49 @@ function LoginForm() {
 
   const handleSubmit = async (event: React.FormEvent<HTMLFormElement>): Promise<void> => {
     event.preventDefault();
+    // Guards a double submit: the button is disabled, but Enter in a text field
+    // can still fire submit while the first request is in flight.
+    if (isLoading) return;
+
     setIsLoading(true);
     setErrors({});
 
-    await login({
-      email,
-      password,
-      remember: shouldRemember,
-      setErrors: (validationErrors: ValidationErrors) => {
-        if (validationErrors && Object.keys(validationErrors).length > 0) {
-          setErrors(validationErrors);
-          setIsLoading(false);
-        }
-      },
-    });
+    let signedIn = false;
+
+    try {
+      await login({
+        email,
+        password,
+        remember: shouldRemember,
+        setErrors: (validationErrors: ValidationErrors) => {
+          if (validationErrors && Object.keys(validationErrors).length > 0) {
+            setErrors(validationErrors);
+          }
+        },
+      });
+      signedIn = true;
+    } catch (err: any) {
+      // Non-validation failures never reach the form's inline error slots, so
+      // they surface as a toast instead of being swallowed.
+      const message =
+        err?.response?.data?.message ||
+        (err?.response?.status === 419
+          ? 'Your session expired. Please try again.'
+          : 'Sign in failed. Please check your connection and try again.');
+      setErrors({});
+      notify.error(message);
+    } finally {
+      // Deliberately skipped on success. `login` resolves as soon as the user
+      // has been fetched, which is before the guest-guard redirect to
+      // /dashboard has swapped the route — releasing the lock there would
+      // un-blur the form for a frame and let the user start typing into a page
+      // that is about to disappear. Navigation unmounts the component, which is
+      // what clears the state.
+      //
+      // Every failure path does clear it. Previously only the 422 branch did, so
+      // a CSRF or network failure left the form disabled forever.
+      if (!signedIn) setIsLoading(false);
+    }
   };
 
   return (
@@ -73,8 +104,17 @@ function LoginForm() {
         </div>
 
         {/* Form Card */}
-        <div className="bg-white dark:bg-gray-800 shadow-lg dark:shadow-gray-900/50 rounded-lg border border-gray-200 dark:border-gray-700 p-8">
-          <form className="space-y-4" onSubmit={handleSubmit}>
+        <div className="relative bg-white dark:bg-gray-800 shadow-lg dark:shadow-gray-900/50 rounded-lg border border-gray-200 dark:border-gray-700 p-8">
+          <form
+            className="space-y-4 transition-opacity"
+            // Blur the whole form while the credentials are being checked.
+            // Without this the fields stayed crisp and fully editable, so the
+            // user could retype an email/password mid-request and no longer be
+            // submitting what they thought they were.
+            style={isLoading ? { filter: 'blur(3px)', pointerEvents: 'none' } : undefined}
+            aria-hidden={isLoading}
+            onSubmit={handleSubmit}
+          >
             {/* Email Field */}
             <div>
               <label
@@ -93,6 +133,7 @@ function LoginForm() {
                   type="email"
                   autoComplete="email"
                   required
+                  readOnly={isLoading}
                   value={email}
                   onChange={e => {
                     setEmail(e.target.value);
@@ -133,6 +174,7 @@ function LoginForm() {
                   type={showPassword ? 'text' : 'password'}
                   autoComplete="current-password"
                   required
+                  readOnly={isLoading}
                   value={password}
                   onChange={e => {
                     setPassword(e.target.value);
@@ -150,7 +192,8 @@ function LoginForm() {
                 <button
                   type="button"
                   onClick={() => setShowPassword(!showPassword)}
-                  className="absolute inset-y-0 right-0 pr-3 flex items-center text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300 cursor-pointer"
+                  disabled={isLoading}
+                  className="absolute inset-y-0 right-0 pr-3 flex items-center text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300 disabled:opacity-50 cursor-pointer"
                 >
                   {showPassword ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
                 </button>
@@ -170,8 +213,9 @@ function LoginForm() {
                   name="remember-me"
                   type="checkbox"
                   checked={shouldRemember}
+                  readOnly={isLoading}
                   onChange={e => setShouldRemember(e.target.checked)}
-                  className="h-4 w-4 text-indigo-600 focus:ring-indigo-500 dark:focus:ring-indigo-400 border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-gray-700 cursor-pointer"
+                  className="h-4 w-4 text-indigo-600 focus:ring-indigo-500 dark:focus:ring-indigo-400 border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-gray-700 disabled:opacity-50 cursor-pointer"
                 />
                 <label
                   htmlFor="remember-me"
@@ -197,20 +241,33 @@ function LoginForm() {
               disabled={isLoading}
               className="w-full flex justify-center items-center gap-2 py-2.5 px-4 border border-transparent rounded-sm shadow-sm text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors cursor-pointer"
             >
-              {isLoading ? (
-                <>
-                  <Loader2 className="h-5 w-5 animate-spin" />
-                  <span>Signing in...</span>
-                </>
-              ) : (
-                'Sign in'
-              )}
+              Sign in
             </button>
           </form>
+
+          {/* Round loader over the blurred form — same treatment as the
+              "Checking session..." state on /pos-sales. */}
+          {isLoading && (
+            <div
+              role="status"
+              aria-live="polite"
+              aria-busy="true"
+              className="absolute inset-0 z-10 flex flex-col items-center justify-center gap-3 rounded-lg bg-white/70 dark:bg-gray-800/70 backdrop-blur-sm"
+            >
+              <Spinner size="md" decorative />
+              <p className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                Signing in…
+              </p>
+            </div>
+          )}
         </div>
 
         {demoUsers.length > 0 && (
-          <DemoLoginPanel users={demoUsers} onDemoLogin={userId => demoLogin(userId)} />
+          <DemoLoginPanel
+            users={demoUsers}
+            onDemoLogin={userId => demoLogin(userId)}
+            disabled={isLoading}
+          />
         )}
 
         {/* Footer Links */}
